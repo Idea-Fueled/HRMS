@@ -176,11 +176,12 @@ export const loginUser = async (req, res) => {
         // Remove Password
         user.password = undefined;
 
-        // Set Cookie
+        // Set Cookie — sameSite "none" required for cross-domain (Vercel ↔ Render)
+        const isProduction = process.env.NODE_ENV === "production";
         res.cookie("token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
@@ -276,10 +277,12 @@ export const getCurrentUser = async (req, res, next) => {
 };
 
 export const logoutUser = async (req, res) => {
+    const isProduction = process.env.NODE_ENV === "production";
     res.cookie("token", "", {
         expires: new Date(0),
         httpOnly: true,
-        sameSite: "lax",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
     });
 
     return res.status(200).json({
