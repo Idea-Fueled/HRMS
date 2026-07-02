@@ -1,0 +1,188 @@
+import mongoose from "mongoose";
+
+const userScehma = new mongoose.Schema({
+    employeeId: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
+    },
+    firstName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    lastName: {
+        type: String,
+        required: false,
+        trim: true,
+        default: ""
+    },
+    fullName: {
+        type: String,
+        trim: true
+    },
+    email: {
+        type: String,
+        required: true,
+        trim: true,
+        unique: true,
+        lowercase: true
+    },
+    password: {
+        type: String,
+        required: true,
+        select: false
+    },
+    phoneNumber: {
+        type: String,
+        trim: true
+    },
+    profilePicture: {
+        type: String,
+        default: ""
+    },
+    role: {
+        type: String,
+        enum: ["admin", "hr", "manager", "employee"],
+        default: "employee"
+    },
+    department: {
+        type: String,
+        required: true
+    },
+    designation: {
+        type: String,
+        required: true
+    },
+    managerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
+    dottedManagerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
+
+    // Employement information
+    employementType: {
+        type: String,
+        enum: [
+            "full_time",
+            "part_time",
+            "contract",
+            "intern",
+            "consultant"
+        ],
+        default: "full_time"
+    },
+    workLocation: {
+        type: String,
+        default: "Office"
+    },
+    dateOfBirth: {
+        type: Date
+    },
+    gender: {
+        type: String,
+        enum: ["Male", "Female", "Other"]
+    },
+    bloodGroup: {
+        type: String
+    },
+    emergencyContactName: {
+        type: String
+    },
+    emergencyContactNumber: {
+        type: String
+    },
+
+    // bank details
+    bankName: {
+        type: String,
+    },
+
+    accountHolderName: {
+        type: String,
+    },
+
+    accountNumber: {
+        type: String,
+    },
+
+    ifscCode: {
+        type: String,
+    },
+
+    // identity information
+
+    panNumber: {
+        type: String,
+    },
+
+    aadhaarNumber: {
+        type: String,
+    },
+
+    //leave summary
+    totalLeaves: {
+        type: Number,
+        default: 20
+    },
+    usedLeaves: {
+        type: Number,
+        default: 0
+    },
+    pendingLeaves: {
+        type: Number,
+        default: 0
+    },
+    leaveBalance: {
+        sick: {
+            total: { type: Number, default: 6 },
+            used: { type: Number, default: 0 },
+            pending: { type: Number, default: 0 }
+        },
+        casual: {
+            total: { type: Number, default: 8 },
+            used: { type: Number, default: 0 },
+            pending: { type: Number, default: 0 }
+        },
+        earned: {
+            total: { type: Number, default: 20 },
+            used: { type: Number, default: 0 },
+            pending: { type: Number, default: 0 }
+        }
+    },
+
+    // status
+    status: {
+        type: String,
+        enum: [
+            "active",
+            "inactive",
+            "on_notice",
+            "terminated"
+        ],
+        default: "active"
+    },
+    isEmailVerified: {
+        type: Boolean,
+        default: false
+    },
+    lastLogin: {
+        type: Date
+    },
+    joiningDate: {
+        type: Date,
+        default: null
+    }
+
+},
+    { timestamps: true }
+)
+
+const User = mongoose.model("User", userScehma);
+export default User;

@@ -1,0 +1,76 @@
+import axios from "axios";
+
+const API = axios.create({
+    baseURL: "http://localhost:8000/api",
+    withCredentials: true
+})
+
+export const getDashboardData = async (employeeId) => {
+    return API.get(`/dashboard/${employeeId}`)
+}
+
+export const clockIn = async (employeeId, workMode = "Office", wfhMessage = "") => {
+    return API.post("/attendance/clock-in", { employeeId, workMode, wfhMessage })
+}
+
+export const clockOut = async (employeeId) => {
+    return API.post("/attendance/clock-out", { employeeId })
+}
+
+export const getTodayAttendanceLogs = async (employeeId) => {
+    return API.get(`/attendance/logs/today/${employeeId}`)
+}
+
+export const createPosts = async (postData) => {
+    return API.post("/posts", postData)
+}
+
+export const getAllPosts = async () => {
+    return API.get("/posts")
+}
+
+export const getUpcomingHolidays = async () => {
+    return API.get("/holidays/upcoming")
+}
+
+export const createHoliday = async (holidayData) => {
+    return API.post("/holidays/create", holidayData)
+}
+
+export const getUpcomingBirthdays = async () => {
+    return API.get("/users/upcoming-birthdays")
+}
+
+export const getLeaveSummary = async (employeeId) => {
+    return API.get(`/leaves/summary/${employeeId}`)
+}
+
+export const applyLeave = async (leaveData) => {
+    return API.post("/leaves", leaveData)
+}
+
+export const getLeaveHistory = async (employeeId) => {
+    return API.get(`/leaves/history/${employeeId}`)
+}
+
+export const getAwayToday = async () => {
+    return API.get("/users/away-today")
+}
+
+export const getPeopleEvents = async () => {
+    return API.get("/users/people-events")
+}
+
+export const createPoll = async (pollData) => {
+    return API.post("/polls", pollData)
+}
+
+export const getPolls = async () => {
+    return API.get("/polls")
+}
+
+export const voteInPoll = async (pollId, optionIndex) => {
+    return API.post(`/polls/${pollId}/vote`, { optionIndex })
+}
+
+export default API;
