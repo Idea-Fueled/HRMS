@@ -91,9 +91,9 @@ export const getLeaveSummary = async (req, res) => {
         const leaves = await Leave.find({ employeeId });
 
         const balance = {
-            sick: { total: 6, used: 0, pending: 0 },
-            casual: { total: 8, used: 0, pending: 0 },
-            earned: { total: 20, used: 0, pending: 0 }
+            sick: { total: user.leaveBalance?.sick?.total ?? 6, used: 0, pending: 0 },
+            casual: { total: user.leaveBalance?.casual?.total ?? 8, used: 0, pending: 0 },
+            earned: { total: user.leaveBalance?.earned?.total ?? 20, used: 0, pending: 0 }
         };
 
         leaves.forEach(leave => {
@@ -121,12 +121,13 @@ export const getLeaveSummary = async (req, res) => {
 
         const usedLeaves = balance.sick.used + balance.casual.used + balance.earned.used;
         const pendingLeaves = balance.sick.pending + balance.casual.pending + balance.earned.pending;
-        const availableLeaves = (user.totalLeaves || 20) - usedLeaves - pendingLeaves;
+        const totalLeaves = balance.sick.total + balance.casual.total + balance.earned.total;
+        const availableLeaves = totalLeaves - usedLeaves - pendingLeaves;
 
         return res.status(200).json({
             success: true,
             leaveSummary: {
-                totalLeaves: user.totalLeaves || 20,
+                totalLeaves,
                 usedLeaves,
                 pendingLeaves,
                 availableLeaves,
