@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { logoutUser } from "../services/auth.service";
 import { useAuth } from "../context/AuthContext";
+import { toast } from "sonner";
 import {
     Search,
     Bell,
@@ -193,8 +194,10 @@ const Navbar = ({ onToggleSidebar }) => {
                                 onClick={async () => {
                                     try {
                                         await logoutUser();
+                                        toast.success("Logged out successfully.");
                                     } catch (err) {
                                         console.error("Logout request failed:", err);
+                                        toast.error("Logout failed, but session cleared.");
                                     } finally {
                                         logout();
                                         setIsProfileDropdownOpen(false);
