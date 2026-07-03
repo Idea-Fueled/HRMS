@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
     Users, 
     Clock, 
@@ -31,6 +32,22 @@ import {
 } from "../../services/team.service";
 import { getEmployeeById } from "../../services/employee.service";
 import { ViewEmployeeDrawer } from "../employees/Employees";
+
+const useResponsivePageSize = (viewMode) => {
+    const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    if (viewMode === "card") {
+        if (windowWidth >= 1024) return 10;
+        if (windowWidth >= 640) return 6;
+        return 4;
+    }
+    return 10;
+};
 
 /* ─────────────────────────────────────────────
    REUSABLE CONTAINER CARDS
@@ -253,14 +270,14 @@ const TeamMembersTab = () => {
     const [search, setSearch] = useState("");
     const [selectedDept, setSelectedDept] = useState("All");
     const [selectedStatus, setSelectedStatus] = useState("All");
-    const [menuOpenId, setMenuOpenId] = useState(null);
+    const [menuAnchor, setMenuAnchor] = useState(null);
     
     // Pagination & Sorting State
     const [currentPage, setCurrentPage] = useState(1);
     const [sortField, setSortField] = useState("id");
     const [sortDir, setSortDir] = useState("asc");
 
-    const itemsPerPage = 4;
+    const itemsPerPage = useResponsivePageSize(view);
 
     const [selectedEmployeeForDrawer, setSelectedEmployeeForDrawer] = useState(null);
     const [drawerLoading, setDrawerLoading] = useState(false);
@@ -287,8 +304,19 @@ const TeamMembersTab = () => {
         fetchMembers();
     }, []);
 
+    useEffect(() => {
+        if (!menuAnchor) return;
+        const closeMenu = () => setMenuAnchor(null);
+        window.addEventListener("click", closeMenu);
+        window.addEventListener("scroll", closeMenu, true);
+        return () => {
+            window.removeEventListener("click", closeMenu);
+            window.removeEventListener("scroll", closeMenu, true);
+        };
+    }, [menuAnchor]);
+
     const handleAction = async (action, emp) => {
-        setMenuOpenId(null);
+        setMenuAnchor(null);
         if (action === "View Profile" || action === "View details" || action === "View Employee") {
             if (!emp._id) {
                 toast.error("Employee database ID is missing.");
@@ -499,27 +527,28 @@ const TeamMembersTab = () => {
                                                 {emp.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-3.5 text-right relative">
+                                        <td className="px-6 py-3.5 text-right">
                                             <button
-                                                onClick={() => setMenuOpenId(menuOpenId === emp.id ? null : emp.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (menuAnchor && menuAnchor.id === emp.id) {
+                                                        setMenuAnchor(null);
+                                                    } else {
+                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                        setMenuAnchor({
+                                                            id: emp.id,
+                                                            employee: emp,
+                                                            rect: {
+                                                                top: rect.bottom + window.scrollY,
+                                                                left: rect.right - 144 + window.scrollX,
+                                                            }
+                                                        });
+                                                    }
+                                                }}
                                                 className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors cursor-pointer shrink-0 focus:outline-none"
                                             >
                                                 <MoreVertical className="w-4 h-4" />
                                             </button>
-                                            {menuOpenId === emp.id && (
-                                                <div className="absolute right-6 top-10 mt-1 w-36 bg-white border border-gray-100 rounded-[12px] shadow-xl py-1 z-30 text-left animate-in fade-in slide-in-from-top-1 duration-150">
-                                                    {["View Profile", "Edit Employee", "View Attendance", "View Leaves"].map((act) => (
-                                                        <button
-                                                            key={act}
-                                                            onClick={() => handleAction(act, emp)}
-                                                            className="w-full px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-blue-50/50 hover:text-[#2D79C7] transition-all text-left flex items-center gap-1.5 focus:outline-none cursor-pointer"
-                                                        >
-                                                            {act.startsWith("View") ? <Eye className="w-3.5 h-3.5 text-gray-400" /> : <Edit3 className="w-3.5 h-3.5 text-gray-400" />}
-                                                            <span>{act}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -547,6 +576,33 @@ const TeamMembersTab = () => {
                     </div>
                 </div>
             )}
+
+            {/* Portal Action Menu */}
+            {menuAnchor && createPortal(
+                <div 
+                    style={{
+                        position: "absolute",
+                        top: `${menuAnchor.rect.top}px`,
+                        left: `${menuAnchor.rect.left}px`,
+                    }}
+                    className="w-36 bg-white border border-gray-100 rounded-[12px] shadow-xl py-1 z-50 text-left animate-in fade-in slide-in-from-top-1 duration-150"
+                >
+                    {["View Profile", "Edit Employee", "View Attendance", "View Leaves"].map((act) => (
+                        <button
+                            key={act}
+                            onClick={() => {
+                                handleAction(act, menuAnchor.employee);
+                                setMenuAnchor(null);
+                            }}
+                            className="w-full px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-blue-50/50 hover:text-[#2D79C7] transition-all text-left flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                        >
+                            {act.startsWith("View") ? <Eye className="w-3.5 h-3.5 text-gray-400" /> : <Edit3 className="w-3.5 h-3.5 text-gray-400" />}
+                            <span>{act}</span>
+                        </button>
+                    ))}
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
@@ -564,7 +620,7 @@ const TeamAttendanceTab = () => {
     const [sortField, setSortField] = useState("name");
     const [sortDir, setSortDir] = useState("asc");
 
-    const itemsPerPage = 4;
+    const itemsPerPage = useResponsivePageSize(view);
 
     const statusColors = {
         "Present": "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -760,7 +816,7 @@ const TeamLeavesTab = () => {
     const [sortField, setSortField] = useState("name");
     const [sortDir, setSortDir] = useState("asc");
 
-    const itemsPerPage = 4;
+    const itemsPerPage = useResponsivePageSize(view);
 
     const statusColors = {
         "Pending": "bg-amber-50 text-amber-700 border-amber-100",
@@ -1018,7 +1074,7 @@ const TeamPerformanceTab = () => {
     const [sortField, setSortField] = useState("name");
     const [sortDir, setSortDir] = useState("asc");
 
-    const itemsPerPage = 4;
+    const itemsPerPage = useResponsivePageSize(view);
 
     const ratingColors = {
         "Outstanding": "bg-emerald-50 text-emerald-700 border-emerald-100",

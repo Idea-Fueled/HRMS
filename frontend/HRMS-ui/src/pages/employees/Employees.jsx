@@ -23,6 +23,22 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { uploadProfilePicture } from "../../services/auth.service";
 
+const useResponsivePageSize = (viewMode) => {
+    const [windowWidth, setWindowWidth] = React.useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+    React.useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    if (viewMode === "card") {
+        if (windowWidth >= 1024) return 10;
+        if (windowWidth >= 640) return 6;
+        return 4;
+    }
+    return 10;
+};
+
 /* ─────────────────────────────────────────────
    CONSTANTS
 ───────────────────────────────────────────── */
@@ -969,7 +985,7 @@ const Employees = () => {
     const [sortField, setSortField] = useState("fullName");
     const [sortDir, setSortDir] = useState("asc");
     const [page, setPage] = useState(1);
-    const PAGE_SIZE = 10;
+    const PAGE_SIZE = useResponsivePageSize(view);
     const [drawer, setDrawer] = useState(null);
 
     const [departments, setDepartments] = useState([]);
