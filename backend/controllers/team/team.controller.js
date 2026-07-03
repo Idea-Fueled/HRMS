@@ -190,6 +190,7 @@ export const getTeamAttendance = async (req, res) => {
             }
 
             return {
+                userId: user._id.toString(),
                 name: user.fullName || `${user.firstName} ${user.lastName}`,
                 dept: user.department || "Engineering",
                 profilePicture: user.profilePicture || "",
@@ -197,7 +198,11 @@ export const getTeamAttendance = async (req, res) => {
                 checkOut,
                 hours,
                 mode,
-                status
+                status,
+                movementLogs: att ? att.logs.map(l => ({
+                    time: new Date(l.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+                    type: l.action === "clock_in" ? "IN" : "OUT"
+                })) : []
             };
         });
 

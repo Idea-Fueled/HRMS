@@ -18,7 +18,10 @@ import {
     ArrowUpRight,
     TrendingUp,
     FileText,
-    Percent
+    Percent,
+    ChevronDown,
+    ChevronUp,
+    Activity
 } from "lucide-react";
 import { toast } from "sonner";
 import { ViewToggle, SkeletonLoader, EmptyState, SearchBar, Pagination, SortHeader, Avatar } from "../../components/SharedComponents";
@@ -621,6 +624,12 @@ const TeamAttendanceTab = () => {
     const [sortDir, setSortDir] = useState("asc");
 
     const itemsPerPage = useResponsivePageSize(view);
+    const [expandedLogs, setExpandedLogs] = useState([]);
+    const [attendanceMenuAnchor, setAttendanceMenuAnchor] = useState(null);
+
+    const toggleLogExpand = (id) => {
+        setExpandedLogs(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
 
     const statusColors = {
         "Present": "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -655,6 +664,17 @@ const TeamAttendanceTab = () => {
     useEffect(() => {
         fetchAttendance();
     }, []);
+
+    useEffect(() => {
+        if (!attendanceMenuAnchor) return;
+        const close = () => setAttendanceMenuAnchor(null);
+        window.addEventListener("click", close);
+        window.addEventListener("scroll", close, true);
+        return () => {
+            window.removeEventListener("click", close);
+            window.removeEventListener("scroll", close, true);
+        };
+    }, [attendanceMenuAnchor]);
 
     const handleSort = (field) => {
         const isAsc = sortField === field && sortDir === "asc";
@@ -707,7 +727,7 @@ const TeamAttendanceTab = () => {
                 <div className="space-y-6 animate-fadeIn">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {paginated.map((log, idx) => (
-                            <Card key={idx} className="p-5 flex flex-col justify-between h-[250px]">
+                            <Card key={idx} className="p-5 flex flex-col justify-between">
                                 <div>
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
@@ -736,6 +756,39 @@ const TeamAttendanceTab = () => {
                                     <span className="text-gray-400">{log.mode} Mode</span>
                                     <span className="text-[#2D79C7] font-extrabold font-mono">{log.hours}</span>
                                 </div>
+                                {/* View Logs Toggle */}
+                                <button
+                                    onClick={() => toggleLogExpand(log.userId || log.name)}
+                                    className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-[#2D79C7] bg-blue-50/60 hover:bg-blue-100/60 rounded-[10px] border border-blue-100/60 transition-colors cursor-pointer"
+                                >
+                                    <Activity className="w-3 h-3" />
+                                    {expandedLogs.includes(log.userId || log.name) ? "Hide Movement Logs" : "View Movement Logs"}
+                                    {expandedLogs.includes(log.userId || log.name) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                </button>
+                                {/* Expanded Movement Logs */}
+                                {expandedLogs.includes(log.userId || log.name) && (
+                                    <div className="mt-2.5 py-2.5 px-3 bg-gray-50 rounded-[12px] border border-gray-100 animate-fadeIn">
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block mb-2">Movement Timeline</span>
+                                        {(!log.movementLogs || log.movementLogs.length === 0) ? (
+                                            <span className="text-[10px] text-gray-400 italic">No movement logs recorded.</span>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {log.movementLogs.map((m, mIdx) => (
+                                                    <div key={mIdx} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[8px] border border-gray-100 shadow-sm">
+                                                        <span className="text-[10px] font-bold font-mono text-gray-700">{m.time}</span>
+                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border leading-none ${
+                                                            m.type === "IN"
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                                                : "bg-rose-50 text-rose-700 border-rose-100"
+                                                        }`}>
+                                                            {m.type}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </Card>
                         ))}
                     </div>
@@ -770,34 +823,118 @@ const TeamAttendanceTab = () => {
                                     <th className="px-6 py-4">
                                         <SortHeader label="Status" field="status" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     </th>
+                                    <th className="px-6 py-4 text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#F9FAFB] text-xs font-semibold text-gray-600">
-                                {paginated.map((log, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-3.5">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar name={log.name} src={log.profilePicture} size="w-8 h-8" />
-                                                <span className="text-[#1E1E1E] font-bold block">{log.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-3.5">{log.dept}</td>
-                                        <td className="px-6 py-3.5 font-mono text-gray-700">{log.checkIn}</td>
-                                        <td className="px-6 py-3.5 font-mono text-gray-700">{log.checkOut}</td>
-                                        <td className="px-6 py-3.5 font-mono text-gray-500 font-bold">{log.hours}</td>
-                                        <td className="px-6 py-3.5 font-medium">{log.mode}</td>
-                                        <td className="px-6 py-3.5">
-                                            <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${statusColors[log.status] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
-                                                {log.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {paginated.map((log, idx) => {
+                                    const logId = log.userId || log.name;
+                                    const isExpanded = expandedLogs.includes(logId);
+                                    return (
+                                        <React.Fragment key={idx}>
+                                            <tr className={`hover:bg-gray-50/50 transition-colors ${isExpanded ? "bg-blue-50/30" : ""}`}>
+                                                <td className="px-6 py-3.5">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar name={log.name} src={log.profilePicture} size="w-8 h-8" />
+                                                        <span className="text-[#1E1E1E] font-bold block">{log.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-3.5">{log.dept}</td>
+                                                <td className="px-6 py-3.5 font-mono text-gray-700">{log.checkIn}</td>
+                                                <td className="px-6 py-3.5 font-mono text-gray-700">{log.checkOut}</td>
+                                                <td className="px-6 py-3.5 font-mono text-gray-500 font-bold">{log.hours}</td>
+                                                <td className="px-6 py-3.5 font-medium">{log.mode}</td>
+                                                <td className="px-6 py-3.5">
+                                                    <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${statusColors[log.status] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
+                                                        {log.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-3.5 text-center">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (attendanceMenuAnchor && attendanceMenuAnchor.id === logId) {
+                                                                setAttendanceMenuAnchor(null);
+                                                            } else {
+                                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                                setAttendanceMenuAnchor({
+                                                                    id: logId,
+                                                                    rect: {
+                                                                        top: rect.bottom + window.scrollY,
+                                                                        left: rect.right - 180 + window.scrollX,
+                                                                    }
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors cursor-pointer shrink-0 focus:outline-none"
+                                                    >
+                                                        <MoreVertical className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {/* Expanded Movement Logs Row */}
+                                            {isExpanded && (
+                                                <tr className="bg-[#F8FAFC]">
+                                                    <td colSpan={8} className="px-6 py-3">
+                                                        <div className="py-2.5 px-4 bg-gray-50 rounded-[14px] border border-gray-100 animate-fadeIn">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <Activity className="w-3.5 h-3.5 text-[#2D79C7]" />
+                                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Movement Timeline</span>
+                                                            </div>
+                                                            {(!log.movementLogs || log.movementLogs.length === 0) ? (
+                                                                <span className="text-xs text-gray-400 italic">No movement logs recorded for today.</span>
+                                                            ) : (
+                                                                <div className="flex flex-wrap gap-2.5">
+                                                                    {log.movementLogs.map((m, mIdx) => (
+                                                                        <div key={mIdx} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-[10px] border border-gray-100 shadow-sm">
+                                                                            <span className="text-xs font-bold font-mono text-gray-700">{m.time}</span>
+                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border leading-none ${
+                                                                                m.type === "IN"
+                                                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                                                                    : "bg-rose-50 text-rose-700 border-rose-100"
+                                                                            }`}>
+                                                                                {m.type}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                     <Pagination total={filtered.length} limit={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
                 </Card>
+            )}
+
+            {/* Portal Action Menu for Attendance */}
+            {attendanceMenuAnchor && createPortal(
+                <div
+                    style={{
+                        position: "absolute",
+                        top: `${attendanceMenuAnchor.rect.top}px`,
+                        left: `${attendanceMenuAnchor.rect.left}px`,
+                    }}
+                    className="w-[180px] bg-white border border-gray-100 rounded-[12px] shadow-xl py-1 z-50 text-left animate-in fade-in slide-in-from-top-1 duration-150"
+                >
+                    <button
+                        onClick={() => {
+                            toggleLogExpand(attendanceMenuAnchor.id);
+                            setAttendanceMenuAnchor(null);
+                        }}
+                        className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-blue-50/50 hover:text-[#2D79C7] transition-all text-left flex items-center gap-2 focus:outline-none cursor-pointer"
+                    >
+                        <Activity className="w-3.5 h-3.5 text-gray-400" />
+                        <span>{expandedLogs.includes(attendanceMenuAnchor.id) ? "Hide Movement Logs" : "View Movement Logs"}</span>
+                    </button>
+                </div>,
+                document.body
             )}
         </div>
     );
