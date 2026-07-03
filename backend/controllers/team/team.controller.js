@@ -418,6 +418,13 @@ export const updateLeaveStatus = async (req, res) => {
             }
         }
 
+        if (leave.totalDays === undefined || leave.totalDays === null || isNaN(leave.totalDays)) {
+            const start = new Date(leave.startDate);
+            const end = new Date(leave.endDate);
+            const diffTime = Math.abs(end - start);
+            leave.totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        }
+
         leave.status = normalizedStatus;
         leave.approvedBy = managerId;
         leave.remarks = remarks || "";
