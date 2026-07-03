@@ -28,6 +28,10 @@ export const getUpcomingHolidays = async () => {
     return API.get("/holidays/upcoming")
 }
 
+export const getAllHolidays = async () => {
+    return API.get("/holidays")
+}
+
 export const createHoliday = async (holidayData) => {
     return API.post("/holidays/create", holidayData)
 }

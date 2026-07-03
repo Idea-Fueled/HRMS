@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
 import { useAuth } from "../../context/AuthContext";
+import HolidaysModal from "../../components/HolidaysModal";
 import { 
     getDashboardData, 
     clockIn, 
@@ -324,10 +325,24 @@ const HolidayList = ({ holidays }) => {
     );
 };
 
+const ViewAllHolidaysButton = ({ onClick }) => {
+    return (
+        <button
+            onClick={onClick}
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold rounded-[10px] transition-all border border-gray-200 cursor-pointer select-none"
+        >
+            <CalendarDays className="w-3.5 h-3.5 text-gray-500" />
+            <span>View All</span>
+        </button>
+    );
+};
+
 const HolidaySection = ({ initialHolidays }) => {
     const { can } = useAuth();
     const [holidays, setHolidays] = useState(initialHolidays || []);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isViewAllOpen, setIsViewAllOpen] = useState(false);
 
     useEffect(() => {
         if (initialHolidays) {
@@ -353,7 +368,12 @@ const HolidaySection = ({ initialHolidays }) => {
             <CardHeader
                 icon={CalendarDays}
                 title="Upcoming Holidays"
-                action={canCreate ? <CreateHolidayButton onClick={() => setIsModalOpen(true)} /> : null}
+                action={
+                    <div className="flex items-center gap-2">
+                        <ViewAllHolidaysButton onClick={() => setIsViewAllOpen(true)} />
+                        {canCreate && <CreateHolidayButton onClick={() => setIsModalOpen(true)} />}
+                    </div>
+                }
             />
             <div className="px-5 pb-5 pt-3">
                 <HolidayList holidays={holidays} />
@@ -366,6 +386,11 @@ const HolidaySection = ({ initialHolidays }) => {
                     onSuccess={refreshHolidays}
                 />
             )}
+
+            <HolidaysModal
+                isOpen={isViewAllOpen}
+                onClose={() => setIsViewAllOpen(false)}
+            />
         </Card>
     );
 };
