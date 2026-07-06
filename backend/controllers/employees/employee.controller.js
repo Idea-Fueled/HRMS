@@ -129,8 +129,10 @@ export const createEmployee = async (req, res) => {
             dateOfBirth,
             gender,
             bloodGroup,
-            emergencyContactName,
+            fatherName,
             emergencyContactNumber,
+            presentAddress,
+            permanentAddress,
             casualLeave,
             sickLeave,
             earnedLeave,
@@ -188,8 +190,10 @@ export const createEmployee = async (req, res) => {
             dateOfBirth: dateOfBirth || null,
             gender: gender || undefined,
             bloodGroup: bloodGroup || undefined,
-            emergencyContactName: emergencyContactName || undefined,
+            fatherName: fatherName || "",
             emergencyContactNumber: emergencyContactNumber || undefined,
+            presentAddress: presentAddress || "",
+            permanentAddress: permanentAddress || "",
             leaveBalance: {
                 casual: { total: casualLeave !== undefined ? Number(casualLeave) : 8, used: 0, pending: 0 },
                 sick: { total: sickLeave !== undefined ? Number(sickLeave) : 6, used: 0, pending: 0 },
@@ -218,6 +222,7 @@ export const updateEmployee = async (req, res) => {
     try {
         const { id } = req.params;
         const {
+            employeeId,
             firstName,
             lastName,
             email,
@@ -234,8 +239,10 @@ export const updateEmployee = async (req, res) => {
             dateOfBirth,
             gender,
             bloodGroup,
-            emergencyContactName,
+            fatherName,
             emergencyContactNumber,
+            presentAddress,
+            permanentAddress,
             casualLeave,
             sickLeave,
             earnedLeave,
@@ -246,6 +253,15 @@ export const updateEmployee = async (req, res) => {
         const employee = await User.findById(id);
         if (!employee) {
             return res.status(404).json({ success: false, message: "Employee not found." });
+        }
+
+        // Check employeeId uniqueness if changed
+        if (employeeId && employeeId.trim() !== employee.employeeId) {
+            const employeeIdExists = await User.findOne({ employeeId: employeeId.trim(), _id: { $ne: id } });
+            if (employeeIdExists) {
+                return res.status(400).json({ success: false, message: "Employee ID already exists." });
+            }
+            employee.employeeId = employeeId.trim();
         }
 
         // Check email uniqueness if changed
@@ -284,8 +300,10 @@ export const updateEmployee = async (req, res) => {
         if (dateOfBirth !== undefined) employee.dateOfBirth = dateOfBirth || null;
         if (gender) employee.gender = gender;
         if (bloodGroup !== undefined) employee.bloodGroup = bloodGroup;
-        if (emergencyContactName !== undefined) employee.emergencyContactName = emergencyContactName;
+        if (fatherName !== undefined) employee.fatherName = fatherName;
         if (emergencyContactNumber !== undefined) employee.emergencyContactNumber = emergencyContactNumber;
+        if (presentAddress !== undefined) employee.presentAddress = presentAddress;
+        if (permanentAddress !== undefined) employee.permanentAddress = permanentAddress;
         if (status) employee.status = status;
 
         // Update leave balances if provided

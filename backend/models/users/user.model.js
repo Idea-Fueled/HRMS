@@ -92,11 +92,20 @@ const userScehma = new mongoose.Schema({
     bloodGroup: {
         type: String
     },
-    emergencyContactName: {
-        type: String
+    fatherName: {
+        type: String,
+        default: ""
     },
     emergencyContactNumber: {
         type: String
+    },
+    presentAddress: {
+        type: String,
+        default: ""
+    },
+    permanentAddress: {
+        type: String,
+        default: ""
     },
 
     // bank details

@@ -79,7 +79,8 @@ const EMPTY_FORM = {
     role: "employee", department: "", designation: "", managerId: "", dottedManagerId: "",
     employementType: "full_time", workLocation: "Office", joiningDate: "",
     dateOfBirth: "", gender: "", bloodGroup: "",
-    emergencyContactName: "", emergencyContactNumber: "",
+    fatherName: "", emergencyContactNumber: "",
+    presentAddress: "", permanentAddress: "",
     casualLeave: 8, sickLeave: 6, earnedLeave: 20,
     password: "", confirmPassword: "", status: "active"
 };
@@ -450,11 +451,17 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                     <div>
                         <SectionTitle>Personal Information</SectionTitle>
                         <div className="grid grid-cols-2 gap-4 mt-3">
+                            <InfoRow label="Father's Name" value={employee.fatherName} />
                             <InfoRow icon={Calendar} label="Date of Birth" value={formatDate(employee.dateOfBirth)} />
                             <InfoRow label="Gender" value={employee.gender} />
                             <InfoRow label="Blood Group" value={employee.bloodGroup} />
-                            <InfoRow label="Emergency Contact" value={employee.emergencyContactName} />
                             <InfoRow icon={Phone} label="Emergency Phone" value={employee.emergencyContactNumber} />
+                            <div className="col-span-2">
+                                <InfoRow label="Present Address" value={employee.presentAddress} />
+                            </div>
+                            <div className="col-span-2">
+                                <InfoRow label="Permanent Address" value={employee.permanentAddress} />
+                            </div>
                         </div>
                     </div>
 
@@ -508,8 +515,10 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 dateOfBirth: employee.dateOfBirth ? employee.dateOfBirth.split("T")[0] : "",
                 gender: employee.gender || "",
                 bloodGroup: employee.bloodGroup || "",
-                emergencyContactName: employee.emergencyContactName || "",
+                fatherName: employee.fatherName || "",
                 emergencyContactNumber: employee.emergencyContactNumber || "",
+                presentAddress: employee.presentAddress || "",
+                permanentAddress: employee.permanentAddress || "",
                 casualLeave: employee.leaveBalance?.casual?.total ?? 8,
                 sickLeave: employee.leaveBalance?.sick?.total ?? 6,
                 earnedLeave: employee.leaveBalance?.earned?.total ?? 20,
@@ -586,7 +595,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
     };
 
     useEffect(() => {
-        if (isEdit || !form.employeeId.trim()) { setIdStatus(null); return; }
+        if (!form.employeeId.trim()) { setIdStatus(null); return; }
+        if (isEdit && employee && form.employeeId.trim() === employee.employeeId) { setIdStatus("available"); return; }
         setIdStatus("checking");
         clearTimeout(idTimer.current);
         idTimer.current = setTimeout(async () => {
@@ -596,12 +606,12 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
             } catch { setIdStatus(null); }
         }, 500);
         return () => clearTimeout(idTimer.current);
-    }, [form.employeeId, isEdit]);
+    }, [form.employeeId, isEdit, employee]);
 
     const validate = () => {
         const e = {};
-        if (!isEdit && !form.employeeId.trim()) e.employeeId = "Employee ID is required";
-        if (!isEdit && idStatus === "taken") e.employeeId = "Employee ID already exists";
+        if (!form.employeeId.trim()) e.employeeId = "Employee ID is required";
+        if (idStatus === "taken") e.employeeId = "Employee ID already exists";
         if (!form.firstName.trim()) e.firstName = "First name is required";
         if (!form.email.trim()) e.email = "Email is required";
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Invalid email format";
@@ -679,19 +689,17 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     {/* Basic Information */}
                     <SectionTitle>Basic Information</SectionTitle>
                     <div className="grid grid-cols-2 gap-3">
-                        {!isEdit && (
-                            <div className="col-span-2">
-                                <FormField label="Employee ID" required error={errors.employeeId}>
-                                    <div className="relative">
-                                        <input value={form.employeeId} onChange={set("employeeId")} placeholder="e.g. EMP-001" className={`${inputCls} pr-8 ${errors.employeeId ? "border-rose-300" : ""}`} />
-                                        {idStatus === "checking" && <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />}
-                                        {idStatus === "available" && <Check className="w-3.5 h-3.5 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2" />}
-                                        {idStatus === "taken" && <X className="w-3.5 h-3.5 text-rose-500 absolute right-3 top-1/2 -translate-y-1/2" />}
-                                    </div>
-                                    {idStatus === "available" && !errors.employeeId && <p className="text-xs text-emerald-600 font-medium mt-0.5">ID is available</p>}
-                                </FormField>
-                            </div>
-                        )}
+                        <div className="col-span-2">
+                            <FormField label="Employee ID" required error={errors.employeeId}>
+                                <div className="relative">
+                                    <input value={form.employeeId} onChange={set("employeeId")} placeholder="e.g. EMP-001" className={`${inputCls} pr-8 ${errors.employeeId ? "border-rose-300" : ""}`} />
+                                    {idStatus === "checking" && <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />}
+                                    {idStatus === "available" && <Check className="w-3.5 h-3.5 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2" />}
+                                    {idStatus === "taken" && <X className="w-3.5 h-3.5 text-rose-500 absolute right-3 top-1/2 -translate-y-1/2" />}
+                                </div>
+                                {idStatus === "available" && !errors.employeeId && <p className="text-xs text-emerald-600 font-medium mt-0.5">ID is available</p>}
+                            </FormField>
+                        </div>
                         <FormField label="First Name" required error={errors.firstName}>
                             <input value={form.firstName} onChange={set("firstName")} placeholder="First name" className={`${inputCls} ${errors.firstName ? "border-rose-300" : ""}`} />
                         </FormField>
@@ -808,6 +816,11 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     {/* Personal Information */}
                     <SectionTitle>Personal Information</SectionTitle>
                     <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                            <FormField label="Father's Name">
+                                <input value={form.fatherName} onChange={set("fatherName")} placeholder="Father's name" className={inputCls} />
+                            </FormField>
+                        </div>
                         <FormField label="Date of Birth">
                             <input type="date" value={form.dateOfBirth} onChange={set("dateOfBirth")} className={inputCls} />
                         </FormField>
@@ -823,12 +836,17 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                 {BLOOD_GROUPS.map(b => <option key={b} value={b}>{b}</option>)}
                             </SelectField>
                         </FormField>
-                        <FormField label="Emergency Contact Name">
-                            <input value={form.emergencyContactName} onChange={set("emergencyContactName")} placeholder="Contact name" className={inputCls} />
+                        <FormField label="Emergency Contact Number">
+                            <input value={form.emergencyContactNumber} onChange={set("emergencyContactNumber")} placeholder="Contact number" className={inputCls} />
                         </FormField>
                         <div className="col-span-2">
-                            <FormField label="Emergency Contact Number">
-                                <input value={form.emergencyContactNumber} onChange={set("emergencyContactNumber")} placeholder="Contact number" className={inputCls} />
+                            <FormField label="Present Address">
+                                <textarea value={form.presentAddress} onChange={set("presentAddress")} placeholder="Present address" rows={2} className={`${inputCls} py-2 h-16 resize-none`} />
+                            </FormField>
+                        </div>
+                        <div className="col-span-2">
+                            <FormField label="Permanent Address">
+                                <textarea value={form.permanentAddress} onChange={set("permanentAddress")} placeholder="Permanent address" rows={2} className={`${inputCls} py-2 h-16 resize-none`} />
                             </FormField>
                         </div>
                     </div>

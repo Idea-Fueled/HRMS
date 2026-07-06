@@ -1838,11 +1838,13 @@ const ProfileTab = ({ user, refreshUser }) => {
     ];
 
     const personal = [
+        { label: "Father's Name", value: user?.fatherName || "—" },
         { label: "Date of Birth", value: formatDate(user?.dateOfBirth) },
         { label: "Gender", value: user?.gender || "—" },
         { label: "Blood Group", value: user?.bloodGroup || "—" },
-        { label: "Emergency Contact", value: user?.emergencyContactName || "—" },
-        { label: "Emergency Number", value: user?.emergencyContactNumber || "—" }
+        { label: "Emergency Number", value: user?.emergencyContactNumber || "—" },
+        { label: "Present Address", value: user?.presentAddress || "—" },
+        { label: "Permanent Address", value: user?.permanentAddress || "—" }
     ];
 
     const name = user?.fullName || `${user?.firstName} ${user?.lastName || ""}`;

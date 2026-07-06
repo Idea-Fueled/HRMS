@@ -23,8 +23,10 @@ export const registerUser = async (req, res) => {
             dateOfBirth,
             gender,
             bloodGroup,
-            emergencyContactName,
+            fatherName,
             emergencyContactNumber,
+            presentAddress,
+            permanentAddress,
         } = req.body;
 
         // Required Fields Validation
@@ -100,8 +102,10 @@ export const registerUser = async (req, res) => {
             dateOfBirth,
             gender,
             bloodGroup,
-            emergencyContactName,
+            fatherName: fatherName || "",
             emergencyContactNumber,
+            presentAddress: presentAddress || "",
+            permanentAddress: permanentAddress || "",
         });
 
         return res.status(201).json({
