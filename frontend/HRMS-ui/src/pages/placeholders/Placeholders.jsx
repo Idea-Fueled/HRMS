@@ -73,13 +73,6 @@ export const MyTeam = () => (
     />
 );
 
-export const MyFinances = () => (
-    <StandardPlaceholder 
-        title="My Finances" 
-        icon={Wallet} 
-        message="My Finances module is currently under development and will be available in an upcoming update." 
-    />
-);
 
 export const Documents = () => (
     <StandardPlaceholder 

@@ -9,9 +9,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "sonner";
 import {
-    MyFinances, Documents, TimeAttendance,
+    Documents, TimeAttendance,
     Hire, Payroll, Recruitment, OffboardingOnboarding
 } from "./pages/placeholders/Placeholders";
+import MyFinances from "./pages/my-finances/MyFinances";
 import MyTeam from "./pages/my-team/MyTeam";
 import Employees from "./pages/employees/Employees";
 import Unauthorized from "./pages/unauthorized/Unauthorized";

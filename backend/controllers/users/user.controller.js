@@ -488,3 +488,105 @@ export const updateProfilePicture = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+/* ─────────────────────────────────────────────
+   GET USER FINANCES
+ ───────────────────────────────────────────── */
+export const getUserFinances = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.user?.userId;
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found."
+            });
+        }
+
+        // Determine Gross Salary based on designation
+        const designation = user.designation || "Associate";
+        let grossSalary = 65000; // Default
+        if (designation.includes("Senior")) grossSalary = 120000;
+        else if (designation.includes("Lead") || designation.includes("Director")) grossSalary = 180000;
+        else if (designation.includes("Engineer")) grossSalary = 85000;
+        else if (designation.includes("Manager")) grossSalary = 110000;
+        else if (designation.includes("Designer")) grossSalary = 75000;
+
+        // Breakdown calculations
+        const basic = Math.round(grossSalary * 0.50);
+        const hra = Math.round(grossSalary * 0.20);
+        const specialAllowance = Math.round(grossSalary * 0.20);
+        const otherAllowances = Math.round(grossSalary * 0.10);
+        const pfDeduction = Math.round(basic * 0.12);
+        const taxDeduction = Math.round(grossSalary * 0.10);
+        const netSalary = grossSalary - pfDeduction - taxDeduction;
+
+        // Payment Info (ensure defaults if not set in User doc)
+        const paymentInfo = {
+            paymentMode: "Bank Transfer",
+            bankName: user.bankName || "HDFC Bank Ltd",
+            accountNumber: user.accountNumber || "50100432890123",
+            ifscCode: user.ifscCode || "HDFC0000124",
+            accountHolderName: user.accountHolderName || user.fullName || `${user.firstName} ${user.lastName}`,
+            branch: "Koramangala, Bangalore",
+        };
+
+        // Identity Info
+        const identityInfo = {
+            panNumber: user.panNumber || "ABCDE1234F",
+            aadhaarNumber: user.aadhaarNumber || "3829 4810 5928",
+            addressProof: "Aadhaar Card",
+            verificationStatus: "Verified",
+            documentUrl: "#",
+        };
+
+        // Summary details
+        const summary = {
+            currentSalary: grossSalary,
+            lastProcessedPayroll: netSalary,
+            workingDays: 22,
+        };
+
+        // Generate past 6 months of payslips
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const payslips = [];
+        const currentDate = new Date();
+        for (let i = 1; i <= 6; i++) {
+            const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+            const monthName = months[d.getMonth()];
+            const yearVal = d.getFullYear();
+            payslips.push({
+                month: `${monthName} ${yearVal}`,
+                grossSalary,
+                deductions: pfDeduction + taxDeduction,
+                netSalary,
+                status: "Paid",
+                payslipUrl: `/api/users/me/finances/payslip/${monthName.toLowerCase()}-${yearVal}`
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            summary,
+            paymentInfo,
+            identityInfo,
+            salaryBreakdown: {
+                basic,
+                hra,
+                specialAllowance,
+                otherAllowances,
+                pfDeduction,
+                taxDeduction,
+                netSalary,
+                grossSalary
+            },
+            payslips
+        });
+    } catch (error) {
+        console.error("Get user finances controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};

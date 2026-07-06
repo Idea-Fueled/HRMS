@@ -8,7 +8,8 @@ import {
     getAwayToday,
     getPeopleEvents,
     uploadProfilePicture,
-    updateProfilePicture
+    updateProfilePicture,
+    getUserFinances
 } from "../../controllers/users/user.controller.js";
 import { isAuthenticated } from "../../middlewares/auth.middleware.js";
 import { upload } from "../../middlewares/upload.middleware.js";
@@ -20,6 +21,7 @@ router.post("/login", loginUser);
 router.get("/upcoming-birthdays", getUpcomingBirthdays);
 router.post("/logout", logoutUser)
 router.get("/me", isAuthenticated, getCurrentUser);
+router.get("/me/finances", isAuthenticated, getUserFinances);
 router.get("/away-today", isAuthenticated, getAwayToday);
 router.get("/people-events", isAuthenticated, getPeopleEvents);
 router.post("/upload-profile-picture", isAuthenticated, upload.single("image"), uploadProfilePicture);
