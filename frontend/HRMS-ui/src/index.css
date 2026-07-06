@@ -3,11 +3,15 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Proxima Nova", sans-serif;
+    --font-sans: "Proxima Nova", sans-serif;
 }
 
-body, button, input, select, textarea {
-    font-family: "Proxima Nova", sans-serif;
+body,
+button,
+input,
+select,
+textarea {
+    font-family: "Proxima Nova"
 }
 
 html {
