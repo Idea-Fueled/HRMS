@@ -1,4 +1,14 @@
+@import url('https://fonts.cdnfonts.com/css/proxima-nova');
+
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Proxima Nova", sans-serif;
+}
+
+body, button, input, select, textarea {
+    font-family: "Proxima Nova", sans-serif;
+}
 
 html {
     font-size: 17px;
