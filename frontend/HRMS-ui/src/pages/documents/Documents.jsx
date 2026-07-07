@@ -54,6 +54,7 @@ export const Documents = () => {
     // Core Data States
     const [documents, setDocuments] = useState([]);
     const [employees, setEmployees] = useState([]);
+    const [dbCategories, setDbCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Form/Modal States
@@ -63,6 +64,7 @@ export const Documents = () => {
     const [formDescription, setFormDescription] = useState("");
     const [formType, setFormType] = useState("company"); // "company" or "employee"
     const [formCategory, setFormCategory] = useState("");
+    const [isCustomCategory, setIsCustomCategory] = useState(false);
     const [formEmployeeId, setFormEmployeeId] = useState("");
     const [formFile, setFormFile] = useState(null);
     const [formUrl, setFormUrl] = useState(""); // manual url fallback
@@ -85,6 +87,7 @@ export const Documents = () => {
             const docRes = await getDocuments(params);
             if (docRes.data?.success) {
                 setDocuments(docRes.data.documents);
+                setDbCategories(docRes.data.categories || []);
             }
         } catch (err) {
             console.error("Fetch documents failed:", err);
@@ -136,6 +139,14 @@ export const Documents = () => {
             setFormEmployeeId(doc.employeeId?._id || doc.employeeId || "");
             setFormUrl(doc.url || "");
             setFormFile(null);
+
+            // Auto detect if custom category
+            const standardCats = doc.type === "company" ? COMPANY_CATEGORIES : EMPLOYEE_CATEGORIES;
+            if (!standardCats.includes(doc.category)) {
+                setIsCustomCategory(true);
+            } else {
+                setIsCustomCategory(false);
+            }
         } else {
             setEditingDoc(null);
             setFormTitle("");
@@ -145,6 +156,7 @@ export const Documents = () => {
             setFormEmployeeId("");
             setFormUrl("");
             setFormFile(null);
+            setIsCustomCategory(false);
         }
         setEmployeeSearchText("");
         setIsDrawerOpen(true);
@@ -278,7 +290,8 @@ export const Documents = () => {
     };
 
     // Dynamic categories list based on active tab
-    const categoriesList = activeTab === "company" ? COMPANY_CATEGORIES : EMPLOYEE_CATEGORIES;
+    const defaultCats = activeTab === "company" ? COMPANY_CATEGORIES : EMPLOYEE_CATEGORIES;
+    const categoriesList = [...new Set([...defaultCats, ...dbCategories])];
     const formCategoriesList = formType === "company" ? COMPANY_CATEGORIES : EMPLOYEE_CATEGORIES;
 
     // Filter employees by text for combobox
@@ -618,16 +631,39 @@ export const Documents = () => {
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Category *</label>
                                 <div className="relative">
                                     <select
-                                        value={formCategory}
-                                        onChange={(e) => setFormCategory(e.target.value)}
+                                        value={isCustomCategory ? "__new__" : formCategory}
+                                        onChange={(e) => {
+                                            if (e.target.value === "__new__") {
+                                                setIsCustomCategory(true);
+                                                setFormCategory("");
+                                            } else {
+                                                setIsCustomCategory(false);
+                                                setFormCategory(e.target.value);
+                                            }
+                                        }}
                                         className="w-full pl-3 pr-8 py-2 bg-white border border-gray-200 rounded-[12px] text-xs font-bold text-[#1E1E1E] focus:outline-none focus:border-[#2D79C7] transition-all cursor-pointer appearance-none shadow-2xs"
                                     >
                                         {formCategoriesList.map(cat => (
                                             <option key={cat} value={cat}>{cat}</option>
                                         ))}
+                                        <option value="__new__">+ Add Custom Category...</option>
                                     </select>
                                     <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 </div>
+
+                                {isCustomCategory && (
+                                    <div className="mt-2 space-y-1">
+                                        <label className="text-[9px] font-bold text-[#2D79C7] uppercase tracking-wider">Custom Category Name *</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formCategory}
+                                            onChange={(e) => setFormCategory(e.target.value)}
+                                            placeholder="Enter custom category name (e.g. Legal Agreement)"
+                                            className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-[10px] text-xs text-[#1E1E1E] focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all shadow-inner placeholder-gray-400"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             {/* File Upload Area */}

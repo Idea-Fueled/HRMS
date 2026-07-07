@@ -56,9 +56,21 @@ export const getAllDocuments = async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
+        // Fetch unique categories for active scope
+        const categoriesQuery = {};
+        if (userRole === "admin" || userRole === "hr") {
+            if (type) {
+                categoriesQuery.type = type;
+            }
+        } else {
+            categoriesQuery.type = "company";
+        }
+        const dbCategories = await Document.distinct("category", categoriesQuery);
+
         return res.status(200).json({
             success: true,
-            documents
+            documents,
+            categories: dbCategories
         });
     } catch (error) {
         console.error("Get All Documents Error:", error);
