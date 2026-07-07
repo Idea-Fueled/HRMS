@@ -6,12 +6,12 @@ import cloudinary from "../config/cloudinary.config.js";
  * @param {string} folder 
  * @returns {Promise<object>}
  */
-export const uploadToCloudinary = (fileBuffer, folder = "hrms_profiles") => {
+export const uploadToCloudinary = (fileBuffer, folder = "hrms_profiles", resourceType = "image") => {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
             {
                 folder: folder,
-                resource_type: "image"
+                resource_type: resourceType
             },
             (error, result) => {
                 if (error) {

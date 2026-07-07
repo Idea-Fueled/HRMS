@@ -18,3 +18,30 @@ export const upload = multer({
     },
     fileFilter: fileFilter
 });
+
+const docFileFilter = (req, file, cb) => {
+    const allowedTypes = [
+        "image/jpeg", "image/jpg", "image/png", "image/webp",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/plain",
+        "application/zip",
+        "application/x-zip-compressed"
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error("Unsupported file format. Supported formats: Images, PDF, Word, Excel, TXT, ZIP."), false);
+    }
+};
+
+export const uploadDoc = multer({
+    storage: storage,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10 MB limit for documents
+    },
+    fileFilter: docFileFilter
+});

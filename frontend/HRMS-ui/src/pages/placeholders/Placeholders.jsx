@@ -74,14 +74,6 @@ export const MyTeam = () => (
 );
 
 
-export const Documents = () => (
-    <StandardPlaceholder 
-        title="Documents" 
-        icon={FileText} 
-        message="Documents module is currently under development and will be available in an upcoming update." 
-    />
-);
-
 export const TimeAttendance = () => (
     <StandardPlaceholder 
         title="Time & Attendance" 
