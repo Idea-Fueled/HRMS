@@ -682,6 +682,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
     const [showRenameDeptModal, setShowRenameDeptModal] = useState(false);
     const [renameDeptOldName, setRenameDeptOldName] = useState("");
     const [renameDeptNewName, setRenameDeptNewName] = useState("");
+    const [showDeleteDeptModal, setShowDeleteDeptModal] = useState(false);
+    const [deleteDeptTarget, setDeleteDeptTarget] = useState("");
 
     const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
@@ -758,23 +760,29 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
         }
     };
 
-    const handleDeleteDepartment = async (deptName) => {
-        if (window.confirm(`Are you sure you want to delete the department "${deptName}"? This will set the department of all employees in this department to empty.`)) {
-            try {
-                const res = await deleteDepartment(deptName);
-                if (res.data?.success) {
-                    toast.success("Department deleted successfully.");
-                    if (refreshDepartments) {
-                        await refreshDepartments();
-                    }
-                    if (form.department === deptName) {
-                        setForm(prev => ({ ...prev, department: "" }));
-                    }
+    const handleDeleteDepartment = (deptName) => {
+        setDeleteDeptTarget(deptName);
+        setShowDeleteDeptModal(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        try {
+            const res = await deleteDepartment(deleteDeptTarget);
+            if (res.data?.success) {
+                toast.success("Department deleted successfully.");
+                if (refreshDepartments) {
+                    await refreshDepartments();
                 }
-            } catch (err) {
-                console.error(err);
-                toast.error(err.response?.data?.message || "Failed to delete department.");
+                if (form.department === deleteDeptTarget) {
+                    setForm(prev => ({ ...prev, department: "" }));
+                }
             }
+        } catch (err) {
+            console.error(err);
+            toast.error(err.response?.data?.message || "Failed to delete department.");
+        } finally {
+            setShowDeleteDeptModal(false);
+            setDeleteDeptTarget("");
         }
     };
 
@@ -1242,6 +1250,47 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                 className="flex-1 py-2.5 bg-[#2D79C7] hover:bg-[#1F5EA8] disabled:bg-gray-300 text-white text-xs font-bold rounded-[12px] shadow-md hover:shadow-lg disabled:shadow-none transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
                             >
                                 Save
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {showDeleteDeptModal && (
+                <>
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] animate-fadeIn" onClick={() => { setShowDeleteDeptModal(false); setDeleteDeptTarget(""); }} />
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[400px] bg-white rounded-[24px] shadow-2xl p-6 z-[70] border border-gray-150 flex flex-col gap-4 animate-scaleIn select-none">
+                        <div className="flex items-center gap-2 pb-1.5 border-b border-gray-100">
+                            <div className="w-8 h-8 rounded-[10px] bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                                <Trash2 className="w-4.5 h-4.5" />
+                            </div>
+                            <div>
+                                <h3 className="text-[#1E1E1E] text-base font-black leading-tight">Delete Department</h3>
+                                <p className="text-gray-400 text-[10.5px] font-semibold mt-0.5">Confirm permanent deletion</p>
+                            </div>
+                        </div>
+                        <div className="text-xs font-semibold text-slate-600 leading-relaxed text-left">
+                            Are you sure you want to delete the department <strong className="text-slate-800">"{deleteDeptTarget}"</strong>? This will clear the department field for all assigned employees.
+                        </div>
+                        <div className="flex gap-2.5 mt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowDeleteDeptModal(false);
+                                    setDeleteDeptTarget("");
+                                }}
+                                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-[12px] transition-colors cursor-pointer text-center"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    handleDeleteConfirm();
+                                }}
+                                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-[12px] shadow-md hover:shadow-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                            >
+                                Delete
                             </button>
                         </div>
                     </div>
