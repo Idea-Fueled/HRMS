@@ -28,6 +28,14 @@ export const createDepartment = async (name) => {
     return API.post("/employees/departments", { name });
 };
 
+export const updateDepartment = async (oldName, newName) => {
+    return API.put("/employees/departments/rename", { oldName, newName });
+};
+
+export const deleteDepartment = async (name) => {
+    return API.post("/employees/departments/delete", { name });
+};
+
 export const getManagers = async () => {
     return API.get("/employees/managers/all");
 };

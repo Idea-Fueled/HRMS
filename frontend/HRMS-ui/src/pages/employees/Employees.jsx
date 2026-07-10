@@ -166,6 +166,97 @@ const SelectField = ({ value, onChange, children, error }) => (
     </div>
 );
 
+const DepartmentSelectField = ({ value, onChange, departments, onEdit, onDelete, onAddNew, error }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef(null);
+
+    // Close on click outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    return (
+        <div className="relative" ref={containerRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`${selectCls} text-left flex items-center justify-between min-h-[38px] ${error ? "border-rose-300" : ""}`}
+            >
+                <span className="truncate">{value || "Select department"}</span>
+                <ChevronDown className="w-3 h-3 text-gray-400 shrink-0 pointer-events-none" />
+            </button>
+
+            {isOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-[14px] shadow-lg max-h-56 overflow-y-auto z-[100] animate-fadeIn p-1">
+                    {/* Default Option */}
+                    <div
+                        onClick={() => { onChange(""); setIsOpen(false); }}
+                        className="px-3 py-2 text-xs font-semibold text-slate-500 rounded-[8px] hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                        Select department
+                    </div>
+
+                    {/* Departments List */}
+                    {(departments || []).map((dept) => (
+                        <div
+                            key={dept}
+                            className="group flex items-center justify-between px-3 py-2 text-xs font-semibold text-[#1E1E1E] rounded-[8px] hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                            <span 
+                                className="flex-1 truncate py-0.5 text-left"
+                                onClick={() => { onChange(dept); setIsOpen(false); }}
+                            >
+                                {dept}
+                            </span>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEdit(dept);
+                                    }}
+                                    className="p-1 hover:bg-blue-50 text-blue-600 rounded-[6px] transition-colors"
+                                    title="Rename Department"
+                                >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete(dept);
+                                    }}
+                                    className="p-1 hover:bg-rose-50 text-rose-600 rounded-[6px] transition-colors"
+                                    title="Delete Department"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+
+                    <div className="h-px bg-slate-100 my-1" />
+
+                    {/* Add New Department */}
+                    <div
+                        onClick={() => { onAddNew(); setIsOpen(false); }}
+                        className="px-3 py-2 text-xs font-bold text-blue-600 rounded-[8px] hover:bg-blue-50 cursor-pointer transition-colors flex items-center gap-1.5"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add New Department</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 /* ─────────────────────────────────────────────
    SUMMARY CARDS
 ───────────────────────────────────────────── */

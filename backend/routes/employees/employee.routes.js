@@ -8,6 +8,8 @@ import {
     checkEmployeeId,
     getDepartments,
     createDepartment,
+    updateDepartment,
+    deleteDepartment,
     getManagers
 } from "../../controllers/employees/employee.controller.js";
 import { isAuthenticated } from "../../middlewares/auth.middleware.js";
@@ -18,6 +20,8 @@ const router = express.Router();
 router.get("/", isAuthenticated, getAllEmployees);
 router.get("/departments", isAuthenticated, getDepartments);
 router.post("/departments", isAuthenticated, createDepartment);
+router.put("/departments/rename", isAuthenticated, updateDepartment);
+router.post("/departments/delete", isAuthenticated, deleteDepartment);
 router.get("/managers/all", isAuthenticated, getManagers);
 router.get("/check-id", isAuthenticated, checkEmployeeId);
 router.get("/:id", isAuthenticated, getEmployeeById);

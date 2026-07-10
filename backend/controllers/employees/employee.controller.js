@@ -377,11 +377,21 @@ export const checkEmployeeId = async (req, res) => {
  ───────────────────────────────────────────── */
 export const getDepartments = async (req, res) => {
     try {
-        const depts = await User.distinct("department");
+        // Query distinct names from Department collection
         const customDepts = await Department.distinct("name");
-        const defaultDepts = ["Engineering", "HR", "Marketing", "Sales", "Finance", "Operations"];
-        const uniqueDepts = Array.from(new Set([...depts, ...customDepts, ...defaultDepts].filter(Boolean)));
+        let uniqueDepts = customDepts;
         
+        // If collection is empty, initialize with default departments
+        if (uniqueDepts.length === 0) {
+            const defaultDepts = ["Engineering", "HR", "Marketing", "Sales", "Finance", "Operations"];
+            await Department.insertMany(defaultDepts.map(name => ({ name })));
+            uniqueDepts = defaultDepts;
+        }
+
+        // Also merge any other unique departments currently assigned to Users just in case
+        const userDepts = await User.distinct("department");
+        uniqueDepts = Array.from(new Set([...uniqueDepts, ...userDepts].filter(Boolean))).sort();
+
         return res.status(200).json({
             success: true,
             departments: uniqueDepts
@@ -417,6 +427,73 @@ export const createDepartment = async (req, res) => {
         });
     } catch (error) {
         console.error("Create Department Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* ─────────────────────────────────────────────
+   UPDATE DEPARTMENT
+ ───────────────────────────────────────────── */
+export const updateDepartment = async (req, res) => {
+    try {
+        const { oldName, newName } = req.body;
+        if (!oldName || !newName || !newName.trim()) {
+            return res.status(400).json({ success: false, message: "Old name and new name are required." });
+        }
+
+        const trimmedNewName = newName.trim();
+        if (oldName.toLowerCase() === trimmedNewName.toLowerCase()) {
+            return res.status(200).json({ success: true, message: "Department renamed successfully." });
+        }
+
+        // Check if new name already exists
+        const exists = await Department.findOne({ name: { $regex: new RegExp(`^${trimmedNewName}$`, "i") } });
+        if (exists) {
+            return res.status(400).json({ success: false, message: "Department with new name already exists." });
+        }
+
+        // Update the department in the Department collection or create it if missing
+        await Department.findOneAndUpdate(
+            { name: oldName },
+            { name: trimmedNewName },
+            { new: true, upsert: true }
+        );
+
+        // Update all users belonging to this department
+        await User.updateMany({ department: oldName }, { department: trimmedNewName });
+
+        return res.status(200).json({
+            success: true,
+            message: "Department updated successfully."
+        });
+    } catch (error) {
+        console.error("Update Department Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* ─────────────────────────────────────────────
+   DELETE DEPARTMENT
+ ───────────────────────────────────────────── */
+export const deleteDepartment = async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name) {
+            return res.status(400).json({ success: false, message: "Department name is required." });
+        }
+
+        // Delete from collection
+        await Department.deleteOne({ name });
+
+        // Set department of all users in this department to ""
+        await User.updateMany({ department: name }, { department: "" });
+
+        return res.status(200).json({
+            success: true,
+            message: "Department deleted successfully."
+        });
+    } catch (error) {
+        console.error("Delete Department Error:", error);
         return res.status(500).json({ success: false, message: error.message });
     }
 };
