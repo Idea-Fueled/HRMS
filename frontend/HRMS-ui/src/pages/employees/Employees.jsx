@@ -484,25 +484,48 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
         </div>
     );
 
-    const LeaveCard = ({ label, total, used, barColor }) => {
+    const LeaveCard = ({ label, total, used }) => {
         const remaining = total - used;
         const percentage = total > 0 ? Math.max(0, (remaining / total) * 100) : 0;
+        
+        let theme = {
+            bg: "bg-blue-50/30 border-blue-100/50 hover:bg-blue-50/50",
+            badge: "bg-blue-100 text-blue-700",
+            bar: "bg-gradient-to-r from-blue-500 to-indigo-500",
+            text: "text-blue-900"
+        };
+        if (label.toLowerCase() === "sick") {
+            theme = {
+                bg: "bg-amber-50/30 border-amber-100/50 hover:bg-amber-50/50",
+                badge: "bg-amber-100 text-amber-700",
+                bar: "bg-gradient-to-r from-amber-500 to-orange-500",
+                text: "text-amber-900"
+            };
+        } else if (label.toLowerCase() === "earned") {
+            theme = {
+                bg: "bg-emerald-50/30 border-emerald-100/50 hover:bg-emerald-50/50",
+                badge: "bg-emerald-100 text-emerald-700",
+                bar: "bg-gradient-to-r from-emerald-500 to-teal-500",
+                text: "text-emerald-900"
+            };
+        }
+
         return (
-            <div className="bg-slate-50 border border-slate-100 rounded-[16px] p-4 shadow-xs flex flex-col gap-2 hover:shadow-sm transition-all duration-200">
-                <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{label}</span>
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-white text-slate-600 border border-slate-200 shadow-2xs">
+            <div className={`border rounded-[16px] p-3.5 shadow-2xs flex flex-col gap-2.5 transition-all duration-300 hover:shadow-xs hover:-translate-y-0.5 ${theme.bg}`}>
+                <div className="flex justify-between items-center gap-2">
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${theme.text}`}>{label}</span>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full whitespace-nowrap shadow-3xs ${theme.badge}`}>
                         {remaining} Left
                     </span>
                 </div>
-                <div className="flex items-baseline gap-0.5 mt-1">
-                    <span className="text-xl font-black text-slate-800">{remaining}</span>
+                <div className="flex items-baseline gap-0.5 mt-0.5">
+                    <span className={`text-xl font-black leading-none ${theme.text}`}>{remaining}</span>
                     <span className="text-[9px] text-slate-400 font-bold">/ {total} Days</span>
                 </div>
-                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
-                    <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }} />
+                <div className="w-full h-1.5 bg-slate-200/70 rounded-full overflow-hidden mt-0.5">
+                    <div className={`h-full rounded-full transition-all duration-500 ${theme.bar}`} style={{ width: `${percentage}%` }} />
                 </div>
-                <span className="text-[9px] text-slate-400 font-bold">{used} used</span>
+                <span className="text-[9px] text-slate-400 font-bold leading-none">{used} used</span>
             </div>
         );
     };
@@ -586,19 +609,16 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                                 label="Casual" 
                                 total={employee.leaveBalance?.casual?.total ?? 8} 
                                 used={employee.leaveBalance?.casual?.used ?? 0} 
-                                barColor="bg-[#2D79C7]" 
                             />
                             <LeaveCard 
                                 label="Sick" 
                                 total={employee.leaveBalance?.sick?.total ?? 6} 
                                 used={employee.leaveBalance?.sick?.used ?? 0} 
-                                barColor="bg-amber-500" 
                             />
                             <LeaveCard 
                                 label="Earned" 
                                 total={employee.leaveBalance?.earned?.total ?? 20} 
                                 used={employee.leaveBalance?.earned?.used ?? 0} 
-                                barColor="bg-emerald-500" 
                             />
                         </div>
                     </div>
@@ -657,6 +677,9 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
     const fileInputRef = useRef(null);
     const [showNewDeptModal, setShowNewDeptModal] = useState(false);
     const [newDeptName, setNewDeptName] = useState("");
+    const [showRenameDeptModal, setShowRenameDeptModal] = useState(false);
+    const [renameDeptOldName, setRenameDeptOldName] = useState("");
+    const [renameDeptNewName, setRenameDeptNewName] = useState("");
 
     const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
@@ -700,6 +723,56 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
         } catch (err) {
             console.error(err);
             toast.error(err.response?.data?.message || "Failed to create department.");
+        }
+    };
+
+    const handleTriggerRenameDepartment = (deptName) => {
+        setRenameDeptOldName(deptName);
+        setRenameDeptNewName(deptName);
+        setShowRenameDeptModal(true);
+    };
+
+    const handleRenameDepartment = async () => {
+        if (!renameDeptNewName.trim() || renameDeptOldName === renameDeptNewName.trim()) {
+            setShowRenameDeptModal(false);
+            return;
+        }
+        try {
+            const res = await updateDepartment(renameDeptOldName, renameDeptNewName.trim());
+            if (res.data?.success) {
+                toast.success("Department renamed successfully.");
+                if (refreshDepartments) {
+                    await refreshDepartments();
+                }
+                if (form.department === renameDeptOldName) {
+                    setForm(prev => ({ ...prev, department: renameDeptNewName.trim() }));
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error(err.response?.data?.message || "Failed to rename department.");
+        } finally {
+            setShowRenameDeptModal(false);
+        }
+    };
+
+    const handleDeleteDepartment = async (deptName) => {
+        if (window.confirm(`Are you sure you want to delete the department "${deptName}"? This will set the department of all employees in this department to empty.`)) {
+            try {
+                const res = await deleteDepartment(deptName);
+                if (res.data?.success) {
+                    toast.success("Department deleted successfully.");
+                    if (refreshDepartments) {
+                        await refreshDepartments();
+                    }
+                    if (form.department === deptName) {
+                        setForm(prev => ({ ...prev, department: "" }));
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                toast.error(err.response?.data?.message || "Failed to delete department.");
+            }
         }
     };
 
@@ -884,11 +957,18 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                             </SelectField>
                         </FormField>
                         <FormField label="Department" required error={errors.department}>
-                            <SelectField value={form.department} onChange={set("department")} error={errors.department}>
-                                <option value="">Select department</option>
-                                {(departments || []).map(d => <option key={d} value={d}>{d}</option>)}
-                                <option value="ADD_NEW_DEPT" className="text-blue-600 font-bold bg-blue-50">+ Add New Department</option>
-                            </SelectField>
+                            <DepartmentSelectField 
+                                value={form.department} 
+                                onChange={(val) => {
+                                    setForm(prev => ({ ...prev, department: val }));
+                                    if (errors.department) setErrors(prev => ({ ...prev, department: "" }));
+                                }} 
+                                departments={departments}
+                                onEdit={(dept) => handleTriggerRenameDepartment(dept)}
+                                onDelete={(dept) => handleDeleteDepartment(dept)}
+                                onAddNew={() => setShowNewDeptModal(true)}
+                                error={errors.department}
+                            />
                         </FormField>
                         <FormField label="Designation" required error={errors.designation}>
                             <input value={form.designation} onChange={set("designation")} placeholder="e.g. Lead Engineer" className={`${inputCls} ${errors.designation ? "border-rose-300" : ""}`} />
@@ -1100,6 +1180,66 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                 className="flex-1 py-2.5 bg-[#2D79C7] hover:bg-[#1F5EA8] disabled:bg-gray-300 text-white text-xs font-bold rounded-[12px] shadow-md hover:shadow-lg disabled:shadow-none transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
                             >
                                 Create
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {showRenameDeptModal && (
+                <>
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] animate-fadeIn" onClick={() => { setShowRenameDeptModal(false); setRenameDeptNewName(""); }} />
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[400px] bg-white rounded-[24px] shadow-2xl p-6 z-[70] border border-gray-150 flex flex-col gap-4 animate-scaleIn select-none">
+                        <div className="flex items-center gap-2 pb-1.5 border-b border-gray-100">
+                            <div className="w-8 h-8 rounded-[10px] bg-blue-50 text-[#2D79C7] flex items-center justify-center border border-blue-100">
+                                <Edit3 className="w-4.5 h-4.5" />
+                            </div>
+                            <div>
+                                <h3 className="text-[#1E1E1E] text-base font-black leading-tight">Rename Department</h3>
+                                <p className="text-gray-400 text-[10.5px] font-semibold mt-0.5">Edit custom organization unit</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-1.5 text-left">
+                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Department Name</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Design, Product"
+                                value={renameDeptNewName}
+                                onChange={(e) => setRenameDeptNewName(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all shadow-inner"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        if (renameDeptNewName.trim()) {
+                                            handleRenameDepartment();
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                        <div className="flex gap-2.5 mt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowRenameDeptModal(false);
+                                    setRenameDeptNewName("");
+                                }}
+                                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-[12px] transition-colors cursor-pointer text-center"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={!renameDeptNewName.trim() || renameDeptOldName === renameDeptNewName.trim()}
+                                onClick={() => {
+                                    if (renameDeptNewName.trim()) {
+                                        handleRenameDepartment();
+                                    }
+                                }}
+                                className="flex-1 py-2.5 bg-[#2D79C7] hover:bg-[#1F5EA8] disabled:bg-gray-300 text-white text-xs font-bold rounded-[12px] shadow-md hover:shadow-lg disabled:shadow-none transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                            >
+                                Save
                             </button>
                         </div>
                     </div>
