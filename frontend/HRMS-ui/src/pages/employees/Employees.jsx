@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
     Users, UserCheck, UserX, UserPlus, Briefcase, FileText,
-    Plus, Eye, Edit3, X, ChevronDown,
+    Plus, Eye, Edit3, X, ChevronDown, Trash2,
     Phone, Mail, Calendar, Building2, Shield, Upload,
     Check, Loader2, Lock, User as UserIcon
 } from "lucide-react";
@@ -17,6 +17,8 @@ import {
     checkEmployeeId,
     getDepartments,
     createDepartment,
+    updateDepartment,
+    deleteDepartment,
     getManagers,
     deactivateEmployee
 } from "../../services/employee.service";
