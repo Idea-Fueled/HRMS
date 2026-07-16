@@ -29,14 +29,14 @@ import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
-import { 
-    getDashboardData, 
-    clockIn, 
-    clockOut, 
-    getAwayToday, 
-    getPeopleEvents, 
-    createPoll, 
-    getPolls, 
+import {
+    getDashboardData,
+    clockIn,
+    clockOut,
+    getAwayToday,
+    getPeopleEvents,
+    createPoll,
+    getPolls,
     voteInPoll,
     createPosts,
     getUpcomingHolidays,
@@ -50,7 +50,17 @@ import {
 ───────────────────────────────────────────── */
 const Card = ({ children, className = "" }) => (
     <div
-        className={`bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(45,121,199,0.08)] transition-shadow duration-300 ${className}`}
+        className={`
+            bg-white
+            rounded-[28px]
+            border border-slate-100
+            shadow-[0_8px_20px_rgba(15,23,42,0.05),0_25px_50px_rgba(15,23,42,0.08),0_50px_100px_rgba(59,130,246,0.08)]
+            hover:-translate-y-1
+            hover:shadow-[0_12px_30px_rgba(15,23,42,0.08),0_35px_70px_rgba(15,23,42,0.12),0_70px_140px_rgba(59,130,246,0.12)]
+            transition-all
+            duration-300
+            ${className}
+        `}
     >
         {children}
     </div>
@@ -567,7 +577,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
 
     const fmt2 = (n) => n.toString().padStart(2, "0");
     const fmtDuration = (s) => `${fmt2(Math.floor(s / 3600))}h ${fmt2(Math.floor((s % 3600) / 60))}m ${fmt2(s % 60)}s`;
-    
+
     const fmtClock = (d) => {
         let h = d.getHours();
         const ampm = h >= 12 ? "PM" : "AM";
@@ -691,11 +701,10 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
                                         setWfhSubmitting(false);
                                     }
                                 }}
-                                className={`px-5 py-2 text-[12px] font-bold rounded-[10px] transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                                    wfhMessage.trim().length < 10 || wfhSubmitting
-                                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                        : "bg-[#2D79C7] hover:bg-[#1F5EA8] text-white shadow-sm active:scale-95"
-                                }`}
+                                className={`px-5 py-2 text-[12px] font-bold rounded-[10px] transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${wfhMessage.trim().length < 10 || wfhSubmitting
+                                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                    : "bg-[#2D79C7] hover:bg-[#1F5EA8] text-white shadow-sm active:scale-95"
+                                    }`}
                             >
                                 {wfhSubmitting ? (
                                     <>
@@ -1033,7 +1042,7 @@ const CreateAnnouncementCard = ({ onPost, onCreatePoll }) => {
                             className={`px-3 py-2.5 text-[12px] font-bold border-b-2 transition-all cursor-pointer ${tab === t
                                 ? "border-[#2D79C7] text-[#2D79C7]"
                                 : "border-transparent text-gray-400 hover:text-gray-600"
-                            }`}
+                                }`}
                         >
                             {t}
                         </button>
@@ -1161,9 +1170,9 @@ const BuzzFeedCard = ({ feed = [], currentUser, onVote }) => {
                         <div key={idx} className="relative">
                             {hasVoted ? (
                                 <div className="w-full bg-[#F8FAFC] border border-gray-100 rounded-[10px] overflow-hidden p-3 flex justify-between items-center text-[12px] font-semibold text-gray-700 select-none">
-                                    <div 
-                                        className={`absolute left-0 top-0 bottom-0 transition-all duration-500 ${isSelected ? "bg-blue-100/50 border-r border-[#2D79C7]/20" : "bg-gray-200/20"}`} 
-                                        style={{ width: `${pct}%` }} 
+                                    <div
+                                        className={`absolute left-0 top-0 bottom-0 transition-all duration-500 ${isSelected ? "bg-blue-100/50 border-r border-[#2D79C7]/20" : "bg-gray-200/20"}`}
+                                        style={{ width: `${pct}%` }}
                                     />
                                     <span className="relative z-10 flex items-center gap-1.5">
                                         {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#2D79C7]" />}
@@ -1207,20 +1216,20 @@ const BuzzFeedCard = ({ feed = [], currentUser, onVote }) => {
                     <div className="space-y-3 max-h-[380px] overflow-y-auto pr-0.5 scrollbar-thin scrollbar-thumb-gray-100">
                         {list.map((item) => {
                             const isPoll = item.feedType === "poll";
-                            const authorName = isPoll 
-                                ? (item.creator?.fullName || "User") 
+                            const authorName = isPoll
+                                ? (item.creator?.fullName || "User")
                                 : (typeof item.author === "object" ? (item.author?.fullName || "User") : (item.author || "User"));
-                            
-                            const authorRole = isPoll 
+
+                            const authorRole = isPoll
                                 ? (item.creator?.designation || "Employee")
                                 : (typeof item.author === "object" ? (item.author?.designation || "Employee") : (item.role || "Employee"));
-                            
-                            const authorAvatarSrc = isPoll 
-                                ? item.creator?.profilePicture 
+
+                            const authorAvatarSrc = isPoll
+                                ? item.creator?.profilePicture
                                 : (typeof item.author === "object" ? item.author?.profilePicture : null);
-                            
+
                             const displayTime = item.createdAt ? formatTimestamp(item.createdAt) : "Just now";
-                            
+
                             return (
                                 <div
                                     key={item._id || item.id}
@@ -1237,17 +1246,16 @@ const BuzzFeedCard = ({ feed = [], currentUser, onVote }) => {
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="text-[#1E1E1E] text-[12px] font-bold truncate">{authorName}</span>
                                                 <span
-                                                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${
-                                                        isPoll 
-                                                            ? "bg-purple-50 text-purple-700 border-purple-100" 
-                                                            : (categoryBadge[item.category] || categoryBadge[item.category?.charAt(0).toUpperCase() + item.category?.slice(1)] || "bg-gray-50 text-gray-500 border-gray-100")
-                                                    }`}
+                                                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${isPoll
+                                                        ? "bg-purple-50 text-purple-700 border-purple-100"
+                                                        : (categoryBadge[item.category] || categoryBadge[item.category?.charAt(0).toUpperCase() + item.category?.slice(1)] || "bg-gray-50 text-gray-500 border-gray-100")
+                                                        }`}
                                                 >
                                                     {isPoll ? "Poll" : (item.category ? (item.category.charAt(0).toUpperCase() + item.category.slice(1)) : "Update")}
                                                 </span>
                                             </div>
                                             <p className="text-gray-400 text-[10px] mt-0.5">{authorRole} · {displayTime}</p>
-                                            
+
                                             {isPoll ? (
                                                 <div className="mt-2 text-left">
                                                     <p className="text-[#1E1E1E] text-[13px] font-bold">{item.question}</p>
@@ -1320,7 +1328,7 @@ const PeopleEventsCard = ({ events }) => {
                                     className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${wishedIds.includes(b._id)
                                         ? "bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default"
                                         : "bg-[#2D79C7] text-white border-transparent hover:bg-[#1F5EA8] active:scale-95"
-                                    }`}
+                                        }`}
                                 >
                                     {wishedIds.includes(b._id) ? "Wished!" : "Wish"}
                                 </button>
@@ -1361,7 +1369,7 @@ const PeopleEventsCard = ({ events }) => {
                                 className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${wishedIds.includes(a._id)
                                     ? "bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default"
                                     : "bg-[#2D79C7] text-white border-transparent hover:bg-[#1F5EA8] active:scale-95"
-                                }`}
+                                    }`}
                             >
                                 {wishedIds.includes(a._id) ? "Wished!" : "Wish"}
                             </button>
@@ -1381,8 +1389,8 @@ const PeopleEventsCard = ({ events }) => {
             ) : (
                 joinees.map((j) => {
                     const daysAgo = j.daysRemaining;
-                    const displayDays = daysAgo < 0 
-                        ? `${Math.abs(daysAgo)} days ago` 
+                    const displayDays = daysAgo < 0
+                        ? `${Math.abs(daysAgo)} days ago`
                         : (daysAgo === 0 ? "Today" : `in ${daysAgo} days`);
                     return (
                         <div key={j._id} className="flex items-center gap-3 p-3 bg-blue-50/20 border border-blue-100/50 rounded-[12px]">
@@ -1404,7 +1412,7 @@ const PeopleEventsCard = ({ events }) => {
                                     className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${wishedIds.includes(j._id)
                                         ? "bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default"
                                         : "bg-[#2D79C7] text-white border-transparent hover:bg-[#1F5EA8] active:scale-95"
-                                    }`}
+                                        }`}
                                 >
                                     {wishedIds.includes(j._id) ? "Wished!" : "Wish"}
                                 </button>
@@ -1428,7 +1436,7 @@ const PeopleEventsCard = ({ events }) => {
                             className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${tab === key
                                 ? "border-[#2D79C7] text-[#2D79C7]"
                                 : "border-transparent text-gray-400 hover:text-gray-600"
-                            }`}
+                                }`}
                         >
                             <Icon className="w-3.5 h-3.5 shrink-0" />
                             {label}
@@ -1471,7 +1479,7 @@ const WelcomeBanner = ({ user }) => {
 
     return (
         <section
-            className="relative overflow-hidden rounded-[24px] px-8 py-0 flex flex-col sm:flex-row justify-between items-center h-[130px] shadow-xl select-none border border-blue-600/20"
+            className="relative overflow-hidden rounded-[24px] shadow-[0_25px_70px_rgba(37,99,235,0.28)] border border-white/10 px-8 py-0 flex flex-col sm:flex-row justify-between items-center h-[130px] shadow-xl select-none border border-blue-600/20"
             style={{
                 background: "linear-gradient(125deg, #2D79C7 0%, #3A88D8 40%, #1F5EA8 100%)",
             }}
@@ -1536,7 +1544,7 @@ const Dashboard = () => {
         try {
             setLoading(true);
             setError(null);
-            
+
             const [dashRes, awayRes, eventsRes, pollsRes] = await Promise.all([
                 getDashboardData(employeeId),
                 getAwayToday(),
@@ -1644,7 +1652,7 @@ const Dashboard = () => {
         try {
             const response = await voteInPoll(pollId, optionIndex);
             if (response.data && response.data.success) {
-                setPolls(prevPolls => 
+                setPolls(prevPolls =>
                     prevPolls.map(p => p._id === pollId ? response.data.poll : p)
                 );
                 toast.success("Vote cast successfully!");
@@ -1702,27 +1710,27 @@ const Dashboard = () => {
                 {/* ── LEFT COLUMN ── */}
                 <div className="flex flex-col gap-5 min-w-0">
                     <HolidaySection initialHolidays={dashboardData?.upcomingHolidays} />
-                    <TimeTodayCard 
-                        attendance={dashboardData?.attendance} 
+                    <TimeTodayCard
+                        attendance={dashboardData?.attendance}
                         onClockIn={handleClockIn}
                         onClockOut={handleClockOut}
                     />
-                    <WhosAwayTodayCard 
-                        leaves={awayToday.leaves} 
-                        wfh={awayToday.wfh} 
+                    <WhosAwayTodayCard
+                        leaves={awayToday.leaves}
+                        wfh={awayToday.wfh}
                     />
                     <LeaveBalancesCard leaveSummary={dashboardData?.leaveSummary} />
                 </div>
 
                 {/* ── RIGHT COLUMN ── */}
                 <div className="flex flex-col gap-5 min-w-0">
-                    <CreateAnnouncementCard 
-                        onPost={handleCreatePost} 
+                    <CreateAnnouncementCard
+                        onPost={handleCreatePost}
                         onCreatePoll={handleCreatePoll}
                     />
-                    <BuzzFeedCard 
-                        feed={combinedFeed} 
-                        currentUser={user} 
+                    <BuzzFeedCard
+                        feed={combinedFeed}
+                        currentUser={user}
                         onVote={handleVote}
                     />
                     <PeopleEventsCard events={peopleEvents} />
