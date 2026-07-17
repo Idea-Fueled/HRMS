@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { X, CalendarDays, Loader2, AlertCircle, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { getAllHolidays } from "../services/dashboard.service";
@@ -72,7 +73,7 @@ const HolidaysModal = ({ isOpen, onClose }) => {
         })
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    return (
+    return ReactDOM.createPortal(
         <>
             {/* Backdrop */}
             <div 
@@ -206,7 +207,8 @@ const HolidaysModal = ({ isOpen, onClose }) => {
                     )}
                 </div>
             </div>
-        </>
+        </>,
+        document.body
     );
 };
 
