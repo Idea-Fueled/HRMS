@@ -6,6 +6,7 @@ import {
     Check, Loader2, Lock, User as UserIcon
 } from "lucide-react";
 import { toast } from "sonner";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import {
     ViewToggle, SkeletonLoader, EmptyState, SearchBar,
     Pagination, SortHeader, Avatar
@@ -1315,6 +1316,8 @@ const Employees = () => {
     const [page, setPage] = useState(1);
     const PAGE_SIZE = useResponsivePageSize(view);
     const [drawer, setDrawer] = useState(null);
+    const [deactivateTarget, setDeactivateTarget] = useState(null);
+    const [deactivating, setDeactivating] = useState(false);
 
     const [departments, setDepartments] = useState([]);
     const [managersList, setManagersList] = useState([]);
@@ -1356,18 +1359,24 @@ const Employees = () => {
         loadDynamicData();
     }, [fetchEmployees, loadDynamicData]);
 
-    const handleDeactivate = async (emp) => {
-        const name = emp.fullName || `${emp.firstName} ${emp.lastName}`;
-        if (window.confirm(`Are you sure you want to deactivate ${name}?`)) {
-            try {
-                const res = await deactivateEmployee(emp._id);
-                if (res.data.success) {
-                    toast.success("Employee deactivated successfully.");
-                    await fetchEmployees();
-                }
-            } catch (err) {
-                toast.error(err?.response?.data?.message || "Failed to deactivate employee.");
+    const handleDeactivate = (emp) => {
+        setDeactivateTarget(emp);
+    };
+
+    const handleDeactivateConfirm = async () => {
+        if (!deactivateTarget) return;
+        setDeactivating(true);
+        try {
+            const res = await deactivateEmployee(deactivateTarget._id);
+            if (res.data.success) {
+                toast.success("Employee deactivated successfully.");
+                await fetchEmployees();
             }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Failed to deactivate employee.");
+        } finally {
+            setDeactivating(false);
+            setDeactivateTarget(null);
         }
     };
 

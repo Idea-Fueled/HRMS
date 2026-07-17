@@ -1,134 +1,85 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
-import { X, AlertTriangle, Trash2, Info } from "lucide-react";
+import { AlertTriangle, Trash2, X } from "lucide-react";
 
-export const ConfirmDialog = ({
+/**
+ * ConfirmDialog — replaces all window.confirm() calls.
+ *
+ * Props:
+ *  isOpen        — boolean
+ *  title         — string
+ *  message       — string
+ *  confirmLabel  — string  (default "Delete")
+ *  cancelLabel   — string  (default "Cancel")
+ *  variant       — "danger" | "warning" | "info"  (default "danger")
+ *  onConfirm     — () => void
+ *  onCancel      — () => void
+ */
+const ConfirmDialog = ({
     isOpen,
-    title = "Confirm Action",
-    message = "Are you sure you want to proceed?",
-    confirmLabel = "Confirm",
+    title = "Are you sure?",
+    message = "This action cannot be undone.",
+    confirmLabel = "Delete",
     cancelLabel = "Cancel",
+    variant = "danger",
     onConfirm,
     onCancel,
-    type = "danger" // 'danger' | 'warning' | 'info'
+    loading = false,
 }) => {
-    const backdropRef = useRef(null);
-
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.key === "Escape") onCancel();
-        };
-        if (isOpen) {
-            document.addEventListener("keydown", handleKeyDown);
-            // Prevent body scroll when open
-            document.body.style.overflow = "hidden";
-        }
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = "unset";
-        };
-    }, [isOpen, onCancel]);
-
     if (!isOpen) return null;
 
-    const handleBackdropClick = (e) => {
-        if (e.target === backdropRef.current) {
-            onCancel();
-        }
+    const variantStyles = {
+        danger:  { icon: Trash2,         iconBg: "bg-rose-50 border-rose-100",    iconColor: "text-rose-500",   btn: "bg-rose-600 hover:bg-rose-700 shadow-rose-200" },
+        warning: { icon: AlertTriangle,   iconBg: "bg-amber-50 border-amber-100",  iconColor: "text-amber-500",  btn: "bg-amber-500 hover:bg-amber-600 shadow-amber-200" },
+        info:    { icon: AlertTriangle,   iconBg: "bg-blue-50 border-blue-100",    iconColor: "text-[#2D79C7]",  btn: "bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-blue-200" },
     };
 
-    // Style helper based on type
-    const getTheme = () => {
-        switch (type) {
-            case "danger":
-                return {
-                    bgIcon: "bg-rose-50 border-rose-100 text-rose-600",
-                    btnConfirm: "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20",
-                    icon: Trash2
-                };
-            case "warning":
-                return {
-                    bgIcon: "bg-amber-50 border-amber-100 text-amber-600",
-                    btnConfirm: "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20",
-                    icon: AlertTriangle
-                };
-            case "info":
-            default:
-                return {
-                    bgIcon: "bg-blue-50 border-blue-100 text-[#2D79C7]",
-                    btnConfirm: "bg-[#2D79C7] hover:bg-[#1F5EA8] text-white shadow-blue-500/20",
-                    icon: Info
-                };
-        }
-    };
-
-    const theme = getTheme();
-    const IconComponent = theme.icon;
+    const { icon: Icon, iconBg, iconColor, btn } = variantStyles[variant] || variantStyles.danger;
 
     return ReactDOM.createPortal(
-        <div
-            ref={backdropRef}
-            onClick={handleBackdropClick}
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[999] flex items-center justify-center p-4 select-none animate-fadeIn"
-        >
-            <style>{`
-                @keyframes scaleIn {
-                    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-                    to { opacity: 1; transform: scale(1) translateY(0); }
-                }
-                .animate-scaleIn {
-                    animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-                }
-            `}</style>
-            <div
-                className="bg-white rounded-[24px] border border-gray-100 shadow-2xl max-w-sm w-full overflow-hidden animate-scaleIn"
-            >
-                {/* Header / Top padding */}
-                <div className="flex items-start justify-between px-6 pt-6">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-[14px] border flex items-center justify-center shrink-0 ${theme.bgIcon}`}>
-                            <IconComponent className="w-5 h-5" strokeWidth={2.5} />
+        <>
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[1200]" onClick={onCancel} />
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1201] w-full max-w-sm mx-4">
+                <div className="bg-white rounded-[20px] border border-gray-100 shadow-2xl overflow-hidden select-none">
+                    {/* Header */}
+                    <div className="flex items-start justify-between px-6 pt-6 pb-0">
+                        <div className={`w-11 h-11 rounded-full border flex items-center justify-center shrink-0 ${iconBg}`}>
+                            <Icon className={`w-5 h-5 ${iconColor}`} strokeWidth={2} />
                         </div>
-                        <div className="text-left">
-                            <h3 className="text-[#1E1E1E] text-[15px] font-black tracking-wide leading-tight">
-                                {title}
-                            </h3>
-                        </div>
+                        <button
+                            onClick={onCancel}
+                            className="p-1 hover:bg-gray-100 rounded-[8px] text-gray-400 hover:text-gray-600 transition-colors cursor-pointer -mt-1"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
-                    <button
-                        onClick={onCancel}
-                        className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
 
-                {/* Body message */}
-                <div className="px-6 py-4 text-left">
-                    <p className="text-gray-500 text-xs font-semibold leading-relaxed font-sans">
-                        {message}
-                    </p>
-                </div>
+                    {/* Body */}
+                    <div className="px-6 pt-4 pb-6">
+                        <h3 className="text-[#1E1E1E] text-[15px] font-black leading-tight">{title}</h3>
+                        <p className="text-gray-400 text-[13px] mt-1.5 leading-relaxed">{message}</p>
+                    </div>
 
-                {/* Footer Buttons */}
-                <div className="px-6 pb-6 pt-2 flex items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="flex-1 py-2.5 text-xs font-bold text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-[12px] transition-all cursor-pointer text-center"
-                    >
-                        {cancelLabel}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        className={`flex-1 py-2.5 text-xs font-bold rounded-[12px] shadow-md transition-all active:scale-95 cursor-pointer text-center ${theme.btnConfirm}`}
-                    >
-                        {confirmLabel}
-                    </button>
+                    {/* Footer */}
+                    <div className="px-6 pb-6 flex gap-3">
+                        <button
+                            onClick={onCancel}
+                            disabled={loading}
+                            className="flex-1 py-2.5 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-[12px] transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                            {cancelLabel}
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            disabled={loading}
+                            className={`flex-1 py-2.5 text-xs font-bold text-white rounded-[12px] transition-all cursor-pointer shadow-md disabled:opacity-60 disabled:cursor-not-allowed ${btn}`}
+                        >
+                            {loading ? "Please wait..." : confirmLabel}
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>,
+        </>,
         document.body
     );
 };

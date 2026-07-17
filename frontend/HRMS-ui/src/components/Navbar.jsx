@@ -1,63 +1,228 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { logoutUser } from "../services/auth.service";
+import { getAllEmployees } from "../services/employee.service";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import {
     Search,
     Bell,
-    Plus,
     User,
     Settings,
     LogOut,
     ChevronDown,
     Shield,
-    Menu
+    Menu,
+    Loader2,
+    X,
+    Building2,
 } from "lucide-react";
 import userAvatar from "../assets/user_avatar.png";
 import { Avatar } from "./SharedComponents";
 
+/* ─────────────────────────────────────────────
+   PAGE METADATA
+───────────────────────────────────────────── */
 const pageMetadata = {
-    "/": {
-        title: "Dashboard",
-        subtitle: "Welcome back! Here is your workspace summary.",
-    },
-    "/me": {
-        title: "Me",
-        subtitle: "Manage your personal profile, attendance, and details.",
-    },
-    "/my-team": {
-        title: "My Team",
-        subtitle: "View team details, directories, and schedules.",
-    },
-    "/employees": {
-        title: "Employees",
-        subtitle: "Manage employee records, profiles, and organizational data.",
-    },
-    "/my-finances": {
-        title: "My Finances",
-        subtitle: "Manage payslips, claims, and benefits.",
-    },
-    "/documents": {
-        title: "Documents",
-        subtitle: "Access your files, policy documents, and folders.",
-    },
-    "/time-attend": {
-        title: "Time & Attend",
-        subtitle: "Track clock-ins, leaves, and work shifts.",
-    },
-    "/hire": {
-        title: "Hire",
-        subtitle: "Manage candidates, job openings, and interviews.",
-    },
-    "/organization": {
-        title: "Organization",
-        subtitle: "Explore directory, departments, and structures.",
-    },
+    "/dashboard": { title: "Dashboard", subtitle: "Welcome back! Here is your workspace summary." },
+    "/":          { title: "Dashboard", subtitle: "Welcome back! Here is your workspace summary." },
+    "/me":        { title: "Me", subtitle: "Manage your personal profile, attendance, and details." },
+    "/my-team":   { title: "My Team", subtitle: "View team details, directories, and schedules." },
+    "/employees": { title: "Employees", subtitle: "Manage employee records, profiles, and organizational data." },
+    "/my-finances":           { title: "My Finances", subtitle: "Manage payslips, claims, and benefits." },
+    "/documents":             { title: "Documents", subtitle: "Access your files, policy documents, and folders." },
+    "/time-attendance":       { title: "Time & Attendance", subtitle: "Track clock-ins, leaves, and work shifts." },
+    "/payroll":               { title: "Payroll", subtitle: "Manage payroll processing and salary records." },
+    "/recruitment":           { title: "Recruitment", subtitle: "Manage job openings and candidates." },
+    "/hire":                  { title: "Hire", subtitle: "Manage candidates, job openings, and interviews." },
+    "/offboarding-onboarding":{ title: "Offboarding & Onboarding", subtitle: "Manage employee transitions." },
+    "/unauthorized":          { title: "Access Denied", subtitle: "You do not have permission to view this page." },
 };
 
-const roles = ["Admin", "HR", "Manager", "Employee"];
+/* ─────────────────────────────────────────────
+   GLOBAL EMPLOYEE SEARCH
+───────────────────────────────────────────── */
+const GlobalSearch = () => {
+    const navigate = useNavigate();
+    const { can } = useAuth();
+    const canViewEmployees = can("view:all-employees");
 
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [open, setOpen] = useState(false);
+    const [allEmployees, setAllEmployees] = useState(null); // cached
+    const containerRef = useRef(null);
+    const searchTimer = useRef(null);
+
+    // Load employee list once (cached)
+    const loadEmployees = useCallback(async () => {
+        if (allEmployees !== null || !canViewEmployees) return;
+        try {
+            const res = await getAllEmployees();
+            if (res.data?.success) setAllEmployees(res.data.employees || []);
+        } catch {
+            setAllEmployees([]);
+        }
+    }, [allEmployees, canViewEmployees]);
+
+    // Search with debounce
+    useEffect(() => {
+        const q = query.trim();
+        if (q.length < 3) { setResults([]); setOpen(false); return; }
+
+        clearTimeout(searchTimer.current);
+        setLoading(true);
+        setOpen(true);
+
+        searchTimer.current = setTimeout(async () => {
+            await loadEmployees();
+            const pool = allEmployees || [];
+            const lower = q.toLowerCase();
+            const filtered = pool.filter(e => {
+                const name = e.fullName || `${e.firstName || ""} ${e.lastName || ""}`;
+                return (
+                    name.toLowerCase().includes(lower) ||
+                    (e.email || "").toLowerCase().includes(lower) ||
+                    (e.employeeId || "").toLowerCase().includes(lower) ||
+                    (e.department || "").toLowerCase().includes(lower) ||
+                    (e.designation || "").toLowerCase().includes(lower)
+                );
+            }).slice(0, 6);
+            setResults(filtered);
+            setLoading(false);
+        }, 300);
+
+        return () => clearTimeout(searchTimer.current);
+    }, [query, allEmployees, loadEmployees]);
+
+    // Close on outside click
+    useEffect(() => {
+        const handler = (e) => {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const handleSelect = (emp) => {
+        setQuery("");
+        setOpen(false);
+        navigate("/employees");
+    };
+
+    const clearSearch = () => { setQuery(""); setResults([]); setOpen(false); };
+
+    if (!canViewEmployees) {
+        // Non-admin/hr roles get a static decorative search bar
+        return (
+            <div className="relative flex items-center w-full">
+                <Search className="w-4 h-4 text-gray-400 absolute left-4" />
+                <input
+                    type="text"
+                    disabled
+                    placeholder="Search..."
+                    className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 border border-gray-200/80 rounded-[14px] text-sm text-gray-300 cursor-not-allowed"
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div ref={containerRef} className="relative w-full">
+            <div className="relative group flex items-center">
+                <Search className="w-4 h-4 text-gray-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors duration-200 pointer-events-none" />
+                <input
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    onFocus={() => query.trim().length >= 3 && setOpen(true)}
+                    placeholder="Search employees by name, ID, email..."
+                    className="w-full pl-11 pr-9 py-2.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-200/80 rounded-[14px] text-sm text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all duration-200 shadow-inner"
+                />
+                {query && (
+                    <button onClick={clearSearch} className="absolute right-3 p-0.5 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                )}
+            </div>
+
+            {/* Dropdown */}
+            {open && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[16px] shadow-xl z-50 overflow-hidden">
+                    {loading ? (
+                        <div className="flex items-center gap-2.5 px-4 py-3.5 text-xs text-gray-400">
+                            <Loader2 className="w-4 h-4 animate-spin text-[#2D79C7]" />
+                            <span>Searching employees...</span>
+                        </div>
+                    ) : results.length === 0 ? (
+                        <div className="px-4 py-4 text-center">
+                            <p className="text-xs font-bold text-gray-400">No employees match &ldquo;{query}&rdquo;</p>
+                            <p className="text-[10px] text-gray-300 mt-0.5">Try a different name, ID, or department</p>
+                        </div>
+                    ) : (
+                        <ul className="py-1.5 max-h-72 overflow-y-auto">
+                            {results.map(emp => {
+                                const name = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`.trim();
+                                const initials = name.split(" ").map(n => n[0] || "").join("").substring(0, 2).toUpperCase();
+                                const palette = ["bg-blue-100 text-[#2D79C7]","bg-emerald-100 text-emerald-700","bg-indigo-100 text-indigo-700","bg-amber-100 text-amber-700","bg-rose-100 text-rose-700","bg-violet-100 text-violet-700"];
+                                const avatarColor = palette[(name.charCodeAt(0) || 0) % palette.length];
+                                const statusColors = { active: "bg-emerald-50 text-emerald-700", inactive: "bg-gray-100 text-gray-500", on_notice: "bg-amber-50 text-amber-700", terminated: "bg-rose-50 text-rose-700" };
+                                const statusLabels = { active: "Active", inactive: "Inactive", on_notice: "On Notice", terminated: "Terminated" };
+
+                                return (
+                                    <li key={emp._id}>
+                                        <button
+                                            onClick={() => handleSelect(emp)}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#F8FAFC] transition-colors cursor-pointer text-left"
+                                        >
+                                            {emp.profilePicture ? (
+                                                <img src={emp.profilePicture} alt={name} className="w-8 h-8 rounded-full object-cover border border-gray-100 shrink-0" />
+                                            ) : (
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px] border-2 border-white shadow-sm shrink-0 ${avatarColor}`}>
+                                                    {initials}
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[13px] font-bold text-[#1E1E1E] leading-none truncate">{name}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="text-[10px] text-gray-400 font-mono">{emp.employeeId}</span>
+                                                    {emp.department && (
+                                                        <>
+                                                            <span className="text-gray-200">·</span>
+                                                            <span className="text-[10px] text-gray-400">{emp.department}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${statusColors[emp.status] || "bg-gray-100 text-gray-400"}`}>
+                                                {statusLabels[emp.status] || emp.status}
+                                            </span>
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                            <li className="border-t border-gray-50 px-4 py-2">
+                                <button
+                                    onClick={() => { setOpen(false); navigate("/employees"); }}
+                                    className="text-[11px] font-bold text-[#2D79C7] hover:underline cursor-pointer"
+                                >
+                                    View all employees →
+                                </button>
+                            </li>
+                        </ul>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   NAVBAR
+───────────────────────────────────────────── */
 const Navbar = ({ onToggleSidebar }) => {
     const { user, logout } = useAuth();
     const location = useLocation();
@@ -67,7 +232,6 @@ const Navbar = ({ onToggleSidebar }) => {
     const fullName = user?.fullName || "";
     const designation = user?.designation || "";
     const email = user?.email || "";
-    const profilePicture = user?.profilePicture || userAvatar;
 
     const meta = pageMetadata[currentPath] || {
         title: "Dashboard",
@@ -75,12 +239,11 @@ const Navbar = ({ onToggleSidebar }) => {
     };
 
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-
     const profileRef = useRef(null);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (profileRef.current && !profileRef.current.contains(event.target)) {
+        const handleClickOutside = (e) => {
+            if (profileRef.current && !profileRef.current.contains(e.target)) {
                 setIsProfileDropdownOpen(false);
             }
         };
@@ -90,7 +253,8 @@ const Navbar = ({ onToggleSidebar }) => {
 
     return (
         <header className="sticky top-0 right-0 bg-white border-b border-gray-100 h-20 px-4 sm:px-8 flex items-center justify-between z-20 select-none shadow-[0_1px_3px_rgba(0,0,0,0.02)] gap-2">
-            {/* Left Section - Hamburger Menu & Title */}
+
+            {/* Left — hamburger + page title */}
             <div className="flex items-center gap-2.5 min-w-0">
                 {onToggleSidebar && (
                     <button
@@ -110,82 +274,53 @@ const Navbar = ({ onToggleSidebar }) => {
                 </div>
             </div>
 
-            {/* Center Section - Global Search Bar (hidden on mobile) */}
+            {/* Center — global employee search */}
             <div className="hidden md:flex flex-1 max-w-md mx-4 lg:mx-8">
-                <div className="relative group flex items-center w-full">
-                    <Search className="w-4 h-4 text-gray-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors duration-200" />
-                    <input
-                        type="text"
-                        placeholder="Search employees, documents, departments..."
-                        className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 hover:bg-gray-50 border border-gray-200/80 rounded-[14px] text-sm text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all duration-200 shadow-inner"
-                    />
-                </div>
+                <GlobalSearch />
             </div>
 
-            {/* Right Section - Notifications, Quick Actions, Profile */}
+            {/* Right — role badge, notifications, profile */}
             <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                {/* Role badge — shows actual role from JWT/API */}
-                <div className="bg-blue-50 text-[#2D79C7] text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100 shadow-sm flex items-center gap-1 uppercase tracking-wider select-none">
+
+                {/* Role badge */}
+                <div className="bg-blue-50 text-[#2D79C7] text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100 shadow-sm flex items-center gap-1 uppercase tracking-wider">
                     <Shield className="w-3 h-3 text-[#2D79C7]" />
                     <span>{user?.role || "—"}</span>
                 </div>
 
-                {/* Notifications with Accent Yellow Indicator */}
-                <button className="relative p-2 text-gray-500 hover:text-[#2D79C7] hover:bg-gray-50 rounded-xl transition-all duration-200">
-                    <Bell className="w-5.5 h-5.5" />
+                {/* Notifications */}
+                <button className="relative p-2 text-gray-500 hover:text-[#2D79C7] hover:bg-gray-50 rounded-xl transition-all duration-200 cursor-pointer">
+                    <Bell className="w-5 h-5" />
                     <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#FFEA00] border-2 border-white rounded-full shadow-sm animate-pulse" />
                 </button>
 
-                {/* Quick Actions (+ Create) */}
-                <button className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-semibold text-sm px-4.5 py-2.5 rounded-[14px] flex items-center gap-1.5 shadow-md shadow-[#2D79C7]/15 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
-                    <Plus className="w-4.5 h-4.5 stroke-[2.5]" />
-                    <span>Create</span>
-                </button>
-
-                {/* Divider */}
                 <div className="h-8 w-px bg-gray-200 mx-1" />
 
-                {/* Profile menu toggle dropdown */}
+                {/* Profile dropdown */}
                 <div className="relative" ref={profileRef}>
                     <button
                         onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                        className="flex items-center gap-2.5 p-1.5 hover:bg-gray-50 rounded-2xl border border-transparent hover:border-gray-200/50 transition-all duration-200"
+                        className="flex items-center gap-2.5 p-1.5 hover:bg-gray-50 rounded-2xl border border-transparent hover:border-gray-200/50 transition-all duration-200 cursor-pointer"
                     >
-                        <Avatar
-                            src={user?.profilePicture}
-                            name={fullName}
-                            size="w-9 h-9"
-                        />
-                        <div className="flex flex-col text-left hidden sm:flex">
-                            <span className="text-[#1E1E1E] text-xs font-semibold tracking-wide">
-                                {fullName}
-                            </span>
-                            <span className="text-gray-400 text-[10px] font-medium leading-none">
-                                {designation}
-                            </span>
+                        <Avatar src={user?.profilePicture} name={fullName} size="w-9 h-9" />
+                        <div className="hidden sm:flex flex-col text-left">
+                            <span className="text-[#1E1E1E] text-xs font-semibold tracking-wide leading-tight">{fullName}</span>
+                            <span className="text-gray-400 text-[10px] font-medium leading-none mt-0.5">{designation}</span>
                         </div>
                         <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                     </button>
 
-                    {/* Profile Dropdown Options */}
                     {isProfileDropdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-[14px] shadow-xl py-1 z-30 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-[14px] shadow-xl py-1 z-30">
                             <div className="px-4 py-2 border-b border-gray-100 text-left">
                                 <p className="text-xs text-gray-400 font-medium">Signed in as</p>
                                 <p className="text-xs text-[#1E1E1E] font-bold truncate">{email}</p>
                             </div>
-
-                            <a
-                                href="#profile"
-                                className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                            >
+                            <a href="#profile" className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors">
                                 <User className="w-4 h-4 text-gray-400" />
                                 <span>My Profile</span>
                             </a>
-                            <a
-                                href="#settings"
-                                className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                            >
+                            <a href="#settings" className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors">
                                 <Settings className="w-4 h-4 text-gray-400" />
                                 <span>Settings</span>
                             </a>
@@ -196,15 +331,14 @@ const Navbar = ({ onToggleSidebar }) => {
                                         await logoutUser();
                                         toast.success("Logged out successfully.");
                                     } catch (err) {
-                                        console.error("Logout request failed:", err);
-                                        toast.error("Logout failed, but session cleared.");
+                                        console.error("Logout failed:", err);
                                     } finally {
                                         logout();
                                         setIsProfileDropdownOpen(false);
                                         navigate("/login");
                                     }
                                 }}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-red-600 hover:bg-red-50 transition-colors duration-150 text-left"
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
                             >
                                 <LogOut className="w-4 h-4 text-red-500" />
                                 <span>Logout</span>

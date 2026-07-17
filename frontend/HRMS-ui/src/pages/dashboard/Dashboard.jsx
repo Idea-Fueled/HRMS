@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import {
     getDashboardData,
     clockIn,
@@ -467,6 +468,7 @@ const HolidaySection = ({ initialHolidays }) => {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isViewAllOpen, setIsViewAllOpen] = useState(false);
     const [editingHoliday, setEditingHoliday] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
 
     useEffect(() => {
@@ -482,11 +484,11 @@ const HolidaySection = ({ initialHolidays }) => {
         }
     };
 
-    const handleDelete = async (holiday) => {
-        if (!window.confirm(`Delete "${holiday.title}"? This cannot be undone.`)) return;
-        setDeletingId(holiday._id);
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        setDeletingId(deleteTarget._id);
         try {
-            const res = await deleteHoliday(holiday._id);
+            const res = await deleteHoliday(deleteTarget._id);
             if (res.data?.success) {
                 toast.success("Holiday deleted.");
                 refreshHolidays();
@@ -497,6 +499,7 @@ const HolidaySection = ({ initialHolidays }) => {
             toast.error(err.response?.data?.message || "Failed to delete holiday.");
         } finally {
             setDeletingId(null);
+            setDeleteTarget(null);
         }
     };
 
@@ -519,7 +522,7 @@ const HolidaySection = ({ initialHolidays }) => {
                     holidays={holidays}
                     canEdit={canEdit}
                     onEdit={setEditingHoliday}
-                    onDelete={handleDelete}
+                    onDelete={setDeleteTarget}
                 />
             </div>
 
@@ -538,6 +541,17 @@ const HolidaySection = ({ initialHolidays }) => {
                     onSuccess={() => { refreshHolidays(); setEditingHoliday(null); }}
                 />
             )}
+
+            <ConfirmDialog
+                isOpen={!!deleteTarget}
+                title="Delete Holiday"
+                message={`Are you sure you want to delete "${deleteTarget?.title}"? This cannot be undone.`}
+                confirmLabel="Delete"
+                variant="danger"
+                loading={!!deletingId}
+                onConfirm={handleDeleteConfirm}
+                onCancel={() => setDeleteTarget(null)}
+            />
 
             <HolidaysModal
                 isOpen={isViewAllOpen}
@@ -1642,19 +1656,6 @@ const WelcomeBanner = ({ user }) => {
                 <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">
                     {user?.fullName || ""}
                 </h1>
-                <div className="flex items-center gap-2">
-                    <span className="text-white/85 text-[13px] font-medium">
-                        {user?.designation || ""}
-                    </span>
-                    {user?.department && (
-                        <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#FFEA00] shrink-0" />
-                            <span className="text-white/55 text-[13px] font-normal">
-                                {user?.department || ""}
-                            </span>
-                        </>
-                    )}
-                </div>
             </div>
 
             <div className="mt-0 relative z-10 shrink-0">

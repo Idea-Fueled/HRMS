@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { getAllEmployees } from "../../services/employee.service";
 import {
     getDocuments,
@@ -60,6 +61,8 @@ export const Documents = () => {
     // Form/Modal States
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [editingDoc, setEditingDoc] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deletingDoc, setDeletingDoc] = useState(false);
     const [formTitle, setFormTitle] = useState("");
     const [formDescription, setFormDescription] = useState("");
     const [formType, setFormType] = useState("company"); // "company" or "employee"
@@ -227,11 +230,15 @@ export const Documents = () => {
     };
 
     // Handle document delete
-    const handleDelete = async (docId) => {
-        if (!window.confirm("Are you sure you want to permanently delete this document?")) return;
+    const handleDelete = (docId) => {
+        setDeleteTarget(docId);
+    };
 
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        setDeletingDoc(true);
         try {
-            const res = await deleteDocument(docId);
+            const res = await deleteDocument(deleteTarget);
             if (res.data?.success) {
                 toast.success("Document deleted successfully.");
                 fetchData();
@@ -241,6 +248,9 @@ export const Documents = () => {
         } catch (err) {
             console.error("Delete document failed:", err);
             toast.error("Failed to delete document.");
+        } finally {
+            setDeletingDoc(false);
+            setDeleteTarget(null);
         }
     };
 

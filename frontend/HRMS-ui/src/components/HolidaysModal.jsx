@@ -4,6 +4,7 @@ import { X, CalendarDays, Loader2, AlertCircle, Calendar, Edit3, Trash2 } from "
 import { toast } from "sonner";
 import { getAllHolidays, updateHoliday, deleteHoliday } from "../services/dashboard.service";
 import { useAuth } from "../context/AuthContext";
+import ConfirmDialog from "./ConfirmDialog";
 
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
