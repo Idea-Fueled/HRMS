@@ -111,6 +111,32 @@ export const getHolidayById = async (req, res) => {
 };
 
 /**
+ * Update Holiday
+ */
+export const updateHoliday = async (req, res) => {
+    try {
+        const holiday = await Holiday.findById(req.params.id);
+
+        if (!holiday) {
+            return res.status(404).json({ success: false, message: "Holiday not found." });
+        }
+
+        const { title, date, day, type, description } = req.body;
+        if (title !== undefined) holiday.title = title;
+        if (date !== undefined) holiday.date = date;
+        if (day !== undefined) holiday.day = day;
+        if (type !== undefined) holiday.type = type;
+        if (description !== undefined) holiday.description = description;
+
+        await holiday.save();
+
+        return res.status(200).json({ success: true, message: "Holiday updated successfully.", holiday });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
  * Delete Holiday (Soft Delete)
  */
 export const deleteHoliday = async (req, res) => {

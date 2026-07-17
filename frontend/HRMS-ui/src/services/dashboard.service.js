@@ -36,6 +36,14 @@ export const createHoliday = async (holidayData) => {
     return API.post("/holidays/create", holidayData)
 }
 
+export const updateHoliday = async (id, holidayData) => {
+    return API.put(`/holidays/${id}`, holidayData)
+}
+
+export const deleteHoliday = async (id) => {
+    return API.delete(`/holidays/${id}`)
+}
+
 export const getUpcomingBirthdays = async () => {
     return API.get("/users/upcoming-birthdays")
 }

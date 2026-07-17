@@ -25,6 +25,8 @@ import {
     Calendar,
     Home,
     FileText,
+    Edit3,
+    Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
@@ -41,7 +43,9 @@ import {
     voteInPoll,
     createPosts,
     getUpcomingHolidays,
-    createHoliday
+    createHoliday,
+    updateHoliday,
+    deleteHoliday
 } from "../../services/dashboard.service";
 
 
@@ -275,7 +279,7 @@ const CreateHolidayModal = ({ isOpen, onClose, onSuccess }) => {
     );
 };
 
-const HolidayList = ({ holidays }) => {
+const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
     const displayType = (type) => {
         if (type === "public_holiday") return "Public Holiday";
         if (type === "company_holiday") return "Company Holiday";
@@ -307,29 +311,44 @@ const HolidayList = ({ holidays }) => {
                 return (
                     <div
                         key={h._id || idx}
-                        className="flex items-center gap-4 py-3 border-b border-[#F9FAFB] last:border-0"
+                        className="flex items-center gap-3 py-3 border-b border-[#F9FAFB] last:border-0 group"
                     >
+                        {/* Date badge */}
                         <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-[#2D79C7]/10 to-[#1F5EA8]/10 border border-[#2D79C7]/15 flex flex-col items-center justify-center shrink-0">
-                            <span className="text-[#2D79C7] text-[11px] font-bold uppercase leading-none">
-                                {month}
-                            </span>
-                            <span className="text-[#1E1E1E] text-[15px] font-extrabold leading-tight mt-0.5">
-                                {dayNum}
-                            </span>
+                            <span className="text-[#2D79C7] text-[11px] font-bold uppercase leading-none">{month}</span>
+                            <span className="text-[#1E1E1E] text-[15px] font-extrabold leading-tight mt-0.5">{dayNum}</span>
                         </div>
+
+                        {/* Title + day */}
                         <div className="flex-1 min-w-0">
-                            <span className="text-[#1E1E1E] text-[13px] font-semibold block truncate">
-                                {h.title || "Holiday"}
-                            </span>
-                            <span className="text-gray-400 text-[11px] mt-0.5 block font-medium">
-                                {h.day || ""}
-                            </span>
+                            <span className="text-[#1E1E1E] text-[13px] font-semibold block truncate">{h.title || "Holiday"}</span>
+                            <span className="text-gray-400 text-[11px] mt-0.5 block font-medium">{h.day || ""}</span>
                         </div>
-                        <span
-                            className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}
-                        >
+
+                        {/* Type badge — hidden on hover when canEdit */}
+                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 transition-opacity ${canEdit ? "group-hover:opacity-0 group-hover:pointer-events-none" : ""} ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
                             {formattedType}
                         </span>
+
+                        {/* Edit / Delete — only for admin/hr, appear on row hover */}
+                        {canEdit && (
+                            <div className="absolute right-5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => onEdit(h)}
+                                    title="Edit holiday"
+                                    className="p-1.5 rounded-[8px] text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
+                                >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => onDelete(h)}
+                                    title="Delete holiday"
+                                    className="p-1.5 rounded-[8px] text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -350,30 +369,138 @@ const ViewAllHolidaysButton = ({ onClick }) => {
     );
 };
 
+/* Edit Holiday Modal */
+const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
+    const [title, setTitle] = useState(holiday.title || "");
+    const [date, setDate] = useState(holiday.date ? holiday.date.split("T")[0] : "");
+    const [day, setDay] = useState(holiday.day || "");
+    const [type, setType] = useState(holiday.type || "public_holiday");
+    const [description, setDescription] = useState(holiday.description || "");
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (date) {
+            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            setDay(days[new Date(date).getDay()]);
+        }
+    }, [date]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!title.trim() || !date) { toast.error("Title and Date are required."); return; }
+        try {
+            setSubmitting(true);
+            const res = await updateHoliday(holiday._id, { title: title.trim(), date, day, type, description: description.trim() });
+            if (res.data?.success) {
+                toast.success("Holiday updated successfully.");
+                onSuccess();
+                onClose();
+            } else {
+                toast.error(res.data?.message || "Failed to update holiday.");
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to update holiday.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[999] flex items-center justify-center p-4 select-none">
+            <div className="bg-white rounded-[20px] border border-gray-100 shadow-2xl max-w-md w-full overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6]">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-[10px] bg-amber-50 flex items-center justify-center border border-amber-100">
+                            <Edit3 className="w-3.5 h-3.5 text-amber-600" strokeWidth={2.5} />
+                        </div>
+                        <h3 className="text-[#1E1E1E] text-[14px] font-bold tracking-wide">Edit Holiday</h3>
+                    </div>
+                    <button type="button" onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
+                        <X className="w-4.5 h-4.5" />
+                    </button>
+                </div>
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Holiday Title *</label>
+                        <input type="text" required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Independence Day" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all shadow-inner" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Date *</label>
+                            <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all cursor-pointer" />
+                        </div>
+                        <div>
+                            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Day</label>
+                            <input type="text" readOnly value={day} placeholder="Auto-calculated" className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-[14px] text-sm text-gray-500 cursor-not-allowed" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Type</label>
+                        <select value={type} onChange={e => setType(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm focus:outline-none focus:bg-white focus:border-[#2D79C7] transition-all cursor-pointer">
+                            <option value="public_holiday">Public Holiday</option>
+                            <option value="optional_holiday">Optional Holiday</option>
+                            <option value="company_holiday">Company Holiday</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Description</label>
+                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Add brief description..." className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] transition-all h-20 resize-none shadow-inner" />
+                    </div>
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#F3F4F6] mt-4">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-bold text-gray-500 hover:bg-gray-50 border border-gray-200 rounded-[12px] transition-all cursor-pointer">Cancel</button>
+                        <button type="submit" disabled={submitting} className="bg-[#2D79C7] hover:bg-[#1F5EA8] disabled:bg-gray-400 text-white font-semibold text-xs px-5 py-2.5 rounded-[12px] transition-all shadow-sm cursor-pointer">
+                            {submitting ? "Saving..." : "Save Changes"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
 const HolidaySection = ({ initialHolidays }) => {
     const { can } = useAuth();
     const [holidays, setHolidays] = useState(initialHolidays || []);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isViewAllOpen, setIsViewAllOpen] = useState(false);
+    const [editingHoliday, setEditingHoliday] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
     useEffect(() => {
-        if (initialHolidays) {
-            setHolidays(initialHolidays);
-        }
+        if (initialHolidays) setHolidays(initialHolidays);
     }, [initialHolidays]);
 
     const refreshHolidays = async () => {
         try {
             const res = await getUpcomingHolidays();
-            if (res.data && res.data.success) {
-                setHolidays(res.data.holidays || []);
-            }
+            if (res.data?.success) setHolidays(res.data.holidays || []);
         } catch (err) {
             console.error("Failed to refresh holidays:", err);
         }
     };
 
-    const canCreate = can("create:holiday");
+    const handleDelete = async (holiday) => {
+        if (!window.confirm(`Delete "${holiday.title}"? This cannot be undone.`)) return;
+        setDeletingId(holiday._id);
+        try {
+            const res = await deleteHoliday(holiday._id);
+            if (res.data?.success) {
+                toast.success("Holiday deleted.");
+                refreshHolidays();
+            } else {
+                toast.error(res.data?.message || "Failed to delete.");
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to delete holiday.");
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const canEdit = can("edit:holiday");
 
     return (
         <Card>
@@ -383,19 +510,32 @@ const HolidaySection = ({ initialHolidays }) => {
                 action={
                     <div className="flex items-center gap-2">
                         <ViewAllHolidaysButton onClick={() => setIsViewAllOpen(true)} />
-                        {canCreate && <CreateHolidayButton onClick={() => setIsModalOpen(true)} />}
+                        {can("create:holiday") && <CreateHolidayButton onClick={() => setIsCreateOpen(true)} />}
                     </div>
                 }
             />
-            <div className="px-5 pb-5 pt-3">
-                <HolidayList holidays={holidays} />
+            <div className="px-5 pb-5 pt-3 relative">
+                <HolidayList
+                    holidays={holidays}
+                    canEdit={canEdit}
+                    onEdit={setEditingHoliday}
+                    onDelete={handleDelete}
+                />
             </div>
 
-            {canCreate && (
+            {can("create:holiday") && (
                 <CreateHolidayModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
+                    isOpen={isCreateOpen}
+                    onClose={() => setIsCreateOpen(false)}
                     onSuccess={refreshHolidays}
+                />
+            )}
+
+            {editingHoliday && (
+                <EditHolidayModal
+                    holiday={editingHoliday}
+                    onClose={() => setEditingHoliday(null)}
+                    onSuccess={() => { refreshHolidays(); setEditingHoliday(null); }}
                 />
             )}
 
