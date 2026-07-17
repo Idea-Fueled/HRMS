@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { Avatar } from "../../components/SharedComponents";
 import {
     Clock,
@@ -160,7 +161,7 @@ const CreateHolidayModal = ({ isOpen, onClose, onSuccess }) => {
         }
     };
 
-    return (
+    return ReactDOM.createPortal(
         <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[999] flex items-center justify-center p-4 select-none animate-fadeIn">
             <div className="bg-white rounded-[20px] border border-gray-100 shadow-2xl max-w-md w-full overflow-hidden transform transition-all duration-300">
                 {/* Header */}
@@ -269,7 +270,8 @@ const CreateHolidayModal = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
