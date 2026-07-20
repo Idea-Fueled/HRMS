@@ -114,8 +114,11 @@ const menuCategories = [
                 permissionKey: "payroll",
                 icon: (
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
-                        <line x1="12" y1="1" x2="12" y2="23" />
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        <path d="M6 3h12" />
+                        <path d="M6 8h12" />
+                        <path d="m6 13 8.5 8" />
+                        <path d="M6 13h3" />
+                        <path d="M9 13c6.667 0 6.667-10 0-10" />
                     </svg>
                 ),
             },
@@ -179,7 +182,7 @@ const Sidebar = ({ onClose }) => {
 
     const hasItemPermission = (item) => {
         if (!user) return false;
-        
+
         // Admins and HR see all sidebar items
         const role = user.role?.toLowerCase();
         if (role === "admin" || role === "hr") return true;
