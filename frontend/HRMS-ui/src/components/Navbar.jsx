@@ -36,6 +36,7 @@ const pageMetadata = {
     "/recruitment":           { title: "Recruitment", subtitle: "Manage job openings and candidates." },
     "/hire":                  { title: "Hire", subtitle: "Manage candidates, job openings, and interviews." },
     "/offboarding-onboarding":{ title: "Offboarding & Onboarding", subtitle: "Manage employee transitions." },
+    "/organization":          { title: "Organization", subtitle: "Manage organizational units, structure, and hierarchy." },
     "/unauthorized":          { title: "Access Denied", subtitle: "You do not have permission to view this page." },
 };
 

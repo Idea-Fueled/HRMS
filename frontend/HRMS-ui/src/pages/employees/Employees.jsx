@@ -76,6 +76,24 @@ const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 const GENDERS = ["Male", "Female", "Other"];
 const WORK_LOCATIONS = ["Office", "WFH", "Hybrid"];
 
+const DEFAULT_PERMISSIONS = {
+    dashboard: true,
+    me: true,
+    myTeam: true,
+    myFinances: true,
+    documents: {
+        companyDocuments: true,
+        employeeDocuments: false
+    },
+    timeAndAttend: false,
+    employees: false,
+    payroll: false,
+    recruitment: false,
+    hire: false,
+    offboardingAndOnboarding: false,
+    organization: false
+};
+
 const EMPTY_FORM = {
     employeeId: "", firstName: "", lastName: "", email: "",
     phoneNumber: "", profilePicture: "",
@@ -85,7 +103,8 @@ const EMPTY_FORM = {
     fatherName: "", emergencyContactNumber: "",
     presentAddress: "", permanentAddress: "",
     casualLeave: 8, sickLeave: 6, earnedLeave: 20,
-    password: "", confirmPassword: "", status: "active"
+    password: "", confirmPassword: "", status: "active",
+    permissions: { ...DEFAULT_PERMISSIONS }
 };
 
 
@@ -106,7 +125,7 @@ const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-
    LAYOUT COMPONENTS
 ───────────────────────────────────────────── */
 const Card = ({ children, className = "" }) => (
-    <div className={`bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_16px_rgba(45,121,199,0.06)] transition-all duration-300 flex flex-col overflow-hidden ${className}`}>
+    <div className={`premium-3d-card flex flex-col overflow-hidden ${className}`}>
         {children}
     </div>
 );
@@ -278,7 +297,7 @@ const SummaryCards = ({ summary, loading }) => {
     return (
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
             {cards.map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className="bg-white border border-[#E5E7EB] rounded-[16px] p-4 flex flex-col gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_12px_rgba(45,121,199,0.06)] transition-all duration-200">
+                <div key={label} className="premium-3d-card-mini p-4 flex flex-col gap-3">
                     <div className={`w-8 h-8 rounded-[10px] border flex items-center justify-center ${color}`}>
                         <Icon className="w-4 h-4" strokeWidth={2} />
                     </div>
@@ -438,7 +457,7 @@ const EmployeeCardView = ({ employees, onView, onEdit }) => {
             {employees.map((emp) => {
                 const name = emp.fullName || `${emp.firstName} ${emp.lastName}`;
                 return (
-                    <div key={emp._id} className="bg-white border border-[#E5E7EB] rounded-[18px] p-5 flex flex-col gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.03)] hover:shadow-[0_6px_20px_rgba(45,121,199,0.09)] transition-all duration-300 relative">
+                    <div key={emp._id} className="premium-3d-card p-5 flex flex-col gap-4 relative">
                         <span className={`absolute top-4 right-4 text-xs font-black px-2 py-0.5 rounded-full border ${statusBadge(emp.status)}`}>{statusLabel(emp.status)}</span>
                         <div className="flex flex-col items-center text-center gap-2">
                             <Avatar src={emp.profilePicture} name={name} size="w-14 h-14" textSize="text-sm" />
@@ -667,9 +686,10 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 password: "",
                 confirmPassword: "",
                 status: employee.status || "active",
+                permissions: employee.permissions || { ...DEFAULT_PERMISSIONS }
             };
         }
-        return { ...EMPTY_FORM };
+        return { ...EMPTY_FORM, permissions: { ...DEFAULT_PERMISSIONS } };
     });
 
     const [errors, setErrors] = useState({});
@@ -791,6 +811,32 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
         const val = e.target.type === "number" ? Number(e.target.value) : e.target.value;
         if (field === "department" && val === "ADD_NEW_DEPT") {
             setShowNewDeptModal(true);
+            return;
+        }
+        if (field === "role") {
+            const isHrOrAdmin = val === "admin" || val === "hr";
+            setForm(prev => ({ 
+                ...prev, 
+                role: val,
+                permissions: {
+                    dashboard: true,
+                    me: true,
+                    myTeam: true,
+                    myFinances: true,
+                    documents: {
+                        companyDocuments: true,
+                        employeeDocuments: isHrOrAdmin
+                    },
+                    timeAndAttend: isHrOrAdmin,
+                    employees: isHrOrAdmin,
+                    payroll: isHrOrAdmin,
+                    recruitment: isHrOrAdmin,
+                    hire: isHrOrAdmin,
+                    offboardingAndOnboarding: isHrOrAdmin,
+                    organization: isHrOrAdmin
+                }
+            }));
+            if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }));
             return;
         }
         setForm(prev => ({ ...prev, [field]: val }));
@@ -1074,6 +1120,238 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                             <input type="number" min={0} value={form.earnedLeave} onChange={set("earnedLeave")} className={inputCls} />
                         </FormField>
                     </div>
+
+                    {/* Roles & Permissions */}
+                    <SectionTitle>Roles & Permissions</SectionTitle>
+                    {(() => {
+                        const isRoleAdminOrHr = form.role === "admin" || form.role === "hr";
+                        return (
+                            <div className="bg-gray-50/50 p-4 border border-gray-150 rounded-[14px] space-y-3">
+                                <p className="text-gray-400 text-[10.5px] font-semibold mb-1">
+                                    {isRoleAdminOrHr 
+                                        ? "Admin and HR roles automatically have full permission access to all modules."
+                                        : "Configure module-level access permissions. Checked modules are visible and accessible."}
+                                </p>
+                                <div className="space-y-2">
+                                    {/* Dashboard (Read Only) */}
+                                    <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none">
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Dashboard</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Main overview dashboard (Always enabled)</p>
+                                        </div>
+                                        <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
+                                    </div>
+                                    
+                                    {/* Me (Read Only) */}
+                                    <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none">
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Me</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Personal profile and settings (Always enabled)</p>
+                                        </div>
+                                        <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
+                                    </div>
+
+                                    {/* My Team (Read Only) */}
+                                    <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none">
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">My Team</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Direct reports directory (Always enabled)</p>
+                                        </div>
+                                        <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
+                                    </div>
+
+                                    {/* My Finances (Read Only) */}
+                                    <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none">
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">My Finances</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Salary slips and bank info (Always enabled)</p>
+                                        </div>
+                                        <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
+                                    </div>
+
+                                    {/* Documents -> Company Documents (Read Only) */}
+                                    <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none">
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Documents → Company Documents</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Official handbook and policy files (Always enabled)</p>
+                                        </div>
+                                        <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
+                                    </div>
+
+                                    {/* Documents -> Employee Documents */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Documents → Employee Documents</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Sensitive private employee record folders</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.documents?.employeeDocuments} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    documents: {
+                                                        ...prev.permissions.documents,
+                                                        employeeDocuments: e.target.checked
+                                                    }
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Time & Attendance */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Time & Attendance</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Check-ins, leaves tracking and shift times</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.timeAndAttend} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    timeAndAttend: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Employees */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Employees Module</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Create and manage workforce accounts</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.employees} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    employees: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Payroll */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Payroll Module</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Salary computations and payouts database</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.payroll} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    payroll: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Recruitment */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Recruitment</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Job applications and vacancy pipeline</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.recruitment} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    recruitment: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Hire */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Hire</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Offer letters and new hires profiles</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.hire} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    hire: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Offboarding & Onboarding */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Offboarding & Onboarding</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">New employee joinings and exits checklist</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.offboardingAndOnboarding} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    offboardingAndOnboarding: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Organization */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Organization</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Company structure, hierarchy and units</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleAdminOrHr || !!form.permissions?.organization} 
+                                            disabled={isRoleAdminOrHr}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    organization: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Account Setup */}
                     <SectionTitle>Account Setup</SectionTitle>

@@ -90,19 +90,50 @@ export const AuthProvider = ({ children }) => {
 
     /** Check if the current user has a specific permission */
     const can = useCallback((permission) => {
-        if (!user?.role) return false;
-        const perms = ROLE_PERMISSIONS[user.role.toLowerCase()] || [];
-        return perms.includes(permission);
+        if (!user) return false;
+        
+        // Admins and HR have all permissions
+        const userRole = user.role?.toLowerCase();
+        if (userRole === "admin" || userRole === "hr") return true;
+        
+        // Handle admin/hr actions
+        if (permission === "create:employee" || permission === "edit:employee" || permission === "view:all-employees") {
+            return !!user.permissions?.employees;
+        }
+        
+        return false;
     }, [user]);
 
     /** Check if the current user can access a route path */
     const canAccessRoute = useCallback((path) => {
-        if (!user?.role) return false;
-        const allowed = ROLE_ALLOWED_ROUTES[user.role.toLowerCase()] || [];
-        // normalize: strip leading slash for comparison
-        const normalize = (p) => p.replace(/^\//, "");
-        const normalizedPath = normalize(path);
-        return allowed.some(r => normalize(r) === normalizedPath || normalizedPath.startsWith(normalize(r) + "/"));
+        if (!user) return false;
+
+        // Admins and HR have access to all routes
+        const userRole = user.role?.toLowerCase();
+        if (userRole === "admin" || userRole === "hr") return true;
+        
+        if (!user.permissions) return false;
+        
+        // normalize: strip leading slash and trailing slash
+        const normalize = (p) => p.replace(/^\//, "").replace(/\/$/, "");
+        const normPath = normalize(path);
+
+        if (normPath === "dashboard" || normPath === "") return !!user.permissions.dashboard;
+        if (normPath === "me") return !!user.permissions.me;
+        if (normPath === "my-team") return !!user.permissions.myTeam;
+        if (normPath === "my-finances") return !!user.permissions.myFinances;
+        if (normPath === "documents") {
+            return !!(user.permissions.documents?.companyDocuments || user.permissions.documents?.employeeDocuments);
+        }
+        if (normPath === "time-attendance") return !!user.permissions.timeAndAttend;
+        if (normPath === "employees") return !!user.permissions.employees;
+        if (normPath === "payroll") return !!user.permissions.payroll;
+        if (normPath === "recruitment") return !!user.permissions.recruitment;
+        if (normPath === "hire") return !!user.permissions.hire;
+        if (normPath === "offboarding-onboarding") return !!user.permissions.offboardingAndOnboarding;
+        if (normPath === "organization") return !!user.permissions.organization;
+
+        return true; // default to true for helper/unauthorized paths
     }, [user]);
 
     const logout = useCallback(() => {

@@ -35,7 +35,7 @@ import { Avatar } from "../../components/SharedComponents";
 ───────────────────────────────────────────── */
 const AttendanceStatsCard = () => {
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4.5 h-[240px] flex flex-col justify-start">
+        <div className="premium-3d-card p-4.5 h-[240px] flex flex-col justify-start">
             <div className="flex items-center justify-between mb-4 shrink-0">
                 <h3 className="text-[#1E1E1E] text-[13px] font-bold">Attendance Stats</h3>
                 <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ const TimingsCard = () => {
     }, []);
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4 h-[240px] flex flex-col justify-start">
+        <div className="premium-3d-card p-4 h-[240px] flex flex-col justify-start">
             <h3 className="text-[#1E1E1E] text-[13px] font-bold mb-3 shrink-0">Timings</h3>
             
             <div className="flex items-center justify-between gap-1 mb-5 shrink-0">
@@ -181,7 +181,7 @@ const AttendanceActionsCard = () => {
     ];
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-6 h-[240px] flex flex-col justify-start hover:shadow-[0_4px_16px_rgba(45,121,199,0.03)] transition-all duration-300">
+        <div className="premium-3d-card p-6 h-[240px] flex flex-col justify-start">
             <h3 className="text-[#1E1E1E] text-[14px] font-extrabold mb-4 shrink-0 text-left">Actions</h3>
             
             <div className="flex items-center justify-between flex-1 h-[140px]">
@@ -259,7 +259,7 @@ const PendingLeaveRequestsCard = ({ pendingRequests = [], loading = false, onReq
     };
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-6 flex flex-col md:flex-row gap-6 hover:shadow-[0_4px_16px_rgba(45,121,199,0.04)] transition-all duration-300">
+        <div className="premium-3d-card p-6 flex flex-col md:flex-row gap-6">
             {/* Left Side (80% on desktop) */}
             <div className="flex-1 md:w-[78%] flex flex-col justify-start">
                 <h3 className="text-[#1E1E1E] text-[14px] font-extrabold mb-4 shrink-0 text-left">Pending Leave Requests</h3>
@@ -367,7 +367,7 @@ const WeeklyPatternCard = () => {
     const maxVal = 6;
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4.5 hover:shadow-[0_4px_16px_rgba(45,121,199,0.06)] transition-all duration-300 flex flex-col justify-between h-[280px]">
+        <div className="premium-3d-card p-4.5 flex flex-col justify-between h-[280px]">
             <h4 className="text-[#1E1E1E] text-[13px] font-bold mb-3 shrink-0">Weekly Pattern</h4>
             
             {/* Bar Chart Container */}
@@ -431,7 +431,7 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
     const defaultTooltip = `Casual: ${casualPct.toFixed(0)}% | Earned: ${earnedPct.toFixed(0)}% | Sick: ${sickPct.toFixed(0)}%`;
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4.5 hover:shadow-[0_4px_16px_rgba(45,121,199,0.06)] transition-all duration-300 flex flex-col justify-between h-[280px]">
+        <div className="premium-3d-card p-4.5 flex flex-col justify-between h-[280px]">
             <h4 className="text-[#1E1E1E] text-[13px] font-bold mb-3 shrink-0">Consumed Leave Types</h4>
             
             <div className="flex-1 flex items-center justify-between gap-4 py-2">
@@ -556,7 +556,7 @@ const MonthlyStatsCard = () => {
     const maxVal = 5;
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4.5 hover:shadow-[0_4px_16px_rgba(45,121,199,0.06)] transition-all duration-300 flex flex-col justify-between h-[280px]">
+        <div className="premium-3d-card p-4.5 flex flex-col justify-between h-[280px]">
             <h4 className="text-[#1E1E1E] text-[13px] font-bold mb-3 shrink-0">Monthly Stats</h4>
             
             {/* Bar Chart Container */}
@@ -617,7 +617,7 @@ const LeaveBalanceCard = ({
     const consumedLabel = `${consumed} Day${consumed !== 1 ? 's' : ''}`;
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_16px_rgba(45,121,199,0.06)] transition-all duration-300 p-4.5 flex flex-col justify-between min-h-[350px] h-full">
+        <div className="premium-3d-card p-4.5 flex flex-col justify-between min-h-[350px] h-full">
             <div>
                 {/* Title */}
                 <div className="flex justify-between items-center mb-3">
@@ -855,7 +855,7 @@ const LeaveHistorySection = ({
         <div className="space-y-3 mt-8">
             <h3 className="text-[#1E1E1E] text-[14px] font-extrabold text-left pl-1">Leave History</h3>
             
-            <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-4.5 flex flex-col justify-between">
+            <div className="premium-3d-card p-4.5 flex flex-col justify-between">
                 
                 {/* Filters Row */}
                 <div className="flex flex-col md:flex-row gap-3 items-center justify-between pb-4 border-b border-gray-100">
@@ -1382,7 +1382,7 @@ const PerformanceContentCard = ({ activeSubTab }) => {
     const currentContent = subTabContent[activeSubTab];
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-6 min-h-[360px] flex flex-col justify-start">
+        <div className="premium-3d-card p-6 min-h-[360px] flex flex-col justify-start">
             {/* Header */}
             <div className="border-b border-gray-100 pb-4 text-left">
                 <h3 className="text-[#1E1E1E] text-[15px] font-extrabold">{currentContent.title}</h3>
@@ -1416,7 +1416,7 @@ const PerformanceTab = () => {
     return (
         <div className="space-y-6 text-left select-none">
             {/* Performance sub-navigation tabs */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-2">
+            <div className="premium-3d-card-mini p-2">
                 <nav className="flex flex-wrap gap-2">
                     {subTabs.map((tab) => {
                         const isActive = activeSubTab === tab;
@@ -1540,7 +1540,7 @@ const LogsAndRequestsCard = () => {
     ];
 
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[12px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-6 select-none mt-6 hover:shadow-[0_4px_16px_rgba(45,121,199,0.03)] transition-all duration-300">
+        <div className="premium-3d-card p-6 select-none mt-6">
             {/* Header row */}
             <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[#1E1E1E] text-[15px] font-extrabold">Logs & Requests</h3>

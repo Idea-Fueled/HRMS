@@ -137,7 +137,8 @@ export const createEmployee = async (req, res) => {
             sickLeave,
             earnedLeave,
             password,
-            status
+            status,
+            permissions
         } = req.body;
 
         // Required fields (excluding lastName)
@@ -170,6 +171,29 @@ export const createEmployee = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        const isHrOrAdmin = role === "admin" || role === "hr";
+        const defaultPermissions = {
+            dashboard: true,
+            me: true,
+            myTeam: true,
+            myFinances: true,
+            documents: {
+                companyDocuments: true,
+                employeeDocuments: isHrOrAdmin
+            },
+            timeAndAttend: isHrOrAdmin,
+            employees: isHrOrAdmin,
+            payroll: isHrOrAdmin,
+            recruitment: isHrOrAdmin,
+            hire: isHrOrAdmin,
+            offboardingAndOnboarding: isHrOrAdmin,
+            organization: isHrOrAdmin
+        };
+
+        const resolvedPermissions = permissions 
+            ? (typeof permissions === "string" ? JSON.parse(permissions) : permissions)
+            : defaultPermissions;
+
         const employee = await User.create({
             employeeId,
             firstName,
@@ -199,7 +223,8 @@ export const createEmployee = async (req, res) => {
                 sick: { total: sickLeave !== undefined ? Number(sickLeave) : 6, used: 0, pending: 0 },
                 earned: { total: earnedLeave !== undefined ? Number(earnedLeave) : 20, used: 0, pending: 0 }
             },
-            status: status || "active"
+            status: status || "active",
+            permissions: resolvedPermissions
         });
 
         const populated = await User.findById(employee._id)
@@ -247,7 +272,8 @@ export const updateEmployee = async (req, res) => {
             sickLeave,
             earnedLeave,
             status,
-            password
+            password,
+            permissions
         } = req.body;
 
         const employee = await User.findById(id);
@@ -305,6 +331,10 @@ export const updateEmployee = async (req, res) => {
         if (presentAddress !== undefined) employee.presentAddress = presentAddress;
         if (permanentAddress !== undefined) employee.permanentAddress = permanentAddress;
         if (status) employee.status = status;
+
+        if (permissions !== undefined) {
+            employee.permissions = typeof permissions === "string" ? JSON.parse(permissions) : permissions;
+        }
 
         // Update leave balances if provided
         if (casualLeave !== undefined) employee.leaveBalance.casual.total = Number(casualLeave);

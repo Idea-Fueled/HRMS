@@ -24,7 +24,7 @@ import { SkeletonLoader, EmptyState } from "../../components/SharedComponents";
    REUSABLE CONTAINER CARDS
 ───────────────────────────────────────────── */
 const Card = ({ children, className = "" }) => (
-    <div className={`bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_16px_rgba(45,121,199,0.06)] transition-all duration-300 flex flex-col overflow-hidden ${className}`}>
+    <div className={`premium-3d-card flex flex-col overflow-hidden ${className}`}>
         {children}
     </div>
 );
@@ -44,7 +44,7 @@ const CardHeader = ({ icon: Icon, title, action }) => (
 );
 
 const MiniStatCard = ({ title, value, change, isPositive, icon: Icon }) => (
-    <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-5 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-all duration-200">
+    <div className="premium-3d-card-mini p-5 flex items-center justify-between">
         <div>
             <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider leading-none">{title}</span>
             <div className="mt-2.5 flex items-baseline gap-1.5">
@@ -142,7 +142,7 @@ Thank you for your service!
     return (
         <div className="space-y-6 bg-[#F8FAFC] min-h-screen -m-6 p-6 select-none animate-fadeIn">
             {/* Top Sub-Navigation Tabs */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] px-6 py-1 flex items-center shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+            <div className="premium-3d-card-mini px-6 py-1 flex items-center">
                 <nav className="flex gap-4 overflow-x-auto scrollbar-none">
                     {[
                         { key: "Summary", icon: Wallet, label: "Summary" },
@@ -388,15 +388,10 @@ Thank you for your service!
                                         </div>
                                     </div>
 
-                                    <div className="border-t border-[#F3F4F6] pt-4.5 space-y-2.5">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-gray-400">Provident Fund (PF) Deduction</span>
-                                            <span className="text-rose-600 font-mono font-bold">-{formatCurrency(financeData.salaryBreakdown.pfDeduction)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-gray-400">Income Tax (TDS) Deduction</span>
-                                            <span className="text-rose-600 font-mono font-bold">-{formatCurrency(financeData.salaryBreakdown.taxDeduction)}</span>
-                                        </div>
+                                    <div className="border-t border-[#F3F4F6] pt-4.5">
+                                        <p className="text-[11px] text-gray-400 font-bold leading-normal italic text-left">
+                                            *Other allowances contains conveyance like Transportations, Medical etc.
+                                        </p>
                                     </div>
 
                                     <div className="border-t border-[#F3F4F6] pt-4 flex justify-between items-baseline">

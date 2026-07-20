@@ -45,6 +45,7 @@ const EMPLOYEE_CATEGORIES = [
 export const Documents = () => {
     const { user } = useAuth();
     const isHrOrAdmin = user?.role === "admin" || user?.role === "hr";
+    const showEmployeeDocsTab = isHrOrAdmin;
 
     // Tab & Filtration States
     const [activeTab, setActiveTab] = useState("company"); // "company" or "employee"
@@ -57,6 +58,13 @@ export const Documents = () => {
     const [employees, setEmployees] = useState([]);
     const [dbCategories, setDbCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Reset activeTab if permissions change
+    useEffect(() => {
+        if (!showEmployeeDocsTab && activeTab === "employee") {
+            setActiveTab("company");
+        }
+    }, [showEmployeeDocsTab, activeTab]);
 
     // Form/Modal States
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -332,8 +340,8 @@ export const Documents = () => {
                 )}
             </div>
 
-            {/* Role-based sub-tabs header (Only for Admin/HR) */}
-            {isHrOrAdmin && (
+            {/* Role-based sub-tabs header (Only for Admin/HR with permission) */}
+            {showEmployeeDocsTab && (
                 <div className="flex border-b border-gray-200">
                     <button
                         onClick={() => { setActiveTab("company"); setSelectedCategory(""); setSelectedEmployeeId(""); }}
@@ -361,7 +369,7 @@ export const Documents = () => {
             )}
 
             {/* Filter Bar Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-gray-150 p-4 rounded-[16px] shadow-2xs">
+            <div className="premium-3d-card-mini flex flex-col md:flex-row md:items-center justify-between gap-4 p-4">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                     <SearchBar
                         value={searchQuery}
@@ -431,7 +439,7 @@ export const Documents = () => {
                         return (
                             <div
                                 key={doc._id}
-                                className="bg-white border border-slate-200/70 rounded-[20px] p-5 flex flex-col justify-between hover:shadow-md transition-all duration-300 relative overflow-hidden group border-b-2 hover:border-b-[#2D79C7]"
+                                className="premium-3d-card p-5 flex flex-col justify-between relative overflow-hidden group border-b-2 hover:border-b-[#2D79C7]"
                             >
                                 <div className="space-y-4">
                                     {/* Badge & Category */}

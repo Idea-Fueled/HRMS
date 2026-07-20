@@ -56,7 +56,7 @@ const useResponsivePageSize = (viewMode) => {
    REUSABLE CONTAINER CARDS
 ───────────────────────────────────────────── */
 const Card = ({ children, className = "" }) => (
-    <div className={`bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_16px_rgba(45,121,199,0.06)] transition-all duration-300 flex flex-col overflow-hidden ${className}`}>
+    <div className={`premium-3d-card flex flex-col overflow-hidden ${className}`}>
         {children}
     </div>
 );
@@ -76,7 +76,7 @@ const CardHeader = ({ icon: Icon, title, action }) => (
 );
 
 const MiniStatCard = ({ title, value, change, isPositive }) => (
-    <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-4.5 flex flex-col justify-between shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-all duration-200">
+    <div className="premium-3d-card-mini p-4.5 flex flex-col justify-between">
         <div className="flex justify-between items-start">
             <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider leading-none">{title}</span>
             {change && (
@@ -385,7 +385,7 @@ const TeamMembersTab = () => {
     return (
         <div className="space-y-6">
             {/* Filter and toggle control row */}
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.01)] animate-fadeIn">
+            <div className="premium-3d-card-mini flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 animate-fadeIn">
                 <div className="flex flex-wrap items-center gap-3">
                     <SearchBar value={search} onChange={(val) => { setSearch(val); setCurrentPage(1); }} placeholder="Search name or ID..." />
                     
@@ -713,7 +713,7 @@ const TeamAttendanceTab = () => {
             )}
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.01)] animate-fadeIn">
+            <div className="premium-3d-card-mini flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 animate-fadeIn">
                 <SearchBar value={search} onChange={(val) => { setSearch(val); setCurrentPage(1); }} placeholder="Search name or department..." />
                 <ViewToggle view={view} onViewChange={setView} />
             </div>
@@ -1040,7 +1040,7 @@ const TeamLeavesTab = () => {
             )}
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.01)] animate-fadeIn">
+            <div className="premium-3d-card-mini flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 animate-fadeIn">
                 <SearchBar value={search} onChange={(val) => { setSearch(val); setCurrentPage(1); }} placeholder="Search name or type..." />
                 <ViewToggle view={view} onViewChange={setView} />
             </div>
@@ -1284,7 +1284,7 @@ const TeamPerformanceTab = () => {
             )}
 
             {/* Controls */}
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_3px_rgba(0,0,0,0.01)] animate-fadeIn">
+            <div className="premium-3d-card-mini flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 animate-fadeIn">
                 <div className="flex flex-wrap items-center gap-3">
                     <SearchBar value={search} onChange={(val) => { setSearch(val); setCurrentPage(1); }} placeholder="Search employee or department..." />
                     
@@ -1426,7 +1426,7 @@ const MyTeam = () => {
     return (
         <div className="space-y-6 bg-[#F8FAFC] min-h-screen -m-6 p-6 select-none animate-fadeIn">
             {/* Top tab sub-navigation bar */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] px-6 py-1 flex items-center shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+            <div className="premium-3d-card-mini px-6 py-1 flex items-center">
                 <nav className="flex gap-4 overflow-x-auto scrollbar-none">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;

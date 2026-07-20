@@ -18,7 +18,7 @@ import { useAuth } from "../context/AuthContext";
  *  - If authenticated but wrong role, redirect to /unauthorized.
  */
 const ProtectedRoute = ({ children, allowedRoles }) => {
-    const { user, loading } = useAuth();
+    const { user, loading, canAccessRoute } = useAuth();
     const location = useLocation();
 
     // Only block rendering when we have no user at all and are still fetching
@@ -33,6 +33,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     // Not authenticated
     if (!user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    // Permission check
+    if (!canAccessRoute(location.pathname)) {
+        return <Navigate to="/unauthorized" replace />;
     }
 
     // Role check

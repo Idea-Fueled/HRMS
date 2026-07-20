@@ -5,6 +5,33 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinary.service.js";
 
+const resolveUserPermissions = (user) => {
+    if (!user) return null;
+    const userObj = typeof user.toObject === "function" ? user.toObject() : user;
+    if (!userObj.permissions) {
+        const isHrOrAdmin = userObj.role === "admin" || userObj.role === "hr";
+        userObj.permissions = {
+            dashboard: true,
+            me: true,
+            myTeam: true,
+            myFinances: true,
+            documents: {
+                companyDocuments: true,
+                employeeDocuments: isHrOrAdmin
+            },
+            timeAndAttend: isHrOrAdmin,
+            employees: isHrOrAdmin,
+            payroll: isHrOrAdmin,
+            recruitment: isHrOrAdmin,
+            hire: isHrOrAdmin,
+            offboardingAndOnboarding: isHrOrAdmin,
+            organization: isHrOrAdmin
+        };
+    }
+    return userObj;
+};
+
+
 export const registerUser = async (req, res) => {
     try {
         const {
@@ -84,6 +111,8 @@ export const registerUser = async (req, res) => {
         // Hash Password
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        const isHrOrAdmin = role === "admin" || role === "hr";
+
         // Create User
         const user = await User.create({
             employeeId,
@@ -106,6 +135,23 @@ export const registerUser = async (req, res) => {
             emergencyContactNumber,
             presentAddress: presentAddress || "",
             permanentAddress: permanentAddress || "",
+            permissions: {
+                dashboard: true,
+                me: true,
+                myTeam: true,
+                myFinances: true,
+                documents: {
+                    companyDocuments: true,
+                    employeeDocuments: isHrOrAdmin
+                },
+                timeAndAttend: isHrOrAdmin,
+                employees: isHrOrAdmin,
+                payroll: isHrOrAdmin,
+                recruitment: isHrOrAdmin,
+                hire: isHrOrAdmin,
+                offboardingAndOnboarding: isHrOrAdmin,
+                organization: isHrOrAdmin
+            }
         });
 
         return res.status(201).json({
@@ -192,7 +238,7 @@ export const loginUser = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Login successful.",
-            user,
+            user: resolveUserPermissions(user),
         });
     } catch (error) {
         console.error("Login User Error:", error);
@@ -270,7 +316,7 @@ export const getCurrentUser = async (req, res, next) => {
         }
         return res.status(200).json({
             success: true,
-            user
+            user: resolveUserPermissions(user)
         });
     } catch (error) {
         return res.status(500).json({

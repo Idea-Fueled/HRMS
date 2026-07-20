@@ -1,5 +1,5 @@
 import React from "react";
-import { Users, Wallet, FileText, Clock, UserPlus, CreditCard, Search, RefreshCw } from "lucide-react";
+import { Users, Wallet, FileText, Clock, UserPlus, CreditCard, Search, RefreshCw, Building2 } from "lucide-react";
 
 // Common Wrapper to match page header styling
 const PageContainer = ({ title, children }) => {
@@ -102,3 +102,8 @@ export const Recruitment = () => (
 export const OffboardingOnboarding = () => (
     <Phase2Placeholder title="Offboarding & Onboarding" icon={RefreshCw} />
 );
+
+export const Organization = () => (
+    <Phase2Placeholder title="Organization" icon={Building2} />
+);
+

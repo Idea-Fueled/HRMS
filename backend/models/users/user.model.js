@@ -187,6 +187,42 @@ const userScehma = new mongoose.Schema({
     joiningDate: {
         type: Date,
         default: null
+    },
+    permissions: {
+        type: {
+            dashboard: { type: Boolean, default: true },
+            me: { type: Boolean, default: true },
+            myTeam: { type: Boolean, default: true },
+            myFinances: { type: Boolean, default: true },
+            documents: {
+                companyDocuments: { type: Boolean, default: true },
+                employeeDocuments: { type: Boolean, default: false }
+            },
+            timeAndAttend: { type: Boolean, default: false },
+            employees: { type: Boolean, default: false },
+            payroll: { type: Boolean, default: false },
+            recruitment: { type: Boolean, default: false },
+            hire: { type: Boolean, default: false },
+            offboardingAndOnboarding: { type: Boolean, default: false },
+            organization: { type: Boolean, default: false }
+        },
+        default: {
+            dashboard: true,
+            me: true,
+            myTeam: true,
+            myFinances: true,
+            documents: {
+                companyDocuments: true,
+                employeeDocuments: false
+            },
+            timeAndAttend: false,
+            employees: false,
+            payroll: false,
+            recruitment: false,
+            hire: false,
+            offboardingAndOnboarding: false,
+            organization: false
+        }
     }
 
 },

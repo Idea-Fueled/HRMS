@@ -10,7 +10,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "sonner";
 import {
     TimeAttendance,
-    Hire, Payroll, Recruitment, OffboardingOnboarding
+    Hire, Payroll, Recruitment, OffboardingOnboarding, Organization
 } from "./pages/placeholders/Placeholders";
 import { Documents } from "./pages/documents/Documents";
 import MyFinances from "./pages/my-finances/MyFinances";
@@ -127,6 +127,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={ADMIN_HR}>
                         <OffboardingOnboarding />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "organization",
+                element: (
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
+                        <Organization />
                     </ProtectedRoute>
                 ),
             },

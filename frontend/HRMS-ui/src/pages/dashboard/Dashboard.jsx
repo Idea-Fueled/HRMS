@@ -326,14 +326,14 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
                             <span className="text-gray-400 text-[11px] mt-0.5 block font-medium">{h.day || ""}</span>
                         </div>
 
-                        {/* Type badge — hidden on hover when canEdit */}
-                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 transition-opacity ${canEdit ? "group-hover:opacity-0 group-hover:pointer-events-none" : ""} ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
+                        {/* Type badge */}
+                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
                             {formattedType}
                         </span>
 
-                        {/* Edit / Delete — only for admin/hr, appear on row hover */}
+                        {/* Edit / Delete — only for admin/hr */}
                         {canEdit && (
-                            <div className="absolute right-5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1 shrink-0">
                                 <button
                                     onClick={() => onEdit(h)}
                                     title="Edit holiday"
