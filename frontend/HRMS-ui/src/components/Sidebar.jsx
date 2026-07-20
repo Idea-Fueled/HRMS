@@ -207,7 +207,7 @@ const Sidebar = ({ onClose }) => {
         .filter(cat => cat.items.length > 0);
 
     return (
-        <aside className="w-[280px] h-screen bg-gradient-to-b from-[#1C4E86] to-[#0E2C52] flex flex-col border-r border-white/10 overflow-hidden select-none z-30 shadow-2xl relative">
+        <aside className="w-[280px] h-screen bg-gradient-to-b from-[#225FA3] to-[#144277] flex flex-col border-r border-white/10 overflow-hidden select-none z-30 shadow-2xl relative">
             <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
             <div className="absolute top-1/4 -left-10 w-28 h-28 bg-[#FFEA00]/5 rounded-full blur-2xl pointer-events-none" />
 
