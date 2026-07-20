@@ -1852,7 +1852,7 @@ const ProfileTab = ({ user, refreshUser }) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 animate-fadeIn">
             {/* Left Column Profile Card */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] p-6 text-center flex flex-col items-center justify-start h-fit select-none">
+            <div className="premium-3d-card p-6 text-center flex flex-col items-center justify-start h-fit select-none">
                 <div className="relative group inline-block">
                     <div className="relative cursor-pointer" onClick={triggerFileSelect}>
                         <Avatar 
@@ -1913,7 +1913,7 @@ const ProfileTab = ({ user, refreshUser }) => {
             {/* Right Column Profile Details */}
             <div className="space-y-6">
                 {/* Personal Details */}
-                <div className="bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] p-6">
+                <div className="premium-3d-card p-6">
                     <h3 className="text-[#1E1E1E] text-sm font-black mb-4 pb-2 border-b border-[#F3F4F6] text-left uppercase tracking-wider text-[#2D79C7] text-[11px]">Personal Details</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left text-xs font-semibold text-gray-500">
                         {personal.map(({ label, value }) => (
@@ -1926,7 +1926,7 @@ const ProfileTab = ({ user, refreshUser }) => {
                 </div>
 
                 {/* Leaves breakdown preview */}
-                <div className="bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] p-6">
+                <div className="premium-3d-card p-6">
                     <h3 className="text-[#1E1E1E] text-sm font-black mb-4 pb-2 border-b border-[#F3F4F6] text-left uppercase tracking-wider text-[#2D79C7] text-[11px]">Leave Balances</h3>
                     <div className="grid grid-cols-3 gap-4">
                         {[
@@ -1934,7 +1934,7 @@ const ProfileTab = ({ user, refreshUser }) => {
                             { label: "Sick Leave", total: user?.leaveBalance?.sick?.total ?? 6, used: user?.leaveBalance?.sick?.used ?? 0 },
                             { label: "Earned Leave", total: user?.leaveBalance?.earned?.total ?? 20, used: user?.leaveBalance?.earned?.used ?? 0 }
                         ].map(({ label, total, used }) => (
-                            <div key={label} className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-[14px] p-4 text-center">
+                            <div key={label} className="premium-3d-card-mini p-4 text-center">
                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">{label}</span>
                                 <span className="text-xl font-black text-[#1E1E1E] mt-2 block">
                                     {total - used}<span className="text-xs font-bold text-gray-400">/{total}</span>
