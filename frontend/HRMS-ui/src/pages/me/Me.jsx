@@ -1829,7 +1829,6 @@ const ProfileTab = ({ user, refreshUser }) => {
 
     const details = [
         { label: "Employee ID", value: user?.employeeId },
-        { label: "Role", value: user?.role },
         { label: "Department", value: user?.department },
         { label: "Designation", value: user?.designation },
         { label: "Work Location", value: user?.workLocation },
@@ -1895,10 +1894,6 @@ const ProfileTab = ({ user, refreshUser }) => {
                     />
 
                     <h3 className="text-[#1E1E1E] text-base font-black mt-4 leading-tight">{name}</h3>
-                    <p className="text-gray-400 text-xs mt-1 font-semibold">{user?.designation || "Employee"}</p>
-                    <div className="inline-flex mt-2 px-2.5 py-0.5 bg-blue-50 text-[#2D79C7] text-[10px] font-black uppercase tracking-wider rounded-full border border-blue-100">
-                        {user?.role || "Employee"}
-                    </div>
 
                     <div className="w-full border-t border-[#F3F4F6] my-5" />
 
