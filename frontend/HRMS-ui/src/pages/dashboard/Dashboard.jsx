@@ -304,7 +304,7 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
 
     return (
         <div className="space-y-1">
-            {holidays.slice(0, 3).map((h, idx) => {
+            {holidays.slice(0, 2).map((h, idx) => {
                 const d = h.date ? new Date(h.date) : new Date();
                 const dayNum = d.getDate();
                 const month = MONTH_ABBR[d.getMonth()];

@@ -4,7 +4,6 @@ import { X, CalendarDays, Loader2, AlertCircle, Calendar, Edit3, Trash2 } from "
 import { toast } from "sonner";
 import { getAllHolidays, updateHoliday, deleteHoliday } from "../services/dashboard.service";
 import { useAuth } from "../context/AuthContext";
-import ConfirmDialog from "./ConfirmDialog";
 
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -192,13 +191,81 @@ const HolidaysModal = ({ isOpen, onClose }) => {
         .filter(h => h.date && new Date(h.date).getFullYear() === selectedYear)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    const janToAugHolidays = filteredHolidays.filter(h => {
+        const d = h.date ? new Date(h.date) : new Date();
+        return d.getMonth() < 8; // Jan-Aug (months 0 to 7)
+    });
+
+    const septToDecHolidays = filteredHolidays.filter(h => {
+        const d = h.date ? new Date(h.date) : new Date();
+        return d.getMonth() >= 8; // Sep-Dec (months 8 to 11)
+    });
+
+    const renderHolidayCard = (h, idx) => {
+        const d = h.date ? new Date(h.date) : new Date();
+        const dayNum = d.getDate();
+        const monthAbbr = MONTH_ABBR[d.getMonth()];
+        const formattedType = displayType(h.type);
+        const isDeleting = deletingId === h._id;
+
+        return (
+            <div
+                key={h._id || idx}
+                className="group relative flex items-center gap-4 py-3 px-4 border border-gray-150 rounded-[14px] hover:border-blue-100 hover:bg-[#F8FAFC]/50 transition-all duration-200 shadow-sm bg-white"
+            >
+                {/* Date badge */}
+                <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-[#2D79C7]/10 to-[#1F5EA8]/10 border border-[#2D79C7]/15 flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[#2D79C7] text-[11px] font-bold uppercase leading-none">{monthAbbr}</span>
+                    <span className="text-[#1E1E1E] text-[15px] font-extrabold leading-tight mt-0.5">{dayNum}</span>
+                </div>
+
+                {/* Title + day */}
+                <div className="flex-1 min-w-0 text-left">
+                    <span className="text-[#1E1E1E] text-[13px] font-semibold block truncate" title={h.title}>
+                        {h.title || "Holiday"}
+                    </span>
+                    <span className="text-gray-400 text-[11px] mt-0.5 block font-medium">{h.day || ""}</span>
+                </div>
+
+                {/* Type badge */}
+                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
+                    {formattedType}
+                </span>
+
+                {/* Edit / Delete — only for admin/hr */}
+                {canEdit && (
+                    <div className="flex items-center gap-1 shrink-0">
+                        <button
+                            onClick={() => setEditingHoliday(h)}
+                            title="Edit"
+                            className="p-1.5 rounded-[8px] text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
+                        >
+                            <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={() => handleDelete(h)}
+                            disabled={isDeleting}
+                            title="Delete"
+                            className="p-1.5 rounded-[8px] text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                            {isDeleting
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Trash2 className="w-3.5 h-3.5" />
+                            }
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return ReactDOM.createPortal(
         <>
             {/* Backdrop */}
             <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 transition-opacity" onClick={onClose} />
 
             {/* Modal */}
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl mx-4 max-h-[85vh] bg-white rounded-[24px] shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-150 select-none">
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl mx-4 max-h-[85vh] bg-white rounded-[24px] shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-150 select-none">
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] text-white shrink-0">
@@ -270,64 +337,34 @@ const HolidaysModal = ({ isOpen, onClose }) => {
                             </div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {filteredHolidays.map((h, idx) => {
-                                const d = h.date ? new Date(h.date) : new Date();
-                                const dayNum = d.getDate();
-                                const monthAbbr = MONTH_ABBR[d.getMonth()];
-                                const formattedType = displayType(h.type);
-                                const isDeleting = deletingId === h._id;
-
-                                return (
-                                    <div
-                                        key={h._id || idx}
-                                        className="group relative flex items-center gap-4 py-3 px-4 border border-gray-100 rounded-[14px] hover:border-blue-100 hover:bg-[#F8FAFC]/50 transition-all duration-200 shadow-sm"
-                                    >
-                                        {/* Date badge */}
-                                        <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-[#2D79C7]/10 to-[#1F5EA8]/10 border border-[#2D79C7]/15 flex flex-col items-center justify-center shrink-0">
-                                            <span className="text-[#2D79C7] text-[11px] font-bold uppercase leading-none">{monthAbbr}</span>
-                                            <span className="text-[#1E1E1E] text-[15px] font-extrabold leading-tight mt-0.5">{dayNum}</span>
-                                        </div>
-
-                                        {/* Title + day */}
-                                        <div className="flex-1 min-w-0 text-left">
-                                            <span className="text-[#1E1E1E] text-[13px] font-semibold block truncate" title={h.title}>
-                                                {h.title || "Holiday"}
-                                            </span>
-                                            <span className="text-gray-400 text-[11px] mt-0.5 block font-medium">{h.day || ""}</span>
-                                        </div>
-
-                                        {/* Type badge */}
-                                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
-                                            {formattedType}
-                                        </span>
-
-                                        {/* Edit / Delete — only for admin/hr */}
-                                        {canEdit && (
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                <button
-                                                    onClick={() => setEditingHoliday(h)}
-                                                    title="Edit"
-                                                    className="p-1.5 rounded-[8px] text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
-                                                >
-                                                    <Edit3 className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(h)}
-                                                    disabled={isDeleting}
-                                                    title="Delete"
-                                                    className="p-1.5 rounded-[8px] text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
-                                                >
-                                                    {isDeleting
-                                                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                        : <Trash2 className="w-3.5 h-3.5" />
-                                                    }
-                                                </button>
-                                            </div>
-                                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                            {/* Left Column (Jan - Aug) */}
+                            <div className="space-y-3.5">
+                                <h4 className="text-[#2D79C7] text-[11px] font-black uppercase tracking-wider pb-2 border-b border-gray-100 mb-2 flex items-center gap-1.5">
+                                    <span>🌸</span> January - August
+                                </h4>
+                                {janToAugHolidays.length === 0 ? (
+                                    <div className="text-center py-6 border border-dashed border-gray-100 rounded-[14px] text-gray-400 text-[11px] font-semibold italic bg-gray-50/30">
+                                        No holidays in this period
                                     </div>
-                                );
-                            })}
+                                ) : (
+                                    janToAugHolidays.map((h, idx) => renderHolidayCard(h, idx))
+                                )}
+                            </div>
+
+                            {/* Right Column (Sep - Dec) */}
+                            <div className="space-y-3.5">
+                                <h4 className="text-violet-700 text-[11px] font-black uppercase tracking-wider pb-2 border-b border-gray-100 mb-2 flex items-center gap-1.5">
+                                    <span>🍁</span> September - December
+                                </h4>
+                                {septToDecHolidays.length === 0 ? (
+                                    <div className="text-center py-6 border border-dashed border-gray-100 rounded-[14px] text-gray-400 text-[11px] font-semibold italic bg-gray-50/30">
+                                        No holidays in this period
+                                    </div>
+                                ) : (
+                                    septToDecHolidays.map((h, idx) => renderHolidayCard(h, idx))
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
