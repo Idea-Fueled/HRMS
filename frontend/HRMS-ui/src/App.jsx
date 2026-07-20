@@ -61,7 +61,7 @@ const router = createBrowserRouter([
             {
                 path: "my-team",
                 element: (
-                    <ProtectedRoute allowedRoles={ADMIN_HR_MANAGER}>
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
                         <MyTeam />
                     </ProtectedRoute>
                 ),
