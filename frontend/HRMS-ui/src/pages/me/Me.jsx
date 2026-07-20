@@ -1850,72 +1850,72 @@ const ProfileTab = ({ user, refreshUser }) => {
     const name = user?.fullName || `${user?.firstName} ${user?.lastName || ""}`;
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 animate-fadeIn">
-            {/* Left Column Profile Card */}
-            <div className="premium-3d-card p-6 text-center flex flex-col items-center justify-start h-fit select-none">
-                <div className="relative group inline-block">
-                    <div className="relative cursor-pointer" onClick={triggerFileSelect}>
-                        <Avatar 
-                            src={user?.profilePicture} 
-                            name={name} 
-                            size="w-28 h-28" 
-                            textSize="text-3xl"
-                            className="border-4 border-white shadow-md rounded-full object-cover transition-opacity group-hover:opacity-75"
-                        />
-                        <div className="absolute inset-0 bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all duration-300">
-                            <Camera className="w-6 h-6 mb-1" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Change photo</span>
-                        </div>
-                        {uploading && (
-                            <div className="absolute inset-0 bg-black/60 text-white rounded-full flex flex-col items-center justify-center z-10">
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mb-1" />
-                                <span className="text-[9px] font-bold">Uploading...</span>
+        <div className="space-y-6 animate-fadeIn">
+            {/* Top Row: Left Profile Card and Right Personal Details Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-stretch">
+                {/* Left Column Profile Card */}
+                <div className="premium-3d-card p-6 text-center flex flex-col items-center justify-start select-none">
+                    <div className="relative group inline-block">
+                        <div className="relative cursor-pointer" onClick={triggerFileSelect}>
+                            <Avatar 
+                                src={user?.profilePicture} 
+                                name={name} 
+                                size="w-28 h-28" 
+                                textSize="text-3xl"
+                                className="border-4 border-white shadow-md rounded-full object-cover transition-opacity group-hover:opacity-75"
+                            />
+                            <div className="absolute inset-0 bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all duration-300">
+                                <Camera className="w-6 h-6 mb-1" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Change photo</span>
                             </div>
+                            {uploading && (
+                                <div className="absolute inset-0 bg-black/60 text-white rounded-full flex flex-col items-center justify-center z-10">
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mb-1" />
+                                    <span className="text-[9px] font-bold">Uploading...</span>
+                                </div>
+                            )}
+                        </div>
+                        {user?.profilePicture && (
+                            <button
+                                type="button"
+                                onClick={handleDeletePhoto}
+                                title="Delete profile picture"
+                                className="absolute -top-1 -right-1 bg-white hover:bg-rose-50 text-rose-500 hover:text-rose-600 border border-gray-150 shadow-md rounded-full p-2 transition-colors cursor-pointer z-20 flex items-center justify-center"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                         )}
                     </div>
-                    {user?.profilePicture && (
-                        <button
-                            type="button"
-                            onClick={handleDeletePhoto}
-                            title="Delete profile picture"
-                            className="absolute -top-1 -right-1 bg-white hover:bg-rose-50 text-rose-500 hover:text-rose-600 border border-gray-150 shadow-md rounded-full p-2 transition-colors cursor-pointer z-20 flex items-center justify-center"
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                    )}
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        accept="image/jpeg,image/jpg,image/png,image/webp" 
+                        className="hidden" 
+                    />
+
+                    <h3 className="text-[#1E1E1E] text-base font-black mt-4 leading-tight">{name}</h3>
+                    <p className="text-gray-400 text-xs mt-1 font-semibold">{user?.designation || "Employee"}</p>
+                    <div className="inline-flex mt-2 px-2.5 py-0.5 bg-blue-50 text-[#2D79C7] text-[10px] font-black uppercase tracking-wider rounded-full border border-blue-100">
+                        {user?.role || "Employee"}
+                    </div>
+
+                    <div className="w-full border-t border-[#F3F4F6] my-5" />
+
+                    <div className="w-full space-y-3.5 text-left text-xs font-semibold text-gray-500">
+                        {details.map(({ label, value }) => (
+                            <div key={label} className="flex justify-between items-center">
+                                <span>{label}</span>
+                                <span className="text-gray-800 font-bold capitalize">{value || "—"}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileChange} 
-                    accept="image/jpeg,image/jpg,image/png,image/webp" 
-                    className="hidden" 
-                />
 
-                <h3 className="text-[#1E1E1E] text-base font-black mt-4 leading-tight">{name}</h3>
-                <p className="text-gray-400 text-xs mt-1 font-semibold">{user?.designation || "Employee"}</p>
-                <div className="inline-flex mt-2 px-2.5 py-0.5 bg-blue-50 text-[#2D79C7] text-[10px] font-black uppercase tracking-wider rounded-full border border-blue-100">
-                    {user?.role || "Employee"}
-                </div>
-
-                <div className="w-full border-t border-[#F3F4F6] my-5" />
-
-                <div className="w-full space-y-3.5 text-left text-xs font-semibold text-gray-500">
-                    {details.map(({ label, value }) => (
-                        <div key={label} className="flex justify-between items-center">
-                            <span>{label}</span>
-                            <span className="text-gray-800 font-bold capitalize">{value || "—"}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Right Column Profile Details */}
-            <div className="space-y-6">
-                {/* Personal Details */}
-                <div className="premium-3d-card p-6">
+                {/* Right Column: Personal Details Card */}
+                <div className="premium-3d-card p-6 flex flex-col justify-start">
                     <h3 className="text-[#1E1E1E] text-sm font-black mb-4 pb-2 border-b border-[#F3F4F6] text-left uppercase tracking-wider text-[#2D79C7] text-[11px]">Personal Details</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left text-xs font-semibold text-gray-500">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left text-xs font-semibold text-gray-500 flex-1 flex flex-col justify-center">
                         {personal.map(({ label, value }) => (
                             <div key={label} className="flex flex-col gap-1">
                                 <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">{label}</span>
@@ -1924,25 +1924,25 @@ const ProfileTab = ({ user, refreshUser }) => {
                         ))}
                     </div>
                 </div>
+            </div>
 
-                {/* Leaves breakdown preview */}
-                <div className="premium-3d-card p-6">
-                    <h3 className="text-[#1E1E1E] text-sm font-black mb-4 pb-2 border-b border-[#F3F4F6] text-left uppercase tracking-wider text-[#2D79C7] text-[11px]">Leave Balances</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        {[
-                            { label: "Casual Leave", total: user?.leaveBalance?.casual?.total ?? 8, used: user?.leaveBalance?.casual?.used ?? 0 },
-                            { label: "Sick Leave", total: user?.leaveBalance?.sick?.total ?? 6, used: user?.leaveBalance?.sick?.used ?? 0 },
-                            { label: "Earned Leave", total: user?.leaveBalance?.earned?.total ?? 20, used: user?.leaveBalance?.earned?.used ?? 0 }
-                        ].map(({ label, total, used }) => (
-                            <div key={label} className="premium-3d-card-mini p-4 text-center">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">{label}</span>
-                                <span className="text-xl font-black text-[#1E1E1E] mt-2 block">
-                                    {total - used}<span className="text-xs font-bold text-gray-400">/{total}</span>
-                                </span>
-                                <span className="text-[9px] text-gray-400 mt-1 block">{used} days used</span>
-                            </div>
-                        ))}
-                    </div>
+            {/* Bottom Row: Leaves Breakdown Preview (Full Width) */}
+            <div className="premium-3d-card p-6">
+                <h3 className="text-[#1E1E1E] text-sm font-black mb-4 pb-2 border-b border-[#F3F4F6] text-left uppercase tracking-wider text-[#2D79C7] text-[11px]">Leave Balances</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                        { label: "Casual Leave", total: user?.leaveBalance?.casual?.total ?? 8, used: user?.leaveBalance?.casual?.used ?? 0 },
+                        { label: "Sick Leave", total: user?.leaveBalance?.sick?.total ?? 6, used: user?.leaveBalance?.sick?.used ?? 0 },
+                        { label: "Earned Leave", total: user?.leaveBalance?.earned?.total ?? 20, used: user?.leaveBalance?.earned?.used ?? 0 }
+                    ].map(({ label, total, used }) => (
+                        <div key={label} className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-[14px] p-4 text-center">
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">{label}</span>
+                            <span className="text-xl font-black text-[#1E1E1E] mt-2 block">
+                                {total - used}<span className="text-xs font-bold text-gray-400">/{total}</span>
+                            </span>
+                            <span className="text-[9px] text-gray-400 mt-1 block">{used} days used</span>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
