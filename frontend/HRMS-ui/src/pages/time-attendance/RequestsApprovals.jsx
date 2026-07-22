@@ -95,7 +95,7 @@ export const RequestsApprovals = () => {
             
             {/* Top Metrics Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <div className="premium-3d-card p-5">
                     <div className="flex items-center justify-between">
                         <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Pending Requests</span>
                         <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
@@ -106,7 +106,7 @@ export const RequestsApprovals = () => {
                     <span className="text-[11px] text-gray-400 font-medium">Awaiting manager review</span>
                 </div>
 
-                <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <div className="premium-3d-card p-5">
                     <div className="flex items-center justify-between">
                         <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Approved Requests</span>
                         <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
@@ -117,7 +117,7 @@ export const RequestsApprovals = () => {
                     <span className="text-[11px] text-gray-400 font-medium">Successfully processed</span>
                 </div>
 
-                <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <div className="premium-3d-card p-5">
                     <div className="flex items-center justify-between">
                         <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Rejected Requests</span>
                         <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
@@ -128,7 +128,7 @@ export const RequestsApprovals = () => {
                     <span className="text-[11px] text-gray-400 font-medium">Declined applications</span>
                 </div>
 
-                <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <div className="premium-3d-card p-5">
                     <div className="flex items-center justify-between">
                         <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">On Leave Today</span>
                         <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
@@ -141,7 +141,7 @@ export const RequestsApprovals = () => {
             </div>
 
             {/* Requests Table Card */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.02)] space-y-4">
+            <div className="premium-3d-card p-6 space-y-4">
                 
                 {/* Header & Filter Controls */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E5E7EB]">

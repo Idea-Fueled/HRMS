@@ -357,7 +357,7 @@ export const ShiftSchedule = () => {
         <div className="space-y-6 text-left select-none animate-fadeIn pb-12">
             
             {/* Symmetric Sub-Tabs Selector Top Bar */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] px-6 py-3 flex items-center justify-between shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+            <div className="premium-3d-card px-6 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
@@ -430,7 +430,7 @@ export const ShiftSchedule = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
                     
                     {/* Left Column: Searchable Shift List */}
-                    <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-4">
+                    <div className="premium-3d-card p-4 space-y-4">
                         <div className="relative">
                             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
                             <input
@@ -482,7 +482,7 @@ export const ShiftSchedule = () => {
 
                     {/* Right Column: Shift Details View */}
                     {selectedShift ? (
-                        <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
+                        <div className="premium-3d-card p-6 space-y-6">
                             
                             {/* Header & Actions */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#E5E7EB]">
@@ -620,7 +620,7 @@ export const ShiftSchedule = () => {
                SUB-TAB 2: HOLIDAYS MANAGEMENT
             ───────────────────────────────────────────── */}
             {subTab === "holidays" && (
-                <div className="bg-white border border-[#E5E7EB] rounded-[16px] p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-4">
+                <div className="premium-3d-card p-6 space-y-4">
                     
                     {/* Header & Filter */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E5E7EB]">
