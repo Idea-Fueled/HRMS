@@ -236,22 +236,10 @@ const TimeAttendanceDashboard = () => {
         <div className="space-y-6 text-left select-none animate-fadeIn pb-12">
             
             {/* ─────────────────────────────────────────────
-               TOP HEADER & CONTROLS (CLEAN MINIMAL CARD)
+               TOP FILTER CONTROLS BAR (CLEAN MINIMAL CARD)
             ───────────────────────────────────────────── */}
-            <div className="premium-3d-card p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-                <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0">
-                        <Clock className="w-5 h-5 stroke-[2.2]" />
-                    </div>
-                    <div>
-                        <h1 className="text-[#1E1E1E] text-[19px] font-extrabold tracking-tight">Time & Attendance Dashboard</h1>
-                        <p className="text-gray-500 text-xs font-medium mt-0.5">
-                            Real-time attendance summary, department breakdown, and employee records.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3.5">
+            <div className="premium-3d-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                     {/* Clean View Switcher Pill */}
                     <div className="flex items-center bg-[#F8FAFC] border border-gray-200 rounded-xl p-1 text-xs font-semibold">
                         <button
@@ -324,7 +312,9 @@ const TimeAttendanceDashboard = () => {
                             />
                         </div>
                     </div>
+                </div>
 
+                <div className="flex items-center gap-3">
                     {/* Clock & Date Badge */}
                     <div className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 flex items-center gap-2 text-xs font-mono font-bold text-[#1E1E1E]">
                         <Clock className="w-3.5 h-3.5 text-[#2D79C7]" />
@@ -947,38 +937,39 @@ export const TimeAttendance = () => {
     ];
 
     return (
-        <div className="space-y-6 bg-[#F8FAFC] min-h-screen -m-6 p-6 select-none">
+        <div className="space-y-6 text-left select-none animate-fadeIn pb-12">
             
-            {/* Top Navigation Bar matching Me.jsx */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] px-6 py-1 flex items-center justify-between shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
-                <nav className="flex gap-4">
-                    {moduleTabs.map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.key;
-                        return (
-                            <button
-                                key={tab.key}
-                                type="button"
-                                onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 px-3 py-4 text-[13px] font-bold border-b-2 transition-all cursor-pointer relative ${
-                                    isActive
-                                        ? "border-[#2D79C7] text-[#2D79C7]"
-                                        : "border-transparent text-gray-400 hover:text-gray-600"
-                                }`}
-                            >
-                                <Icon className={`w-4 h-4 ${isActive ? "text-[#2D79C7]" : "text-gray-400"}`} />
-                                <span>{tab.label}</span>
-                                {isActive && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#2D79C7] rounded-full" />
-                                )}
-                            </button>
-                        );
-                    })}
-                </nav>
-
-                <div className="hidden sm:block text-xs font-semibold text-gray-400">
-                    Time & Attendance Management
+            {/* Header section matching Documents.jsx */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-150 gap-4">
+                <div>
+                    <h2 className="text-[#1E1E1E] text-[20px] font-black tracking-wide">Time & Attendance</h2>
+                    <p className="text-gray-400 text-[12px] font-semibold mt-1">
+                        Track clock-ins, leaves, department summaries, and work shifts.
+                    </p>
                 </div>
+            </div>
+
+            {/* Sub-navigation Tabs matching Documents.jsx */}
+            <div className="flex border-b border-gray-200">
+                {moduleTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.key;
+                    return (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`px-5 py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                                isActive
+                                    ? "border-[#2D79C7] text-[#2D79C7]"
+                                    : "border-transparent text-gray-400 hover:text-gray-600"
+                            }`}
+                        >
+                            <Icon className={`w-4 h-4 ${isActive ? "text-[#2D79C7]" : "text-gray-400"}`} />
+                            <span>{tab.label}</span>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Active Tab */}
