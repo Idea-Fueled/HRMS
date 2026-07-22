@@ -13,6 +13,7 @@ import pollRoutes from "./routes/polls/poll.route.js"
 import teamRoutes from "./routes/team/team.route.js"
 import employeeRoutes from "./routes/employees/employee.routes.js"
 import documentRoutes from "./routes/documents/document.routes.js"
+import shiftRoutes from "./routes/shifts/shift.route.js"
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +47,7 @@ app.use("/api/polls", pollRoutes)
 app.use("/api/team", teamRoutes)
 app.use("/api/employees", employeeRoutes)
 app.use("/api/documents", documentRoutes)
+app.use("/api/shifts", shiftRoutes)
 
 connectDB()
 
