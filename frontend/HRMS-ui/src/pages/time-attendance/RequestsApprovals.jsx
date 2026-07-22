@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { Avatar } from "../../components/SharedComponents";
 import { getTeamLeaves, updateLeaveStatus } from "../../services/team.service";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 export const RequestsApprovals = () => {
     const [leaves, setLeaves] = useState([]);
@@ -25,6 +26,7 @@ export const RequestsApprovals = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("All"); // 'All' | 'Pending' | 'Approved' | 'Rejected'
     const [processingId, setProcessingId] = useState(null);
+    const [actionTarget, setActionTarget] = useState(null); // { req, action: 'approved' | 'rejected' }
 
     const fetchRequests = useCallback(async () => {
         try {
@@ -46,12 +48,14 @@ export const RequestsApprovals = () => {
         fetchRequests();
     }, [fetchRequests]);
 
-    const handleStatusUpdate = async (id, status) => {
+    const confirmActionTarget = async () => {
+        if (!actionTarget) return;
+        const { req, action } = actionTarget;
         try {
-            setProcessingId(id);
-            const res = await updateLeaveStatus(id, status);
+            setProcessingId(req._id);
+            const res = await updateLeaveStatus(req._id, action);
             if (res.data?.success) {
-                toast.success(`Request ${status} successfully.`);
+                toast.success(`Request ${action} successfully.`);
                 await fetchRequests();
             } else {
                 toast.error(res.data?.message || "Failed to update request status.");
@@ -61,6 +65,7 @@ export const RequestsApprovals = () => {
             toast.error("Failed to update status.");
         } finally {
             setProcessingId(null);
+            setActionTarget(null);
         }
     };
 
@@ -258,7 +263,7 @@ export const RequestsApprovals = () => {
                                                     <button
                                                         type="button"
                                                         disabled={processingId === req._id}
-                                                        onClick={() => handleStatusUpdate(req._id, "approved")}
+                                                        onClick={() => setActionTarget({ req, action: "approved" })}
                                                         className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                     >
                                                         <Check className="w-3.5 h-3.5" />
@@ -268,7 +273,7 @@ export const RequestsApprovals = () => {
                                                     <button
                                                         type="button"
                                                         disabled={processingId === req._id}
-                                                        onClick={() => handleStatusUpdate(req._id, "rejected")}
+                                                        onClick={() => setActionTarget({ req, action: "rejected" })}
                                                         className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                     >
                                                         <X className="w-3.5 h-3.5" />
@@ -287,6 +292,20 @@ export const RequestsApprovals = () => {
                 </div>
 
             </div>
+
+            {/* Approval / Rejection Confirm Dialog */}
+            <ConfirmDialog
+                isOpen={!!actionTarget}
+                title={actionTarget?.action === "approved" ? "Approve Request" : "Reject Request"}
+                message={actionTarget?.action === "approved" 
+                    ? `Are you sure you want to approve ${actionTarget?.req?.type} for ${actionTarget?.req?.name}?` 
+                    : `Are you sure you want to decline ${actionTarget?.req?.type} for ${actionTarget?.req?.name}?`}
+                confirmLabel={actionTarget?.action === "approved" ? "Approve Request" : "Reject Request"}
+                cancelLabel="Cancel"
+                variant={actionTarget?.action === "approved" ? "info" : "danger"}
+                onConfirm={confirmActionTarget}
+                onCancel={() => setActionTarget(null)}
+            />
 
         </div>
     );

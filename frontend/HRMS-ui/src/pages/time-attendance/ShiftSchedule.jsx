@@ -33,6 +33,7 @@ import {
 } from "../../services/shift.service";
 import { getAllEmployees } from "../../services/employee.service";
 import API from "../../services/api";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 /* ─────────────────────────────────────────────
    HELPERS & FORMATTERS
@@ -64,10 +65,12 @@ export const ShiftSchedule = () => {
     const [selectedShiftId, setSelectedShiftId] = useState(null);
     const [shiftSearch, setShiftSearch] = useState("");
 
-    // Shift Modals
+    // Shift Modals & Confirm Dialogs
     const [createShiftOpen, setCreateShiftOpen] = useState(false);
     const [editShiftOpen, setEditShiftOpen] = useState(false);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
+    const [deleteShiftTarget, setDeleteShiftTarget] = useState(null);
+    const [deleteHolidayTarget, setDeleteHolidayTarget] = useState(null);
     
     // Active Employees List for Assignment
     const [allEmployees, setAllEmployees] = useState([]);
@@ -247,17 +250,33 @@ export const ShiftSchedule = () => {
         }
     };
 
-    const handleDeleteShift = async (shiftId) => {
-        if (!window.confirm("Are you sure you want to delete this shift?")) return;
-
+    const confirmDeleteShift = async () => {
+        if (!deleteShiftTarget) return;
         try {
-            const res = await deleteShift(shiftId);
+            const res = await deleteShift(deleteShiftTarget._id);
             if (res.data?.success) {
                 toast.success("Shift deleted successfully.");
                 await fetchShifts();
             }
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to delete shift.");
+        } finally {
+            setDeleteShiftTarget(null);
+        }
+    };
+
+    const confirmDeleteHoliday = async () => {
+        if (!deleteHolidayTarget) return;
+        try {
+            const res = await deleteHoliday(deleteHolidayTarget._id);
+            if (res.data?.success) {
+                toast.success("Holiday deleted successfully.");
+                await fetchHolidaysData();
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to delete holiday.");
+        } finally {
+            setDeleteHolidayTarget(null);
         }
     };
 
@@ -336,20 +355,6 @@ export const ShiftSchedule = () => {
             }
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to update holiday.");
-        }
-    };
-
-    const handleDeleteHoliday = async (holidayId) => {
-        if (!window.confirm("Are you sure you want to delete this holiday?")) return;
-
-        try {
-            const res = await deleteHoliday(holidayId);
-            if (res.data?.success) {
-                toast.success("Holiday deleted successfully.");
-                await fetchHolidaysData();
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Failed to delete holiday.");
         }
     };
 
@@ -530,7 +535,7 @@ export const ShiftSchedule = () => {
 
                                     <button
                                         type="button"
-                                        onClick={() => handleDeleteShift(selectedShift._id)}
+                                        onClick={() => setDeleteShiftTarget(selectedShift)}
                                         className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -727,7 +732,7 @@ export const ShiftSchedule = () => {
 
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleDeleteHoliday(h._id)}
+                                                            onClick={() => setDeleteHolidayTarget(h)}
                                                             className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer border border-rose-100"
                                                             title="Delete Holiday"
                                                         >
@@ -1165,6 +1170,30 @@ export const ShiftSchedule = () => {
                     </div>
                 </div>
             )}
+
+            {/* Delete Shift Confirm Dialog */}
+            <ConfirmDialog
+                isOpen={!!deleteShiftTarget}
+                title="Delete Shift Schedule"
+                message={`Are you sure you want to delete "${deleteShiftTarget?.name}"? Employees currently assigned to this shift will need to be re-assigned.`}
+                confirmLabel="Delete Shift"
+                cancelLabel="Cancel"
+                variant="danger"
+                onConfirm={confirmDeleteShift}
+                onCancel={() => setDeleteShiftTarget(null)}
+            />
+
+            {/* Delete Holiday Confirm Dialog */}
+            <ConfirmDialog
+                isOpen={!!deleteHolidayTarget}
+                title="Delete Holiday"
+                message={`Are you sure you want to remove "${deleteHolidayTarget?.title}" from the official holiday list?`}
+                confirmLabel="Delete Holiday"
+                cancelLabel="Cancel"
+                variant="danger"
+                onConfirm={confirmDeleteHoliday}
+                onCancel={() => setDeleteHolidayTarget(null)}
+            />
 
         </div>
     );
