@@ -20,13 +20,26 @@ import { uploadProfilePicture } from "../../services/auth.service";
 const formatDateStr = (d) => {
     if (!d) return "—";
     try {
-        return new Date(d).toLocaleDateString("en-IN", {
+        const dateObj = new Date(d);
+        if (isNaN(dateObj.getTime())) return String(d);
+        return dateObj.toLocaleDateString("en-IN", {
             day: "2-digit",
             month: "short",
             year: "numeric"
         });
     } catch {
         return String(d);
+    }
+};
+
+const safeDateToInput = (d) => {
+    if (!d) return "";
+    try {
+        const dateObj = new Date(d);
+        if (isNaN(dateObj.getTime())) return "";
+        return dateObj.toISOString().split("T")[0];
+    } catch {
+        return "";
     }
 };
 
@@ -173,7 +186,7 @@ export const EmployeeProfile = () => {
             interests: Array.isArray(employee.interests) && employee.interests.length > 0 
                 ? employee.interests.join(", ") 
                 : "Photography, Technology, Reading, Badminton, Chess",
-            dateOfBirth: employee.dateOfBirth ? new Date(employee.dateOfBirth).toISOString().split("T")[0] : "",
+            dateOfBirth: safeDateToInput(employee.dateOfBirth),
             gender: employee.gender || "Male",
             bloodGroup: employee.bloodGroup || "O+",
             fatherName: employee.fatherName || "",
