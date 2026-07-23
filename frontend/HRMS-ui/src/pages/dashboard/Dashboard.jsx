@@ -1137,9 +1137,19 @@ const LeaveBalancesCard = ({ leaveSummary }) => {
 };
 
 /* ─────────────────────────────────────────────
-   CREATE ANNOUNCEMENT / POLL
+   BUZZ FEED (UNIFIED COMPOSER + FEED)
 ───────────────────────────────────────────── */
-const CreateAnnouncementCard = ({ onPost, onCreatePoll }) => {
+const categoryBadge = {
+    Announcement: "bg-blue-50 text-[#2D79C7] border-blue-100",
+    Shoutout: "bg-amber-50 text-amber-700 border-amber-100",
+    Question: "bg-violet-50 text-violet-700 border-violet-100",
+    Idea: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    Update: "bg-gray-50 text-gray-600 border-gray-100",
+    Post: "bg-gray-50 text-gray-600 border-gray-100",
+};
+
+const BuzzFeedCard = ({ feed = [], currentUser, onVote, onPost, onCreatePoll }) => {
+    // Post / Poll creation state inside Buzz Feed
     const [tab, setTab] = useState("Post");
     const [text, setText] = useState("");
     const [pollQuestion, setPollQuestion] = useState("");
@@ -1186,112 +1196,6 @@ const CreateAnnouncementCard = ({ onPost, onCreatePoll }) => {
         return !text.trim();
     };
 
-    return (
-        <Card>
-            <div className="px-5 pt-4 pb-0">
-                <div className="flex gap-2 border-b border-[#F3F4F6]">
-                    {["Post", "Announcement", "Poll"].map(t => (
-                        <button
-                            key={t}
-                            type="button"
-                            onClick={() => setTab(t)}
-                            className={`px-3 py-2.5 text-[12px] font-bold border-b-2 transition-all cursor-pointer ${tab === t
-                                ? "border-[#2D79C7] text-[#2D79C7]"
-                                : "border-transparent text-gray-400 hover:text-gray-600"
-                                }`}
-                        >
-                            {t}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="px-5 pb-5 pt-4">
-                <form onSubmit={handleSubmit} className="space-y-3">
-                    {tab !== "Poll" ? (
-                        <textarea
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                            placeholder={
-                                tab === "Announcement"
-                                    ? "Write a formal announcement for the team..."
-                                    : "Share an update, question, or check-in..."
-                            }
-                            rows={3}
-                            className="w-full p-4 bg-[#F8FAFC] border border-[#E5E7EB] rounded-[14px] text-[13px] text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-2 focus:ring-[#2D79C7]/10 transition-all resize-none"
-                        />
-                    ) : (
-                        <div className="space-y-3">
-                            <input
-                                type="text"
-                                value={pollQuestion}
-                                onChange={(e) => setPollQuestion(e.target.value)}
-                                placeholder="Ask a question..."
-                                className="w-full px-4 py-2.5 bg-[#F8FAFC] border border-[#E5E7EB] rounded-[12px] text-[13px] text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-2 focus:ring-[#2D79C7]/10 transition-all"
-                            />
-                            <div className="space-y-2">
-                                {pollOptions.map((option, idx) => (
-                                    <div key={idx} className="flex items-center gap-2">
-                                        <input
-                                            type="text"
-                                            value={option}
-                                            onChange={(e) => handleOptionChange(idx, e.target.value)}
-                                            placeholder={`Option ${idx + 1}`}
-                                            className="flex-1 px-4 py-2 bg-[#F8FAFC] border border-[#E5E7EB] rounded-[10px] text-[12px] text-[#1E1E1E] focus:outline-none focus:bg-white focus:border-[#2D79C7] transition-all"
-                                        />
-                                        {pollOptions.length > 2 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveOption(idx)}
-                                                className="text-gray-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                            {pollOptions.length < 5 && (
-                                <button
-                                    type="button"
-                                    onClick={handleAddOption}
-                                    className="text-[#2D79C7] text-[11px] font-bold hover:underline cursor-pointer"
-                                >
-                                    + Add Option
-                                </button>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="flex justify-end pt-1">
-                        <button
-                            type="submit"
-                            disabled={isSubmitDisabled()}
-                            className="bg-[#2D79C7] hover:bg-[#1F5EA8] disabled:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed text-white text-[12px] font-bold px-4 py-2 rounded-[10px] flex items-center gap-1.5 shadow-sm shadow-blue-200 active:scale-95 transition-all cursor-pointer"
-                        >
-                            <Send className="w-3.5 h-3.5" />
-                            {tab === "Poll" ? "Post Poll" : tab === "Announcement" ? "Announce" : "Post"}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </Card>
-    );
-};
-
-/* ─────────────────────────────────────────────
-   BUZZ FEED
-───────────────────────────────────────────── */
-const categoryBadge = {
-    Announcement: "bg-blue-50 text-[#2D79C7] border-blue-100",
-    Shoutout: "bg-amber-50 text-amber-700 border-amber-100",
-    Question: "bg-violet-50 text-violet-700 border-violet-100",
-    Idea: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    Update: "bg-gray-50 text-gray-600 border-gray-100",
-    Post: "bg-gray-50 text-gray-600 border-gray-100",
-};
-
-const BuzzFeedCard = ({ feed = [], currentUser, onVote }) => {
     const list = feed || [];
 
     const formatTimestamp = (dateStr) => {
@@ -1334,7 +1238,7 @@ const BuzzFeedCard = ({ feed = [], currentUser, onVote }) => {
                                         {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-[#2D79C7]" />}
                                         {opt}
                                     </span>
-                                    <span className="relative z-10 text-gray-500 font-mono">{pct}% ({optVotes})</span>
+                                    <span className="relative z-10 text-gray-500 font-semibold">{pct}% ({optVotes})</span>
                                 </div>
                             ) : (
                                 <button
@@ -1355,15 +1259,104 @@ const BuzzFeedCard = ({ feed = [], currentUser, onVote }) => {
     return (
         <Card>
             <CardHeader icon={TrendingUp} title="Buzz Feed" />
-            <div className="px-5 pb-5 pt-3">
+            <div className="px-5 pb-5 pt-3 space-y-4">
+                
+                {/* Unified Post / Poll Composer */}
+                <div className="bg-[#F8FAFC] border border-[#E5E7EB] rounded-[16px] p-4 space-y-3">
+                    <div className="flex gap-1.5 border-b border-[#E5E7EB] pb-2">
+                        {["Post", "Announcement", "Poll"].map(t => (
+                            <button
+                                key={t}
+                                type="button"
+                                onClick={() => setTab(t)}
+                                className={`px-3 py-1.5 text-[11.5px] font-bold rounded-lg transition-all cursor-pointer ${tab === t
+                                    ? "bg-white text-[#2D79C7] shadow-sm border border-gray-200"
+                                    : "text-gray-500 hover:text-gray-800"
+                                    }`}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-3">
+                        {tab !== "Poll" ? (
+                            <textarea
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder={
+                                    tab === "Announcement"
+                                        ? "Write a formal announcement for the team..."
+                                        : "Share an update, question, or check-in..."
+                                }
+                                rows={2}
+                                className="w-full p-3 bg-white border border-[#E5E7EB] rounded-[12px] text-[12.5px] text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:border-[#2D79C7] transition-all resize-none"
+                            />
+                        ) : (
+                            <div className="space-y-2">
+                                <input
+                                    type="text"
+                                    value={pollQuestion}
+                                    onChange={(e) => setPollQuestion(e.target.value)}
+                                    placeholder="Ask a question..."
+                                    className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-[10px] text-[12px] text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:border-[#2D79C7] transition-all"
+                                />
+                                <div className="space-y-2">
+                                    {pollOptions.map((option, idx) => (
+                                        <div key={idx} className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={option}
+                                                onChange={(e) => handleOptionChange(idx, e.target.value)}
+                                                placeholder={`Option ${idx + 1}`}
+                                                className="flex-1 px-3 py-1.5 bg-white border border-[#E5E7EB] rounded-[8px] text-[12px] text-[#1E1E1E] focus:outline-none focus:border-[#2D79C7] transition-all"
+                                            />
+                                            {pollOptions.length > 2 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveOption(idx)}
+                                                    className="text-gray-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                {pollOptions.length < 5 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAddOption}
+                                        className="text-[#2D79C7] text-[11px] font-bold hover:underline cursor-pointer"
+                                    >
+                                        + Add Option
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex justify-end pt-1">
+                            <button
+                                type="submit"
+                                disabled={isSubmitDisabled()}
+                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-[11.5px] font-bold px-4 py-1.5 rounded-[10px] flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                            >
+                                <Send className="w-3.5 h-3.5" />
+                                {tab === "Poll" ? "Post Poll" : tab === "Announcement" ? "Announce" : "Post"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* Live Feed List */}
                 {list.length === 0 ? (
-                    <div className="py-10 text-center flex flex-col items-center gap-3">
-                        <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
-                            <AlertCircle className="w-7 h-7 text-gray-300" />
+                    <div className="py-8 text-center flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
+                            <AlertCircle className="w-6 h-6 text-gray-300" />
                         </div>
                         <div>
                             <p className="text-[#1E1E1E] text-[13px] font-bold">No posts or polls yet</p>
-                            <p className="text-gray-400 text-[11px] mt-1 max-w-[180px] mx-auto text-center leading-relaxed">
+                            <p className="text-gray-400 text-[11px] mt-0.5 max-w-[180px] mx-auto text-center leading-relaxed">
                                 Be the first one to share an update or start a poll.
                             </p>
                         </div>
@@ -1867,14 +1860,12 @@ const Dashboard = () => {
 
                 {/* ── RIGHT COLUMN ── */}
                 <div className="flex flex-col gap-5 min-w-0">
-                    <CreateAnnouncementCard
-                        onPost={handleCreatePost}
-                        onCreatePoll={handleCreatePoll}
-                    />
                     <BuzzFeedCard
                         feed={combinedFeed}
                         currentUser={user}
                         onVote={handleVote}
+                        onPost={handleCreatePost}
+                        onCreatePoll={handleCreatePoll}
                     />
                     <PeopleEventsCard events={peopleEvents} />
                 </div>
