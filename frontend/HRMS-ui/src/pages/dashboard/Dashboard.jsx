@@ -294,18 +294,31 @@ const getHolidayEmoji = (title = "") => {
     return "🌴";
 };
 
+const getHolidayImage = (h = {}) => {
+    if (h.imageUrl) return h.imageUrl;
+    if (h.image) return h.image;
+
+    const title = (h.title || "").toLowerCase();
+
+    if (title.includes("christmas")) return "https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("new year")) return "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("holi")) return "https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("independence") || title.includes("republic")) return "https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("raksha") || title.includes("rakhi")) return "https://images.unsplash.com/photo-1627885233158-750d0322b270?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("gandhi")) return "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("friday") || title.includes("easter")) return "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80";
+
+    return "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80";
+};
+
 const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
     const displayType = (type) => {
         if (type === "public_holiday") return "Public Holiday";
         if (type === "company_holiday") return "Company Holiday";
         if (type === "optional_holiday") return "Optional Holiday";
         return type || "Public Holiday";
-    };
-
-    const typeColors = {
-        "Public Holiday": "bg-blue-50/90 text-[#2D79C7] border-blue-100/80",
-        "Company Holiday": "bg-purple-50/90 text-purple-700 border-purple-100/80",
-        "Optional Holiday": "bg-amber-50/90 text-amber-700 border-amber-100/80",
     };
 
     if (holidays.length === 0) {
@@ -324,69 +337,83 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
                 const month = MONTH_ABBR[d.getMonth()];
                 const formattedType = displayType(h.type);
                 const emoji = getHolidayEmoji(h.title);
+                const bannerImg = getHolidayImage(h);
                 const isNextImmediate = idx === 0;
 
                 return (
                     <div
                         key={h._id || idx}
-                        className={`group relative overflow-hidden rounded-[16px] p-4 transition-all duration-300 border shadow-xs hover:shadow-md ${
+                        className={`group relative overflow-hidden rounded-[20px] transition-all duration-300 border shadow-xs hover:shadow-lg bg-white ${
                             isNextImmediate
-                                ? "bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-indigo-50/50 border-blue-200/80 hover:border-blue-300"
-                                : "bg-white border-gray-200/80 hover:border-gray-300"
+                                ? "border-[#2D79C7]/40 ring-2 ring-[#2D79C7]/10"
+                                : "border-gray-200/90 hover:border-gray-300"
                         }`}
                     >
-                        {/* Decorative Background Glow */}
-                        <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-[#2D79C7]/5 pointer-events-none blur-xl group-hover:scale-125 transition-transform" />
+                        {/* Top Image Banner */}
+                        <div className="h-28 sm:h-32 w-full relative overflow-hidden bg-slate-100">
+                            <img
+                                src={bannerImg}
+                                alt={h.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                onError={(e) => {
+                                    e.target.src = "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80";
+                                }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
-                        {/* Top Header Row inside Card */}
-                        <div className="flex items-start justify-between gap-3 relative z-10">
-                            {/* Calendar Tile Badge */}
-                            <div className="w-12 rounded-xl bg-white border border-gray-200/90 shadow-xs overflow-hidden text-center shrink-0">
-                                <div className="bg-[#2D79C7] text-white text-[9.5px] font-black uppercase tracking-wider py-0.5">
+                            {/* Calendar Date Tile (Top-Left Floating) */}
+                            <div className="absolute top-3 left-3 w-11 rounded-xl bg-white/95 backdrop-blur-md border border-white/40 shadow-md overflow-hidden text-center z-10">
+                                <div className="bg-[#2D79C7] text-white text-[9px] font-black uppercase tracking-wider py-0.5">
                                     {month}
                                 </div>
-                                <div className="py-1 text-[#1E1E1E] text-base font-black leading-tight">
+                                <div className="py-0.5 text-[#1E1E1E] text-sm font-black leading-tight">
                                     {dayNum}
                                 </div>
                             </div>
 
-                            {/* Holiday Type Badge */}
-                            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
-                                {formattedType}
-                            </span>
+                            {/* Type Badge (Top-Right Floating) */}
+                            <div className="absolute top-3 right-3 z-10">
+                                <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[#1E1E1E] shadow-sm border border-white/50">
+                                    {formattedType}
+                                </span>
+                            </div>
+
+                            {/* Holiday Title over Banner */}
+                            <div className="absolute bottom-2.5 left-3.5 right-3.5 text-white z-10">
+                                <h4 className="text-white text-sm sm:text-[15px] font-extrabold flex items-center gap-1.5 leading-snug drop-shadow-md truncate">
+                                    <span className="text-base leading-none">{emoji}</span>
+                                    <span>{h.title || "Holiday"}</span>
+                                </h4>
+                            </div>
                         </div>
 
-                        {/* Content Info */}
-                        <div className="mt-3.5 relative z-10">
-                            <h4 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-1.5 leading-snug">
-                                <span className="text-base leading-none">{emoji}</span>
-                                <span className="truncate">{h.title || "Holiday"}</span>
-                            </h4>
-                            <p className="text-gray-500 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
-                                <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+                        {/* Bottom Details Footer */}
+                        <div className="p-3.5 flex items-center justify-between bg-white relative">
+                            <p className="text-gray-500 text-[11.5px] font-semibold flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
                                 <span>{h.day || "Scheduled Day"}</span>
                             </p>
-                        </div>
 
-                        {/* HR/Admin Hover Actions */}
-                        {canEdit && (
-                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-white/90 backdrop-blur-xs p-1 rounded-lg border border-gray-200 shadow-sm transition-opacity z-20">
-                                <button
-                                    onClick={() => onEdit(h)}
-                                    title="Edit holiday"
-                                    className="p-1 rounded-md text-gray-500 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
-                                >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                    onClick={() => onDelete(h)}
-                                    title="Delete holiday"
-                                    className="p-1 rounded-md text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        )}
+                            {/* HR Edit / Delete Actions */}
+                            {canEdit && (
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => onEdit(h)}
+                                        title="Edit holiday"
+                                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
+                                    >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(h)}
+                                        title="Delete holiday"
+                                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 );
             })}
