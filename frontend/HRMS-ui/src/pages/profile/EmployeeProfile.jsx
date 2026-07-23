@@ -5,7 +5,7 @@ import {
     Shield, Clock, Edit3, X, Check, Eye, Download, Upload,
     Laptop, Mouse, ShieldCheck, Award, FileText,
     Heart, GraduationCap, PhoneCall, History, Loader2, Camera,
-    Plus, Trash2, PlusCircle
+    Plus, Trash2, PlusCircle, UserCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
