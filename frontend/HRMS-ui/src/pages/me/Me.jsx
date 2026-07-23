@@ -1949,7 +1949,7 @@ const ProfileTab = ({ user, refreshUser }) => {
 ───────────────────────────────────────────── */
 const Me = () => {
     const { user, refreshUser } = useAuth();
-    const [activeTab, setActiveTab] = useState("Profile");
+    const [activeTab, setActiveTab] = useState("Attendance");
 
     // Leave Tab Integration States
     const [leaveSummary, setLeaveSummary] = useState(null);
@@ -2000,7 +2000,6 @@ const Me = () => {
     }, [activeTab, employeeId]);
 
     const tabs = [
-        { key: "Profile", icon: User, label: "Profile" },
         { key: "Attendance", icon: Clock, label: "Attendance" },
         { key: "Leave", icon: Umbrella, label: "Leave" },
         { key: "Performance", icon: Award, label: "Performance" }
@@ -2036,11 +2035,6 @@ const Me = () => {
                     })}
                 </nav>
             </div>
-
-            {/* Profile Tab Contents */}
-            {activeTab === "Profile" && (
-                <ProfileTab user={user} refreshUser={refreshUser} />
-            )}
 
             {/* Tab contents grid containing 3 independent cards side-by-side with custom widths on laptop/desktop */}
             {activeTab === "Attendance" && (
