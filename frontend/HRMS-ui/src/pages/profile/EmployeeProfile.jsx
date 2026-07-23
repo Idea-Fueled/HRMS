@@ -561,7 +561,7 @@ export const EmployeeProfile = () => {
                             </p>
 
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 text-xs font-medium text-gray-500">
-                                <span className="flex items-center gap-1.5 font-mono font-bold text-[#1E1E1E] bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
+                                <span className="flex items-center gap-1.5 font-bold text-[#1E1E1E] bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
                                     <ShieldCheck className="w-3.5 h-3.5 text-[#2D79C7]" />
                                     {empCode}
                                 </span>
@@ -595,12 +595,12 @@ export const EmployeeProfile = () => {
                         <div className="space-y-2 text-xs text-gray-600 font-medium text-left lg:text-right w-full">
                             <div className="flex items-center lg:justify-end gap-2">
                                 <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                <span className="font-mono text-gray-700">{empEmail}</span>
+                                <span className="font-semibold text-gray-700">{empEmail}</span>
                             </div>
 
                             <div className="flex items-center lg:justify-end gap-2">
                                 <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                <span className="font-mono text-gray-700">{empPhone}</span>
+                                <span className="font-semibold text-gray-700">{empPhone}</span>
                             </div>
 
                             <div className="flex items-center lg:justify-end gap-2">
@@ -1077,15 +1077,8 @@ export const EmployeeProfile = () => {
 
                             <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
                                 <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Assigned Shift</span>
-                                <span className="text-[#1E1E1E] text-sm font-bold block font-mono">
+                                <span className="text-[#1E1E1E] text-sm font-bold block">
                                     Standard Day (09:30 AM – 06:30 PM)
-                                </span>
-                            </div>
-
-                            <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">System Access Role</span>
-                                <span className="text-[#2D79C7] text-sm font-extrabold block uppercase tracking-wider">
-                                    {empRole}
                                 </span>
                             </div>
 

@@ -29,6 +29,14 @@ textarea {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    font-variant-numeric: normal;
+    font-feature-settings: "zero" 0;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    font-variant-numeric: normal;
+    font-feature-settings: "zero" 0;
 }
 
 /* Better heading readability */
