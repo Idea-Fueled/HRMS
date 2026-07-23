@@ -330,6 +330,17 @@ export const updateEmployee = async (req, res) => {
         if (emergencyContactNumber !== undefined) employee.emergencyContactNumber = emergencyContactNumber;
         if (presentAddress !== undefined) employee.presentAddress = presentAddress;
         if (permanentAddress !== undefined) employee.permanentAddress = permanentAddress;
+        if (req.body.aboutMe !== undefined) employee.aboutMe = req.body.aboutMe;
+        if (req.body.skills !== undefined) employee.skills = req.body.skills;
+        if (req.body.interests !== undefined) employee.interests = req.body.interests;
+        if (req.body.emergencyContactName !== undefined) employee.emergencyContactName = req.body.emergencyContactName;
+        if (req.body.emergencyContactRelation !== undefined) employee.emergencyContactRelation = req.body.emergencyContactRelation;
+        if (req.body.maritalStatus !== undefined) employee.maritalStatus = req.body.maritalStatus;
+        if (req.body.education !== undefined) employee.education = req.body.education;
+        if (req.body.experienceTimeline !== undefined) employee.experienceTimeline = req.body.experienceTimeline;
+        if (req.body.userDocuments !== undefined) employee.userDocuments = req.body.userDocuments;
+        if (req.body.assets !== undefined) employee.assets = req.body.assets;
+        if (req.body.activities !== undefined) employee.activities = req.body.activities;
         if (status) employee.status = status;
 
         if (permissions !== undefined) {

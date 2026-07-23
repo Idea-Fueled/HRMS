@@ -3,19 +3,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
     User, Mail, Phone, MapPin, Calendar, Briefcase, Building2,
     Shield, Clock, Edit3, X, Check, Eye, Download, Upload,
-    Laptop, Mouse, HardDrive, ShieldCheck, Award, FileText,
-    CheckCircle2, AlertCircle, Sparkles, UserCheck, Heart,
-    GraduationCap, PhoneCall, History, ExternalLink, ChevronRight,
-    Loader2, Camera
+    Laptop, Mouse, ShieldCheck, Award, FileText,
+    Heart, GraduationCap, PhoneCall, History, Loader2, Camera,
+    Plus, Trash2, PlusCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
 import { uploadProfilePicture } from "../../services/auth.service";
 
 /* ─────────────────────────────────────────────
-   HELPERS & MOCK ENRICHMENTS FOR ENTERPRISE DEMO
+   HELPERS & DEFAULT SEEDS
 ───────────────────────────────────────────── */
 const formatDateStr = (d) => {
     if (!d) return "—";
@@ -29,6 +29,37 @@ const formatDateStr = (d) => {
         return String(d);
     }
 };
+
+const DEFAULT_EDUCATION = [
+    { degree: "Master of Business Administration (MBA)", institution: "Delhi University", fieldOfStudy: "HR & Strategy", passingYear: "2021", level: "Post Graduate" },
+    { degree: "Bachelor of Technology (B.Tech)", institution: "Amity University", fieldOfStudy: "Computer Science", passingYear: "2019", level: "Under Graduate" }
+];
+
+const DEFAULT_EXPERIENCE = [
+    { title: "Senior HR Manager", company: "Idea Fueled HRMS", period: "2024 - Present", description: "Leading talent operations, HRIS management, and workforce strategy." },
+    { title: "HR Specialist", company: "Idea Fueled HRMS", period: "2023 - 2024", description: "Managed employee onboarding, payroll compliance, and performance reviews." }
+];
+
+const DEFAULT_DOCUMENTS = [
+    { name: "PAN Card Copy", category: "Government ID", numberOrTag: "ABCDE1234F", url: "", uploadedAt: "2023-01-16", status: "Verified" },
+    { name: "Aadhaar Card", category: "National Identification", numberOrTag: "XXXX-XXXX-9012", url: "", uploadedAt: "2023-01-16", status: "Verified" },
+    { name: "Employment Offer Letter", category: "Agreement", numberOrTag: "IF-OFFER-2023", url: "", uploadedAt: "2023-01-15", status: "Signed" },
+    { name: "Curriculum Vitae / Resume", category: "Resume", numberOrTag: "PDF 1.4 MB", url: "", uploadedAt: "2023-01-15", status: "Active" }
+];
+
+const DEFAULT_ASSETS = [
+    { name: "Apple MacBook Pro 16\"", assetTag: "IF-LAP-2024", category: "Hardware Workstation", issuedDate: "2023-01-15", condition: "Excellent", status: "Active" },
+    { name: "Dell UltraSharp 27\" 4K Monitor", assetTag: "IF-MON-2023", category: "Display Monitor", issuedDate: "2023-01-15", condition: "Good", status: "Active" },
+    { name: "Logitech MX Master 3S Mouse", assetTag: "IF-PER-88", category: "Peripherals", issuedDate: "2023-01-15", condition: "Excellent", status: "Active" },
+    { name: "Idea Fueled Smart Access Pass", assetTag: "IF-SEC-01", category: "Security Badge", issuedDate: "2023-01-15", condition: "Active", status: "Active" }
+];
+
+const DEFAULT_ACTIVITIES = [
+    { title: "Profile Details Updated", description: "Updated contact info and skills list.", timestamp: new Date(), type: "update" },
+    { title: "Attendance Regularized", description: "Clock-in time regularized for 15th July.", timestamp: new Date(Date.now() - 86400000 * 4), type: "attendance" },
+    { title: "Casual Leave Approved", description: "2 Days Casual Leave approved from 12 Jul to 13 Jul.", timestamp: new Date(Date.now() - 86400000 * 10), type: "leave" },
+    { title: "Joined Idea Fueled HRMS", description: "Onboarded into active enterprise workspace.", timestamp: new Date("2023-01-15"), type: "onboarding" }
+];
 
 export const EmployeeProfile = () => {
     const { id } = useParams();
@@ -44,8 +75,27 @@ export const EmployeeProfile = () => {
     const [saving, setSaving] = useState(false);
     const [uploadingPic, setUploadingPic] = useState(false);
     
-    // Preview document modal
+    // Modals for adding items dynamically
     const [docModalFile, setDocModalFile] = useState(null);
+    const [showAddSkillInput, setShowAddSkillInput] = useState(false);
+    const [newSkillText, setNewSkillText] = useState("");
+    const [showAddInterestInput, setShowAddInterestInput] = useState(false);
+    const [newInterestText, setNewInterestText] = useState("");
+
+    const [showEduModal, setShowEduModal] = useState(false);
+    const [newEdu, setNewEdu] = useState({ degree: "", institution: "", fieldOfStudy: "", passingYear: "", level: "Post Graduate" });
+    
+    const [showExpModal, setShowExpModal] = useState(false);
+    const [newExp, setNewExp] = useState({ title: "", company: "", period: "", description: "" });
+
+    const [showDocModal, setShowDocModal] = useState(false);
+    const [newDoc, setNewDoc] = useState({ name: "", category: "Government ID", numberOrTag: "", url: "" });
+
+    const [showAssetModal, setShowAssetModal] = useState(false);
+    const [newAsset, setNewAsset] = useState({ name: "", assetTag: "", category: "Hardware Workstation", condition: "Excellent" });
+
+    // Confirm dialog state for deletions
+    const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, title: "", message: "", action: null });
 
     // Edit form fields
     const [editForm, setEditForm] = useState({
@@ -65,16 +115,20 @@ export const EmployeeProfile = () => {
         profilePicture: ""
     });
 
-    // Determine if viewing logged-in user's profile
+    // Check if logged-in user is viewing their OWN profile
     const isOwnProfile = useMemo(() => {
-        if (!id) return true;
-        if (id === "me") return true;
+        if (!id || id === "me") return true;
         if (currentUser && (id === currentUser._id || id === currentUser.employeeId)) return true;
         if (employee && currentUser && employee._id === currentUser._id) return true;
         return false;
     }, [id, currentUser, employee]);
 
-    // Fetch employee data
+    // Role check: HR and Admin can edit & delete ANY employee profile. Employees can edit & delete ONLY their own.
+    const userRole = (currentUser?.role || "employee").toLowerCase();
+    const canEdit = isOwnProfile || userRole === "admin" || userRole === "hr";
+    const canDelete = isOwnProfile || userRole === "admin" || userRole === "hr";
+
+    // Fetch employee data from MongoDB
     const fetchProfile = useCallback(async () => {
         setLoading(true);
         try {
@@ -93,7 +147,6 @@ export const EmployeeProfile = () => {
             }
         } catch (err) {
             console.error("Fetch profile failed:", err);
-            // Fallback to currentUser if own profile
             if (!id || id === "me" || (currentUser && id === currentUser._id)) {
                 setEmployee(currentUser);
             } else {
@@ -108,14 +161,18 @@ export const EmployeeProfile = () => {
         fetchProfile();
     }, [fetchProfile]);
 
-    // Populate edit form when opening drawer
+    // Populate edit drawer form
     const openEditDrawer = () => {
         if (!employee) return;
         setEditForm({
             phoneNumber: employee.phoneNumber || "",
             aboutMe: employee.aboutMe || "Experienced professional passionate about operational excellence, workforce strategy, and digital innovation at Idea Fueled.",
-            skills: Array.isArray(employee.skills) ? employee.skills.join(", ") : (employee.skills || "React.js, Node.js, HR Management, Team Leadership, Analytics"),
-            interests: Array.isArray(employee.interests) ? employee.interests.join(", ") : (employee.interests || "Photography, Technology, Reading, Badminton, Chess"),
+            skills: Array.isArray(employee.skills) && employee.skills.length > 0 
+                ? employee.skills.join(", ") 
+                : "React.js, Node.js, HR Management, Team Leadership, Analytics",
+            interests: Array.isArray(employee.interests) && employee.interests.length > 0 
+                ? employee.interests.join(", ") 
+                : "Photography, Technology, Reading, Badminton, Chess",
             dateOfBirth: employee.dateOfBirth ? new Date(employee.dateOfBirth).toISOString().split("T")[0] : "",
             gender: employee.gender || "Male",
             bloodGroup: employee.bloodGroup || "O+",
@@ -130,7 +187,7 @@ export const EmployeeProfile = () => {
         setIsEditDrawerOpen(true);
     };
 
-    // Handle profile picture file upload inside Edit Drawer
+    // Profile picture upload
     const handleProfilePicUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -143,7 +200,7 @@ export const EmployeeProfile = () => {
             const res = await uploadProfilePicture(formData);
             if (res.data?.success && res.data.imageUrl) {
                 setEditForm(prev => ({ ...prev, profilePicture: res.data.imageUrl }));
-                toast.success("Profile picture uploaded!");
+                toast.success("Profile picture uploaded successfully!");
             } else {
                 toast.error("Failed to upload image.");
             }
@@ -155,39 +212,254 @@ export const EmployeeProfile = () => {
         }
     };
 
-    // Submit Edit Profile Form
-    const handleSaveProfile = async (e) => {
-        e.preventDefault();
-        setSaving(true);
-        try {
-            const empIdToUpdate = employee._id || currentUser._id;
-            
-            const payload = {
-                ...editForm,
-                skills: typeof editForm.skills === "string" ? editForm.skills.split(",").map(s => s.trim()).filter(Boolean) : editForm.skills,
-                interests: typeof editForm.interests === "string" ? editForm.interests.split(",").map(i => i.trim()).filter(Boolean) : editForm.interests
-            };
+    // Helper to persist employee updates to MongoDB backend
+    const persistEmployeeUpdate = async (payload, successMsg = "Profile updated!") => {
+        if (!canEdit) {
+            toast.error("You do not have permission to edit this profile.");
+            return false;
+        }
 
+        try {
+            setSaving(true);
+            const empIdToUpdate = employee._id || currentUser._id;
             const res = await updateEmployee(empIdToUpdate, payload);
+            
             if (res.data?.success) {
-                toast.success("Profile updated successfully!");
-                setIsEditDrawerOpen(false);
+                toast.success(successMsg);
+                setEmployee(res.data.employee || { ...employee, ...payload });
                 if (isOwnProfile && updateUser) {
                     updateUser(res.data.employee || { ...employee, ...payload });
                 }
-                await fetchProfile();
+                return true;
             } else {
-                toast.error(res.data?.message || "Failed to update profile.");
+                toast.error(res.data?.message || "Update failed.");
+                return false;
             }
         } catch (err) {
-            console.error("Update profile error:", err);
-            toast.error("Failed to update profile details.");
+            console.error("Persist employee update error:", err);
+            toast.error("Failed to save changes to database.");
+            return false;
         } finally {
             setSaving(false);
         }
     };
 
-    // Derived Display Data with realistic enterprise fallbacks
+    // Save Edit Drawer form
+    const handleSaveProfile = async (e) => {
+        e.preventDefault();
+        const payload = {
+            ...editForm,
+            skills: typeof editForm.skills === "string" ? editForm.skills.split(",").map(s => s.trim()).filter(Boolean) : editForm.skills,
+            interests: typeof editForm.interests === "string" ? editForm.interests.split(",").map(i => i.trim()).filter(Boolean) : editForm.interests
+        };
+
+        const ok = await persistEmployeeUpdate(payload, "Profile updated successfully!");
+        if (ok) setIsEditDrawerOpen(false);
+    };
+
+    // DYNAMIC ADD/DELETE OPERATIONS
+
+    // 1. Skill Operations
+    const currentSkills = useMemo(() => {
+        if (Array.isArray(employee?.skills) && employee.skills.length > 0) return employee.skills;
+        return ["React.js", "Node.js", "MongoDB", "HR Management", "System Design", "Payroll"];
+    }, [employee]);
+
+    const handleAddSkill = async () => {
+        if (!newSkillText.trim()) return;
+        const updated = [...currentSkills, newSkillText.trim()];
+        const ok = await persistEmployeeUpdate({ skills: updated }, `Skill "${newSkillText.trim()}" added!`);
+        if (ok) {
+            setNewSkillText("");
+            setShowAddSkillInput(false);
+        }
+    };
+
+    const handleDeleteSkill = (skillToDelete) => {
+        if (!canDelete) return;
+        setConfirmDelete({
+            isOpen: true,
+            title: "Delete Skill",
+            message: `Are you sure you want to delete the skill "${skillToDelete}"?`,
+            action: async () => {
+                const updated = currentSkills.filter(s => s !== skillToDelete);
+                await persistEmployeeUpdate({ skills: updated }, `Skill "${skillToDelete}" removed!`);
+            }
+        });
+    };
+
+    // 2. Interest Operations
+    const currentInterests = useMemo(() => {
+        if (Array.isArray(employee?.interests) && employee.interests.length > 0) return employee.interests;
+        return ["Photography", "Open Source", "Badminton", "Reading", "Chess"];
+    }, [employee]);
+
+    const handleAddInterest = async () => {
+        if (!newInterestText.trim()) return;
+        const updated = [...currentInterests, newInterestText.trim()];
+        const ok = await persistEmployeeUpdate({ interests: updated }, `Interest "${newInterestText.trim()}" added!`);
+        if (ok) {
+            setNewInterestText("");
+            setShowAddInterestInput(false);
+        }
+    };
+
+    const handleDeleteInterest = (interestToDelete) => {
+        if (!canDelete) return;
+        setConfirmDelete({
+            isOpen: true,
+            title: "Delete Interest",
+            message: `Are you sure you want to delete the interest "${interestToDelete}"?`,
+            action: async () => {
+                const updated = currentInterests.filter(i => i !== interestToDelete);
+                await persistEmployeeUpdate({ interests: updated }, `Interest "${interestToDelete}" removed!`);
+            }
+        });
+    };
+
+    // 3. Education Operations
+    const currentEducation = useMemo(() => {
+        if (Array.isArray(employee?.education) && employee.education.length > 0) return employee.education;
+        return DEFAULT_EDUCATION;
+    }, [employee]);
+
+    const handleAddEducationSubmit = async (e) => {
+        e.preventDefault();
+        if (!newEdu.degree.trim() || !newEdu.institution.trim()) {
+            toast.error("Degree and Institution are required.");
+            return;
+        }
+        const updated = [newEdu, ...currentEducation];
+        const ok = await persistEmployeeUpdate({ education: updated }, "Education record added!");
+        if (ok) {
+            setShowEduModal(false);
+            setNewEdu({ degree: "", institution: "", fieldOfStudy: "", passingYear: "", level: "Post Graduate" });
+        }
+    };
+
+    const handleDeleteEducation = (idx) => {
+        if (!canDelete) return;
+        const target = currentEducation[idx];
+        setConfirmDelete({
+            isOpen: true,
+            title: "Delete Education Record",
+            message: `Are you sure you want to delete "${target?.degree || 'this education record'}"?`,
+            action: async () => {
+                const updated = currentEducation.filter((_, i) => i !== idx);
+                await persistEmployeeUpdate({ education: updated }, "Education record deleted!");
+            }
+        });
+    };
+
+    // 4. Experience Operations
+    const currentExperience = useMemo(() => {
+        if (Array.isArray(employee?.experienceTimeline) && employee.experienceTimeline.length > 0) return employee.experienceTimeline;
+        return DEFAULT_EXPERIENCE;
+    }, [employee]);
+
+    const handleAddExperienceSubmit = async (e) => {
+        e.preventDefault();
+        if (!newExp.title.trim() || !newExp.company.trim()) {
+            toast.error("Title and Company are required.");
+            return;
+        }
+        const updated = [newExp, ...currentExperience];
+        const ok = await persistEmployeeUpdate({ experienceTimeline: updated }, "Experience entry added!");
+        if (ok) {
+            setShowExpModal(false);
+            setNewExp({ title: "", company: "", period: "", description: "" });
+        }
+    };
+
+    const handleDeleteExperience = (idx) => {
+        if (!canDelete) return;
+        const target = currentExperience[idx];
+        setConfirmDelete({
+            isOpen: true,
+            title: "Delete Experience Entry",
+            message: `Are you sure you want to delete "${target?.title || 'this experience entry'}"?`,
+            action: async () => {
+                const updated = currentExperience.filter((_, i) => i !== idx);
+                await persistEmployeeUpdate({ experienceTimeline: updated }, "Experience entry deleted!");
+            }
+        });
+    };
+
+    // 5. Document Operations
+    const currentDocuments = useMemo(() => {
+        if (Array.isArray(employee?.userDocuments) && employee.userDocuments.length > 0) return employee.userDocuments;
+        return DEFAULT_DOCUMENTS;
+    }, [employee]);
+
+    const handleAddDocumentSubmit = async (e) => {
+        e.preventDefault();
+        if (!newDoc.name.trim()) {
+            toast.error("Document Name is required.");
+            return;
+        }
+        const updated = [{ ...newDoc, uploadedAt: new Date(), status: "Verified" }, ...currentDocuments];
+        const ok = await persistEmployeeUpdate({ userDocuments: updated }, "Document added successfully!");
+        if (ok) {
+            setShowDocModal(false);
+            setNewDoc({ name: "", category: "Government ID", numberOrTag: "", url: "" });
+        }
+    };
+
+    const handleDeleteDocument = (idx) => {
+        if (!canDelete) return;
+        const target = currentDocuments[idx];
+        setConfirmDelete({
+            isOpen: true,
+            title: "Delete Document",
+            message: `Are you sure you want to delete "${target?.name || 'this document'}"?`,
+            action: async () => {
+                const updated = currentDocuments.filter((_, i) => i !== idx);
+                await persistEmployeeUpdate({ userDocuments: updated }, "Document removed successfully!");
+            }
+        });
+    };
+
+    // 6. Asset Operations
+    const currentAssets = useMemo(() => {
+        if (Array.isArray(employee?.assets) && employee.assets.length > 0) return employee.assets;
+        return DEFAULT_ASSETS;
+    }, [employee]);
+
+    const handleAddAssetSubmit = async (e) => {
+        e.preventDefault();
+        if (!newAsset.name.trim()) {
+            toast.error("Asset Name is required.");
+            return;
+        }
+        const updated = [{ ...newAsset, issuedDate: new Date(), status: "Active" }, ...currentAssets];
+        const ok = await persistEmployeeUpdate({ assets: updated }, "Asset assigned successfully!");
+        if (ok) {
+            setShowAssetModal(false);
+            setNewAsset({ name: "", assetTag: "", category: "Hardware Workstation", condition: "Excellent" });
+        }
+    };
+
+    const handleDeleteAsset = (idx) => {
+        if (!canDelete) return;
+        const target = currentAssets[idx];
+        setConfirmDelete({
+            isOpen: true,
+            title: "Delete Asset",
+            message: `Are you sure you want to delete asset "${target?.name || 'this item'}"?`,
+            action: async () => {
+                const updated = currentAssets.filter((_, i) => i !== idx);
+                await persistEmployeeUpdate({ assets: updated }, "Asset unassigned successfully!");
+            }
+        });
+    };
+
+    // 7. Activity Timeline
+    const currentActivities = useMemo(() => {
+        if (Array.isArray(employee?.activities) && employee.activities.length > 0) return employee.activities;
+        return DEFAULT_ACTIVITIES;
+    }, [employee]);
+
+    // Extract core employee details
     const empName = employee?.fullName || `${employee?.firstName || ""} ${employee?.lastName || ""}`.trim() || "Employee Name";
     const empRole = (employee?.role || "employee").toUpperCase();
     const empDept = employee?.department || "General";
@@ -209,29 +481,7 @@ export const EmployeeProfile = () => {
 
     const aboutMeText = employee?.aboutMe || "Dedicated team member at Idea Fueled HRMS, focused on delivering strategic project milestones, fostering cross-departmental collaboration, and driving continuous process improvements.";
 
-    const skillsList = useMemo(() => {
-        if (Array.isArray(employee?.skills) && employee.skills.length > 0) return employee.skills;
-        if (typeof employee?.skills === "string" && employee.skills.trim()) {
-            return employee.skills.split(",").map(s => s.trim());
-        }
-        if (empDept.includes("Engineering") || empDesignation.includes("Developer") || empDesignation.includes("Software")) {
-            return ["React.js", "Node.js", "MongoDB", "TypeScript", "System Design", "REST APIs", "Git", "Agile"];
-        }
-        if (empDept.includes("HR")) {
-            return ["Talent Acquisition", "Employee Relations", "Payroll Management", "HRIS", "Performance Review", "Compliance", "People Analytics"];
-        }
-        return ["Project Planning", "Cross-functional Leadership", "Communication", "Data Analysis", "Process Optimization", "Client Relations"];
-    }, [employee, empDept, empDesignation]);
-
-    const interestsList = useMemo(() => {
-        if (Array.isArray(employee?.interests) && employee.interests.length > 0) return employee.interests;
-        if (typeof employee?.interests === "string" && employee.interests.trim()) {
-            return employee.interests.split(",").map(i => i.trim());
-        }
-        return ["Photography", "Open Source", "Badminton", "Tech Blogs", "Chess", "Traveling"];
-    }, [employee]);
-
-    // Navigation Tabs definition
+    // Tabs definition
     const profileTabs = [
         { key: "Overview", label: "Overview", icon: User },
         { key: "Employment", label: "Employment", icon: Briefcase },
@@ -254,15 +504,14 @@ export const EmployeeProfile = () => {
         <div className="space-y-6 text-left select-none animate-fadeIn pb-16 max-w-7xl mx-auto">
 
             {/* ─────────────────────────────────────────────
-               TOP HERO SECTION (CLEAN ENTERPRISE CARD)
+               TOP HERO SECTION
             ───────────────────────────────────────────── */}
             <div className="premium-3d-card p-6 sm:p-8 relative overflow-hidden bg-white border border-[#E5E7EB] rounded-[24px]">
-                {/* Subtle top subtle border accent */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#2D79C7] via-[#3B82F6] to-[#1E40AF]" />
 
                 <div className="flex flex-col lg:flex-row items-start justify-between gap-6 pt-2">
                     
-                    {/* Left: Avatar & Primary Info */}
+                    {/* Left: Avatar & Info */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full lg:w-auto">
                         <div className="relative shrink-0">
                             <Avatar
@@ -298,7 +547,6 @@ export const EmployeeProfile = () => {
                                 <span className="text-[#2D79C7] font-bold">{empDept}</span>
                             </p>
 
-                            {/* Key Quick Badges */}
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 text-xs font-medium text-gray-500">
                                 <span className="flex items-center gap-1.5 font-mono font-bold text-[#1E1E1E] bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
                                     <ShieldCheck className="w-3.5 h-3.5 text-[#2D79C7]" />
@@ -318,9 +566,9 @@ export const EmployeeProfile = () => {
                         </div>
                     </div>
 
-                    {/* Right: Contact Stack & Edit Action Button */}
+                    {/* Right: Contact & Conditional Edit Action */}
                     <div className="flex flex-col items-start lg:items-end justify-between gap-4 w-full lg:w-auto border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100">
-                        {isOwnProfile && (
+                        {canEdit && (
                             <button
                                 type="button"
                                 onClick={openEditDrawer}
@@ -378,7 +626,7 @@ export const EmployeeProfile = () => {
             </div>
 
             {/* ─────────────────────────────────────────────
-               TAB 1: OVERVIEW (TWO-COLUMN RESPONSIVE LAYOUT)
+               TAB 1: OVERVIEW
             ───────────────────────────────────────────── */}
             {activeTab === "Overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -388,10 +636,17 @@ export const EmployeeProfile = () => {
                         
                         {/* About Me */}
                         <div className="premium-3d-card p-6 space-y-3">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <User className="w-4 h-4 text-[#2D79C7]" />
-                                <span>About Me</span>
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <User className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>About Me</span>
+                                </h3>
+                                {canEdit && (
+                                    <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                        <Edit3 className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                )}
+                            </div>
                             <p className="text-gray-600 text-xs font-medium leading-relaxed">
                                 {aboutMeText}
                             </p>
@@ -399,14 +654,62 @@ export const EmployeeProfile = () => {
 
                         {/* Skills */}
                         <div className="premium-3d-card p-6 space-y-3">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <Award className="w-4 h-4 text-[#2D79C7]" />
-                                <span>Skills & Competencies</span>
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <Award className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>Skills & Competencies</span>
+                                </h3>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddSkillInput(true)}
+                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add Skill
+                                    </button>
+                                )}
+                            </div>
+
+                            {showAddSkillInput && (
+                                <div className="flex items-center gap-2 pt-1">
+                                    <input
+                                        type="text"
+                                        value={newSkillText}
+                                        onChange={(e) => setNewSkillText(e.target.value)}
+                                        placeholder="Enter new skill..."
+                                        className="flex-1 bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAddSkill}
+                                        className="bg-[#2D79C7] text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer hover:bg-[#1F5EA8]"
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddSkillInput(false)}
+                                        className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="flex flex-wrap gap-2 pt-1">
-                                {skillsList.map((sk, idx) => (
-                                    <span key={idx} className="bg-blue-50/80 text-[#2D79C7] border border-blue-100 px-3 py-1 rounded-xl text-xs font-bold">
-                                        {sk}
+                                {currentSkills.map((sk, idx) => (
+                                    <span key={idx} className="group bg-blue-50/80 text-[#2D79C7] border border-blue-100 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
+                                        <span>{sk}</span>
+                                        {canDelete && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteSkill(sk)}
+                                                className="opacity-60 hover:opacity-100 text-rose-500 cursor-pointer ml-0.5"
+                                                title="Delete skill"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
                                     </span>
                                 ))}
                             </div>
@@ -414,14 +717,62 @@ export const EmployeeProfile = () => {
 
                         {/* Hobbies & Interests */}
                         <div className="premium-3d-card p-6 space-y-3">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <Heart className="w-4 h-4 text-rose-500" />
-                                <span>Interests & Hobbies</span>
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <Heart className="w-4 h-4 text-rose-500" />
+                                    <span>Interests & Hobbies</span>
+                                </h3>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddInterestInput(true)}
+                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add
+                                    </button>
+                                )}
+                            </div>
+
+                            {showAddInterestInput && (
+                                <div className="flex items-center gap-2 pt-1">
+                                    <input
+                                        type="text"
+                                        value={newInterestText}
+                                        onChange={(e) => setNewInterestText(e.target.value)}
+                                        placeholder="Enter interest or hobby..."
+                                        className="flex-1 bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAddInterest}
+                                        className="bg-[#2D79C7] text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer hover:bg-[#1F5EA8]"
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddInterestInput(false)}
+                                        className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="flex flex-wrap gap-2 pt-1">
-                                {interestsList.map((it, idx) => (
-                                    <span key={idx} className="bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-xl text-xs font-semibold">
-                                        {it}
+                                {currentInterests.map((it, idx) => (
+                                    <span key={idx} className="bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                                        <span>{it}</span>
+                                        {canDelete && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteInterest(it)}
+                                                className="opacity-60 hover:opacity-100 text-rose-500 cursor-pointer ml-0.5"
+                                                title="Delete interest"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
                                     </span>
                                 ))}
                             </div>
@@ -429,46 +780,67 @@ export const EmployeeProfile = () => {
 
                         {/* Experience Timeline */}
                         <div className="premium-3d-card p-6 space-y-4">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <Briefcase className="w-4 h-4 text-[#2D79C7]" />
-                                <span>Experience Timeline</span>
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <Briefcase className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>Experience Timeline</span>
+                                </h3>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowExpModal(true)}
+                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add Role
+                                    </button>
+                                )}
+                            </div>
 
                             <div className="relative pl-6 space-y-5 border-l-2 border-gray-200 ml-2 pt-1">
-                                <div className="relative">
-                                    <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#2D79C7] border-4 border-white shadow-sm" />
-                                    <h4 className="text-[#1E1E1E] text-xs font-extrabold">{empDesignation}</h4>
-                                    <p className="text-[#2D79C7] text-[11px] font-bold">Idea Fueled HRMS</p>
-                                    <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">2024 – Present · Full-time</p>
-                                </div>
-
-                                <div className="relative">
-                                    <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-gray-300 border-4 border-white shadow-sm" />
-                                    <h4 className="text-[#1E1E1E] text-xs font-extrabold">Professional Lead / Specialist</h4>
-                                    <p className="text-gray-600 text-[11px] font-medium">Idea Fueled HRMS</p>
-                                    <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">2023 – 2024 · Full-time</p>
-                                </div>
-
-                                <div className="relative">
-                                    <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-gray-300 border-4 border-white shadow-sm" />
-                                    <h4 className="text-[#1E1E1E] text-xs font-extrabold">Associate Engineer / Executive</h4>
-                                    <p className="text-gray-600 text-[11px] font-medium">Prior Enterprise Organization</p>
-                                    <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">2021 – 2023</p>
-                                </div>
+                                {currentExperience.map((exp, idx) => (
+                                    <div key={idx} className="relative group">
+                                        <div className={`absolute -left-[31px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? "bg-[#2D79C7]" : "bg-gray-300"}`} />
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">{exp.title}</h4>
+                                                <p className="text-[#2D79C7] text-[11px] font-bold">{exp.company}</p>
+                                                <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">{exp.period}</p>
+                                                {exp.description && <p className="text-gray-500 text-[11px] mt-1">{exp.description}</p>}
+                                            </div>
+                                            {canDelete && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteExperience(idx)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                    title="Delete experience"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
                     </div>
 
-                    {/* Right Column (Personal Info, Emergency, Education, Reporting Structure) */}
+                    {/* Right Column (Personal Info, Emergency Contact, Education, Reporting Structure) */}
                     <div className="lg:col-span-7 space-y-6">
                         
                         {/* Personal Information */}
                         <div className="premium-3d-card p-6 space-y-4">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <UserCheck className="w-4 h-4 text-[#2D79C7]" />
-                                <span>Personal Information</span>
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <UserCheck className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>Personal Information</span>
+                                </h3>
+                                {canEdit && (
+                                    <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                        <Edit3 className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                )}
+                            </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                                 <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
@@ -517,10 +889,17 @@ export const EmployeeProfile = () => {
 
                         {/* Emergency Contact */}
                         <div className="premium-3d-card p-6 space-y-4">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <PhoneCall className="w-4 h-4 text-rose-600" />
-                                <span>Emergency Contact</span>
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <PhoneCall className="w-4 h-4 text-rose-600" />
+                                    <span>Emergency Contact</span>
+                                </h3>
+                                {canEdit && (
+                                    <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                        <Edit3 className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                )}
+                            </div>
 
                             <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div className="space-y-1">
@@ -541,33 +920,47 @@ export const EmployeeProfile = () => {
 
                         {/* Education */}
                         <div className="premium-3d-card p-6 space-y-4">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <GraduationCap className="w-4 h-4 text-[#2D79C7]" />
-                                <span>Education Qualification</span>
-                            </h3>
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <GraduationCap className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>Education Qualification</span>
+                                </h3>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowEduModal(true)}
+                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add Degree
+                                    </button>
+                                )}
+                            </div>
 
                             <div className="space-y-3">
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
-                                    <div>
-                                        <h4 className="text-[#1E1E1E] text-xs font-bold">Master of Business Administration (MBA)</h4>
-                                        <p className="text-gray-500 text-[11px] font-medium">Specialization: HR & Organizational Strategy</p>
-                                        <p className="text-gray-400 text-[10.5px]">Delhi University · Graduated 2021</p>
+                                {currentEducation.map((edu, idx) => (
+                                    <div key={idx} className="group bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-[#1E1E1E] text-xs font-bold">{edu.degree}</h4>
+                                            <p className="text-gray-500 text-[11px] font-medium">{edu.fieldOfStudy || edu.institution}</p>
+                                            <p className="text-gray-400 text-[10.5px]">{edu.institution} · Graduated {edu.passingYear}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="bg-blue-50 text-[#2D79C7] text-[10.5px] font-bold px-2.5 py-1 rounded-md border border-blue-100">
+                                                {edu.level || "Qualification"}
+                                            </span>
+                                            {canDelete && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteEducation(idx)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                    title="Delete Education"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <span className="bg-blue-50 text-[#2D79C7] text-[10.5px] font-bold px-2.5 py-1 rounded-md border border-blue-100">
-                                        Post Graduate
-                                    </span>
-                                </div>
-
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
-                                    <div>
-                                        <h4 className="text-[#1E1E1E] text-xs font-bold">Bachelor of Technology (B.Tech)</h4>
-                                        <p className="text-gray-500 text-[11px] font-medium">Computer Science & Engineering</p>
-                                        <p className="text-gray-400 text-[10.5px]">Amity University · Graduated 2019</p>
-                                    </div>
-                                    <span className="bg-slate-100 text-slate-700 text-[10.5px] font-bold px-2.5 py-1 rounded-md border border-slate-200">
-                                        Under Graduate
-                                    </span>
-                                </div>
+                                ))}
                             </div>
                         </div>
 
@@ -613,14 +1006,21 @@ export const EmployeeProfile = () => {
             {activeTab === "Employment" && (
                 <div className="space-y-6">
                     <div className="premium-3d-card p-6 sm:p-8 space-y-6">
-                        <div className="border-b border-gray-150 pb-4">
-                            <h2 className="text-[#1E1E1E] text-base font-extrabold flex items-center gap-2">
-                                <Briefcase className="w-5 h-5 text-[#2D79C7]" />
-                                <span>Employment & Work Roster Parameters</span>
-                            </h2>
-                            <p className="text-gray-500 text-xs font-medium mt-1">
-                                Enterprise employment configuration, organizational department hierarchy, and active work shift.
-                            </p>
+                        <div className="flex items-center justify-between border-b border-gray-150 pb-4">
+                            <div>
+                                <h2 className="text-[#1E1E1E] text-base font-extrabold flex items-center gap-2">
+                                    <Briefcase className="w-5 h-5 text-[#2D79C7]" />
+                                    <span>Employment & Work Roster Parameters</span>
+                                </h2>
+                                <p className="text-gray-500 text-xs font-medium mt-1">
+                                    Enterprise employment configuration, organizational department hierarchy, and active work shift.
+                                </p>
+                            </div>
+                            {canEdit && (
+                                <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                    <Edit3 className="w-4 h-4" /> Edit Parameters
+                                </button>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -682,11 +1082,10 @@ export const EmployeeProfile = () => {
             )}
 
             {/* ─────────────────────────────────────────────
-               TAB 3: ATTENDANCE SUMMARY (SUMMARY ONLY)
+               TAB 3: ATTENDANCE SUMMARY
             ───────────────────────────────────────────── */}
             {activeTab === "Attendance" && (
                 <div className="space-y-6">
-                    {/* Top KPI Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="premium-3d-card p-5">
                             <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider block">Attendance Rate</span>
@@ -696,8 +1095,12 @@ export const EmployeeProfile = () => {
 
                         <div className="premium-3d-card p-5">
                             <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider block">Leave Balance</span>
-                            <div className="text-2xl font-black font-mono text-[#1E1E1E] mt-2">14 Days</div>
-                            <span className="text-[11px] text-gray-500 font-medium mt-1 inline-block">Casual: 8 | Sick: 6</span>
+                            <div className="text-2xl font-black font-mono text-[#1E1E1E] mt-2">
+                                {employee?.totalLeaves || 20} Days
+                            </div>
+                            <span className="text-[11px] text-gray-500 font-medium mt-1 inline-block">
+                                Sick: {employee?.leaveBalance?.sick?.total || 6} | Casual: {employee?.leaveBalance?.casual?.total || 8}
+                            </span>
                         </div>
 
                         <div className="premium-3d-card p-5">
@@ -719,7 +1122,6 @@ export const EmployeeProfile = () => {
                         </div>
                     </div>
 
-                    {/* Recent 5 Days Log */}
                     <div className="premium-3d-card p-6 space-y-4">
                         <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
                             <Clock className="w-4 h-4 text-[#2D79C7]" />
@@ -740,7 +1142,7 @@ export const EmployeeProfile = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                                     <tr className="hover:bg-gray-50">
-                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">22 Jul 2026</td>
+                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">Today</td>
                                         <td className="py-3 px-4">Office</td>
                                         <td className="py-3 px-4 font-mono">09:28 AM</td>
                                         <td className="py-3 px-4 font-mono">06:32 PM</td>
@@ -751,7 +1153,7 @@ export const EmployeeProfile = () => {
                                     </tr>
 
                                     <tr className="hover:bg-gray-50">
-                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">21 Jul 2026</td>
+                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">Yesterday</td>
                                         <td className="py-3 px-4">Office</td>
                                         <td className="py-3 px-4 font-mono">09:30 AM</td>
                                         <td className="py-3 px-4 font-mono">06:30 PM</td>
@@ -771,17 +1173,6 @@ export const EmployeeProfile = () => {
                                             <span className="bg-blue-50 text-blue-700 border border-blue-100 text-[10.5px] font-bold px-2 py-0.5 rounded-md">WFH</span>
                                         </td>
                                     </tr>
-
-                                    <tr className="hover:bg-gray-50">
-                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">19 Jul 2026</td>
-                                        <td className="py-3 px-4">Office</td>
-                                        <td className="py-3 px-4 font-mono">09:42 AM</td>
-                                        <td className="py-3 px-4 font-mono">06:35 PM</td>
-                                        <td className="py-3 px-4 font-mono font-bold">8h 13m</td>
-                                        <td className="py-3 px-4">
-                                            <span className="bg-amber-50 text-amber-700 border border-amber-100 text-[10.5px] font-bold px-2 py-0.5 rounded-md">Late</span>
-                                        </td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -794,202 +1185,74 @@ export const EmployeeProfile = () => {
             ───────────────────────────────────────────── */}
             {activeTab === "Documents" && (
                 <div className="space-y-6">
+                    {canEdit && (
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowDocModal(true)}
+                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Upload / Add Document</span>
+                            </button>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        
-                        {/* Document 1: PAN */}
-                        <div className="premium-3d-card p-5 flex flex-col justify-between space-y-4">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
-                                    <FileText className="w-5 h-5" />
+                        {currentDocuments.map((doc, idx) => (
+                            <div key={idx} className="premium-3d-card p-5 flex flex-col justify-between space-y-4 relative group">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
+                                        <FileText className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
+                                            {doc.status || "Verified"}
+                                        </span>
+                                        {canDelete && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteDocument(idx)}
+                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                title="Delete Document"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                    Verified
-                                </span>
-                            </div>
 
-                            <div>
-                                <h4 className="text-[#1E1E1E] text-sm font-bold">PAN Card Copy</h4>
-                                <p className="text-gray-400 text-xs mt-0.5">Government ID Proof</p>
-                                <p className="text-gray-500 font-mono text-xs font-bold mt-2">
-                                    PAN: {employee?.panNumber || "ABCDE1234F"}
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setDocModalFile({ name: "PAN Card Copy", tag: employee?.panNumber || "ABCDE1234F", type: "PAN Card" })}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => toast.success("Downloading PAN Card Copy...")}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Download className="w-3.5 h-3.5" />
-                                    <span>Download</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Document 2: Aadhaar */}
-                        <div className="premium-3d-card p-5 flex flex-col justify-between space-y-4">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
-                                    <FileText className="w-5 h-5" />
+                                <div>
+                                    <h4 className="text-[#1E1E1E] text-sm font-bold">{doc.name}</h4>
+                                    <p className="text-gray-400 text-xs mt-0.5">{doc.category}</p>
+                                    {doc.numberOrTag && (
+                                        <p className="text-gray-500 font-mono text-xs font-bold mt-2">
+                                            {doc.numberOrTag}
+                                        </p>
+                                    )}
                                 </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                    Verified
-                                </span>
-                            </div>
 
-                            <div>
-                                <h4 className="text-[#1E1E1E] text-sm font-bold">Aadhaar Card</h4>
-                                <p className="text-gray-400 text-xs mt-0.5">National Identification</p>
-                                <p className="text-gray-500 font-mono text-xs font-bold mt-2">
-                                    UID: {employee?.aadhaarNumber || "XXXX-XXXX-9012"}
-                                </p>
-                            </div>
+                                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDocModalFile({ name: doc.name, tag: doc.numberOrTag || "Doc-Preview", type: doc.category })}
+                                        className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                    >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>View</span>
+                                    </button>
 
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setDocModalFile({ name: "Aadhaar Card", tag: employee?.aadhaarNumber || "XXXX-XXXX-9012", type: "Aadhaar" })}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => toast.success("Downloading Aadhaar Card...")}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Download className="w-3.5 h-3.5" />
-                                    <span>Download</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Document 3: Offer Letter */}
-                        <div className="premium-3d-card p-5 flex flex-col justify-between space-y-4">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
-                                    <FileText className="w-5 h-5" />
+                                    <button
+                                        type="button"
+                                        onClick={() => toast.success(`Downloading ${doc.name}...`)}
+                                        className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                        <span>Download</span>
+                                    </button>
                                 </div>
-                                <span className="bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                    Signed
-                                </span>
                             </div>
-
-                            <div>
-                                <h4 className="text-[#1E1E1E] text-sm font-bold">Employment Offer Letter</h4>
-                                <p className="text-gray-400 text-xs mt-0.5">Official Idea Fueled Agreement</p>
-                                <p className="text-gray-400 text-[11px] mt-2">Issued on joining date</p>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setDocModalFile({ name: "Employment Offer Letter", tag: "Idea Fueled Contract", type: "Agreement" })}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => toast.success("Downloading Offer Letter...")}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Download className="w-3.5 h-3.5" />
-                                    <span>Download</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Document 4: Resume */}
-                        <div className="premium-3d-card p-5 flex flex-col justify-between space-y-4">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                                    <FileText className="w-5 h-5" />
-                                </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                    Active
-                                </span>
-                            </div>
-
-                            <div>
-                                <h4 className="text-[#1E1E1E] text-sm font-bold">Curriculum Vitae / Resume</h4>
-                                <p className="text-gray-400 text-xs mt-0.5">Professional Background</p>
-                                <p className="text-gray-400 text-[11px] mt-2">PDF Document · 1.4 MB</p>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setDocModalFile({ name: "Curriculum Vitae", tag: empName, type: "Resume" })}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => toast.success("Downloading Resume...")}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Download className="w-3.5 h-3.5" />
-                                    <span>Download</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Document 5: Degree Certificate */}
-                        <div className="premium-3d-card p-5 flex flex-col justify-between space-y-4">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-                                    <GraduationCap className="w-5 h-5" />
-                                </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                    Verified
-                                </span>
-                            </div>
-
-                            <div>
-                                <h4 className="text-[#1E1E1E] text-sm font-bold">Graduation Certificate</h4>
-                                <p className="text-gray-400 text-xs mt-0.5">Educational Credential</p>
-                                <p className="text-gray-400 text-[11px] mt-2">University Convocation Doc</p>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setDocModalFile({ name: "Degree Certificate", tag: "Educational Qualification", type: "Degree" })}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => toast.success("Downloading Certificate...")}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                >
-                                    <Download className="w-3.5 h-3.5" />
-                                    <span>Download</span>
-                                </button>
-                            </div>
-                        </div>
-
+                        ))}
                     </div>
                 </div>
             )}
@@ -999,156 +1262,65 @@ export const EmployeeProfile = () => {
             ───────────────────────────────────────────── */}
             {activeTab === "Assets" && (
                 <div className="space-y-6">
+                    {canEdit && (
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowAssetModal(true)}
+                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Assign New Asset</span>
+                            </button>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        
-                        {/* Asset 1: Laptop */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
-                                        <Laptop className="w-5 h-5" />
+                        {currentAssets.map((asset, idx) => (
+                            <div key={idx} className="premium-3d-card p-6 space-y-4 relative group">
+                                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
+                                            <Laptop className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[#1E1E1E] text-xs font-extrabold">{asset.name}</h4>
+                                            <p className="text-gray-400 text-[10.5px]">{asset.category}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="text-[#1E1E1E] text-xs font-extrabold">Apple MacBook Pro 16&quot;</h4>
-                                        <p className="text-gray-400 text-[10.5px]">M2 Pro · 16GB RAM · 512GB SSD</p>
-                                    </div>
-                                </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
-                                    Active
-                                </span>
-                            </div>
-
-                            <div className="space-y-2 text-xs text-gray-600 font-medium">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Asset Tag / Serial:</span>
-                                    <span className="font-mono font-bold text-[#1E1E1E]">{empCode}-LAP-2024</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Category:</span>
-                                    <span className="font-semibold text-gray-700">Hardware Workstation</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Issued Date:</span>
-                                    <span className="font-semibold text-gray-700">{empJoining}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Condition:</span>
-                                    <span className="text-emerald-600 font-bold">Excellent</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Asset 2: Monitor */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                                        <Laptop className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-[#1E1E1E] text-xs font-extrabold">Dell UltraSharp 27&quot; 4K Monitor</h4>
-                                        <p className="text-gray-400 text-[10.5px]">U2723QE · USB-C Hub</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
+                                            {asset.status || "Active"}
+                                        </span>
+                                        {canDelete && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteAsset(idx)}
+                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                title="Delete Asset"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
-                                    Active
-                                </span>
-                            </div>
 
-                            <div className="space-y-2 text-xs text-gray-600 font-medium">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Asset Tag / Serial:</span>
-                                    <span className="font-mono font-bold text-[#1E1E1E]">{empCode}-MON-2023</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Category:</span>
-                                    <span className="font-semibold text-gray-700">Display Monitor</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Issued Date:</span>
-                                    <span className="font-semibold text-gray-700">{empJoining}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Condition:</span>
-                                    <span className="text-emerald-600 font-bold">Good</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Asset 3: Mouse */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
-                                        <Mouse className="w-5 h-5" />
+                                <div className="space-y-2 text-xs text-gray-600 font-medium">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Asset Tag / Serial:</span>
+                                        <span className="font-mono font-bold text-[#1E1E1E]">{asset.assetTag || `${empCode}-AST`}</span>
                                     </div>
-                                    <div>
-                                        <h4 className="text-[#1E1E1E] text-xs font-extrabold">Logitech MX Master 3S</h4>
-                                        <p className="text-gray-400 text-[10.5px]">Wireless Ergonomic Mouse</p>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Issued Date:</span>
+                                        <span className="font-semibold text-gray-700">{formatDateStr(asset.issuedDate)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Condition:</span>
+                                        <span className="text-emerald-600 font-bold">{asset.condition || "Excellent"}</span>
                                     </div>
                                 </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
-                                    Active
-                                </span>
                             </div>
-
-                            <div className="space-y-2 text-xs text-gray-600 font-medium">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Asset Tag / Serial:</span>
-                                    <span className="font-mono font-bold text-[#1E1E1E]">{empCode}-MOU-88</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Category:</span>
-                                    <span className="font-semibold text-gray-700">Peripherals</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Issued Date:</span>
-                                    <span className="font-semibold text-gray-700">{empJoining}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Condition:</span>
-                                    <span className="text-emerald-600 font-bold">Excellent</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Asset 4: ID Card */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-                                        <ShieldCheck className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-[#1E1E1E] text-xs font-extrabold">Idea Fueled Smart Access Pass</h4>
-                                        <p className="text-gray-400 text-[10.5px]">NFC Office Security Badge</p>
-                                    </div>
-                                </div>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
-                                    Active
-                                </span>
-                            </div>
-
-                            <div className="space-y-2 text-xs text-gray-600 font-medium">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Asset Tag / Badge ID:</span>
-                                    <span className="font-mono font-bold text-[#1E1E1E]">{empCode}-SEC-01</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Access Level:</span>
-                                    <span className="font-bold text-[#2D79C7]">All Floors & Labs</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Issued Date:</span>
-                                    <span className="font-semibold text-gray-700">{empJoining}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-400">Condition:</span>
-                                    <span className="text-emerald-600 font-bold">Active</span>
-                                </div>
-                            </div>
-                        </div>
-
+                        ))}
                     </div>
                 </div>
             )}
@@ -1160,95 +1332,37 @@ export const EmployeeProfile = () => {
                 <div className="premium-3d-card p-6 sm:p-8 space-y-6">
                     <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-150 pb-3">
                         <History className="w-4.5 h-4.5 text-[#2D79C7]" />
-                        <span>Recent Employee Activity & Milestone Audit Log</span>
+                        <span>Recent Employee Activity & Audit Log</span>
                     </h3>
 
                     <div className="relative pl-6 space-y-6 border-l-2 border-blue-100 ml-3 pt-2">
-                        
-                        <div className="relative">
-                            <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#2D79C7] border-4 border-white shadow-sm flex items-center justify-center" />
-                            <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-[#1E1E1E] text-xs font-bold">Profile Details Updated</h4>
-                                    <span className="text-[10.5px] font-mono text-gray-400">22 Jul 2026, 10:45 AM</span>
+                        {currentActivities.map((act, idx) => (
+                            <div key={idx} className="relative">
+                                <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#2D79C7] border-4 border-white shadow-sm flex items-center justify-center" />
+                                <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-[#1E1E1E] text-xs font-bold">{act.title}</h4>
+                                        <span className="text-[10.5px] font-mono text-gray-400">{formatDateStr(act.timestamp)}</span>
+                                    </div>
+                                    <p className="text-gray-600 text-xs font-medium">
+                                        {act.description}
+                                    </p>
                                 </div>
-                                <p className="text-gray-600 text-xs font-medium">
-                                    Updated emergency contact details and skills list.
-                                </p>
                             </div>
-                        </div>
-
-                        <div className="relative">
-                            <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />
-                            <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-[#1E1E1E] text-xs font-bold">Attendance Regularized</h4>
-                                    <span className="text-[10.5px] font-mono text-gray-400">18 Jul 2026, 04:30 PM</span>
-                                </div>
-                                <p className="text-gray-600 text-xs font-medium">
-                                    Clock-in time regularized for 15th July by manager <strong className="text-[#1E1E1E]">{managerName}</strong>.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-purple-500 border-4 border-white shadow-sm" />
-                            <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-[#1E1E1E] text-xs font-bold">Casual Leave Approved</h4>
-                                    <span className="text-[10.5px] font-mono text-gray-400">10 Jul 2026, 11:15 AM</span>
-                                </div>
-                                <p className="text-gray-600 text-xs font-medium">
-                                    2 Days Casual Leave approved from 12 Jul to 13 Jul 2026.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-amber-500 border-4 border-white shadow-sm" />
-                            <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-[#1E1E1E] text-xs font-bold">Document Uploaded & Verified</h4>
-                                    <span className="text-[10.5px] font-mono text-gray-400">16 Jan 2023, 02:00 PM</span>
-                                </div>
-                                <p className="text-gray-600 text-xs font-medium">
-                                    Uploaded official PAN and Aadhaar identity documents for HR compliance.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#2D79C7] border-4 border-white shadow-sm" />
-                            <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-[#1E1E1E] text-xs font-bold">Joined Idea Fueled HRMS</h4>
-                                    <span className="text-[10.5px] font-mono text-gray-400">{empJoining}</span>
-                                </div>
-                                <p className="text-gray-600 text-xs font-medium">
-                                    Onboarded as <strong className="text-[#1E1E1E]">{empDesignation}</strong> in <strong className="text-[#2D79C7]">{empDept}</strong>.
-                                </p>
-                            </div>
-                        </div>
-
+                        ))}
                     </div>
                 </div>
             )}
 
             {/* ─────────────────────────────────────────────
-               RIGHT-SIDE SLIDE-OVER EDIT PROFILE DRAWER
+               EDIT PROFILE DRAWER
             ───────────────────────────────────────────── */}
             {isEditDrawerOpen && (
                 <div className="fixed inset-0 z-50 overflow-hidden">
-                    {/* Backdrop */}
-                    <div
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-                        onClick={() => setIsEditDrawerOpen(false)}
-                    />
-
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setIsEditDrawerOpen(false)} />
                     <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
                         <div className="w-screen max-w-lg bg-white shadow-2xl border-l border-gray-200 flex flex-col justify-between">
                             
-                            {/* Drawer Header */}
                             <div className="px-6 py-5 bg-[#F8FAFC] border-b border-gray-200 flex items-center justify-between">
                                 <div>
                                     <h3 className="text-[#1E1E1E] text-base font-extrabold flex items-center gap-2">
@@ -1256,7 +1370,7 @@ export const EmployeeProfile = () => {
                                         <span>Edit Personal Profile</span>
                                     </h3>
                                     <p className="text-gray-400 text-xs font-medium mt-0.5">
-                                        Update your personal information, skills, and emergency contact details.
+                                        Update your personal info, skills, and emergency contact.
                                     </p>
                                 </div>
 
@@ -1269,32 +1383,19 @@ export const EmployeeProfile = () => {
                                 </button>
                             </div>
 
-                            {/* Drawer Form Body */}
                             <form id="edit-profile-form" onSubmit={handleSaveProfile} className="p-6 overflow-y-auto space-y-5 flex-1">
-                                
-                                {/* Profile Picture Upload */}
                                 <div className="space-y-2">
                                     <label className="text-gray-700 text-xs font-bold block">Profile Picture</label>
                                     <div className="flex items-center gap-4">
-                                        <Avatar
-                                            src={editForm.profilePicture || employee?.profilePicture}
-                                            name={empName}
-                                            size="w-14 h-14"
-                                        />
+                                        <Avatar src={editForm.profilePicture || employee?.profilePicture} name={empName} size="w-14 h-14" />
                                         <label className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer">
                                             {uploadingPic ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                                             <span>{uploadingPic ? "Uploading..." : "Upload New Photo"}</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleProfilePicUpload}
-                                                className="hidden"
-                                            />
+                                            <input type="file" accept="image/*" onChange={handleProfilePicUpload} className="hidden" />
                                         </label>
                                     </div>
                                 </div>
 
-                                {/* Phone Number */}
                                 <div className="space-y-1.5">
                                     <label className="text-gray-700 text-xs font-bold block">Phone Number</label>
                                     <input
@@ -1302,35 +1403,32 @@ export const EmployeeProfile = () => {
                                         value={editForm.phoneNumber}
                                         onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
                                         placeholder="+91 98765 43210"
-                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                     />
                                 </div>
 
-                                {/* About Me / Bio */}
                                 <div className="space-y-1.5">
                                     <label className="text-gray-700 text-xs font-bold block">About Me / Bio</label>
                                     <textarea
                                         rows="3"
                                         value={editForm.aboutMe}
                                         onChange={(e) => setEditForm({ ...editForm, aboutMe: e.target.value })}
-                                        placeholder="Write a brief professional summary..."
-                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-3 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7] resize-none"
+                                        placeholder="Write a brief bio..."
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-[#2D79C7] resize-none"
                                     />
                                 </div>
 
-                                {/* Skills */}
                                 <div className="space-y-1.5">
                                     <label className="text-gray-700 text-xs font-bold block">Skills (Comma separated)</label>
                                     <input
                                         type="text"
                                         value={editForm.skills}
                                         onChange={(e) => setEditForm({ ...editForm, skills: e.target.value })}
-                                        placeholder="React, Node.js, HR Management, Payroll"
-                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                        placeholder="React, Node.js, HR Management"
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                     />
                                 </div>
 
-                                {/* Interests */}
                                 <div className="space-y-1.5">
                                     <label className="text-gray-700 text-xs font-bold block">Interests & Hobbies (Comma separated)</label>
                                     <input
@@ -1338,11 +1436,10 @@ export const EmployeeProfile = () => {
                                         value={editForm.interests}
                                         onChange={(e) => setEditForm({ ...editForm, interests: e.target.value })}
                                         placeholder="Photography, Tech Blogs, Badminton"
-                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                     />
                                 </div>
 
-                                {/* Date of Birth & Gender */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
                                         <label className="text-gray-700 text-xs font-bold block">Date of Birth</label>
@@ -1350,7 +1447,7 @@ export const EmployeeProfile = () => {
                                             type="date"
                                             value={editForm.dateOfBirth}
                                             onChange={(e) => setEditForm({ ...editForm, dateOfBirth: e.target.value })}
-                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                         />
                                     </div>
 
@@ -1359,7 +1456,7 @@ export const EmployeeProfile = () => {
                                         <select
                                             value={editForm.gender}
                                             onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                         >
                                             <option value="Male">Male</option>
                                             <option value="Female">Female</option>
@@ -1368,10 +1465,8 @@ export const EmployeeProfile = () => {
                                     </div>
                                 </div>
 
-                                {/* Emergency Contact Info */}
                                 <div className="space-y-3 pt-2 border-t border-gray-150">
                                     <h4 className="text-xs font-extrabold text-[#1E1E1E]">Emergency Contact Details</h4>
-                                    
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1.5">
                                             <label className="text-gray-700 text-[11px] font-bold block">Contact Name</label>
@@ -1380,7 +1475,7 @@ export const EmployeeProfile = () => {
                                                 value={editForm.emergencyContactName}
                                                 onChange={(e) => setEditForm({ ...editForm, emergencyContactName: e.target.value })}
                                                 placeholder="Ramesh Kumar"
-                                                className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                                className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                             />
                                         </div>
 
@@ -1391,7 +1486,7 @@ export const EmployeeProfile = () => {
                                                 value={editForm.emergencyContactRelation}
                                                 onChange={(e) => setEditForm({ ...editForm, emergencyContactRelation: e.target.value })}
                                                 placeholder="Father / Spouse"
-                                                className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                                className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                             />
                                         </div>
                                     </div>
@@ -1403,12 +1498,11 @@ export const EmployeeProfile = () => {
                                             value={editForm.emergencyContactNumber}
                                             onChange={(e) => setEditForm({ ...editForm, emergencyContactNumber: e.target.value })}
                                             placeholder="+91 98123 45678"
-                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
                                         />
                                     </div>
                                 </div>
 
-                                {/* Present & Permanent Address */}
                                 <div className="space-y-3 pt-2 border-t border-gray-150">
                                     <div className="space-y-1.5">
                                         <label className="text-gray-700 text-xs font-bold block">Present Address</label>
@@ -1417,7 +1511,7 @@ export const EmployeeProfile = () => {
                                             value={editForm.presentAddress}
                                             onChange={(e) => setEditForm({ ...editForm, presentAddress: e.target.value })}
                                             placeholder="Enter present address..."
-                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-3 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7] resize-none"
+                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-[#2D79C7] resize-none"
                                         />
                                     </div>
 
@@ -1428,19 +1522,17 @@ export const EmployeeProfile = () => {
                                             value={editForm.permanentAddress}
                                             onChange={(e) => setEditForm({ ...editForm, permanentAddress: e.target.value })}
                                             placeholder="Enter permanent address..."
-                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-3 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7] resize-none"
+                                            className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-[#2D79C7] resize-none"
                                         />
                                     </div>
                                 </div>
-
                             </form>
 
-                            {/* Drawer Footer Actions */}
                             <div className="px-6 py-4 bg-[#F8FAFC] border-t border-gray-200 flex items-center justify-end gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsEditDrawerOpen(false)}
-                                    className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-all"
+                                    className="bg-white border border-gray-200 text-gray-700 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer"
                                 >
                                     Cancel
                                 </button>
@@ -1448,14 +1540,326 @@ export const EmployeeProfile = () => {
                                     type="submit"
                                     form="edit-profile-form"
                                     disabled={saving}
-                                    className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                                    className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-sm cursor-pointer flex items-center gap-2"
                                 >
                                     {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                                    <span>{saving ? "Saving Changes..." : "Save Profile"}</span>
+                                    <span>{saving ? "Saving..." : "Save Profile"}</span>
                                 </button>
                             </div>
 
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               ADD EDUCATION MODAL
+            ───────────────────────────────────────────── */}
+            {showEduModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowEduModal(false)} />
+                    <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-md p-6 space-y-4 select-none">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4 text-[#2D79C7]" />
+                                <span>Add Educational Qualification</span>
+                            </h3>
+                            <button type="button" onClick={() => setShowEduModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddEducationSubmit} className="space-y-3 text-xs">
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Degree / Qualification</label>
+                                <input
+                                    type="text"
+                                    value={newEdu.degree}
+                                    onChange={(e) => setNewEdu({ ...newEdu, degree: e.target.value })}
+                                    placeholder="e.g. Master of Business Administration"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Institution / University</label>
+                                <input
+                                    type="text"
+                                    value={newEdu.institution}
+                                    onChange={(e) => setNewEdu({ ...newEdu, institution: e.target.value })}
+                                    placeholder="e.g. Delhi University"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-gray-700 font-bold block mb-1">Passing Year</label>
+                                    <input
+                                        type="text"
+                                        value={newEdu.passingYear}
+                                        onChange={(e) => setNewEdu({ ...newEdu, passingYear: e.target.value })}
+                                        placeholder="e.g. 2021"
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-gray-700 font-bold block mb-1">Qualification Level</label>
+                                    <select
+                                        value={newEdu.level}
+                                        onChange={(e) => setNewEdu({ ...newEdu, level: e.target.value })}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    >
+                                        <option value="Post Graduate">Post Graduate</option>
+                                        <option value="Under Graduate">Under Graduate</option>
+                                        <option value="Diploma">Diploma</option>
+                                        <option value="Doctorate">Doctorate</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
+                                <button type="button" onClick={() => setShowEduModal(false)} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={saving} className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer">
+                                    Add Education
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               ADD EXPERIENCE MODAL
+            ───────────────────────────────────────────── */}
+            {showExpModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowExpModal(false)} />
+                    <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-md p-6 space-y-4 select-none">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-[#2D79C7]" />
+                                <span>Add Experience Role</span>
+                            </h3>
+                            <button type="button" onClick={() => setShowExpModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddExperienceSubmit} className="space-y-3 text-xs">
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Job Title / Designation</label>
+                                <input
+                                    type="text"
+                                    value={newExp.title}
+                                    onChange={(e) => setNewExp({ ...newExp, title: e.target.value })}
+                                    placeholder="e.g. Senior Specialist"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Company / Organization</label>
+                                <input
+                                    type="text"
+                                    value={newExp.company}
+                                    onChange={(e) => setNewExp({ ...newExp, company: e.target.value })}
+                                    placeholder="e.g. Idea Fueled HRMS"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Period / Tenure</label>
+                                <input
+                                    type="text"
+                                    value={newExp.period}
+                                    onChange={(e) => setNewExp({ ...newExp, period: e.target.value })}
+                                    placeholder="e.g. 2022 - 2024"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Brief Description</label>
+                                <textarea
+                                    rows="2"
+                                    value={newExp.description}
+                                    onChange={(e) => setNewExp({ ...newExp, description: e.target.value })}
+                                    placeholder="Key responsibilities or milestones..."
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7] resize-none"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
+                                <button type="button" onClick={() => setShowExpModal(false)} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={saving} className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer">
+                                    Add Role
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               ADD DOCUMENT MODAL
+            ───────────────────────────────────────────── */}
+            {showDocModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDocModal(false)} />
+                    <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-md p-6 space-y-4 select-none">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-[#2D79C7]" />
+                                <span>Upload / Add Employee Document</span>
+                            </h3>
+                            <button type="button" onClick={() => setShowDocModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddDocumentSubmit} className="space-y-3 text-xs">
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Document Name</label>
+                                <input
+                                    type="text"
+                                    value={newDoc.name}
+                                    onChange={(e) => setNewDoc({ ...newDoc, name: e.target.value })}
+                                    placeholder="e.g. Form 16 / Identity Certificate"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Category</label>
+                                <select
+                                    value={newDoc.category}
+                                    onChange={(e) => setNewDoc({ ...newDoc, category: e.target.value })}
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                >
+                                    <option value="Government ID">Government ID</option>
+                                    <option value="National Identification">National Identification</option>
+                                    <option value="Agreement">Agreement</option>
+                                    <option value="Resume">Resume</option>
+                                    <option value="Educational Certificate">Educational Certificate</option>
+                                    <option value="Other Compliance Doc">Other Compliance Doc</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Doc Number / Reference Tag</label>
+                                <input
+                                    type="text"
+                                    value={newDoc.numberOrTag}
+                                    onChange={(e) => setNewDoc({ ...newDoc, numberOrTag: e.target.value })}
+                                    placeholder="e.g. REF-2026-901"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
+                                <button type="button" onClick={() => setShowDocModal(false)} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={saving} className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer">
+                                    Save Document
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               ADD ASSET MODAL
+            ───────────────────────────────────────────── */}
+            {showAssetModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAssetModal(false)} />
+                    <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-md p-6 space-y-4 select-none">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                <Laptop className="w-4 h-4 text-[#2D79C7]" />
+                                <span>Assign Company Asset</span>
+                            </h3>
+                            <button type="button" onClick={() => setShowAssetModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddAssetSubmit} className="space-y-3 text-xs">
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Asset Name</label>
+                                <input
+                                    type="text"
+                                    value={newAsset.name}
+                                    onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
+                                    placeholder="e.g. Keychron K2 Wireless Keyboard"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Asset Tag / Serial Number</label>
+                                <input
+                                    type="text"
+                                    value={newAsset.assetTag}
+                                    onChange={(e) => setNewAsset({ ...newAsset, assetTag: e.target.value })}
+                                    placeholder="e.g. IF-ACC-904"
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-gray-700 font-bold block mb-1">Category</label>
+                                    <select
+                                        value={newAsset.category}
+                                        onChange={(e) => setNewAsset({ ...newAsset, category: e.target.value })}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    >
+                                        <option value="Hardware Workstation">Hardware Workstation</option>
+                                        <option value="Display Monitor">Display Monitor</option>
+                                        <option value="Peripherals">Peripherals</option>
+                                        <option value="Security Badge">Security Badge</option>
+                                        <option value="Mobile Device">Mobile Device</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-gray-700 font-bold block mb-1">Condition</label>
+                                    <select
+                                        value={newAsset.condition}
+                                        onChange={(e) => setNewAsset({ ...newAsset, condition: e.target.value })}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    >
+                                        <option value="Excellent">Excellent</option>
+                                        <option value="Good">Good</option>
+                                        <option value="Fair">Fair</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
+                                <button type="button" onClick={() => setShowAssetModal(false)} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={saving} className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer">
+                                    Assign Asset
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
@@ -1472,11 +1876,7 @@ export const EmployeeProfile = () => {
                                 <FileText className="w-4 h-4 text-[#2D79C7]" />
                                 <span>{docModalFile.name}</span>
                             </h3>
-                            <button
-                                type="button"
-                                onClick={() => setDocModalFile(null)}
-                                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg"
-                            >
+                            <button type="button" onClick={() => setDocModalFile(null)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -1495,11 +1895,7 @@ export const EmployeeProfile = () => {
                         </div>
 
                         <div className="flex gap-3 justify-end pt-2">
-                            <button
-                                type="button"
-                                onClick={() => setDocModalFile(null)}
-                                className="bg-white border border-gray-200 text-gray-700 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer hover:bg-gray-50"
-                            >
+                            <button type="button" onClick={() => setDocModalFile(null)} className="bg-white border border-gray-200 text-gray-700 text-xs font-bold py-2 px-4 rounded-xl cursor-pointer hover:bg-gray-50">
                                 Close
                             </button>
                             <button
@@ -1517,6 +1913,23 @@ export const EmployeeProfile = () => {
                     </div>
                 </div>
             )}
+
+            {/* ─────────────────────────────────────────────
+               CONFIRM DELETE DIALOG
+            ───────────────────────────────────────────── */}
+            <ConfirmDialog
+                isOpen={confirmDelete.isOpen}
+                onClose={() => setConfirmDelete({ isOpen: false, title: "", message: "", action: null })}
+                onConfirm={() => {
+                    if (confirmDelete.action) confirmDelete.action();
+                    setConfirmDelete({ isOpen: false, title: "", message: "", action: null });
+                }}
+                title={confirmDelete.title}
+                message={confirmDelete.message}
+                confirmText="Yes, Delete"
+                cancelText="Cancel"
+                type="danger"
+            />
 
         </div>
     );

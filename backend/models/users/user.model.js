@@ -107,6 +107,63 @@ const userScehma = new mongoose.Schema({
         type: String,
         default: ""
     },
+    aboutMe: {
+        type: String,
+        default: ""
+    },
+    skills: [{
+        type: String
+    }],
+    interests: [{
+        type: String
+    }],
+    emergencyContactName: {
+        type: String,
+        default: ""
+    },
+    emergencyContactRelation: {
+        type: String,
+        default: ""
+    },
+    maritalStatus: {
+        type: String,
+        default: "Single"
+    },
+    education: [{
+        degree: String,
+        institution: String,
+        fieldOfStudy: String,
+        passingYear: String,
+        level: String
+    }],
+    experienceTimeline: [{
+        title: String,
+        company: String,
+        period: String,
+        description: String
+    }],
+    userDocuments: [{
+        name: String,
+        category: String,
+        numberOrTag: String,
+        url: String,
+        uploadedAt: { type: Date, default: Date.now },
+        status: { type: String, default: "Verified" }
+    }],
+    assets: [{
+        name: String,
+        assetTag: String,
+        category: String,
+        issuedDate: { type: Date, default: Date.now },
+        condition: { type: String, default: "Excellent" },
+        status: { type: String, default: "Active" }
+    }],
+    activities: [{
+        title: String,
+        description: String,
+        timestamp: { type: Date, default: Date.now },
+        type: { type: String, default: "general" }
+    }],
 
     // bank details
     bankName: {
