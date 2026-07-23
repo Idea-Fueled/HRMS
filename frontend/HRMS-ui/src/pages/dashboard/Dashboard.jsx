@@ -642,7 +642,7 @@ const AttendanceLogsModal = ({ onClose, dateStr, logs, totalWorkMinutes, totalSe
                                                         <p className="text-gray-500 text-[11px] mt-0.5">{log.note}</p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[#1E1E1E] text-[15px] font-extrabold font-mono tracking-tight">{log.time}</p>
+                                                        <p className="text-[#1E1E1E] text-[15px] font-extrabold tracking-tight">{log.time}</p>
                                                         {log.duration && (
                                                             <p className="text-gray-400 text-[10px] mt-0.5 font-medium">Session: {log.duration}</p>
                                                         )}
@@ -894,7 +894,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
                                 <span className="text-white/60 text-[10px] font-bold uppercase tracking-widest">
                                     Current Time
                                 </span>
-                                <div className="flex items-baseline font-mono mt-0.5">
+                                <div className="flex items-baseline mt-0.5">
                                     <span className="text-white text-[32px] font-extrabold tracking-tight leading-none">{hm}</span>
                                     <span className="text-white/60 text-xl font-semibold">:{sec}</span>
                                     <span className="text-white/80 text-base font-bold ml-1.5">{ampm}</span>
@@ -970,7 +970,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
                         </div>
                         <div className="bg-[#F8FAFC] border border-[#F0F2F5] rounded-[14px] p-3 flex flex-col gap-1">
                             <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Duration</span>
-                            <span className="text-[#2D79C7] text-[11px] font-bold flex items-center gap-1 font-mono">
+                            <span className="text-[#2D79C7] text-[11.5px] font-extrabold flex items-center gap-1">
                                 <Timer className="w-3.5 h-3.5 shrink-0" />
                                 {fmtDuration(elapsedSec)}
                             </span>

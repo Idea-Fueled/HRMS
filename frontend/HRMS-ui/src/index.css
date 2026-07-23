@@ -35,8 +35,14 @@ textarea {
 
 *, *::before, *::after {
     box-sizing: border-box;
-    font-variant-numeric: normal;
-    font-feature-settings: "zero" 0;
+    font-variant-numeric: normal !important;
+    font-feature-settings: "zero" 0 !important;
+}
+
+.font-mono, code, kbd, samp, pre {
+    font-family: "Inter", sans-serif !important;
+    font-variant-numeric: normal !important;
+    font-feature-settings: "zero" 0 !important;
 }
 
 /* Better heading readability */
