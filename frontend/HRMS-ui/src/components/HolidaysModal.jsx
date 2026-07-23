@@ -201,44 +201,73 @@ const HolidaysModal = ({ isOpen, onClose }) => {
         return d.getMonth() >= 8; // Sep-Dec (months 8 to 11)
     });
 
+const getHolidayEmoji = (title = "") => {
+    const t = title.toLowerCase();
+    if (t.includes("christmas")) return "🎄";
+    if (t.includes("new year")) return "🎆";
+    if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
+    if (t.includes("eid")) return "🌙";
+    if (t.includes("holi")) return "🎨";
+    if (t.includes("independence") || t.includes("republic")) return "🇮🇳";
+    if (t.includes("raksha") || t.includes("rakhi")) return "🎋";
+    if (t.includes("gandhi")) return "🕊️";
+    if (t.includes("good friday") || t.includes("easter")) return "✝️";
+    return "🌴";
+};
+
     const renderHolidayCard = (h, idx) => {
         const d = h.date ? new Date(h.date) : new Date();
-        const dayNum = d.getDate();
+        const dayNum = d.getDate().toString().padStart(2, "0");
         const monthAbbr = MONTH_ABBR[d.getMonth()];
         const formattedType = displayType(h.type);
+        const emoji = getHolidayEmoji(h.title);
         const isDeleting = deletingId === h._id;
 
         return (
             <div
                 key={h._id || idx}
-                className="group relative flex items-center gap-4 py-3 px-4 border border-gray-150 rounded-[14px] hover:border-blue-100 hover:bg-[#F8FAFC]/50 transition-all duration-200 shadow-sm bg-white"
+                className="group relative overflow-hidden rounded-[16px] p-4 transition-all duration-300 border shadow-xs hover:shadow-md bg-white border-gray-200/90 hover:border-[#2D79C7]/40"
             >
-                {/* Date badge */}
-                <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-[#2D79C7]/10 to-[#1F5EA8]/10 border border-[#2D79C7]/15 flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[#2D79C7] text-[11px] font-bold uppercase leading-none">{monthAbbr}</span>
-                    <span className="text-[#1E1E1E] text-[15px] font-extrabold leading-tight mt-0.5">{dayNum}</span>
-                </div>
+                {/* Decorative Background Accent */}
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-[#2D79C7]/5 pointer-events-none blur-xl group-hover:scale-125 transition-transform" />
 
-                {/* Title + day */}
-                <div className="flex-1 min-w-0 text-left">
-                    <span className="text-[#1E1E1E] text-[13px] font-semibold block truncate" title={h.title}>
-                        {h.title || "Holiday"}
+                {/* Top Header Row inside Card */}
+                <div className="flex items-start justify-between gap-3 relative z-10">
+                    {/* Calendar Tile Badge */}
+                    <div className="w-12 rounded-xl bg-white border border-gray-200/90 shadow-xs overflow-hidden text-center shrink-0">
+                        <div className="bg-[#2D79C7] text-white text-[9.5px] font-black uppercase tracking-wider py-0.5">
+                            {monthAbbr}
+                        </div>
+                        <div className="py-1 text-[#1E1E1E] text-base font-black leading-tight">
+                            {dayNum}
+                        </div>
+                    </div>
+
+                    {/* Holiday Type Badge */}
+                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                        {formattedType}
                     </span>
-                    <span className="text-gray-400 text-[11px] mt-0.5 block font-medium">{h.day || ""}</span>
                 </div>
 
-                {/* Type badge */}
-                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
-                    {formattedType}
-                </span>
+                {/* Content Info */}
+                <div className="mt-3.5 relative z-10">
+                    <h4 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-1.5 leading-snug">
+                        <span className="text-base leading-none">{emoji}</span>
+                        <span className="truncate" title={h.title}>{h.title || "Holiday"}</span>
+                    </h4>
+                    <p className="text-gray-500 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+                        <span>{h.day || "Scheduled Day"}</span>
+                    </p>
+                </div>
 
                 {/* Edit / Delete — only for admin/hr */}
                 {canEdit && (
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-white/90 backdrop-blur-xs p-1 rounded-lg border border-gray-200 shadow-sm transition-opacity z-20">
                         <button
                             onClick={() => setEditingHoliday(h)}
                             title="Edit"
-                            className="p-1.5 rounded-[8px] text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
+                            className="p-1 rounded-md text-gray-500 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
                         >
                             <Edit3 className="w-3.5 h-3.5" />
                         </button>
@@ -246,7 +275,7 @@ const HolidaysModal = ({ isOpen, onClose }) => {
                             onClick={() => handleDelete(h)}
                             disabled={isDeleting}
                             title="Delete"
-                            className="p-1.5 rounded-[8px] text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
+                            className="p-1 rounded-md text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
                         >
                             {isDeleting
                                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

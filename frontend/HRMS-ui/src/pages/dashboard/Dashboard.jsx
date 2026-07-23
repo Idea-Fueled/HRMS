@@ -294,24 +294,6 @@ const getHolidayEmoji = (title = "") => {
     return "🌴";
 };
 
-const getDaysRemainingText = (targetDateStr) => {
-    if (!targetDateStr) return "";
-    const target = new Date(targetDateStr);
-    const now = new Date();
-    target.setHours(0, 0, 0, 0);
-    now.setHours(0, 0, 0, 0);
-    const diffTime = target - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return "Passed";
-    if (diffDays === 0) return "Today! 🎉";
-    if (diffDays === 1) return "Tomorrow! ⚡";
-    if (diffDays < 30) return `in ${diffDays} days`;
-    if (diffDays < 60) return `in 1 month`;
-    const months = Math.round(diffDays / 30);
-    return `in ${months} months`;
-};
-
 const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
     const displayType = (type) => {
         if (type === "public_holiday") return "Public Holiday";
@@ -342,7 +324,6 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
                 const month = MONTH_ABBR[d.getMonth()];
                 const formattedType = displayType(h.type);
                 const emoji = getHolidayEmoji(h.title);
-                const countdownText = getDaysRemainingText(h.date);
                 const isNextImmediate = idx === 0;
 
                 return (
@@ -369,17 +350,10 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
                                 </div>
                             </div>
 
-                            {/* Holiday Type & Countdown */}
-                            <div className="flex flex-col items-end gap-1">
-                                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
-                                    {formattedType}
-                                </span>
-                                {countdownText && (
-                                    <span className="text-[10px] font-bold text-[#2D79C7] bg-blue-50/80 px-2 py-0.5 rounded-md border border-blue-100/60">
-                                        {countdownText}
-                                    </span>
-                                )}
-                            </div>
+                            {/* Holiday Type Badge */}
+                            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                                {formattedType}
+                            </span>
                         </div>
 
                         {/* Content Info */}
