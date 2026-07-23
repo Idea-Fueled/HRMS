@@ -280,6 +280,38 @@ const CreateHolidayModal = ({ isOpen, onClose, onSuccess }) => {
     );
 };
 
+const getHolidayEmoji = (title = "") => {
+    const t = title.toLowerCase();
+    if (t.includes("christmas")) return "🎄";
+    if (t.includes("new year")) return "🎆";
+    if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
+    if (t.includes("eid")) return "🌙";
+    if (t.includes("holi")) return "🎨";
+    if (t.includes("independence") || t.includes("republic")) return "🇮🇳";
+    if (t.includes("raksha") || t.includes("rakhi")) return "🎋";
+    if (t.includes("gandhi")) return "🕊️";
+    if (t.includes("good friday") || t.includes("easter")) return "✝️";
+    return "🌴";
+};
+
+const getDaysRemainingText = (targetDateStr) => {
+    if (!targetDateStr) return "";
+    const target = new Date(targetDateStr);
+    const now = new Date();
+    target.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+    const diffTime = target - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return "Passed";
+    if (diffDays === 0) return "Today! 🎉";
+    if (diffDays === 1) return "Tomorrow! ⚡";
+    if (diffDays < 30) return `in ${diffDays} days`;
+    if (diffDays < 60) return `in 1 month`;
+    const months = Math.round(diffDays / 30);
+    return `in ${months} months`;
+};
+
 const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
     const displayType = (type) => {
         if (type === "public_holiday") return "Public Holiday";
@@ -289,62 +321,93 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
     };
 
     const typeColors = {
-        "Public Holiday": "bg-blue-50 text-[#2D79C7] border-blue-100",
-        "Company Holiday": "bg-violet-50 text-violet-700 border-violet-100",
-        "Optional Holiday": "bg-amber-50 text-amber-700 border-amber-100",
+        "Public Holiday": "bg-blue-50/90 text-[#2D79C7] border-blue-100/80",
+        "Company Holiday": "bg-purple-50/90 text-purple-700 border-purple-100/80",
+        "Optional Holiday": "bg-amber-50/90 text-amber-700 border-amber-100/80",
     };
 
     if (holidays.length === 0) {
         return (
-            <div className="py-8 text-center text-gray-400 text-[12px] bg-gray-50 rounded-[12px] flex items-center justify-center gap-2 select-none">
-                <span>📅</span> No upcoming holidays
+            <div className="py-8 text-center text-gray-400 text-xs bg-slate-50 border border-dashed border-gray-200 rounded-[16px] flex items-center justify-center gap-2 select-none">
+                <span>🌴</span> No upcoming holidays scheduled
             </div>
         );
     }
 
     return (
-        <div className="space-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {holidays.slice(0, 2).map((h, idx) => {
                 const d = h.date ? new Date(h.date) : new Date();
-                const dayNum = d.getDate();
+                const dayNum = d.getDate().toString().padStart(2, "0");
                 const month = MONTH_ABBR[d.getMonth()];
                 const formattedType = displayType(h.type);
+                const emoji = getHolidayEmoji(h.title);
+                const countdownText = getDaysRemainingText(h.date);
+                const isNextImmediate = idx === 0;
+
                 return (
                     <div
                         key={h._id || idx}
-                        className="flex items-center gap-3 py-3 border-b border-[#F9FAFB] last:border-0 group"
+                        className={`group relative overflow-hidden rounded-[16px] p-4 transition-all duration-300 border shadow-xs hover:shadow-md ${
+                            isNextImmediate
+                                ? "bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-indigo-50/50 border-blue-200/80 hover:border-blue-300"
+                                : "bg-white border-gray-200/80 hover:border-gray-300"
+                        }`}
                     >
-                        {/* Date badge */}
-                        <div className="w-11 h-11 rounded-[12px] bg-gradient-to-br from-[#2D79C7]/10 to-[#1F5EA8]/10 border border-[#2D79C7]/15 flex flex-col items-center justify-center shrink-0">
-                            <span className="text-[#2D79C7] text-[11px] font-bold uppercase leading-none">{month}</span>
-                            <span className="text-[#1E1E1E] text-[15px] font-extrabold leading-tight mt-0.5">{dayNum}</span>
+                        {/* Decorative Background Glow */}
+                        <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-[#2D79C7]/5 pointer-events-none blur-xl group-hover:scale-125 transition-transform" />
+
+                        {/* Top Header Row inside Card */}
+                        <div className="flex items-start justify-between gap-3 relative z-10">
+                            {/* Calendar Tile Badge */}
+                            <div className="w-12 rounded-xl bg-white border border-gray-200/90 shadow-xs overflow-hidden text-center shrink-0">
+                                <div className="bg-[#2D79C7] text-white text-[9.5px] font-black uppercase tracking-wider py-0.5">
+                                    {month}
+                                </div>
+                                <div className="py-1 text-[#1E1E1E] text-base font-black leading-tight">
+                                    {dayNum}
+                                </div>
+                            </div>
+
+                            {/* Holiday Type & Countdown */}
+                            <div className="flex flex-col items-end gap-1">
+                                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                                    {formattedType}
+                                </span>
+                                {countdownText && (
+                                    <span className="text-[10px] font-bold text-[#2D79C7] bg-blue-50/80 px-2 py-0.5 rounded-md border border-blue-100/60">
+                                        {countdownText}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Title + day */}
-                        <div className="flex-1 min-w-0">
-                            <span className="text-[#1E1E1E] text-[13px] font-semibold block truncate">{h.title || "Holiday"}</span>
-                            <span className="text-gray-400 text-[11px] mt-0.5 block font-medium">{h.day || ""}</span>
+                        {/* Content Info */}
+                        <div className="mt-3.5 relative z-10">
+                            <h4 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-1.5 leading-snug">
+                                <span className="text-base leading-none">{emoji}</span>
+                                <span className="truncate">{h.title || "Holiday"}</span>
+                            </h4>
+                            <p className="text-gray-500 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+                                <span>{h.day || "Scheduled Day"}</span>
+                            </p>
                         </div>
 
-                        {/* Type badge */}
-                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${typeColors[formattedType] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
-                            {formattedType}
-                        </span>
-
-                        {/* Edit / Delete — only for admin/hr */}
+                        {/* HR/Admin Hover Actions */}
                         {canEdit && (
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-white/90 backdrop-blur-xs p-1 rounded-lg border border-gray-200 shadow-sm transition-opacity z-20">
                                 <button
                                     onClick={() => onEdit(h)}
                                     title="Edit holiday"
-                                    className="p-1.5 rounded-[8px] text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
+                                    className="p-1 rounded-md text-gray-500 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
                                 >
                                     <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                     onClick={() => onDelete(h)}
                                     title="Delete holiday"
-                                    className="p-1.5 rounded-[8px] text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                    className="p-1 rounded-md text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
                                 </button>
