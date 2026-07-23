@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Users, UserCheck, UserX, UserPlus, Briefcase, FileText,
     Plus, Eye, Edit3, X, ChevronDown, Trash2,
@@ -493,6 +494,7 @@ const EmployeeCardView = ({ employees, onView, onEdit }) => {
    VIEW EMPLOYEE DRAWER
 ───────────────────────────────────────────── */
 export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
+    const navigate = useNavigate();
     if (!employee) return null;
     const name = employee.fullName || `${employee.firstName} ${employee.lastName}`;
 
@@ -565,6 +567,15 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                onClose();
+                                navigate(`/profile/${employee._id}`);
+                            }}
+                            className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3.5 py-2 rounded-[10px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                        >
+                            <UserIcon className="w-3.5 h-3.5" /> Full Profile
+                        </button>
                         {onEdit && (
                             <button onClick={() => { onClose(); onEdit(employee); }} className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3.5 py-2 rounded-[10px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
                                 <Edit3 className="w-3.5 h-3.5" /> Edit

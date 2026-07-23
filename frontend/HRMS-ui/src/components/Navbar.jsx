@@ -26,6 +26,7 @@ import { Avatar } from "./SharedComponents";
 const pageMetadata = {
     "/dashboard": { title: "Dashboard", subtitle: "Welcome back! Here is your workspace summary." },
     "/":          { title: "Dashboard", subtitle: "Welcome back! Here is your workspace summary." },
+    "/profile":   { title: "Employee Profile", subtitle: "View and manage complete employee profile records and parameters." },
     "/me":        { title: "Me", subtitle: "Manage your personal profile, attendance, and details." },
     "/my-team":   { title: "My Team", subtitle: "View team details, directories, and schedules." },
     "/employees": { title: "Employees", subtitle: "Manage employee records, profiles, and organizational data." },
@@ -111,7 +112,7 @@ const GlobalSearch = () => {
     const handleSelect = (emp) => {
         setQuery("");
         setOpen(false);
-        navigate("/employees");
+        navigate(`/profile/${emp._id}`);
     };
 
     const clearSearch = () => { setQuery(""); setResults([]); setOpen(false); };
@@ -234,10 +235,12 @@ const Navbar = ({ onToggleSidebar }) => {
     const designation = user?.designation || "";
     const email = user?.email || "";
 
-    const meta = pageMetadata[currentPath] || {
-        title: "Dashboard",
-        subtitle: "Welcome back! Here is your workspace summary.",
-    };
+    const meta = currentPath.startsWith("/profile")
+        ? pageMetadata["/profile"]
+        : (pageMetadata[currentPath] || {
+            title: "Dashboard",
+            subtitle: "Welcome back! Here is your workspace summary.",
+        });
 
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const profileRef = useRef(null);
@@ -317,10 +320,16 @@ const Navbar = ({ onToggleSidebar }) => {
                                 <p className="text-xs text-gray-400 font-medium">Signed in as</p>
                                 <p className="text-xs text-[#1E1E1E] font-bold truncate">{email}</p>
                             </div>
-                            <a href="#profile" className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors">
+                            <button
+                                onClick={() => {
+                                    setIsProfileDropdownOpen(false);
+                                    navigate("/profile");
+                                }}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+                            >
                                 <User className="w-4 h-4 text-gray-400" />
                                 <span>My Profile</span>
-                            </a>
+                            </button>
                             <a href="#settings" className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors">
                                 <Settings className="w-4 h-4 text-gray-400" />
                                 <span>Settings</span>

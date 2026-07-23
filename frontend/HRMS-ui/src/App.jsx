@@ -16,6 +16,7 @@ import { Documents } from "./pages/documents/Documents";
 import MyFinances from "./pages/my-finances/MyFinances";
 import MyTeam from "./pages/my-team/MyTeam";
 import Employees from "./pages/employees/Employees";
+import EmployeeProfile from "./pages/profile/EmployeeProfile";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
 
 /* ─────────────────────────────────────────────
@@ -55,6 +56,22 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={ALL_ROLES}>
                         <Me />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "profile",
+                element: (
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
+                        <EmployeeProfile />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "profile/:id",
+                element: (
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
+                        <EmployeeProfile />
                     </ProtectedRoute>
                 ),
             },
