@@ -496,14 +496,25 @@ export const EmployeeProfile = () => {
     const aboutMeText = employee?.aboutMe || "Dedicated team member at Idea Fueled HRMS, focused on delivering strategic project milestones, fostering cross-departmental collaboration, and driving continuous process improvements.";
 
     // Tabs definition
-    const profileTabs = [
+    const allProfileTabs = useMemo(() => [
         { key: "Overview", label: "Overview", icon: User },
         { key: "Employment", label: "Employment", icon: Briefcase },
         { key: "Attendance", label: "Attendance", icon: Clock },
         { key: "Documents", label: "Documents", icon: FileText },
         { key: "Assets", label: "Assets", icon: Laptop },
         { key: "Activity", label: "Activity", icon: History },
-    ];
+    ], []);
+
+    const profileTabs = useMemo(() => {
+        if (canViewConfidential) return allProfileTabs;
+        return allProfileTabs.filter(t => t.key === "Overview" || t.key === "Employment");
+    }, [canViewConfidential, allProfileTabs]);
+
+    useEffect(() => {
+        if (!canViewConfidential && activeTab !== "Overview" && activeTab !== "Employment") {
+            setActiveTab("Overview");
+        }
+    }, [canViewConfidential, activeTab]);
 
     if (loading) {
         return (
@@ -842,84 +853,82 @@ export const EmployeeProfile = () => {
                     {/* Right Column (Personal Info, Emergency Contact, Education, Reporting Structure) */}
                     <div className="lg:col-span-7 space-y-6">
                         
-                        {/* Personal Information */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
-                                    <UserCheck className="w-4 h-4 text-[#2D79C7]" />
-                                    <span>Personal Information</span>
-                                </h3>
-                                {canEdit && (
-                                    <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
-                                        <Edit3 className="w-3.5 h-3.5" /> Edit
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
-                                    <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Date of Birth</span>
-                                    <span className="text-[#1E1E1E] font-bold block mt-1">
-                                        {canViewConfidential ? formatDateStr(employee?.dateOfBirth || "1996-08-24") : "🔒 Confidential"}
-                                    </span>
+                        {/* Personal Information (Visible only to HR/Admin or Own Profile) */}
+                        {canViewConfidential && (
+                            <div className="premium-3d-card p-6 space-y-4">
+                                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                    <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                        <UserCheck className="w-4 h-4 text-[#2D79C7]" />
+                                        <span>Personal Information</span>
+                                    </h3>
+                                    {canEdit && (
+                                        <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                            <Edit3 className="w-3.5 h-3.5" /> Edit
+                                        </button>
+                                    )}
                                 </div>
 
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
-                                    <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Gender</span>
-                                    <span className="text-[#1E1E1E] font-bold block mt-1">
-                                        {employee?.gender || "Male"}
-                                    </span>
-                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                    <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
+                                        <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Date of Birth</span>
+                                        <span className="text-[#1E1E1E] font-bold block mt-1">
+                                            {formatDateStr(employee?.dateOfBirth || "1996-08-24")}
+                                        </span>
+                                    </div>
 
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
-                                    <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Blood Group</span>
-                                    <span className="text-[#1E1E1E] font-bold block mt-1">
-                                        {canViewConfidential ? (employee?.bloodGroup || "O+") : "🔒 Confidential"}
-                                    </span>
-                                </div>
+                                    <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
+                                        <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Gender</span>
+                                        <span className="text-[#1E1E1E] font-bold block mt-1">
+                                            {employee?.gender || "Male"}
+                                        </span>
+                                    </div>
 
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
-                                    <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Father&apos;s Name</span>
-                                    <span className="text-[#1E1E1E] font-bold block mt-1">
-                                        {canViewConfidential ? (employee?.fatherName || "Ramesh Kumar") : "🔒 Confidential"}
-                                    </span>
-                                </div>
+                                    <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
+                                        <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Blood Group</span>
+                                        <span className="text-[#1E1E1E] font-bold block mt-1">
+                                            {employee?.bloodGroup || "O+"}
+                                        </span>
+                                    </div>
 
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
-                                    <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Present Address</span>
-                                    <span className="text-[#1E1E1E] font-medium block mt-1">
-                                        {canViewConfidential 
-                                            ? (employee?.presentAddress || "Flat 402, Block B, Idea Fueled Tech Residency, Electronic City, Bengaluru, KA 560100")
-                                            : "🔒 Confidential (Restricted Access)"}
-                                    </span>
-                                </div>
+                                    <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
+                                        <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Father&apos;s Name</span>
+                                        <span className="text-[#1E1E1E] font-bold block mt-1">
+                                            {employee?.fatherName || "Ramesh Kumar"}
+                                        </span>
+                                    </div>
 
-                                <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
-                                    <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Permanent Address</span>
-                                    <span className="text-[#1E1E1E] font-medium block mt-1">
-                                        {canViewConfidential 
-                                            ? (employee?.permanentAddress || "House No. 128, Sector 15, Green Park, New Delhi, India 110016")
-                                            : "🔒 Confidential (Restricted Access)"}
-                                    </span>
+                                    <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
+                                        <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Present Address</span>
+                                        <span className="text-[#1E1E1E] font-medium block mt-1">
+                                            {employee?.presentAddress || "Flat 402, Block B, Idea Fueled Tech Residency, Electronic City, Bengaluru, KA 560100"}
+                                        </span>
+                                    </div>
+
+                                    <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
+                                        <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Permanent Address</span>
+                                        <span className="text-[#1E1E1E] font-medium block mt-1">
+                                            {employee?.permanentAddress || "House No. 128, Sector 15, Green Park, New Delhi, India 110016"}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Emergency Contact */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
-                                    <PhoneCall className="w-4 h-4 text-rose-600" />
-                                    <span>Emergency Contact</span>
-                                </h3>
-                                {canEdit && (
-                                    <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
-                                        <Edit3 className="w-3.5 h-3.5" /> Edit
-                                    </button>
-                                )}
-                            </div>
+                        {/* Emergency Contact (Visible only to HR/Admin or Own Profile) */}
+                        {canViewConfidential && (
+                            <div className="premium-3d-card p-6 space-y-4">
+                                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                    <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                        <PhoneCall className="w-4 h-4 text-rose-600" />
+                                        <span>Emergency Contact</span>
+                                    </h3>
+                                    {canEdit && (
+                                        <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                            <Edit3 className="w-3.5 h-3.5" /> Edit
+                                        </button>
+                                    )}
+                                </div>
 
-                            {canViewConfidential ? (
                                 <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <div className="space-y-1">
                                         <h4 className="text-[#1E1E1E] text-xs font-black">
@@ -935,13 +944,8 @@ export const EmployeeProfile = () => {
                                         <span>{employee?.emergencyContactNumber || employee?.phoneNumber || "+91 98123 45678"}</span>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="bg-rose-50/30 border border-rose-100 p-4 rounded-2xl flex items-center gap-3">
-                                    <Lock className="w-4 h-4 text-rose-400" />
-                                    <span className="text-gray-500 text-xs font-semibold">Emergency Contact information is confidential and restricted to HR and employee.</span>
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         {/* Education */}
                         <div className="premium-3d-card p-6 space-y-4">
