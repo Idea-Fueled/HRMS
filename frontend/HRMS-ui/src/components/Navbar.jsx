@@ -117,21 +117,6 @@ const GlobalSearch = () => {
 
     const clearSearch = () => { setQuery(""); setResults([]); setOpen(false); };
 
-    if (!canViewEmployees) {
-        // Non-admin/hr roles get a static decorative search bar
-        return (
-            <div className="relative flex items-center w-full">
-                <Search className="w-4 h-4 text-gray-400 absolute left-4" />
-                <input
-                    type="text"
-                    disabled
-                    placeholder="Search..."
-                    className="w-full pl-11 pr-4 py-2.5 bg-gray-50/50 border border-gray-200/80 rounded-[14px] text-sm text-gray-300 cursor-not-allowed"
-                />
-            </div>
-        );
-    }
-
     return (
         <div ref={containerRef} className="relative w-full">
             <div className="relative group flex items-center">

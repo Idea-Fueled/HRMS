@@ -5,7 +5,7 @@ import {
     Shield, Clock, Edit3, X, Check, Eye, Download, Upload,
     Laptop, Mouse, ShieldCheck, Award, FileText,
     Heart, GraduationCap, PhoneCall, History, Loader2, Camera,
-    Plus, Trash2, PlusCircle, UserCheck
+    Plus, Trash2, PlusCircle, UserCheck, Lock
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
@@ -140,6 +140,7 @@ export const EmployeeProfile = () => {
     const userRole = (currentUser?.role || "employee").toLowerCase();
     const canEdit = isOwnProfile || userRole === "admin" || userRole === "hr";
     const canDelete = isOwnProfile || userRole === "admin" || userRole === "hr";
+    const canViewConfidential = isOwnProfile || userRole === "admin" || userRole === "hr";
 
     // Fetch employee data from MongoDB
     const fetchProfile = useCallback(async () => {
@@ -859,7 +860,7 @@ export const EmployeeProfile = () => {
                                 <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
                                     <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Date of Birth</span>
                                     <span className="text-[#1E1E1E] font-bold block mt-1">
-                                        {formatDateStr(employee?.dateOfBirth || "1996-08-24")}
+                                        {canViewConfidential ? formatDateStr(employee?.dateOfBirth || "1996-08-24") : "🔒 Confidential"}
                                     </span>
                                 </div>
 
@@ -873,28 +874,32 @@ export const EmployeeProfile = () => {
                                 <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
                                     <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Blood Group</span>
                                     <span className="text-[#1E1E1E] font-bold block mt-1">
-                                        {employee?.bloodGroup || "O+"}
+                                        {canViewConfidential ? (employee?.bloodGroup || "O+") : "🔒 Confidential"}
                                     </span>
                                 </div>
 
                                 <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
                                     <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Father&apos;s Name</span>
                                     <span className="text-[#1E1E1E] font-bold block mt-1">
-                                        {employee?.fatherName || "Ramesh Kumar"}
+                                        {canViewConfidential ? (employee?.fatherName || "Ramesh Kumar") : "🔒 Confidential"}
                                     </span>
                                 </div>
 
                                 <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
                                     <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Present Address</span>
                                     <span className="text-[#1E1E1E] font-medium block mt-1">
-                                        {employee?.presentAddress || "Flat 402, Block B, Idea Fueled Tech Residency, Electronic City, Bengaluru, KA 560100"}
+                                        {canViewConfidential 
+                                            ? (employee?.presentAddress || "Flat 402, Block B, Idea Fueled Tech Residency, Electronic City, Bengaluru, KA 560100")
+                                            : "🔒 Confidential (Restricted Access)"}
                                     </span>
                                 </div>
 
                                 <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
                                     <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Permanent Address</span>
                                     <span className="text-[#1E1E1E] font-medium block mt-1">
-                                        {employee?.permanentAddress || "House No. 128, Sector 15, Green Park, New Delhi, India 110016"}
+                                        {canViewConfidential 
+                                            ? (employee?.permanentAddress || "House No. 128, Sector 15, Green Park, New Delhi, India 110016")
+                                            : "🔒 Confidential (Restricted Access)"}
                                     </span>
                                 </div>
                             </div>
@@ -914,21 +919,28 @@ export const EmployeeProfile = () => {
                                 )}
                             </div>
 
-                            <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div className="space-y-1">
-                                    <h4 className="text-[#1E1E1E] text-xs font-black">
-                                        {employee?.emergencyContactName || "Ramesh Kumar"}
-                                    </h4>
-                                    <p className="text-gray-500 text-[11px] font-medium">
-                                        Relation: <span className="font-bold text-gray-700">{employee?.emergencyContactRelation || "Father"}</span>
-                                    </p>
-                                </div>
+                            {canViewConfidential ? (
+                                <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <h4 className="text-[#1E1E1E] text-xs font-black">
+                                            {employee?.emergencyContactName || "Ramesh Kumar"}
+                                        </h4>
+                                        <p className="text-gray-500 text-[11px] font-medium">
+                                            Relation: <span className="font-bold text-gray-700">{employee?.emergencyContactRelation || "Father"}</span>
+                                        </p>
+                                    </div>
 
-                                <div className="bg-white border border-rose-200 px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold text-rose-700 shadow-sm flex items-center gap-2">
-                                    <Phone className="w-3.5 h-3.5 text-rose-500" />
-                                    <span>{employee?.emergencyContactNumber || employee?.phoneNumber || "+91 98123 45678"}</span>
+                                    <div className="bg-white border border-rose-200 px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-700 shadow-sm flex items-center gap-2">
+                                        <Phone className="w-3.5 h-3.5 text-rose-500" />
+                                        <span>{employee?.emergencyContactNumber || employee?.phoneNumber || "+91 98123 45678"}</span>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="bg-rose-50/30 border border-rose-100 p-4 rounded-2xl flex items-center gap-3">
+                                    <Lock className="w-4 h-4 text-rose-400" />
+                                    <span className="text-gray-500 text-xs font-semibold">Emergency Contact information is confidential and restricted to HR and employee.</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Education */}
