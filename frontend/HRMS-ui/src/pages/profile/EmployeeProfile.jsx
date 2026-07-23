@@ -81,7 +81,7 @@ export const EmployeeProfile = () => {
 
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("Overview");
+    const [activeTab, setActiveTab] = useState("Personal");
 
     // Drawer state for Edit Profile
     const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -497,9 +497,8 @@ export const EmployeeProfile = () => {
 
     // Tabs definition
     const allProfileTabs = useMemo(() => [
-        { key: "Overview", label: "Overview", icon: User },
+        { key: "Personal", label: "Personal", icon: User },
         { key: "Employment", label: "Employment", icon: Briefcase },
-        { key: "Attendance", label: "Attendance", icon: Clock },
         { key: "Documents", label: "Documents", icon: FileText },
         { key: "Assets", label: "Assets", icon: Laptop },
         { key: "Activity", label: "Activity", icon: History },
@@ -507,12 +506,12 @@ export const EmployeeProfile = () => {
 
     const profileTabs = useMemo(() => {
         if (canViewConfidential) return allProfileTabs;
-        return allProfileTabs.filter(t => t.key === "Overview" || t.key === "Employment");
+        return allProfileTabs.filter(t => t.key === "Personal" || t.key === "Employment");
     }, [canViewConfidential, allProfileTabs]);
 
     useEffect(() => {
-        if (!canViewConfidential && activeTab !== "Overview" && activeTab !== "Employment") {
-            setActiveTab("Overview");
+        if (!canViewConfidential && activeTab !== "Personal" && activeTab !== "Employment") {
+            setActiveTab("Personal");
         }
     }, [canViewConfidential, activeTab]);
 
@@ -651,12 +650,12 @@ export const EmployeeProfile = () => {
             </div>
 
             {/* ─────────────────────────────────────────────
-               TAB 1: OVERVIEW
+               TAB 1: PERSONAL
             ───────────────────────────────────────────── */}
-            {activeTab === "Overview" && (
+            {activeTab === "Personal" && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
-                    {/* Left Column (Bio, Skills, Interests, Experience) */}
+                    {/* Left Column (About Me, Skills, Hobbies & Interests) */}
                     <div className="lg:col-span-5 space-y-6">
                         
                         {/* About Me */}
@@ -799,51 +798,6 @@ export const EmployeeProfile = () => {
                                             </button>
                                         )}
                                     </span>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Experience Timeline */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
-                                    <Briefcase className="w-4 h-4 text-[#2D79C7]" />
-                                    <span>Experience Timeline</span>
-                                </h3>
-                                {canEdit && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowExpModal(true)}
-                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
-                                    >
-                                        <Plus className="w-3.5 h-3.5" /> Add Role
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="relative pl-6 space-y-5 border-l-2 border-gray-200 ml-2 pt-1">
-                                {currentExperience.map((exp, idx) => (
-                                    <div key={idx} className="relative group">
-                                        <div className={`absolute -left-[31px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? "bg-[#2D79C7]" : "bg-gray-300"}`} />
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">{exp.title}</h4>
-                                                <p className="text-[#2D79C7] text-[11px] font-bold">{exp.company}</p>
-                                                <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">{exp.period}</p>
-                                                {exp.description && <p className="text-gray-500 text-[11px] mt-1">{exp.description}</p>}
-                                            </div>
-                                            {canDelete && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteExperience(idx)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                    title="Delete experience"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -1100,103 +1054,49 @@ export const EmployeeProfile = () => {
 
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* ─────────────────────────────────────────────
-               TAB 3: ATTENDANCE SUMMARY
-            ───────────────────────────────────────────── */}
-            {activeTab === "Attendance" && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                        <div className="premium-3d-card p-5">
-                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider block">Attendance Rate</span>
-                            <div className="text-2xl font-black font-mono text-[#2D79C7] mt-2">96.5%</div>
-                            <span className="text-[11px] text-emerald-600 font-bold mt-1 inline-block">Excellent Punctuality</span>
+                    {/* Experience Timeline */}
+                    <div className="premium-3d-card p-6 sm:p-8 space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-[#2D79C7]" />
+                                <span>Experience Timeline</span>
+                            </h3>
+                            {canEdit && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowExpModal(true)}
+                                    className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Add Role
+                                </button>
+                            )}
                         </div>
 
-                        <div className="premium-3d-card p-5">
-                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider block">Leave Balance</span>
-                            <div className="text-2xl font-black font-mono text-[#1E1E1E] mt-2">
-                                {employee?.totalLeaves || 20} Days
-                            </div>
-                            <span className="text-[11px] text-gray-500 font-medium mt-1 inline-block">
-                                Sick: {employee?.leaveBalance?.sick?.total || 6} | Casual: {employee?.leaveBalance?.casual?.total || 8}
-                            </span>
-                        </div>
-
-                        <div className="premium-3d-card p-5">
-                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider block">Avg Work Hours</span>
-                            <div className="text-2xl font-black font-mono text-[#1E1E1E] mt-2">8h 24m</div>
-                            <span className="text-[11px] text-gray-500 font-medium mt-1 inline-block">Standard: 8h 00m</span>
-                        </div>
-
-                        <div className="premium-3d-card p-5">
-                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider block">Late Arrivals</span>
-                            <div className="text-2xl font-black font-mono text-amber-600 mt-2">1 Day</div>
-                            <span className="text-[11px] text-gray-500 font-medium mt-1 inline-block">This Month</span>
-                        </div>
-
-                        <div className="premium-3d-card p-5">
-                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider block">WFH Days</span>
-                            <div className="text-2xl font-black font-mono text-blue-600 mt-2">3 Days</div>
-                            <span className="text-[11px] text-gray-500 font-medium mt-1 inline-block">Approved Remote</span>
-                        </div>
-                    </div>
-
-                    <div className="premium-3d-card p-6 space-y-4">
-                        <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                            <Clock className="w-4 h-4 text-[#2D79C7]" />
-                            <span>Recent Attendance Activity Snapshot</span>
-                        </h3>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs whitespace-nowrap">
-                                <thead>
-                                    <tr className="bg-[#F8FAFC] text-gray-400 font-bold uppercase border-b border-gray-200">
-                                        <th className="py-3 px-4">Date</th>
-                                        <th className="py-3 px-4">Work Mode</th>
-                                        <th className="py-3 px-4">Clock In</th>
-                                        <th className="py-3 px-4">Clock Out</th>
-                                        <th className="py-3 px-4">Total Hours</th>
-                                        <th className="py-3 px-4">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                                    <tr className="hover:bg-gray-50">
-                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">Today</td>
-                                        <td className="py-3 px-4">Office</td>
-                                        <td className="py-3 px-4 font-mono">09:28 AM</td>
-                                        <td className="py-3 px-4 font-mono">06:32 PM</td>
-                                        <td className="py-3 px-4 font-mono font-bold">8h 44m</td>
-                                        <td className="py-3 px-4">
-                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10.5px] font-bold px-2 py-0.5 rounded-md">Present</span>
-                                        </td>
-                                    </tr>
-
-                                    <tr className="hover:bg-gray-50">
-                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">Yesterday</td>
-                                        <td className="py-3 px-4">Office</td>
-                                        <td className="py-3 px-4 font-mono">09:30 AM</td>
-                                        <td className="py-3 px-4 font-mono">06:30 PM</td>
-                                        <td className="py-3 px-4 font-mono font-bold">8h 30m</td>
-                                        <td className="py-3 px-4">
-                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10.5px] font-bold px-2 py-0.5 rounded-md">Present</span>
-                                        </td>
-                                    </tr>
-
-                                    <tr className="hover:bg-gray-50">
-                                        <td className="py-3 px-4 font-bold text-[#1E1E1E]">20 Jul 2026</td>
-                                        <td className="py-3 px-4">Work From Home</td>
-                                        <td className="py-3 px-4 font-mono">09:25 AM</td>
-                                        <td className="py-3 px-4 font-mono">06:40 PM</td>
-                                        <td className="py-3 px-4 font-mono font-bold">8h 45m</td>
-                                        <td className="py-3 px-4">
-                                            <span className="bg-blue-50 text-blue-700 border border-blue-100 text-[10.5px] font-bold px-2 py-0.5 rounded-md">WFH</span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div className="relative pl-6 space-y-5 border-l-2 border-gray-200 ml-2 pt-1">
+                            {currentExperience.map((exp, idx) => (
+                                <div key={idx} className="relative group">
+                                    <div className={`absolute -left-[31px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? "bg-[#2D79C7]" : "bg-gray-300"}`} />
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <h4 className="text-[#1E1E1E] text-xs font-extrabold">{exp.title}</h4>
+                                            <p className="text-[#2D79C7] text-[11px] font-bold">{exp.company}</p>
+                                            <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">{exp.period}</p>
+                                            {exp.description && <p className="text-gray-500 text-[11px] mt-1">{exp.description}</p>}
+                                        </div>
+                                        {canDelete && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteExperience(idx)}
+                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                title="Delete experience"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
