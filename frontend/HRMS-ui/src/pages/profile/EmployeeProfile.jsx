@@ -655,7 +655,7 @@ export const EmployeeProfile = () => {
             {activeTab === "Personal" && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
-                    {/* Left Column (About Me, Skills, Hobbies & Interests) */}
+                    {/* Left Column (About Me, Hobbies & Interests) */}
                     <div className="lg:col-span-5 space-y-6">
                         
                         {/* About Me */}
@@ -674,69 +674,6 @@ export const EmployeeProfile = () => {
                             <p className="text-gray-600 text-xs font-medium leading-relaxed">
                                 {aboutMeText}
                             </p>
-                        </div>
-
-                        {/* Skills */}
-                        <div className="premium-3d-card p-6 space-y-3">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
-                                    <Award className="w-4 h-4 text-[#2D79C7]" />
-                                    <span>Skills & Competencies</span>
-                                </h3>
-                                {canEdit && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddSkillInput(true)}
-                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
-                                    >
-                                        <Plus className="w-3.5 h-3.5" /> Add Skill
-                                    </button>
-                                )}
-                            </div>
-
-                            {showAddSkillInput && (
-                                <div className="flex items-center gap-2 pt-1">
-                                    <input
-                                        type="text"
-                                        value={newSkillText}
-                                        onChange={(e) => setNewSkillText(e.target.value)}
-                                        placeholder="Enter new skill..."
-                                        className="flex-1 bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#2D79C7]"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleAddSkill}
-                                        className="bg-[#2D79C7] text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer hover:bg-[#1F5EA8]"
-                                    >
-                                        Save
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddSkillInput(false)}
-                                        className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            )}
-
-                            <div className="flex flex-wrap gap-2 pt-1">
-                                {currentSkills.map((sk, idx) => (
-                                    <span key={idx} className="group bg-blue-50/80 text-[#2D79C7] border border-blue-100 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all">
-                                        <span>{sk}</span>
-                                        {canDelete && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteSkill(sk)}
-                                                className="opacity-60 hover:opacity-100 text-rose-500 cursor-pointer ml-0.5"
-                                                title="Delete skill"
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
                         </div>
 
                         {/* Hobbies & Interests */}
@@ -864,44 +801,32 @@ export const EmployeeProfile = () => {
                                             {employee?.permanentAddress || "House No. 128, Sector 15, Green Park, New Delhi, India 110016"}
                                         </span>
                                     </div>
-                                </div>
-                            </div>
-                        )}
 
-                        {/* Emergency Contact (Visible only to HR/Admin or Own Profile) */}
-                        {canViewConfidential && (
-                            <div className="premium-3d-card p-6 space-y-4">
-                                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                    <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
-                                        <PhoneCall className="w-4 h-4 text-rose-600" />
-                                        <span>Emergency Contact</span>
-                                    </h3>
-                                    {canEdit && (
-                                        <button onClick={openEditDrawer} className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer">
-                                            <Edit3 className="w-3.5 h-3.5" /> Edit
-                                        </button>
-                                    )}
-                                </div>
+                                    {/* Emergency Contact Integrated Block */}
+                                    <div className="sm:col-span-2 bg-rose-50/60 border border-rose-100 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-1">
+                                        <div className="space-y-1">
+                                            <span className="text-rose-500 font-extrabold block text-[10.5px] uppercase tracking-wider flex items-center gap-1.5">
+                                                <PhoneCall className="w-3.5 h-3.5 text-rose-600" />
+                                                Emergency Contact
+                                            </span>
+                                            <h4 className="text-[#1E1E1E] text-xs font-black">
+                                                {employee?.emergencyContactName || "Ramesh Kumar"}
+                                            </h4>
+                                            <p className="text-gray-500 text-[11px] font-medium">
+                                                Relation: <span className="font-bold text-gray-700">{employee?.emergencyContactRelation || "Father"}</span>
+                                            </p>
+                                        </div>
 
-                                <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <h4 className="text-[#1E1E1E] text-xs font-black">
-                                            {employee?.emergencyContactName || "Ramesh Kumar"}
-                                        </h4>
-                                        <p className="text-gray-500 text-[11px] font-medium">
-                                            Relation: <span className="font-bold text-gray-700">{employee?.emergencyContactRelation || "Father"}</span>
-                                        </p>
-                                    </div>
-
-                                    <div className="bg-white border border-rose-200 px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-700 shadow-sm flex items-center gap-2">
-                                        <Phone className="w-3.5 h-3.5 text-rose-500" />
-                                        <span>{employee?.emergencyContactNumber || employee?.phoneNumber || "+91 98123 45678"}</span>
+                                        <div className="bg-white border border-rose-200 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 shadow-sm flex items-center gap-2">
+                                            <Phone className="w-3.5 h-3.5 text-rose-500" />
+                                            <span>{employee?.emergencyContactNumber || employee?.phoneNumber || "+91 98123 45678"}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Education */}
+                        {/* Education Qualification */}
                         <div className="premium-3d-card p-6 space-y-4">
                             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                                 <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
@@ -947,39 +872,7 @@ export const EmployeeProfile = () => {
                             </div>
                         </div>
 
-                        {/* Reporting Structure */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2 border-b border-gray-100 pb-3">
-                                <Building2 className="w-4 h-4 text-[#2D79C7]" />
-                                <span>Reporting Structure</span>
-                            </h3>
-
-                            <div className="space-y-3">
-                                <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar name={managerName} size="w-10 h-10" textSize="text-xs" />
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase text-[#2D79C7] tracking-wider block">Direct Reporting Manager</span>
-                                            <h4 className="text-[#1E1E1E] text-xs font-bold mt-0.5">{managerName}</h4>
-                                            <p className="text-gray-500 text-[11px] font-medium">Senior Director · {empDept}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {dottedManagerName && (
-                                    <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl flex items-center gap-3">
-                                        <Avatar name={dottedManagerName} size="w-9 h-9" textSize="text-xs" />
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase text-gray-500 tracking-wider block">Dotted Line Manager</span>
-                                            <h4 className="text-[#1E1E1E] text-xs font-bold mt-0.5">{dottedManagerName}</h4>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
                     </div>
-
                 </div>
             )}
 
