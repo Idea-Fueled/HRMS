@@ -521,7 +521,7 @@ const TimeAttendanceDashboard = () => {
                                             <div className="bg-[#2D79C7] h-full" style={{ width: `${dept.presentPct || 0}%` }} title={`${dept.department}: ${dept.present} Present`} />
                                             <div className="bg-sky-400 h-full" style={{ width: `${dept.wfhPct || 0}%` }} title={`${dept.department}: ${dept.wfh} WFH`} />
                                             <div className="bg-amber-400 h-full" style={{ width: `${dept.latePct || 0}%` }} title={`${dept.department}: ${dept.late} Late`} />
-                                            <div className="bg-rose-400 h-full" style={{ width: `${dept.leavePct || 0}%` }} title={`${dept.department}: ${dept.leave + dept.absent} Absent`} />
+                                            <div className="bg-rose-500 h-full" style={{ width: `${dept.leavePct || 0}%` }} title={`${dept.department}: ${dept.leave + dept.absent} Absent`} />
                                         </div>
                                     </div>
                                 ))
@@ -546,7 +546,7 @@ const TimeAttendanceDashboard = () => {
                                     <circle cx="50" cy="50" r="38" fill="none" stroke="#2D79C7" strokeWidth="12" strokeDasharray={`${Math.round((summary.present / (summary.total || 1)) * 238)} 238`} strokeDashoffset="0" />
                                     <circle cx="50" cy="50" r="38" fill="none" stroke="#38BDF8" strokeWidth="12" strokeDasharray={`${Math.round((summary.wfh / (summary.total || 1)) * 238)} 238`} strokeDashoffset={`-${Math.round((summary.present / (summary.total || 1)) * 238)}`} />
                                     <circle cx="50" cy="50" r="38" fill="none" stroke="#F59E0B" strokeWidth="12" strokeDasharray={`${Math.round((summary.late / (summary.total || 1)) * 238)} 238`} strokeDashoffset={`-${Math.round(((summary.present + summary.wfh) / (summary.total || 1)) * 238)}`} />
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#EF4444" strokeWidth="12" strokeDasharray={`${Math.round((summary.onLeave / (summary.total || 1)) * 238)} 238`} strokeDashoffset={`-${Math.round(((summary.present + summary.wfh + summary.late) / (summary.total || 1)) * 238)}`} />
+                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#E11D48" strokeWidth="12" strokeDasharray={`${Math.round((summary.onLeave / (summary.total || 1)) * 238)} 238`} strokeDashoffset={`-${Math.round(((summary.present + summary.wfh + summary.late) / (summary.total || 1)) * 238)}`} />
                                 </svg>
                                 <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none select-none">
                                     <span className="text-[#1E1E1E] text-[20px] font-bold leading-none">{summary.total}</span>
@@ -581,7 +581,7 @@ const TimeAttendanceDashboard = () => {
 
                                 <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-rose-600" />
                                         <span>Absent / Leave</span>
                                     </div>
                                     <span className="font-mono font-bold text-rose-600">{summary.onLeave}</span>
