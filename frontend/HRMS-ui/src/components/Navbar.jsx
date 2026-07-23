@@ -46,42 +46,43 @@ const pageMetadata = {
 ───────────────────────────────────────────── */
 const GlobalSearch = () => {
     const navigate = useNavigate();
-    const { can } = useAuth();
-    const canViewEmployees = can("view:all-employees");
 
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
-    const [allEmployees, setAllEmployees] = useState(null); // cached
+    const [allEmployees, setAllEmployees] = useState(null); // cached pool
     const containerRef = useRef(null);
     const searchTimer = useRef(null);
 
-    // Load employee list once (cached)
-    const loadEmployees = useCallback(async () => {
-        if (allEmployees !== null || !canViewEmployees) return;
+    // Get employee pool for searching (loads once & caches)
+    const getEmployeePool = useCallback(async () => {
+        if (allEmployees !== null) return allEmployees;
         try {
             const res = await getAllEmployees();
-            if (res.data?.success) setAllEmployees(res.data.employees || []);
-        } catch {
+            const list = res.data?.employees || [];
+            setAllEmployees(list);
+            return list;
+        } catch (err) {
+            console.error("Global search load error:", err);
             setAllEmployees([]);
+            return [];
         }
-    }, [allEmployees, canViewEmployees]);
+    }, [allEmployees]);
 
     // Search with debounce
     useEffect(() => {
         const q = query.trim();
-        if (q.length < 3) { setResults([]); setOpen(false); return; }
+        if (q.length < 2) { setResults([]); setOpen(false); return; }
 
         clearTimeout(searchTimer.current);
         setLoading(true);
         setOpen(true);
 
         searchTimer.current = setTimeout(async () => {
-            await loadEmployees();
-            const pool = allEmployees || [];
+            const pool = await getEmployeePool();
             const lower = q.toLowerCase();
-            const filtered = pool.filter(e => {
+            const filtered = (pool || []).filter(e => {
                 const name = e.fullName || `${e.firstName || ""} ${e.lastName || ""}`;
                 return (
                     name.toLowerCase().includes(lower) ||
@@ -90,13 +91,13 @@ const GlobalSearch = () => {
                     (e.department || "").toLowerCase().includes(lower) ||
                     (e.designation || "").toLowerCase().includes(lower)
                 );
-            }).slice(0, 6);
+            }).slice(0, 8);
             setResults(filtered);
             setLoading(false);
-        }, 300);
+        }, 200);
 
         return () => clearTimeout(searchTimer.current);
-    }, [query, allEmployees, loadEmployees]);
+    }, [query, getEmployeePool]);
 
     // Close on outside click
     useEffect(() => {
