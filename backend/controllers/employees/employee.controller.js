@@ -215,7 +215,7 @@ export const createEmployee = async (req, res) => {
             password: hashedPassword,
             phoneNumber: phoneNumber || "",
             profilePicture: profilePicture || "",
-            role,
+            role: role === "admin" ? "global_admin" : role,
             department,
             designation,
             managerId: managerId || null,
@@ -325,7 +325,7 @@ export const updateEmployee = async (req, res) => {
 
         if (phoneNumber !== undefined) employee.phoneNumber = phoneNumber;
         if (profilePicture !== undefined) employee.profilePicture = profilePicture;
-        if (role) employee.role = role;
+        if (role) employee.role = role === "admin" ? "global_admin" : role;
         if (department) employee.department = department;
         if (designation) employee.designation = designation;
         

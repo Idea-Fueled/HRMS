@@ -8,8 +8,11 @@ import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudin
 const resolveUserPermissions = (user) => {
     if (!user) return null;
     const userObj = typeof user.toObject === "function" ? user.toObject() : user;
+    if (userObj.role === "admin") {
+        userObj.role = "global_admin";
+    }
     if (!userObj.permissions) {
-        const isHrOrAdmin = userObj.role === "global_admin" || userObj.role === "hr";
+        const isHrOrAdmin = userObj.role === "global_admin" || userObj.role === "admin" || userObj.role === "hr";
         userObj.permissions = {
             dashboard: true,
             me: true,
@@ -122,7 +125,7 @@ export const registerUser = async (req, res) => {
             email: email.toLowerCase(),
             password: hashedPassword,
             phoneNumber,
-            role,
+            role: role === "admin" ? "global_admin" : (role || "employee"),
             department,
             designation,
             managerId,
@@ -204,6 +207,11 @@ export const loginUser = async (req, res) => {
                 success: false,
                 message: "Invalid credentials.",
             });
+        }
+
+        // Auto-upgrade legacy 'admin' role to 'global_admin'
+        if (user.role === "admin") {
+            user.role = "global_admin";
         }
 
         // Generate JWT
