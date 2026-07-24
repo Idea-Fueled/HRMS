@@ -369,7 +369,7 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
                                 ? "ring-2 ring-[#2D79C7]/20 shadow-[0_4px_20px_rgba(45,121,199,0.18)]"
                                 : "shadow-[0_4px_16px_rgba(15,23,42,0.10)] hover:shadow-[0_8px_28px_rgba(15,23,42,0.16)]"
                         }`}
-                        style={{ height: "152px" }}
+                        style={{ height: "200px" }}
                     >
                         {/* Full-bleed image — object-contain so nothing is cropped */}
                         <img
