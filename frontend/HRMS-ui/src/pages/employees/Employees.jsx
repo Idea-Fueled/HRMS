@@ -1203,12 +1203,12 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     {/* Roles & Permissions */}
                     <SectionTitle>Roles & Permissions</SectionTitle>
                     {(() => {
-                        const isRoleAdminOrHr = form.role === "admin" || form.role === "hr";
+                        const isRoleGlobalAdmin = form.role === "global_admin" || form.role === "admin";
                         return (
                             <div className="bg-gray-50/50 p-4 border border-gray-150 rounded-[14px] space-y-3">
                                 <p className="text-gray-400 text-[10.5px] font-semibold mb-1">
-                                    {isRoleAdminOrHr 
-                                        ? "Admin and HR roles automatically have full permission access to all modules."
+                                    {isRoleGlobalAdmin 
+                                        ? "Global Admin automatically has full permission access to all modules."
                                         : "Configure module-level access permissions. Checked modules are visible and accessible."}
                                 </p>
                                 <div className="space-y-2">
@@ -1258,21 +1258,21 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Documents -> Employee Documents */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Documents → Employee Documents</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Sensitive private employee record folders</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.documents?.employeeDocuments} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.documents?.employeeDocuments !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
                                                     ...prev.permissions,
                                                     documents: {
-                                                        ...prev.permissions.documents,
+                                                        ...prev.permissions?.documents,
                                                         employeeDocuments: e.target.checked
                                                     }
                                                 }
@@ -1282,15 +1282,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Time & Attendance */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Time & Attendance</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Check-ins, leaves tracking and shift times</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.timeAndAttend} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.timeAndAttend !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
@@ -1303,15 +1303,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Employees */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Employees Module</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Create and manage workforce accounts</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.employees} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.employees !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
@@ -1324,15 +1324,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Payroll */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Payroll Module</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Salary computations and payouts database</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.payroll} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.payroll !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
@@ -1345,15 +1345,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Recruitment */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Recruitment</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Job applications and vacancy pipeline</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.recruitment} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.recruitment !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
@@ -1366,15 +1366,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Hire */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Hire</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Offer letters and new hires profiles</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.hire} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.hire !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
@@ -1387,15 +1387,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Offboarding & Onboarding */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Offboarding & Onboarding</p>
                                             <p className="text-[10px] text-gray-400 font-bold">New employee joinings and exits checklist</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.offboardingAndOnboarding} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.offboardingAndOnboarding !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
@@ -1408,15 +1408,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     </div>
 
                                     {/* Organization */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleAdminOrHr ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
                                             <p className="text-xs font-black text-slate-800">Organization</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Company structure, hierarchy and units</p>
                                         </div>
                                         <input 
                                             type="checkbox" 
-                                            checked={isRoleAdminOrHr || !!form.permissions?.organization} 
-                                            disabled={isRoleAdminOrHr}
+                                            checked={isRoleGlobalAdmin || form.permissions?.organization !== false} 
+                                            disabled={isRoleGlobalAdmin}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
                                                 permissions: {
@@ -1432,101 +1432,178 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         );
                     })()}
 
-                    {/* HR Employee Visibility Management (Global Admin Only) */}
+                    {/* HR Employee Visibility Management (Global Admin Control) */}
                     {isGlobalAdminLoggedIn && form.role === "hr" && (
                         <div>
-                            <SectionTitle>HR Employee Visibility Control</SectionTitle>
-                            <div className="bg-[#2D79C7]/5 border border-[#2D79C7]/20 p-4 rounded-[14px] space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                                            <Shield className="w-3.5 h-3.5 text-[#2D79C7]" />
-                                            Assigned Employee Scope ({hrVisibleEmployees.length})
-                                        </p>
-                                        <p className="text-[10.5px] text-gray-500 font-medium mt-0.5">
-                                            {hrVisibleEmployees.length === 0 
-                                                ? "No specific employees assigned. This HR can view ALL employees by default." 
-                                                : "This HR will ONLY see and manage the selected employees below."}
-                                        </p>
+                            <SectionTitle>Assigned Employees</SectionTitle>
+                            <div className="space-y-3">
+                                {/* Main Employee Selection Tool — Enterprise Layout */}
+                                <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-2xs">
+                                    {/* Header Actions */}
+                                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50/80 border-b border-gray-150 text-xs">
+                                        <span className="font-semibold text-slate-700">Select Employees to Assign</span>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const allFiltered = (managersList || []).filter(emp => {
+                                                        const q = hrSearchQuery.toLowerCase().trim();
+                                                        if (!q) return true;
+                                                        const name = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`;
+                                                        return (
+                                                            name.toLowerCase().includes(q) ||
+                                                            (emp.employeeId || "").toLowerCase().includes(q) ||
+                                                            (emp.department || "").toLowerCase().includes(q) ||
+                                                            (emp.designation || "").toLowerCase().includes(q)
+                                                        );
+                                                    });
+                                                    setHrVisibleEmployees(allFiltered);
+                                                }}
+                                                className="text-[#2D79C7] hover:text-[#1F5EA8] font-bold cursor-pointer transition-colors"
+                                            >
+                                                Select Filtered
+                                            </button>
+                                            <span className="text-gray-300">|</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setHrVisibleEmployees([])}
+                                                className="text-gray-500 hover:text-rose-600 font-bold cursor-pointer transition-colors"
+                                            >
+                                                Clear All
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => setHrVisibleEmployees(managersList || [])}
-                                            className="text-[11px] font-bold text-[#2D79C7] hover:underline cursor-pointer"
-                                        >
-                                            Assign All
-                                        </button>
-                                        <span className="text-gray-300">|</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setHrVisibleEmployees([])}
-                                            className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
-                                        >
-                                            Clear All
-                                        </button>
+
+                                    {/* Sticky Search Bar */}
+                                    <div className="sticky top-0 bg-white border-b border-gray-150 p-2 z-10 flex items-center gap-2">
+                                        <Search className="w-4 h-4 text-gray-400 shrink-0 ml-1" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search employee by name, ID, role or department..."
+                                            value={hrSearchQuery}
+                                            onChange={(e) => setHrSearchQuery(e.target.value)}
+                                            className="w-full text-xs text-slate-800 placeholder-gray-400 bg-transparent outline-none"
+                                        />
+                                        {hrSearchQuery && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setHrSearchQuery("")}
+                                                className="text-gray-400 hover:text-gray-600 cursor-pointer p-0.5"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Employee List with Checkboxes */}
+                                    <div className="max-h-52 overflow-y-auto divide-y divide-gray-100">
+                                        {(() => {
+                                            const filtered = (managersList || []).filter(emp => {
+                                                const q = hrSearchQuery.toLowerCase().trim();
+                                                if (!q) return true;
+                                                const name = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`;
+                                                return (
+                                                    name.toLowerCase().includes(q) ||
+                                                    (emp.employeeId || "").toLowerCase().includes(q) ||
+                                                    (emp.department || "").toLowerCase().includes(q) ||
+                                                    (emp.designation || "").toLowerCase().includes(q)
+                                                );
+                                            });
+
+                                            if (filtered.length === 0) {
+                                                return (
+                                                    <div className="p-5 text-center text-xs text-gray-400 font-medium">
+                                                        No employees match "{hrSearchQuery}"
+                                                    </div>
+                                                );
+                                            }
+
+                                            const selectedIds = new Set(hrVisibleEmployees.map(e => e._id || e));
+
+                                            return filtered.map(emp => {
+                                                const empId = emp._id || emp;
+                                                const isChecked = selectedIds.has(empId);
+                                                const name = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`;
+
+                                                return (
+                                                    <label
+                                                        key={empId}
+                                                        className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors select-none ${
+                                                            isChecked ? "bg-blue-50/50" : "hover:bg-gray-50"
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={() => {
+                                                                if (isChecked) {
+                                                                    setHrVisibleEmployees(prev => prev.filter(v => (v._id || v) !== empId));
+                                                                } else {
+                                                                    setHrVisibleEmployees(prev => [...prev, emp]);
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 rounded border-gray-300 text-[#2D79C7] focus:ring-0 accent-[#2D79C7] cursor-pointer shrink-0"
+                                                        />
+                                                        <Avatar src={emp.profilePicture} name={name} size="w-7 h-7" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-semibold text-slate-800 truncate">{name}</span>
+                                                                <span className="text-[10px] font-mono text-gray-400 shrink-0 ml-2">{emp.employeeId}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium truncate">
+                                                                <span>{emp.designation || "Employee"}</span>
+                                                                {emp.department && (
+                                                                    <>
+                                                                        <span className="text-gray-300">•</span>
+                                                                        <span>{emp.department}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 </div>
 
-                                {/* Search & Add Employee dropdown */}
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="Search employee by name, ID or department to assign..."
-                                        value={hrSearchQuery}
-                                        onChange={(e) => setHrSearchQuery(e.target.value)}
-                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-[10px] text-xs focus:outline-none focus:border-[#2D79C7] shadow-xs"
-                                    />
-                                    {hrSearchQuery.trim().length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-[12px] shadow-xl max-h-48 overflow-y-auto z-30 p-1">
-                                            {(managersList || [])
-                                                .filter(emp => {
-                                                    const name = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`;
-                                                    const q = hrSearchQuery.toLowerCase();
-                                                    return (name.toLowerCase().includes(q) || (emp.employeeId || "").toLowerCase().includes(q) || (emp.department || "").toLowerCase().includes(q))
-                                                        && !hrVisibleEmployees.some(v => (v._id || v) === (emp._id || emp));
-                                                })
-                                                .slice(0, 10)
-                                                .map(emp => (
-                                                    <div
-                                                        key={emp._id}
-                                                        onClick={() => {
-                                                            setHrVisibleEmployees(prev => [...prev, emp]);
-                                                            setHrSearchQuery("");
-                                                        }}
-                                                        className="flex items-center justify-between p-2 hover:bg-blue-50 rounded-[8px] cursor-pointer text-xs transition-colors"
+                                {/* Selected Employees Chips Box */}
+                                <div className="border border-gray-200 rounded-xl bg-gray-50/60 p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-800">
+                                            Selected Employees ({hrVisibleEmployees.length})
+                                        </span>
+                                        {hrVisibleEmployees.length === 0 && (
+                                            <span className="text-[11px] text-gray-400 font-medium">
+                                                Unrestricted (sees all employees)
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {hrVisibleEmployees.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-0.5">
+                                            {hrVisibleEmployees.map(emp => {
+                                                const empId = emp._id || emp;
+                                                const name = emp.fullName || emp.firstName || emp.employeeId;
+                                                return (
+                                                    <span
+                                                        key={empId}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-md text-xs font-medium text-slate-700 shadow-2xs"
                                                     >
-                                                        <div>
-                                                            <span className="font-bold text-slate-800">{emp.fullName || emp.firstName}</span>
-                                                            <span className="text-gray-400 ml-2">({emp.employeeId})</span>
-                                                        </div>
-                                                        <span className="text-[10px] text-gray-500 font-medium px-2 py-0.5 bg-gray-100 rounded-full">{emp.department}</span>
-                                                    </div>
-                                                ))}
+                                                        <span>{name}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setHrVisibleEmployees(prev => prev.filter(v => (v._id || v) !== empId))}
+                                                            className="text-gray-400 hover:text-rose-600 cursor-pointer transition-colors"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </span>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
-
-                                {/* Chips of assigned employees */}
-                                {hrVisibleEmployees.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pt-1 border-t border-blue-100/60">
-                                        {hrVisibleEmployees.map(emp => (
-                                            <div
-                                                key={emp._id || emp}
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 rounded-full text-xs font-semibold text-slate-700 shadow-2xs"
-                                            >
-                                                <span>{emp.fullName || emp.firstName || emp.employeeId}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setHrVisibleEmployees(prev => prev.filter(v => (v._id || v) !== (emp._id || emp)))}
-                                                    className="text-gray-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}

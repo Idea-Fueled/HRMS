@@ -183,11 +183,11 @@ const Sidebar = ({ onClose }) => {
     const hasItemPermission = (item) => {
         if (!user) return false;
 
-        // Admins and HR see all sidebar items
+        // Global Admins see all sidebar items
         const role = user.role?.toLowerCase();
-        if (role === "global_admin" || role === "admin" || role === "hr") return true;
+        if (role === "global_admin" || role === "admin") return true;
 
-        if (!user.permissions) return false;
+        if (!user.permissions) return true; // Default fallback
         const key = item.permissionKey;
         if (!key) return true;
 
@@ -195,7 +195,7 @@ const Sidebar = ({ onClose }) => {
             return !!(user.permissions.documents?.companyDocuments || user.permissions.documents?.employeeDocuments);
         }
 
-        return !!user.permissions[key];
+        return user.permissions[key] !== false;
     };
 
     // Filter categories and items based on dynamic permissions
