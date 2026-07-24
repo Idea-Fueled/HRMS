@@ -9,6 +9,7 @@ import newYearImg from "../assets/new_year.jpg";
 import mahashivratriImg from "../assets/mahashivratri_day.jpg";
 import holiImg from "../assets/holi.jpg";
 import rakshaBandhanImg from "../assets/raksha_bandhan.png";
+import dussehraImg from "../assets/Dusshhera.png";
 
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -29,6 +30,7 @@ const displayType = (type) => {
 
 const getHolidayEmoji = (title = "") => {
     const t = title.toLowerCase();
+    if (t.includes("dussehra") || t.includes("dusshhera") || t.includes("dasara") || t.includes("vijayadashami")) return "🏹";
     if (t.includes("shivratri") || t.includes("mahashivratri")) return "🔱";
     if (t.includes("christmas")) return "🎄";
     if (t.includes("new year")) return "🎆";
@@ -48,6 +50,7 @@ const getHolidayImage = (h = {}) => {
 
     const title = (h.title || "").toLowerCase();
 
+    if (title.includes("dussehra") || title.includes("dusshhera") || title.includes("dasara") || title.includes("vijayadashami")) return dussehraImg;
     if (title.includes("shivratri") || title.includes("mahashivratri")) return mahashivratriImg;
     if (title.includes("independence") || title.includes("republic") || title.includes("independance")) return independanceDayImg;
     if (title.includes("new year") || title.includes("newyear")) return newYearImg;
