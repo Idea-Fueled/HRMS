@@ -33,7 +33,7 @@ import userAvatar from "../../assets/user_avatar.png";
 import independanceDayImg from "../../assets/independance_day.jpg";
 import newYearImg from "../../assets/new_year.jpg";
 import mahashivratriImg from "../../assets/mahashivratri_day.jpg";
-import holiImg from "../../assets/holi.jpg";
+import holiImg from "../../assets/holi.png";
 import rakshaBandhanImg from "../../assets/raksha_bandhan.png";
 import dussehraImg from "../../assets/Dusshhera.png";
 import diwaliImg from "../../assets/diwali.png";
