@@ -1919,7 +1919,6 @@ const Dashboard = () => {
                         leaves={awayToday.leaves}
                         wfh={awayToday.wfh}
                     />
-                    <LeaveBalancesCard leaveSummary={dashboardData?.leaveSummary} />
                 </div>
 
                 {/* ── RIGHT COLUMN ── */}
