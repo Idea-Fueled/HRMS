@@ -261,76 +261,73 @@ const HolidaysModal = ({ isOpen, onClose }) => {
         return (
             <div
                 key={h._id || idx}
-                className="group relative overflow-hidden rounded-[20px] transition-all duration-300 border shadow-xs hover:shadow-lg bg-white border-gray-200/90 hover:border-[#2D79C7]/40"
+                className="group relative overflow-hidden rounded-[20px] transition-all duration-300 shadow-[0_4px_16px_rgba(15,23,42,0.10)] hover:shadow-[0_8px_28px_rgba(15,23,42,0.16)] cursor-default"
+                style={{ height: "160px" }}
             >
-                {/* Top Image Banner */}
-                <div className="h-28 sm:h-36 w-full relative overflow-hidden bg-slate-900 flex items-center justify-center">
-                    <img
-                        src={bannerImg}
-                        alt={h.title}
-                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                            e.target.src = independanceDayImg;
-                        }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+                {/* Full-bleed image — object-contain so nothing is cropped */}
+                <img
+                    src={bannerImg}
+                    alt={h.title}
+                    className="absolute inset-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-700"
+                    style={{ background: "#0f172a" }}
+                    onError={(e) => { e.target.src = independanceDayImg; }}
+                />
 
-                    {/* Calendar Date Tile (Top-Left Floating) */}
-                    <div className="absolute top-3 left-3 w-11 rounded-xl bg-white/95 backdrop-blur-md border border-white/40 shadow-md overflow-hidden text-center z-10">
-                        <div className="bg-[#2D79C7] text-white text-[9px] font-black uppercase tracking-wider py-0.5">
-                            {monthAbbr}
-                        </div>
-                        <div className="py-0.5 text-[#1E1E1E] text-sm font-black leading-tight">
-                            {dayNum}
-                        </div>
+                {/* Subtle gradient overlay — only at bottom */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+
+                {/* Calendar Date Tile — top left */}
+                <div className="absolute top-3 left-3 w-10 rounded-[10px] bg-white/90 backdrop-blur-md shadow-md overflow-hidden text-center z-10">
+                    <div className="bg-[#2D79C7] text-white text-[8px] font-black uppercase tracking-wider py-0.5">
+                        {monthAbbr}
                     </div>
-
-                    {/* Type Badge (Top-Right Floating) */}
-                    <div className="absolute top-3 right-3 z-10">
-                        <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md text-[#1E1E1E] shadow-sm border border-white/50">
-                            {formattedType}
-                        </span>
-                    </div>
-
-                    {/* Holiday Title over Banner */}
-                    <div className="absolute bottom-2.5 left-3.5 right-3.5 text-white z-10">
-                        <h4 className="text-white text-sm sm:text-[15px] font-extrabold flex items-center gap-1.5 leading-snug drop-shadow-md truncate">
-                            <span className="text-base leading-none">{emoji}</span>
-                            <span>{h.title || "Holiday"}</span>
-                        </h4>
+                    <div className="py-0.5 text-[#1E1E1E] text-[13px] font-black leading-tight">
+                        {dayNum}
                     </div>
                 </div>
 
-                {/* Bottom Details Footer */}
-                <div className="p-3.5 flex items-center justify-between bg-white relative">
-                    <p className="text-gray-500 text-[11.5px] font-semibold flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
-                        <span>{h.day || "Scheduled Day"}</span>
-                    </p>
+                {/* Type badge — top right (hidden when edit actions are shown) */}
+                {!canEdit && (
+                    <div className="absolute top-3 right-3 z-10">
+                        <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-md text-[#1E1E1E] shadow-sm">
+                            {formattedType}
+                        </span>
+                    </div>
+                )}
 
-                    {/* Edit / Delete — only for admin/hr */}
-                    {canEdit && (
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setEditingHoliday(h)}
-                                title="Edit"
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 transition-colors cursor-pointer"
-                            >
-                                <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                onClick={() => handleDelete(h)}
-                                disabled={isDeleting}
-                                title="Delete"
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:opacity-50"
-                            >
-                                {isDeleting
-                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    : <Trash2 className="w-3.5 h-3.5" />
-                                }
-                            </button>
-                        </div>
-                    )}
+                {/* HR Edit / Delete — top right, visible on hover */}
+                {canEdit && (
+                    <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <button
+                            onClick={() => setEditingHoliday(h)}
+                            title="Edit"
+                            className="p-1.5 rounded-lg bg-white/85 backdrop-blur-md text-gray-600 hover:text-[#2D79C7] shadow-sm transition-colors cursor-pointer"
+                        >
+                            <Edit3 className="w-3 h-3" />
+                        </button>
+                        <button
+                            onClick={() => handleDelete(h)}
+                            disabled={isDeleting}
+                            title="Delete"
+                            className="p-1.5 rounded-lg bg-white/85 backdrop-blur-md text-gray-600 hover:text-rose-600 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                            {isDeleting
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <Trash2 className="w-3 h-3" />
+                            }
+                        </button>
+                    </div>
+                )}
+
+                {/* Bottom — title + day name overlaid on image */}
+                <div className="absolute bottom-0 left-0 right-0 px-3.5 pb-3 pt-6 z-10">
+                    <h4 className="text-white text-[13.5px] font-extrabold leading-tight drop-shadow-md truncate">
+                        {h.title || "Holiday"}
+                    </h4>
+                    <p className="text-white/75 text-[10px] font-semibold mt-0.5 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 shrink-0" />
+                        {h.day || "Scheduled Day"}
+                    </p>
                 </div>
             </div>
         );
