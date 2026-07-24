@@ -653,10 +653,10 @@ export const EmployeeProfile = () => {
                TAB 1: PERSONAL
             ───────────────────────────────────────────── */}
             {activeTab === "Personal" && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                     
-                    {/* Left Column (About Me, Hobbies & Interests) */}
-                    <div className="lg:col-span-5 space-y-6">
+                    {/* Left Column (About Me, Hobbies & Interests, Education Qualification) */}
+                    <div className="space-y-6">
                         
                         {/* About Me */}
                         <div className="premium-3d-card p-6 space-y-3">
@@ -739,10 +739,56 @@ export const EmployeeProfile = () => {
                             </div>
                         </div>
 
+                        {/* Education Qualification (Moved to Left Column) */}
+                        <div className="premium-3d-card p-6 space-y-4">
+                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <GraduationCap className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>Education Qualification</span>
+                                </h3>
+                                {canEdit && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowEduModal(true)}
+                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Add Degree
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="space-y-3">
+                                {currentEducation.map((edu, idx) => (
+                                    <div key={idx} className="group bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-[#1E1E1E] text-xs font-bold">{edu.degree}</h4>
+                                            <p className="text-gray-500 text-[11px] font-medium">{edu.fieldOfStudy || edu.institution}</p>
+                                            <p className="text-gray-400 text-[10.5px]">{edu.institution} · Graduated {edu.passingYear}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="bg-blue-50 text-[#2D79C7] text-[10.5px] font-bold px-2.5 py-1 rounded-md border border-blue-100">
+                                                {edu.level || "Qualification"}
+                                            </span>
+                                            {canDelete && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteEducation(idx)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                    title="Delete Education"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                     </div>
 
-                    {/* Right Column (Personal Info, Emergency Contact, Education, Reporting Structure) */}
-                    <div className="lg:col-span-7 space-y-6">
+                    {/* Right Column (Personal Info & Emergency Contact) */}
+                    <div className="space-y-6">
                         
                         {/* Personal Information (Visible only to HR/Admin or Own Profile) */}
                         {canViewConfidential && (
@@ -825,52 +871,6 @@ export const EmployeeProfile = () => {
                                 </div>
                             </div>
                         )}
-
-                        {/* Education Qualification */}
-                        <div className="premium-3d-card p-6 space-y-4">
-                            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
-                                    <GraduationCap className="w-4 h-4 text-[#2D79C7]" />
-                                    <span>Education Qualification</span>
-                                </h3>
-                                {canEdit && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowEduModal(true)}
-                                        className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
-                                    >
-                                        <Plus className="w-3.5 h-3.5" /> Add Degree
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="space-y-3">
-                                {currentEducation.map((edu, idx) => (
-                                    <div key={idx} className="group bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
-                                        <div>
-                                            <h4 className="text-[#1E1E1E] text-xs font-bold">{edu.degree}</h4>
-                                            <p className="text-gray-500 text-[11px] font-medium">{edu.fieldOfStudy || edu.institution}</p>
-                                            <p className="text-gray-400 text-[10.5px]">{edu.institution} · Graduated {edu.passingYear}</p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="bg-blue-50 text-[#2D79C7] text-[10.5px] font-bold px-2.5 py-1 rounded-md border border-blue-100">
-                                                {edu.level || "Qualification"}
-                                            </span>
-                                            {canDelete && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteEducation(idx)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                    title="Delete Education"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
 
                     </div>
                 </div>
