@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Users, UserCheck, UserX, UserPlus, Briefcase, FileText,
-    Plus, Eye, Edit3, X, ChevronDown, Trash2,
+    Plus, Eye, EyeOff, Edit3, X, ChevronDown, Trash2,
     Phone, Mail, Calendar, Building2, Shield, Upload,
     Check, Loader2, Lock, User as UserIcon
 } from "lucide-react";
@@ -369,7 +369,9 @@ const FilterBar = ({ filters, onChange, employees, departments }) => {
    LIST VIEW
 ───────────────────────────────────────────── */
 const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, sortDir, onSort }) => {
-    const { can } = useAuth();
+    const { user } = useAuth();
+    const isHrOrAdmin = (user?.role || "").toLowerCase() === "admin" || (user?.role || "").toLowerCase() === "hr";
+
     if (!employees.length) return <EmptyState message="No employees found" description="Try adjusting your filters or add a new employee." />;
 
     return (
@@ -395,7 +397,15 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
                 </thead>
                 <tbody className="divide-y divide-[#F3F4F6]">
                     {employees.map((emp) => (
-                        <tr key={emp._id} className="hover:bg-[#F9FAFB] transition-colors group">
+                        <tr 
+                            key={emp._id} 
+                            onClick={(e) => {
+                                if (!e.target.closest("button")) {
+                                    onView(emp);
+                                }
+                            }}
+                            className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
+                        >
                             <td className="px-4 py-3">
                                 <span className="text-[11px] font-bold text-[#2D79C7] bg-blue-50 px-2 py-0.5 rounded-[6px] border border-blue-100">{emp.employeeId}</span>
                             </td>
@@ -403,7 +413,7 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
                                 <div className="flex items-center gap-2.5">
                                     <Avatar src={emp.profilePicture} name={emp.fullName || `${emp.firstName} ${emp.lastName}`} size="w-8 h-8" />
                                     <div>
-                                        <p className="text-sm font-bold text-[#1E1E1E] leading-none">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</p>
+                                        <p className="text-sm font-bold text-[#1E1E1E] leading-none group-hover:text-[#2D79C7] transition-colors">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</p>
                                         <p className="text-xs text-gray-400 mt-0.5">{roleLabel(emp.role)}</p>
                                     </div>
                                 </div>
@@ -420,18 +430,30 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-500">{formatDate(emp.joiningDate)}</td>
                             <td className="px-4 py-3">
-                                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => onView(emp)} title="View" className="p-1.5 hover:bg-blue-50 rounded-[8px] text-gray-400 hover:text-[#2D79C7] transition-colors cursor-pointer">
-                                        <Eye className="w-3.5 h-3.5" />
+                                <div className="flex items-center gap-1.5">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onView(emp); }} 
+                                        title="View Profile" 
+                                        className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-[8px] text-[#2D79C7] transition-colors cursor-pointer border border-blue-100"
+                                    >
+                                        <Eye className="w-4 h-4" />
                                     </button>
-                                    {can("edit:employee") && (
+                                    {isHrOrAdmin && (
                                         <>
-                                            <button onClick={() => onEdit(emp)} title="Edit" className="p-1.5 hover:bg-amber-50 rounded-[8px] text-gray-400 hover:text-amber-600 transition-colors cursor-pointer">
-                                                <Edit3 className="w-3.5 h-3.5" />
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); onEdit(emp); }} 
+                                                title="Edit Employee" 
+                                                className="p-1.5 bg-amber-50 hover:bg-amber-100 rounded-[8px] text-amber-700 transition-colors cursor-pointer border border-amber-100"
+                                            >
+                                                <Edit3 className="w-4 h-4" />
                                             </button>
                                             {emp.status !== "inactive" && emp.status !== "terminated" && (
-                                                <button onClick={() => onDeactivate(emp)} title="Deactivate" className="p-1.5 hover:bg-rose-50 rounded-[8px] text-gray-400 hover:text-rose-600 transition-colors cursor-pointer">
-                                                    <UserX className="w-3.5 h-3.5" />
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); onDeactivate(emp); }} 
+                                                    title="Deactivate Employee" 
+                                                    className="p-1.5 bg-rose-50 hover:bg-rose-100 rounded-[8px] text-rose-600 transition-colors cursor-pointer border border-rose-100"
+                                                >
+                                                    <UserX className="w-4 h-4" />
                                                 </button>
                                             )}
                                         </>
@@ -450,7 +472,9 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
    CARD VIEW
 ───────────────────────────────────────────── */
 const EmployeeCardView = ({ employees, onView, onEdit }) => {
-    const { can } = useAuth();
+    const { user } = useAuth();
+    const isHrOrAdmin = (user?.role || "").toLowerCase() === "admin" || (user?.role || "").toLowerCase() === "hr";
+
     if (!employees.length) return <EmptyState message="No employees found" description="Try adjusting your filters or add a new employee." />;
 
     return (
@@ -458,7 +482,15 @@ const EmployeeCardView = ({ employees, onView, onEdit }) => {
             {employees.map((emp) => {
                 const name = emp.fullName || `${emp.firstName} ${emp.lastName}`;
                 return (
-                    <div key={emp._id} className="premium-3d-card p-5 flex flex-col gap-4 relative">
+                    <div 
+                        key={emp._id} 
+                        onClick={(e) => {
+                            if (!e.target.closest("button")) {
+                                onView(emp);
+                            }
+                        }}
+                        className="premium-3d-card p-5 flex flex-col gap-4 relative cursor-pointer hover:border-blue-300 transition-all"
+                    >
                         <span className={`absolute top-4 right-4 text-xs font-black px-2 py-0.5 rounded-full border ${statusBadge(emp.status)}`}>{statusLabel(emp.status)}</span>
                         <div className="flex flex-col items-center text-center gap-2">
                             <Avatar src={emp.profilePicture} name={name} size="w-14 h-14" textSize="text-sm" />
@@ -474,13 +506,19 @@ const EmployeeCardView = ({ employees, onView, onEdit }) => {
                             <div className="flex items-center gap-2"><Phone className="w-3 h-3 text-gray-300 shrink-0" /><span>{emp.phoneNumber || "—"}</span></div>
                         </div>
                         <div className="flex gap-2 mt-auto pt-1 border-t border-[#F3F4F6]">
-                            <button onClick={() => onView(emp)} className="flex-1 py-1.5 text-xs font-bold text-[#2D79C7] bg-blue-50 hover:bg-blue-100 rounded-[8px] border border-blue-100 transition-colors cursor-pointer flex items-center justify-center gap-1">
-                                <Eye className="w-3 h-3" /> View
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onView(emp); }} 
+                                className="flex-1 py-1.5 text-xs font-bold text-[#2D79C7] bg-blue-50 hover:bg-blue-100 rounded-[8px] border border-blue-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                                <Eye className="w-3.5 h-3.5" /> View
                             </button>
-                            {can("edit:employee") && (
-                            <button onClick={() => onEdit(emp)} className="flex-1 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-[8px] border border-amber-100 transition-colors cursor-pointer flex items-center justify-center gap-1">
-                                <Edit3 className="w-3 h-3" /> Edit
-                            </button>
+                            {isHrOrAdmin && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onEdit(emp); }} 
+                                    className="flex-1 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-[8px] border border-amber-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                                >
+                                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                                </button>
                             )}
                         </div>
                     </div>
@@ -706,6 +744,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
     const [errors, setErrors] = useState({});
     const [idStatus, setIdStatus] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const idTimer = useRef(null);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
@@ -1370,13 +1410,41 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         <FormField label={isEdit ? "New Password (optional)" : "Password"} required={!isEdit} error={errors.password}>
                             <div className="relative">
                                 <Lock className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input type="password" value={form.password} onChange={set("password")} placeholder={isEdit ? "Leave blank to keep" : "Min. 8 characters"} className={`${inputCls} pl-8 ${errors.password ? "border-rose-300" : ""}`} />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={form.password}
+                                    onChange={set("password")}
+                                    placeholder={isEdit ? "Leave blank to keep" : "Min. 8 characters"}
+                                    className={`${inputCls} pl-8 pr-9 ${errors.password ? "border-rose-300" : ""}`}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#2D79C7] cursor-pointer focus:outline-none transition-colors"
+                                    title={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
                             </div>
                         </FormField>
                         <FormField label="Confirm Password" required={!isEdit} error={errors.confirmPassword}>
                             <div className="relative">
                                 <Lock className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input type="password" value={form.confirmPassword} onChange={set("confirmPassword")} placeholder="Repeat password" className={`${inputCls} pl-8 ${errors.confirmPassword ? "border-rose-300" : ""}`} />
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    value={form.confirmPassword}
+                                    onChange={set("confirmPassword")}
+                                    placeholder="Repeat password"
+                                    className={`${inputCls} pl-8 pr-9 ${errors.confirmPassword ? "border-rose-300" : ""}`}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#2D79C7] cursor-pointer focus:outline-none transition-colors"
+                                    title={showConfirmPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
                             </div>
                         </FormField>
                         <div className="col-span-2">
@@ -1594,7 +1662,11 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
    MAIN PAGE
 ───────────────────────────────────────────── */
 const Employees = () => {
-    const { can } = useAuth();
+    const { user, can } = useAuth();
+    const navigate = useNavigate();
+    const userRole = (user?.role || "").toLowerCase();
+    const isHrOrAdmin = userRole === "admin" || userRole === "hr";
+
     const [data, setData] = useState({ employees: [], summary: null });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -1707,7 +1779,7 @@ const Employees = () => {
                     icon={Users}
                     title="Employees"
                     action={
-                        can("create:employee") ? (
+                        isHrOrAdmin ? (
                         <button
                             onClick={() => setDrawer({ mode: "add" })}
                             className="flex items-center gap-1.5 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2 rounded-[12px] shadow-md shadow-[#2D79C7]/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
@@ -1731,7 +1803,7 @@ const Employees = () => {
                 ) : view === "list" ? (
                     <EmployeeListView
                         employees={paginated}
-                        onView={(emp) => setDrawer({ mode: "view", employee: emp })}
+                        onView={(emp) => navigate(`/profile/${emp._id}`)}
                         onEdit={(emp) => setDrawer({ mode: "edit", employee: emp })}
                         onDeactivate={handleDeactivate}
                         sortField={sortField}
@@ -1741,7 +1813,7 @@ const Employees = () => {
                 ) : (
                     <EmployeeCardView
                         employees={paginated}
-                        onView={(emp) => setDrawer({ mode: "view", employee: emp })}
+                        onView={(emp) => navigate(`/profile/${emp._id}`)}
                         onEdit={(emp) => setDrawer({ mode: "edit", employee: emp })}
                     />
                 )}
