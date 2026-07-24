@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
+import independanceDayImg from "../../assets/independance_day.jpg";
+import newYearImg from "../../assets/new_year.jpg";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -301,8 +303,8 @@ const getHolidayImage = (h = {}) => {
     const title = (h.title || "").toLowerCase();
 
     if (title.includes("independence") || title.includes("republic")) return independanceDayImg;
+    if (title.includes("new year") || title.includes("newyear")) return newYearImg;
     if (title.includes("christmas")) return "https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("new year")) return "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80";
     if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";
     if (title.includes("holi")) return "https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?auto=format&fit=crop&w=600&q=80";
     if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
