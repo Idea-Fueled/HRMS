@@ -293,6 +293,7 @@ export const getAttendanceDashboardSummary = async (req, res) => {
             let checkOut = "—";
             let hoursStr = "0h 00m";
             let breakStr = "0m";
+            let lateMinutes = 0;
 
             if (att) {
                 if (att.workMode) workMode = att.workMode;
@@ -300,8 +301,12 @@ export const getAttendanceDashboardSummary = async (req, res) => {
                     checkIn = new Date(att.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
                     const clockInHour = new Date(att.firstClockIn).getHours();
                     const clockInMin = new Date(att.firstClockIn).getMinutes();
-                    if (clockInHour > 10 || (clockInHour === 10 && clockInMin > 0)) {
+                    const clockInTotalMin = clockInHour * 60 + clockInMin;
+                    const shiftStartMin = 10 * 60; // 10:00 AM
+
+                    if (clockInTotalMin > shiftStartMin) {
                         status = "Late";
+                        lateMinutes = clockInTotalMin - shiftStartMin;
                         lateCount++;
                     } else if (att.workMode === "Work From Home") {
                         status = "WFH";
@@ -352,7 +357,8 @@ export const getAttendanceDashboardSummary = async (req, res) => {
                 checkOut,
                 hours: hoursStr,
                 breakTime: breakStr,
-                status
+                status,
+                lateMinutes
             };
         });
 

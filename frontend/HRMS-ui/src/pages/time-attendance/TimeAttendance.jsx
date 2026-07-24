@@ -704,11 +704,10 @@ const TimeAttendanceDashboard = () => {
                             className="bg-[#F8FAFC] border border-gray-200 text-gray-700 text-xs font-bold py-1.5 px-3 rounded-xl focus:outline-none focus:border-[#2D79C7] cursor-pointer"
                         >
                             <option value="All">All Statuses</option>
-                            <option value="Present">Present</option>
+                            <option value="On Time">On Time</option>
                             <option value="Late">Late</option>
                             <option value="WFH">WFH</option>
-                            <option value="Absent">Absent</option>
-                            <option value="On Leave">On Leave</option>
+                            <option value="Leave">Leave</option>
                         </select>
 
                         <select
@@ -791,14 +790,40 @@ const TimeAttendanceDashboard = () => {
                                         </td>
 
                                         <td className="py-3.5 px-4">
-                                            {emp.status === "Present" && (
+                                            {(emp.status === "Present" || emp.status === "On Time") && (
                                                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Present
+                                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> On Time
                                                 </span>
                                             )}
                                             {emp.status === "Late" && (
                                                 <span className="bg-amber-50 text-amber-700 border border-amber-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <Clock className="w-3 h-3 text-amber-600" /> Late
+                                                    <Clock className="w-3 h-3 text-amber-600" /> {(() => {
+                                                        let mins = emp.lateMinutes || 0;
+                                                        if (!mins && emp.checkIn && emp.checkIn !== "—") {
+                                                            try {
+                                                                const timeParts = emp.checkIn.match(/(\d+):(\d+)(?::\d+)?\s*(AM|PM)/i);
+                                                                if (timeParts) {
+                                                                    let hours = parseInt(timeParts[1], 10);
+                                                                    const minutes = parseInt(timeParts[2], 10);
+                                                                    const period = timeParts[3].toUpperCase();
+                                                                    if (period === "PM" && hours < 12) hours += 12;
+                                                                    if (period === "AM" && hours === 12) hours = 0;
+                                                                    const totalMins = hours * 60 + minutes;
+                                                                    const shiftStartMins = 10 * 60;
+                                                                    if (totalMins > shiftStartMins) mins = totalMins - shiftStartMins;
+                                                                }
+                                                            } catch (e) {}
+                                                        }
+                                                        if (mins > 0) {
+                                                            if (mins >= 60) {
+                                                                const h = Math.floor(mins / 60);
+                                                                const m = mins % 60;
+                                                                return m > 0 ? `${h}h ${m}m Late` : `${h}h Late`;
+                                                            }
+                                                            return `${mins} min Late`;
+                                                        }
+                                                        return "Late";
+                                                    })()}
                                                 </span>
                                             )}
                                             {emp.status === "WFH" && (
@@ -806,14 +831,9 @@ const TimeAttendanceDashboard = () => {
                                                     <Home className="w-3 h-3 text-blue-600" /> WFH
                                                 </span>
                                             )}
-                                            {emp.status === "Absent" && (
-                                                <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <UserX className="w-3 h-3 text-gray-500" /> Absent
-                                                </span>
-                                            )}
-                                            {emp.status === "On Leave" && (
-                                                <span className="bg-purple-50 text-purple-700 border border-purple-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <Calendar className="w-3 h-3 text-purple-600" /> On Leave
+                                            {(emp.status === "Absent" || emp.status === "On Leave" || emp.status === "Leave") && (
+                                                <span className="bg-rose-50 text-rose-700 border border-rose-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3 text-rose-600" /> Leave
                                                 </span>
                                             )}
                                         </td>
