@@ -371,11 +371,12 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
                         }`}
                         style={{ height: "152px" }}
                     >
-                        {/* Full-bleed image */}
+                        {/* Full-bleed image — object-contain so nothing is cropped */}
                         <img
                             src={bannerImg}
                             alt={h.title}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                            className="absolute inset-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-700"
+                            style={{ background: "#0f172a" }}
                             onError={(e) => { e.target.src = independanceDayImg; }}
                         />
 
