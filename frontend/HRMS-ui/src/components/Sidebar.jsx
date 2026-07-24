@@ -185,7 +185,7 @@ const Sidebar = ({ onClose }) => {
 
         // Admins and HR see all sidebar items
         const role = user.role?.toLowerCase();
-        if (role === "admin" || role === "hr") return true;
+        if (role === "global_admin" || role === "admin" || role === "hr") return true;
 
         if (!user.permissions) return false;
         const key = item.permissionKey;

@@ -44,9 +44,13 @@ const userScehma = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ["admin", "hr", "manager", "employee"],
+        enum: ["global_admin", "hr", "manager", "employee"],
         default: "employee"
     },
+    visibleEmployees: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    }],
     department: {
         type: String,
         required: true

@@ -23,9 +23,9 @@ import SessionTimeoutManager from "./components/SessionTimeoutModal";
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
 ───────────────────────────────────────────── */
-const ALL_ROLES        = ["admin", "hr", "manager", "employee"];
-const ADMIN_HR         = ["admin", "hr"];
-const ADMIN_HR_MANAGER = ["admin", "hr", "manager"];
+const ALL_ROLES        = ["global_admin", "admin", "hr", "manager", "employee"];
+const ADMIN_HR         = ["global_admin", "admin", "hr"];
+const ADMIN_HR_MANAGER = ["global_admin", "admin", "hr", "manager"];
 
 const router = createBrowserRouter([
     {

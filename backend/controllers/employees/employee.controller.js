@@ -12,6 +12,17 @@ export const getAllEmployees = async (req, res) => {
         // Build query
         const query = {};
 
+        // Check if HR caller has specific visibleEmployees configured
+        const currentUserId = req.user?.id || req.user?.userId;
+        let hrVisibleIds = null;
+        if (currentUserId) {
+            const currentUser = await User.findById(currentUserId).select("role visibleEmployees").lean();
+            if (currentUser && currentUser.role === "hr" && currentUser.visibleEmployees && currentUser.visibleEmployees.length > 0) {
+                hrVisibleIds = currentUser.visibleEmployees;
+                query._id = { $in: hrVisibleIds };
+            }
+        }
+
         if (search) {
             const searchRegex = new RegExp(search, "i");
             query.$or = [
@@ -51,8 +62,9 @@ export const getAllEmployees = async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
-        // Compute stats from ALL active employees, not just the filtered ones, to keep stats cards accurate
-        const allUsers = await User.find().lean();
+        // Compute stats from accessible active employees
+        const statsQuery = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {};
+        const allUsers = await User.find(statsQuery).lean();
         const total = allUsers.length;
         const active = allUsers.filter(e => e.status === "active").length;
         const inactive = allUsers.filter(e => e.status === "inactive" || e.status === "terminated").length;
@@ -171,7 +183,7 @@ export const createEmployee = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const isHrOrAdmin = role === "admin" || role === "hr";
+        const isHrOrAdmin = role === "global_admin" || role === "hr";
         const defaultPermissions = {
             dashboard: true,
             me: true,
@@ -558,3 +570,63 @@ export const getManagers = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+/* ─────────────────────────────────────────────
+   GET HR VISIBLE EMPLOYEES
+ ───────────────────────────────────────────── */
+export const getHRVisibility = async (req, res) => {
+    try {
+        const { hrId } = req.params;
+        const hrUser = await User.findById(hrId)
+            .populate("visibleEmployees", "fullName firstName lastName employeeId designation department email profilePicture")
+            .lean();
+        if (!hrUser) {
+            return res.status(404).json({ success: false, message: "HR user not found." });
+        }
+        return res.status(200).json({
+            success: true,
+            visibleEmployees: hrUser.visibleEmployees || []
+        });
+    } catch (error) {
+        console.error("Get HR Visibility Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* ─────────────────────────────────────────────
+   UPDATE HR VISIBLE EMPLOYEES (Global Admin Only)
+ ───────────────────────────────────────────── */
+export const updateHRVisibility = async (req, res) => {
+    try {
+        const { hrId } = req.params;
+        const { employeeIds } = req.body;
+
+        const currentUserId = req.user?.id || req.user?.userId;
+        const currentUser = await User.findById(currentUserId).lean();
+        if (!currentUser || currentUser.role !== "global_admin") {
+            return res.status(403).json({ success: false, message: "Only Global Admin can configure HR employee visibility." });
+        }
+
+        const hrUser = await User.findById(hrId);
+        if (!hrUser) {
+            return res.status(404).json({ success: false, message: "HR user not found." });
+        }
+
+        hrUser.visibleEmployees = Array.isArray(employeeIds) ? employeeIds : [];
+        await hrUser.save();
+
+        const updated = await User.findById(hrId)
+            .populate("visibleEmployees", "fullName firstName lastName employeeId designation department email profilePicture")
+            .lean();
+
+        return res.status(200).json({
+            success: true,
+            message: "HR employee visibility updated successfully.",
+            visibleEmployees: updated.visibleEmployees || []
+        });
+    } catch (error) {
+        console.error("Update HR Visibility Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+

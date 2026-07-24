@@ -138,9 +138,9 @@ export const EmployeeProfile = () => {
 
     // Role check: HR and Admin can edit & delete ANY employee profile. Employees can edit & delete ONLY their own.
     const userRole = (currentUser?.role || "employee").toLowerCase();
-    const canEdit = isOwnProfile || userRole === "admin" || userRole === "hr";
-    const canDelete = isOwnProfile || userRole === "admin" || userRole === "hr";
-    const canViewConfidential = isOwnProfile || userRole === "admin" || userRole === "hr";
+    const canEdit = isOwnProfile || userRole === "global_admin" || userRole === "admin" || userRole === "hr";
+    const canDelete = isOwnProfile || userRole === "global_admin" || userRole === "admin" || userRole === "hr";
+    const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || userRole === "hr";
 
     // Fetch employee data from MongoDB
     const fetchProfile = useCallback(async () => {

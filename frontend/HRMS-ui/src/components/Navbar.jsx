@@ -272,7 +272,7 @@ const Navbar = ({ onToggleSidebar }) => {
                 {/* Role badge */}
                 <div className="bg-blue-50 text-[#2D79C7] text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100 shadow-sm flex items-center gap-1 uppercase tracking-wider">
                     <Shield className="w-3 h-3 text-[#2D79C7]" />
-                    <span>{user?.role || "—"}</span>
+                    <span>{user?.role === "global_admin" ? "Global Admin" : user?.role || "—"}</span>
                 </div>
 
                 {/* Notifications */}

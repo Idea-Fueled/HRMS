@@ -27,7 +27,7 @@ export const getAllDocuments = async (req, res) => {
         // 1. Role-based filtration:
         // Employees and Managers can ONLY see "company" documents.
         // Admins and HR can see both "company" and "employee" documents.
-        if (userRole === "admin" || userRole === "hr") {
+        if (userRole === "global_admin" || userRole === "hr") {
             if (type) {
                 query.type = type;
             }
@@ -58,7 +58,7 @@ export const getAllDocuments = async (req, res) => {
 
         // Fetch unique categories for active scope
         const categoriesQuery = {};
-        if (userRole === "admin" || userRole === "hr") {
+        if (userRole === "global_admin" || userRole === "hr") {
             if (type) {
                 categoriesQuery.type = type;
             }

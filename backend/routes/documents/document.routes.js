@@ -12,12 +12,12 @@ const router = express.Router();
 
 // Middleware to restrict write actions to admin/hr only
 const isAdminOrHR = (req, res, next) => {
-    if (req.user && (req.user.role === "admin" || req.user.role === "hr")) {
+    if (req.user && (req.user.role === "global_admin" || req.user.role === "hr")) {
         next();
     } else {
         return res.status(403).json({
             success: false,
-            message: "Forbidden. Access denied. Only HR and Admins can perform this action."
+            message: "Forbidden. Access denied. Only HR and Global Admins can perform this action."
         });
     }
 };

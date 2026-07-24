@@ -10,7 +10,9 @@ import {
     createDepartment,
     updateDepartment,
     deleteDepartment,
-    getManagers
+    getManagers,
+    getHRVisibility,
+    updateHRVisibility
 } from "../../controllers/employees/employee.controller.js";
 import { isAuthenticated } from "../../middlewares/auth.middleware.js";
 
@@ -24,6 +26,8 @@ router.put("/departments/rename", isAuthenticated, updateDepartment);
 router.post("/departments/delete", isAuthenticated, deleteDepartment);
 router.get("/managers/all", isAuthenticated, getManagers);
 router.get("/check-id", isAuthenticated, checkEmployeeId);
+router.get("/hr-visibility/:hrId", isAuthenticated, getHRVisibility);
+router.put("/hr-visibility/:hrId", isAuthenticated, updateHRVisibility);
 router.get("/:id", isAuthenticated, getEmployeeById);
 router.post("/", isAuthenticated, createEmployee);
 router.put("/:id", isAuthenticated, updateEmployee);

@@ -9,7 +9,7 @@ const resolveUserPermissions = (user) => {
     if (!user) return null;
     const userObj = typeof user.toObject === "function" ? user.toObject() : user;
     if (!userObj.permissions) {
-        const isHrOrAdmin = userObj.role === "admin" || userObj.role === "hr";
+        const isHrOrAdmin = userObj.role === "global_admin" || userObj.role === "hr";
         userObj.permissions = {
             dashboard: true,
             me: true,
@@ -111,7 +111,7 @@ export const registerUser = async (req, res) => {
         // Hash Password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const isHrOrAdmin = role === "admin" || role === "hr";
+        const isHrOrAdmin = role === "global_admin" || role === "hr";
 
         // Create User
         const user = await User.create({
@@ -349,7 +349,7 @@ export const getAwayToday = async (req, res) => {
         const currentUserId = req.user?.id || req.user?.userId;
         const currentUser = await User.findById(currentUserId);
 
-        const isHrOrAdmin = currentUser?.role === "admin" || currentUser?.role === "hr";
+        const isHrOrAdmin = currentUser?.role === "global_admin" || currentUser?.role === "hr";
         const isManager = currentUser?.role === "manager";
         const userDept = currentUser?.department;
 
@@ -413,7 +413,7 @@ export const getAwayToday = async (req, res) => {
                 const isManagerOrAdminUser = (item) => {
                     const r = (item.role || "").toLowerCase();
                     const d = (item.designation || "").toLowerCase();
-                    return r === "admin" || r === "hr" || r === "manager" ||
+                    return r === "global_admin" || r === "hr" || r === "manager" ||
                            d.includes("manager") || d.includes("director") || d.includes("head") || d.includes("lead");
                 };
 

@@ -42,7 +42,7 @@ const TimeAttendanceDashboard = () => {
     
     // Role View Switcher
     const userRole = (user?.role || "hr").toLowerCase();
-    const [viewRole, setViewRole] = useState(userRole === "admin" ? "hr" : userRole);
+    const [viewRole, setViewRole] = useState((userRole === "global_admin" || userRole === "admin") ? "hr" : userRole);
     
     // Dynamic State Containers
     const [loading, setLoading] = useState(true);

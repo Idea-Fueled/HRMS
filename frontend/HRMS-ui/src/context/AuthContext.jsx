@@ -6,6 +6,17 @@ import { getCurrentUser } from "../services/auth.service";
    Defines exactly what each role can do.
 ───────────────────────────────────────────── */
 const ROLE_PERMISSIONS = {
+    global_admin: [
+        "view:dashboard", "view:me", "view:my-team", "view:employees",
+        "view:my-finances", "view:documents", "view:time-attendance",
+        "view:payroll", "view:recruitment", "view:hire", "view:offboarding-onboarding",
+        "create:employee", "edit:employee", "view:all-employees",
+        "create:holiday", "edit:holiday",
+        "create:announcement", "create:post", "create:poll",
+        "approve:leave", "reject:leave",
+        "view:org-data", "access:payroll", "access:recruitment",
+        "access:hire", "access:onboarding",
+    ],
     admin: [
         "view:dashboard", "view:me", "view:my-team", "view:employees",
         "view:my-finances", "view:documents", "view:time-attendance",
@@ -49,10 +60,11 @@ const ROLE_PERMISSIONS = {
 
 /* Routes each role is allowed to visit */
 export const ROLE_ALLOWED_ROUTES = {
-    admin:    ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
-    hr:       ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
-    manager:  ["/dashboard", "/me", "/my-team", "/my-finances", "/documents", "/time-attendance"],
-    employee: ["/dashboard", "/me", "/my-finances", "/documents", "/time-attendance"],
+    global_admin: ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
+    admin:        ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
+    hr:           ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
+    manager:      ["/dashboard", "/me", "/my-team", "/my-finances", "/documents", "/time-attendance"],
+    employee:     ["/dashboard", "/me", "/my-finances", "/documents", "/time-attendance"],
 };
 
 /* ─────────────────────────────────────────────
@@ -92,9 +104,9 @@ export const AuthProvider = ({ children }) => {
     const can = useCallback((permission) => {
         if (!user) return false;
         
-        // Admins and HR have all permissions
+        // Global Admins, Admins and HR have all permissions
         const userRole = user.role?.toLowerCase();
-        if (userRole === "admin" || userRole === "hr") return true;
+        if (userRole === "global_admin" || userRole === "admin" || userRole === "hr") return true;
         
         // Handle admin/hr actions
         if (permission === "create:employee" || permission === "edit:employee" || permission === "view:all-employees") {
@@ -108,9 +120,9 @@ export const AuthProvider = ({ children }) => {
     const canAccessRoute = useCallback((path) => {
         if (!user) return false;
 
-        // Admins and HR have access to all routes
+        // Global Admins, Admins and HR have access to all routes
         const userRole = user.role?.toLowerCase();
-        if (userRole === "admin" || userRole === "hr") return true;
+        if (userRole === "global_admin" || userRole === "admin" || userRole === "hr") return true;
         
         if (!user.permissions) return false;
         

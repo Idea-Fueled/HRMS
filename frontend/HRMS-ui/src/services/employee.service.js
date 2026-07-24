@@ -44,4 +44,12 @@ export const deactivateEmployee = async (id) => {
     return API.put(`/employees/${id}/deactivate`);
 };
 
+export const getHRVisibility = async (hrId) => {
+    return API.get(`/employees/hr-visibility/${hrId}`);
+};
+
+export const updateHRVisibility = async (hrId, employeeIds) => {
+    return API.put(`/employees/hr-visibility/${hrId}`, { employeeIds });
+};
+
 export default API;
