@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import independanceDayImg from "../assets/independance_day.jpg";
 import newYearImg from "../assets/new_year.jpg";
 import mahashivratriImg from "../assets/mahashivratri_day.jpg";
+import holiImg from "../assets/holi.jpg";
 
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -50,7 +51,7 @@ const getHolidayImage = (h = {}) => {
     if (title.includes("independence") || title.includes("republic") || title.includes("independance")) return independanceDayImg;
     if (title.includes("new year") || title.includes("newyear")) return newYearImg;
     if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("holi")) return "https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("holi")) return holiImg;
     if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
     if (title.includes("raksha") || title.includes("rakhi")) return "https://images.unsplash.com/photo-1627885233158-750d0322b270?auto=format&fit=crop&w=600&q=80";
     if (title.includes("gandhi")) return "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80";
