@@ -496,12 +496,12 @@ export const getPeopleEvents = async (req, res) => {
                 }
             }
 
-            // New Joinees (Next 30 Days or joined in last 30 days)
+            // New Joinees (Joined in last 2 days or joining in next 2 days)
             if (u.joiningDate) {
                 const join = new Date(u.joiningDate);
                 const diffMs = join - today;
                 const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                if (diffDays >= -30 && diffDays <= 30) {
+                if (diffDays >= -2 && diffDays <= 2) {
                     newJoinees.push({
                         _id: u._id,
                         fullName: u.fullName,

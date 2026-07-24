@@ -40,6 +40,7 @@ import diwaliImg from "../../assets/diwali.png";
 import guruNanakImg from "../../assets/guru_nanak_Dev_ji_jayanti.png";
 import christmasImg from "../../assets/christmas.png";
 import janamashtamiImg from "../../assets/janamashtami.png";
+import gandhiJayantiImg from "../../assets/gandhi_jayanti.png";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -326,7 +327,7 @@ const getHolidayImage = (h = {}) => {
     if (title.includes("holi")) return holiImg;
     if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
     if (title.includes("raksha") || title.includes("rakhi") || title.includes("bandhan")) return rakshaBandhanImg;
-    if (title.includes("gandhi")) return "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("gandhi")) return gandhiJayantiImg;
     if (title.includes("friday") || title.includes("easter")) return "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80";
 
     return "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80";
@@ -1527,7 +1528,7 @@ const PeopleEventsCard = ({ events }) => {
 
     const bdays = events.birthdays || [];
     const annivs = events.anniversaries || [];
-    const joinees = events.newJoinees || [];
+    const joinees = (events.newJoinees || []).filter(j => Math.abs(j.daysRemaining) <= 2);
 
     const renderBirthdays = () => (
         <div className="space-y-3 max-h-[280px] overflow-y-auto pr-0.5">
@@ -1616,7 +1617,7 @@ const PeopleEventsCard = ({ events }) => {
         <div className="space-y-3 max-h-[280px] overflow-y-auto pr-0.5">
             {joinees.length === 0 ? (
                 <div className="py-8 text-center text-gray-400 text-[12px] bg-gray-50 rounded-[12px] flex items-center justify-center gap-2">
-                    🌟 No new joinees in next 30 days
+                    🌟 No new joinees in last 2 days
                 </div>
             ) : (
                 joinees.map((j) => {
