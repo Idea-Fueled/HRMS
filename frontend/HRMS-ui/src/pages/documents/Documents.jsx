@@ -319,7 +319,7 @@ export const Documents = () => {
     );
 
     return (
-        <div className="space-y-6 text-left select-none animate-fadeIn">
+        <div className="space-y-6 select-none animate-fadeIn">
             {/* Header section */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-150 gap-4">
                 <div>

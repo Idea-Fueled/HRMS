@@ -1699,7 +1699,7 @@ const Employees = () => {
     const handleFilterChange = (f) => { setFilters(f); setPage(1); };
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-6 select-none animate-fadeIn">
             <SummaryCards summary={data.summary} loading={loading} />
 
             <Card>

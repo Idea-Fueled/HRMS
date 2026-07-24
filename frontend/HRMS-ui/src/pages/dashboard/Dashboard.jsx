@@ -1900,7 +1900,7 @@ const Dashboard = () => {
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return (
-        <div className="space-y-5 bg-[#F8FAFC] min-h-screen -m-6 p-6 select-none">
+        <div className="space-y-6 select-none">
             {/* Welcome Banner */}
             <WelcomeBanner user={dashboardData?.user} />
 

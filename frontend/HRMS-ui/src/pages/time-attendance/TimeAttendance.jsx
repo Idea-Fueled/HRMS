@@ -233,7 +233,7 @@ const TimeAttendanceDashboard = () => {
     }, [viewRole]);
 
     return (
-        <div className="space-y-6 text-left select-none animate-fadeIn pb-12">
+        <div className="space-y-6 select-none animate-fadeIn">
             
             {/* ─────────────────────────────────────────────
                TOP FILTER CONTROLS BAR (CLEAN MINIMAL CARD)

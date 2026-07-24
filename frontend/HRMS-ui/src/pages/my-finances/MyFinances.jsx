@@ -140,7 +140,7 @@ Thank you for your service!
     };
 
     return (
-        <div className="space-y-6 bg-[#F8FAFC] min-h-screen -m-6 p-6 select-none animate-fadeIn">
+        <div className="space-y-6 select-none animate-fadeIn">
             {/* Top Sub-Navigation Tabs */}
             <div className="premium-3d-card-mini px-6 py-1 flex items-center">
                 <nav className="flex gap-4 overflow-x-auto scrollbar-none">

@@ -2006,7 +2006,7 @@ const Me = () => {
     ];
 
     return (
-        <div className="space-y-6 bg-[#F8FAFC] min-h-screen -m-6 p-6 select-none">
+        <div className="space-y-6 select-none">
             {/* Top tab sub-navigation bar */}
             <div className="bg-white border border-[#E5E7EB] rounded-[20px] px-6 py-1 flex items-center shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
                 <nav className="flex gap-4">
