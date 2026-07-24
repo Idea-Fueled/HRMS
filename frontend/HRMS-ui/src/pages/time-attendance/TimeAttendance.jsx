@@ -362,7 +362,7 @@ const TimeAttendanceDashboard = () => {
                                 {summary.present}
                                 <span className="text-xs font-normal text-gray-400 ml-1.5">/ {summary.total} total</span>
                             </div>
-                            <p className="text-xs text-gray-500 font-medium mt-1">{summary.presentPct} attendance rate</p>
+                            <p className="text-xs text-gray-500 font-medium mt-1">Total active workforce logged</p>
                         </div>
                     </div>
 
@@ -378,7 +378,7 @@ const TimeAttendanceDashboard = () => {
                             <div className="text-2xl font-bold text-[#1E1E1E]">
                                 {summary.late}
                             </div>
-                            <p className="text-xs text-gray-500 font-medium mt-1">Punched in after 10:00 AM ({summary.latePct})</p>
+                            <p className="text-xs text-gray-500 font-medium mt-1">Punched in after 10:00 AM</p>
                         </div>
                     </div>
 
@@ -394,7 +394,7 @@ const TimeAttendanceDashboard = () => {
                             <div className="text-2xl font-bold text-[#1E1E1E]">
                                 {summary.wfh}
                             </div>
-                            <p className="text-xs text-gray-500 font-medium mt-1">Approved remote working ({summary.wfhPct})</p>
+                            <p className="text-xs text-gray-500 font-medium mt-1">Approved remote working</p>
                         </div>
                     </div>
 
@@ -410,7 +410,7 @@ const TimeAttendanceDashboard = () => {
                             <div className="text-2xl font-bold text-[#1E1E1E]">
                                 {summary.onLeave}
                             </div>
-                            <p className="text-xs text-gray-500 font-medium mt-1">Unplanned or approved leave ({summary.onLeavePct})</p>
+                            <p className="text-xs text-gray-500 font-medium mt-1">Unplanned or approved leave</p>
                         </div>
                     </div>
 
@@ -663,9 +663,6 @@ const TimeAttendanceDashboard = () => {
                             <Users className="w-4.5 h-4.5 text-[#2D79C7]" />
                             <span>Team Attendance Table</span>
                         </h3>
-                        <p className="text-gray-400 text-xs font-medium mt-0.5">
-                            Filterable employee attendance records for today.
-                        </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">

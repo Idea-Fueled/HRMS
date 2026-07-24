@@ -324,11 +324,6 @@ export const Documents = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-150 gap-4">
                 <div>
                     <h2 className="text-[#1E1E1E] text-[20px] font-black tracking-wide">Documents Center</h2>
-                    <p className="text-gray-400 text-[12px] font-semibold mt-1">
-                        {isHrOrAdmin 
-                            ? "Manage company policies, handbooks, and view uploaded employee records." 
-                            : "Access official company policies, guidelines, reference handbooks, and archives."}
-                    </p>
                 </div>
                 {isHrOrAdmin && (
                     <button

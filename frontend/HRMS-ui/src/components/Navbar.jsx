@@ -258,9 +258,6 @@ const Navbar = ({ onToggleSidebar }) => {
                     <h2 className="text-[#1E1E1E] text-sm sm:text-base md:text-lg font-bold tracking-wide leading-tight truncate">
                         {meta.title}
                     </h2>
-                    <p className="text-gray-500 text-[10px] sm:text-xs font-normal truncate">
-                        {meta.subtitle}
-                    </p>
                 </div>
             </div>
 
