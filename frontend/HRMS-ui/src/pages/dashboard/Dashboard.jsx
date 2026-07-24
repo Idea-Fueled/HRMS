@@ -30,9 +30,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
-import independanceDayImg from "../../assets/independance_day.jpg";
-import newYearImg from "../../assets/new_year.jpg";
-import mahashivratriImg from "../../assets/mahashivratri_day.jpg";
+import independanceDayImg from "../../assets/independance_day.png";
+import newYearImg from "../../assets/new_year.png";
+import mahashivratriImg from "../../assets/mahashivratri_day.png";
+import republicDayImg from "../../assets/republic_Day.png";
 import holiImg from "../../assets/holi.png";
 import rakshaBandhanImg from "../../assets/raksha_bandhan.png";
 import dussehraImg from "../../assets/Dusshhera.png";
@@ -320,7 +321,8 @@ const getHolidayImage = (h = {}) => {
     if (title.includes("diwali") || title.includes("deepavali")) return diwaliImg;
     if (title.includes("dussehra") || title.includes("dusshhera") || title.includes("dasara") || title.includes("vijayadashami")) return dussehraImg;
     if (title.includes("shivratri") || title.includes("mahashivratri")) return mahashivratriImg;
-    if (title.includes("independence") || title.includes("republic")) return independanceDayImg;
+    if (title.includes("republic")) return republicDayImg;
+    if (title.includes("independence") || title.includes("independance")) return independanceDayImg;
     if (title.includes("new year") || title.includes("newyear")) return newYearImg;
     if (title.includes("christmas") || title.includes("xmas")) return christmasImg;
     if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";

@@ -4,9 +4,10 @@ import { X, CalendarDays, Loader2, AlertCircle, Calendar, Edit3, Trash2 } from "
 import { toast } from "sonner";
 import { getAllHolidays, updateHoliday, deleteHoliday } from "../services/dashboard.service";
 import { useAuth } from "../context/AuthContext";
-import independanceDayImg from "../assets/independance_day.jpg";
-import newYearImg from "../assets/new_year.jpg";
-import mahashivratriImg from "../assets/mahashivratri_day.jpg";
+import independanceDayImg from "../assets/independance_day.png";
+import newYearImg from "../assets/new_year.png";
+import mahashivratriImg from "../assets/mahashivratri_day.png";
+import republicDayImg from "../assets/republic_Day.png";
 import holiImg from "../assets/holi.png";
 import rakshaBandhanImg from "../assets/raksha_bandhan.png";
 import dussehraImg from "../assets/Dusshhera.png";
@@ -62,6 +63,7 @@ const getHolidayImage = (h = {}) => {
     if (title.includes("diwali") || title.includes("deepavali")) return diwaliImg;
     if (title.includes("dussehra") || title.includes("dusshhera") || title.includes("dasara") || title.includes("vijayadashami")) return dussehraImg;
     if (title.includes("shivratri") || title.includes("mahashivratri")) return mahashivratriImg;
+    if (title.includes("republic")) return republicDayImg;
     if (title.includes("independence") || title.includes("republic") || title.includes("independance")) return independanceDayImg;
     if (title.includes("new year") || title.includes("newyear")) return newYearImg;
     if (title.includes("christmas") || title.includes("xmas")) return christmasImg;
