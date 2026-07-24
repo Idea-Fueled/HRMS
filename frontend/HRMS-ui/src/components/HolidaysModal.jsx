@@ -4,6 +4,7 @@ import { X, CalendarDays, Loader2, AlertCircle, Calendar, Edit3, Trash2 } from "
 import { toast } from "sonner";
 import { getAllHolidays, updateHoliday, deleteHoliday } from "../services/dashboard.service";
 import { useAuth } from "../context/AuthContext";
+import independanceDayImg from "../assets/independance_day.jpg";
 
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -221,12 +222,12 @@ const getHolidayImage = (h = {}) => {
 
     const title = (h.title || "").toLowerCase();
 
+    if (title.includes("independence") || title.includes("republic")) return independanceDayImg;
     if (title.includes("christmas")) return "https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=600&q=80";
     if (title.includes("new year")) return "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80";
     if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";
     if (title.includes("holi")) return "https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?auto=format&fit=crop&w=600&q=80";
     if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("independence") || title.includes("republic")) return "https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=600&q=80";
     if (title.includes("raksha") || title.includes("rakhi")) return "https://images.unsplash.com/photo-1627885233158-750d0322b270?auto=format&fit=crop&w=600&q=80";
     if (title.includes("gandhi")) return "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80";
     if (title.includes("friday") || title.includes("easter")) return "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80";
@@ -249,13 +250,13 @@ const getHolidayImage = (h = {}) => {
                 className="group relative overflow-hidden rounded-[20px] transition-all duration-300 border shadow-xs hover:shadow-lg bg-white border-gray-200/90 hover:border-[#2D79C7]/40"
             >
                 {/* Top Image Banner */}
-                <div className="h-28 sm:h-32 w-full relative overflow-hidden bg-slate-100">
+                <div className="h-28 sm:h-36 w-full relative overflow-hidden bg-slate-900 flex items-center justify-center">
                     <img
                         src={bannerImg}
                         alt={h.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {
-                            e.target.src = "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80";
+                            e.target.src = independanceDayImg;
                         }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
