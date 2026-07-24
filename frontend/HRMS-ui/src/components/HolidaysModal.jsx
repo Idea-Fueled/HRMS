@@ -6,6 +6,7 @@ import { getAllHolidays, updateHoliday, deleteHoliday } from "../services/dashbo
 import { useAuth } from "../context/AuthContext";
 import independanceDayImg from "../assets/independance_day.jpg";
 import newYearImg from "../assets/new_year.jpg";
+import mahashivratriImg from "../assets/mahashivratri_day.jpg";
 
 const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -24,10 +25,38 @@ const displayType = (type) => {
     return type || "Public Holiday";
 };
 
-const typeColors = {
-    "Public Holiday": "bg-blue-50 text-[#2D79C7] border-blue-100",
-    "Company Holiday": "bg-violet-50 text-violet-700 border-violet-100",
-    "Optional Holiday": "bg-amber-50 text-amber-700 border-amber-100",
+const getHolidayEmoji = (title = "") => {
+    const t = title.toLowerCase();
+    if (t.includes("shivratri") || t.includes("mahashivratri")) return "🔱";
+    if (t.includes("christmas")) return "🎄";
+    if (t.includes("new year")) return "🎆";
+    if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
+    if (t.includes("eid")) return "🌙";
+    if (t.includes("holi")) return "🎨";
+    if (t.includes("independence") || t.includes("republic")) return "🇮🇳";
+    if (t.includes("raksha") || t.includes("rakhi")) return "🎋";
+    if (t.includes("gandhi")) return "🕊️";
+    if (t.includes("good friday") || t.includes("easter")) return "✝️";
+    return "🌴";
+};
+
+const getHolidayImage = (h = {}) => {
+    if (h.imageUrl) return h.imageUrl;
+    if (h.image) return h.image;
+
+    const title = (h.title || "").toLowerCase();
+
+    if (title.includes("shivratri") || title.includes("mahashivratri")) return mahashivratriImg;
+    if (title.includes("independence") || title.includes("republic") || title.includes("independance")) return independanceDayImg;
+    if (title.includes("new year") || title.includes("newyear")) return newYearImg;
+    if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("holi")) return "https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("raksha") || title.includes("rakhi")) return "https://images.unsplash.com/photo-1627885233158-750d0322b270?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("gandhi")) return "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("friday") || title.includes("easter")) return "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80";
+
+    return "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80";
 };
 
 /* ─────────────────────────────────────────────
@@ -203,38 +232,6 @@ const HolidaysModal = ({ isOpen, onClose }) => {
         return d.getMonth() >= 8; // Sep-Dec (months 8 to 11)
     });
 
-const getHolidayEmoji = (title = "") => {
-    const t = title.toLowerCase();
-    if (t.includes("christmas")) return "🎄";
-    if (t.includes("new year")) return "🎆";
-    if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
-    if (t.includes("eid")) return "🌙";
-    if (t.includes("holi")) return "🎨";
-    if (t.includes("independence") || t.includes("republic")) return "🇮🇳";
-    if (t.includes("raksha") || t.includes("rakhi")) return "🎋";
-    if (t.includes("gandhi")) return "🕊️";
-    if (t.includes("good friday") || t.includes("easter")) return "✝️";
-    return "🌴";
-};
-
-const getHolidayImage = (h = {}) => {
-    if (h.imageUrl) return h.imageUrl;
-    if (h.image) return h.image;
-
-    const title = (h.title || "").toLowerCase();
-
-    if (title.includes("independence") || title.includes("republic") || title.includes("independance")) return independanceDayImg;
-    if (title.includes("new year") || title.includes("newyear")) return newYearImg;
-    if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("holi")) return "https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("raksha") || title.includes("rakhi")) return "https://images.unsplash.com/photo-1627885233158-750d0322b270?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("gandhi")) return "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80";
-    if (title.includes("friday") || title.includes("easter")) return "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80";
-
-    return "https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=600&q=80";
-};
-
     const renderHolidayCard = (h, idx) => {
         const d = h.date ? new Date(h.date) : new Date();
         const dayNum = d.getDate().toString().padStart(2, "0");
@@ -342,90 +339,93 @@ const getHolidayImage = (h = {}) => {
                         </div>
                     </div>
                     <button onClick={onClose} className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-[8px] transition-colors cursor-pointer">
-                        <X className="w-5 h-5" />
+                        <X className="w-4.5 h-4.5" />
                     </button>
                 </div>
 
-                {/* Year filter sub-header */}
-                <div className="px-6 py-3 border-b border-gray-100 bg-[#F8FAFC] flex items-center justify-between gap-4 shrink-0">
-                    <span className="text-xs font-bold text-gray-500">Filter by Year</span>
-                    <div className="relative">
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(Number(e.target.value))}
-                            className="appearance-none bg-white border border-gray-200 rounded-[10px] pl-3 pr-8 py-1.5 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all cursor-pointer shadow-sm"
-                        >
-                            {years.map(yr => <option key={yr} value={yr}>{yr}</option>)}
-                        </select>
-                        <Calendar className="w-3 h-3 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                </div>
+                {/* Body Content */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thin">
+                    {/* Filter bar */}
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                        <div className="flex items-center gap-3">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Year:</label>
+                            <select
+                                value={selectedYear}
+                                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                className="px-3.5 py-1.5 bg-gray-50 border border-gray-200 rounded-[12px] text-xs font-bold text-[#1E1E1E] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                            >
+                                {years.map((y) => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
 
-                {/* Body */}
-                <div className="flex-1 overflow-y-auto p-6 bg-white min-h-[250px]">
+                        <span className="text-xs font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                            {filteredHolidays.length} Holidays Found
+                        </span>
+                    </div>
+
                     {loading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {Array.from({ length: 6 }).map((_, idx) => (
-                                <div key={idx} className="flex items-center gap-4 py-3 px-4 border border-gray-100 rounded-[14px] bg-[#F8FAFC] animate-pulse">
-                                    <div className="w-11 h-11 rounded-[12px] bg-gray-200 shrink-0" />
-                                    <div className="flex-1 space-y-2">
-                                        <div className="h-3.5 bg-gray-200 rounded w-3/4" />
-                                        <div className="h-2.5 bg-gray-200 rounded w-1/2" />
-                                    </div>
-                                    <div className="h-5 bg-gray-200 rounded-full w-16 shrink-0" />
-                                </div>
-                            ))}
+                        <div className="py-16 text-center text-gray-400 text-xs flex flex-col items-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin text-[#2D79C7]" />
+                            <span>Loading holidays schedule...</span>
                         </div>
                     ) : error ? (
-                        <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-500 border border-rose-100 flex items-center justify-center">
-                                <AlertCircle className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-gray-800 font-bold text-sm">Failed to load holidays</h4>
-                                <p className="text-gray-400 text-xs mt-1 max-w-xs">{error}</p>
-                            </div>
-                            <button onClick={fetchHolidays} className="px-4 py-1.5 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold rounded-[10px] shadow-sm transition-all cursor-pointer">
-                                Retry
-                            </button>
+                        <div className="py-12 text-center text-rose-500 text-xs font-semibold flex items-center justify-center gap-2 bg-rose-50 border border-rose-100 rounded-[16px]">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>{error}</span>
                         </div>
                     ) : filteredHolidays.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-blue-50 text-[#2D79C7] border border-blue-100 flex items-center justify-center">
-                                <CalendarDays className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-gray-800 font-bold text-sm">No holidays scheduled</h4>
-                                <p className="text-gray-400 text-xs mt-1">There are no holidays registered for {selectedYear}.</p>
-                            </div>
+                        <div className="py-16 text-center text-gray-400 text-xs flex flex-col items-center gap-1.5 bg-gray-50/50 rounded-[18px] border border-dashed border-gray-200">
+                            <CalendarDays className="w-8 h-8 text-gray-300 stroke-[1.5]" />
+                            <span className="font-bold text-gray-600">No Holidays Scheduled for {selectedYear}</span>
+                            <span className="text-gray-400 text-[11px]">Pick another year or add new holidays</span>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                            {/* Left Column (Jan - Aug) */}
-                            <div className="space-y-3.5">
-                                <h4 className="text-[#2D79C7] text-[11px] font-black uppercase tracking-wider pb-2 border-b border-gray-100 mb-2 flex items-center gap-1.5">
-                                    <span>🌸</span> January - August
-                                </h4>
+                        <div className="space-y-6">
+                            {/* Jan - Aug Section */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-[#2D79C7]">
+                                        Jan – Aug {selectedYear}
+                                    </span>
+                                    <div className="h-px bg-gray-100 flex-1" />
+                                    <span className="text-[10.5px] font-bold text-gray-400">
+                                        {janToAugHolidays.length} events
+                                    </span>
+                                </div>
+
                                 {janToAugHolidays.length === 0 ? (
                                     <div className="text-center py-6 border border-dashed border-gray-100 rounded-[14px] text-gray-400 text-[11px] font-semibold italic bg-gray-50/30">
                                         No holidays in this period
                                     </div>
                                 ) : (
-                                    janToAugHolidays.map((h, idx) => renderHolidayCard(h, idx))
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {janToAugHolidays.map((h, idx) => renderHolidayCard(h, idx))}
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Right Column (Sep - Dec) */}
-                            <div className="space-y-3.5">
-                                <h4 className="text-violet-700 text-[11px] font-black uppercase tracking-wider pb-2 border-b border-gray-100 mb-2 flex items-center gap-1.5">
-                                    <span>🍁</span> September - December
-                                </h4>
+                            {/* Sep - Dec Section */}
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-[#2D79C7]">
+                                        Sep – Dec {selectedYear}
+                                    </span>
+                                    <div className="h-px bg-gray-100 flex-1" />
+                                    <span className="text-[10.5px] font-bold text-gray-400">
+                                        {septToDecHolidays.length} events
+                                    </span>
+                                </div>
+
                                 {septToDecHolidays.length === 0 ? (
                                     <div className="text-center py-6 border border-dashed border-gray-100 rounded-[14px] text-gray-400 text-[11px] font-semibold italic bg-gray-50/30">
                                         No holidays in this period
                                     </div>
                                 ) : (
-                                    septToDecHolidays.map((h, idx) => renderHolidayCard(h, idx))
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {septToDecHolidays.map((h, idx) => renderHolidayCard(h, idx))}
+                                    </div>
                                 )}
                             </div>
                         </div>

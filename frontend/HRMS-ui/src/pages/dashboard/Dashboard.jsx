@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
 import independanceDayImg from "../../assets/independance_day.jpg";
 import newYearImg from "../../assets/new_year.jpg";
+import mahashivratriImg from "../../assets/mahashivratri_day.jpg";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -284,6 +285,7 @@ const CreateHolidayModal = ({ isOpen, onClose, onSuccess }) => {
 
 const getHolidayEmoji = (title = "") => {
     const t = title.toLowerCase();
+    if (t.includes("shivratri") || t.includes("mahashivratri")) return "🔱";
     if (t.includes("christmas")) return "🎄";
     if (t.includes("new year")) return "🎆";
     if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
@@ -302,6 +304,7 @@ const getHolidayImage = (h = {}) => {
 
     const title = (h.title || "").toLowerCase();
 
+    if (title.includes("shivratri") || title.includes("mahashivratri")) return mahashivratriImg;
     if (title.includes("independence") || title.includes("republic")) return independanceDayImg;
     if (title.includes("new year") || title.includes("newyear")) return newYearImg;
     if (title.includes("christmas")) return "https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=600&q=80";
