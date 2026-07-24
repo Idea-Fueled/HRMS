@@ -4,7 +4,7 @@ import {
     Users, UserCheck, UserX, UserPlus, Briefcase, FileText,
     Plus, Eye, EyeOff, Edit3, X, ChevronDown, Trash2,
     Phone, Mail, Calendar, Building2, Shield, Upload,
-    Check, Loader2, Lock, User as UserIcon
+    Check, Loader2, Lock, User as UserIcon, Search
 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "../../components/ConfirmDialog";
