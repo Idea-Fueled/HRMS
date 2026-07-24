@@ -402,9 +402,8 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
 
                             {/* Holiday Title over Banner */}
                             <div className="absolute bottom-2.5 left-3.5 right-3.5 text-white z-10">
-                                <h4 className="text-white text-sm sm:text-[15px] font-extrabold flex items-center gap-1.5 leading-snug drop-shadow-md truncate">
-                                    <span className="text-base leading-none">{emoji}</span>
-                                    <span>{h.title || "Holiday"}</span>
+                                <h4 className="text-white text-sm sm:text-[15px] font-extrabold leading-snug drop-shadow-md truncate">
+                                    {h.title || "Holiday"}
                                 </h4>
                             </div>
                         </div>
