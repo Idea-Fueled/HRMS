@@ -38,6 +38,7 @@ import rakshaBandhanImg from "../../assets/raksha_bandhan.png";
 import dussehraImg from "../../assets/Dusshhera.png";
 import diwaliImg from "../../assets/diwali.png";
 import guruNanakImg from "../../assets/guru_nanak_Dev_ji_jayanti.png";
+import christmasImg from "../../assets/christmas.png";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -317,7 +318,7 @@ const getHolidayImage = (h = {}) => {
     if (title.includes("shivratri") || title.includes("mahashivratri")) return mahashivratriImg;
     if (title.includes("independence") || title.includes("republic")) return independanceDayImg;
     if (title.includes("new year") || title.includes("newyear")) return newYearImg;
-    if (title.includes("christmas")) return "https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=600&q=80";
+    if (title.includes("christmas") || title.includes("xmas")) return christmasImg;
     if (title.includes("diwali") || title.includes("deepavali")) return "https://images.unsplash.com/photo-1605888981261-26c3fa7e4663?auto=format&fit=crop&w=600&q=80";
     if (title.includes("holi")) return holiImg;
     if (title.includes("eid")) return "https://images.unsplash.com/photo-1564769625905-50e93615e769?auto=format&fit=crop&w=600&q=80";
