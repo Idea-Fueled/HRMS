@@ -18,6 +18,7 @@ import MyTeam from "./pages/my-team/MyTeam";
 import Employees from "./pages/employees/Employees";
 import EmployeeProfile from "./pages/profile/EmployeeProfile";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
+import SessionTimeoutManager from "./components/SessionTimeoutModal";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
@@ -162,6 +163,7 @@ const router = createBrowserRouter([
 const App = () => {
     return (
         <AuthProvider>
+            <SessionTimeoutManager />
             <Toaster position="top-right" richColors />
             <RouterProvider router={router} />
         </AuthProvider>
