@@ -39,6 +39,7 @@ import dussehraImg from "../../assets/Dusshhera.png";
 import diwaliImg from "../../assets/diwali.png";
 import guruNanakImg from "../../assets/guru_nanak_Dev_ji_jayanti.png";
 import christmasImg from "../../assets/christmas.png";
+import janamashtamiImg from "../../assets/janamashtami.png";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -294,6 +295,7 @@ const getHolidayEmoji = (title = "") => {
     if (t.includes("nanak") || t.includes("gurpurab")) return "🪯";
     if (t.includes("dussehra") || t.includes("dusshhera") || t.includes("dasara") || t.includes("vijayadashami")) return "🏹";
     if (t.includes("shivratri") || t.includes("mahashivratri")) return "🔱";
+    if (t.includes("janamashtami") || t.includes("janmashtami") || t.includes("krishna")) return "🪶";
     if (t.includes("christmas")) return "🎄";
     if (t.includes("new year")) return "🎆";
     if (t.includes("diwali") || t.includes("deepavali")) return "🪔";
@@ -312,6 +314,7 @@ const getHolidayImage = (h = {}) => {
 
     const title = (h.title || "").toLowerCase();
 
+    if (title.includes("janamashtami") || title.includes("janmashtami") || title.includes("krishna")) return janamashtamiImg;
     if (title.includes("nanak") || title.includes("gurpurab") || title.includes("guru nanak")) return guruNanakImg;
     if (title.includes("diwali") || title.includes("deepavali")) return diwaliImg;
     if (title.includes("dussehra") || title.includes("dusshhera") || title.includes("dasara") || title.includes("vijayadashami")) return dussehraImg;
