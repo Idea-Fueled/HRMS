@@ -346,37 +346,90 @@ export const getAwayToday = async (req, res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        const currentUserId = req.user?.id || req.user?.userId;
+        const currentUser = await User.findById(currentUserId);
+
+        const isHrOrAdmin = currentUser?.role === "admin" || currentUser?.role === "hr";
+        const isManager = currentUser?.role === "manager";
+        const userDept = currentUser?.department;
+
         // Find active leaves overlapping with today
         const activeLeaves = await Leave.find({
             status: "approved",
             startDate: { $lte: today },
             endDate: { $gte: today }
-        }).populate("employeeId", "fullName designation profilePicture department");
+        }).populate("employeeId", "fullName designation profilePicture department role reportingManager");
 
         // Find today's attendance with WFH status
         const wfhAttendance = await Attendance.find({
             date: today,
             workMode: { $regex: /work from home|home/i }
-        }).populate("employeeId", "fullName designation profilePicture department");
+        }).populate("employeeId", "fullName designation profilePicture department role reportingManager");
+
+        const mapLeaveUser = (l) => {
+            const emp = l.employeeId;
+            if (!emp) return null;
+            return {
+                _id: emp._id,
+                fullName: emp.fullName,
+                designation: emp.designation,
+                profilePicture: emp.profilePicture,
+                department: emp.department,
+                role: emp.role,
+                reportingManager: emp.reportingManager,
+                leaveType: l.leaveType
+            };
+        };
+
+        const mapWfhUser = (a) => {
+            const emp = a.employeeId;
+            if (!emp) return null;
+            return {
+                _id: emp._id,
+                fullName: emp.fullName,
+                designation: emp.designation,
+                profilePicture: emp.profilePicture,
+                department: emp.department,
+                role: emp.role,
+                reportingManager: emp.reportingManager,
+                workMode: a.workMode
+            };
+        };
+
+        let leavesList = activeLeaves.map(mapLeaveUser).filter(Boolean);
+        let wfhList = wfhAttendance.map(mapWfhUser).filter(Boolean);
+
+        if (!isHrOrAdmin) {
+            if (isManager) {
+                // Manager sees their team/department members
+                leavesList = leavesList.filter(item => 
+                    item.department === userDept || item.reportingManager?.toString() === currentUserId?.toString()
+                );
+                wfhList = wfhList.filter(item => 
+                    item.department === userDept || item.reportingManager?.toString() === currentUserId?.toString()
+                );
+            } else {
+                // Regular Employee sees team/department peers ONLY (excluding managers, leads, HR, and Admin)
+                const isManagerOrAdminUser = (item) => {
+                    const r = (item.role || "").toLowerCase();
+                    const d = (item.designation || "").toLowerCase();
+                    return r === "admin" || r === "hr" || r === "manager" ||
+                           d.includes("manager") || d.includes("director") || d.includes("head") || d.includes("lead");
+                };
+
+                leavesList = leavesList.filter(item => 
+                    (item.department === userDept || !userDept) && !isManagerOrAdminUser(item)
+                );
+                wfhList = wfhList.filter(item => 
+                    (item.department === userDept || !userDept) && !isManagerOrAdminUser(item)
+                );
+            }
+        }
 
         return res.status(200).json({
             success: true,
-            leaves: activeLeaves.map(l => ({
-                _id: l.employeeId?._id,
-                fullName: l.employeeId?.fullName,
-                designation: l.employeeId?.designation,
-                profilePicture: l.employeeId?.profilePicture,
-                department: l.employeeId?.department,
-                leaveType: l.leaveType
-            })).filter(l => l._id),
-            wfh: wfhAttendance.map(a => ({
-                _id: a.employeeId?._id,
-                fullName: a.employeeId?.fullName,
-                designation: a.employeeId?.designation,
-                profilePicture: a.employeeId?.profilePicture,
-                department: a.employeeId?.department,
-                workMode: a.workMode
-            })).filter(w => w._id)
+            leaves: leavesList,
+            wfh: wfhList
         });
     } catch (error) {
         console.error("Get Away Today Error:", error);

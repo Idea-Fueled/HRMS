@@ -455,11 +455,11 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
                             cy="40"
                             r={radius}
                             fill="none"
-                            stroke="#A5CF83"
+                            stroke="#38BDF8"
                             strokeWidth={strokeWidth}
                             strokeDasharray={`${casualDash} ${circumference}`}
                             strokeDashoffset="0"
-                            className="hover:stroke-[#8CB76A] transition-colors"
+                            className="hover:stroke-[#0EA5E9] transition-colors"
                             onMouseEnter={(e) => {
                                 e.stopPropagation();
                                 setHoverText(`Casual: ${casualPct.toFixed(0)}% (${casualUsed} days)`);
@@ -472,11 +472,11 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
                             cy="40"
                             r={radius}
                             fill="none"
-                            stroke="#ABE0F0"
+                            stroke="#10B981"
                             strokeWidth={strokeWidth}
                             strokeDasharray={`${earnedDash} ${circumference}`}
                             strokeDashoffset={-casualDash}
-                            className="hover:stroke-[#92C8D8] transition-colors"
+                            className="hover:stroke-[#059669] transition-colors"
                             onMouseEnter={(e) => {
                                 e.stopPropagation();
                                 setHoverText(`Earned: ${earnedPct.toFixed(0)}% (${earnedUsed} days)`);
@@ -489,11 +489,11 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
                             cy="40"
                             r={radius}
                             fill="none"
-                            stroke="#E89951"
+                            stroke="#E11D48"
                             strokeWidth={strokeWidth}
                             strokeDasharray={`${sickDash} ${circumference}`}
                             strokeDashoffset={-(casualDash + earnedDash)}
-                            className="hover:stroke-[#CF803A] transition-colors"
+                            className="hover:stroke-[#BE123C] transition-colors"
                             onMouseEnter={(e) => {
                                 e.stopPropagation();
                                 setHoverText(`Sick: ${sickPct.toFixed(0)}% (${sickUsed} days)`);
@@ -512,21 +512,21 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
                 {/* Right: Legend */}
                 <div className="space-y-2 flex-1 pl-2">
                     <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-600">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#A5CF83] shrink-0" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#38BDF8] shrink-0" />
                         <div className="flex-1 flex justify-between">
                             <span>Casual</span>
                             <span className="text-gray-800 font-extrabold font-mono">{casualPct.toFixed(0)}%</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-600">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#ABE0F0] shrink-0" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#10B981] shrink-0" />
                         <div className="flex-1 flex justify-between">
                             <span>Earned</span>
                             <span className="text-gray-800 font-extrabold font-mono">{earnedPct.toFixed(0)}%</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-600">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#E89951] shrink-0" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#E11D48] shrink-0" />
                         <div className="flex-1 flex justify-between">
                             <span>Sick</span>
                             <span className="text-gray-800 font-extrabold font-mono">{sickPct.toFixed(0)}%</span>
@@ -1102,7 +1102,7 @@ const LeaveTab = ({
                             consumed={casualUsed}
                             accrued={casualTotal}
                             annualQuota={casualTotal}
-                            color="#A5CF83"
+                            color="#38BDF8"
                         />
                         <LeaveBalanceCard
                             label="Earned Leave"
@@ -1111,7 +1111,7 @@ const LeaveTab = ({
                             accrued={earnedTotal}
                             carryOver={0}
                             annualQuota={earnedTotal}
-                            color="#ABE0F0"
+                            color="#10B981"
                         />
                         <LeaveBalanceCard
                             label="Sick Leave"
@@ -1119,7 +1119,7 @@ const LeaveTab = ({
                             consumed={sickUsed}
                             accrued={sickTotal}
                             annualQuota={sickTotal}
-                            color="#E89951"
+                            color="#E11D48"
                         />
                         <LeaveBalanceCard
                             label="Unpaid Leave"
@@ -1127,7 +1127,7 @@ const LeaveTab = ({
                             consumed={unpaidConsumed}
                             annualQuota="∞"
                             isInfinity={true}
-                            color="#FEEC41"
+                            color="#F59E0B"
                         />
                     </div>
                 )}

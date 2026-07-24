@@ -1191,9 +1191,9 @@ const LeaveBalancesCard = ({ leaveSummary }) => {
             <CardHeader icon={Umbrella} title="Leave Balances" />
             <div className="px-5 pb-5 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <CircularProgress taken={sickTaken} total={sickTotal} color="#E89951" label="Sick Leave" />
-                    <CircularProgress taken={earnedTaken} total={earnedTotal} color="#ABE0F0" label="Earned Leave" />
-                    <CircularProgress taken={casualTaken} total={casualTotal} color="#A5CF83" label="Casual Leave" />
+                    <CircularProgress taken={sickTaken} total={sickTotal} color="#E11D48" label="Sick Leave" />
+                    <CircularProgress taken={earnedTaken} total={earnedTotal} color="#10B981" label="Earned Leave" />
+                    <CircularProgress taken={casualTaken} total={casualTotal} color="#38BDF8" label="Casual Leave" />
                 </div>
             </div>
         </Card>
