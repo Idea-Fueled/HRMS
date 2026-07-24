@@ -59,7 +59,7 @@ const GlobalSearch = () => {
     const getEmployeePool = useCallback(async () => {
         if (allEmployees !== null) return allEmployees;
         try {
-            const res = await getAllEmployees();
+            const res = await getAllEmployees({ all: "true" });
             const list = res.data?.employees || [];
             setAllEmployees(list);
             return list;

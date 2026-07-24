@@ -35,6 +35,7 @@ import {
 } from "../../services/team.service";
 import { getEmployeeById } from "../../services/employee.service";
 import { ViewEmployeeDrawer } from "../employees/Employees";
+import { useAuth } from "../../context/AuthContext";
 
 const useResponsivePageSize = (viewMode) => {
     const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -266,6 +267,11 @@ const TeamSummaryTab = () => {
    2. TEAM MEMBERS TAB
 ───────────────────────────────────────────── */
 const TeamMembersTab = () => {
+    const { user } = useAuth();
+    const userRole = (user?.role || "employee").toLowerCase();
+    const isEmployee = userRole === "employee";
+    const managerInfo = typeof user?.managerId === "object" ? user?.managerId : null;
+
     const [loading, setLoading] = useState(true);
     const [employees, setEmployees] = useState([]);
     const [error, setError] = useState(null);
@@ -384,6 +390,26 @@ const TeamMembersTab = () => {
 
     return (
         <div className="space-y-6">
+            {/* Reporting Manager Card for Employee role */}
+            {isEmployee && managerInfo && (
+                <div className="premium-3d-card p-5 bg-white border border-gray-150 rounded-[20px] flex items-center justify-between animate-fadeIn">
+                    <div className="flex items-center gap-4">
+                        <Avatar
+                            src={managerInfo.profilePicture}
+                            name={managerInfo.fullName || `${managerInfo.firstName || ''} ${managerInfo.lastName || ''}`}
+                            size="w-12 h-12"
+                            textSize="text-sm font-black"
+                        />
+                        <div className="space-y-0.5 text-left">
+                            <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Reporting Manager</span>
+                            <h4 className="text-[#1E1E1E] text-sm font-black">{managerInfo.fullName || `${managerInfo.firstName || ''} ${managerInfo.lastName || ''}`}</h4>
+                            <p className="text-gray-500 text-xs font-semibold">{managerInfo.designation || "Manager"}</p>
+                            <p className="text-[#2D79C7] text-xs font-bold">{managerInfo.department || "Engineering"}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Filter and toggle control row */}
             <div className="premium-3d-card-mini flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 animate-fadeIn">
                 <div className="flex flex-wrap items-center gap-3">
@@ -1413,15 +1439,42 @@ const TeamPerformanceTab = () => {
    MAIN PAGE: MY TEAM PAGE
 ───────────────────────────────────────────── */
 const MyTeam = () => {
-    const [activeTab, setActiveTab] = useState("Team Summary");
+    const { user } = useAuth();
+    const userRole = (user?.role || "employee").toLowerCase();
+    const isGlobalAdmin = userRole === "global_admin" || userRole === "admin";
+    const isManager = userRole === "manager";
+    const isHr = userRole === "hr";
 
-    const tabs = [
-        { key: "Team Summary", icon: LayoutDashboard, label: "Team Summary" },
-        { key: "Team Members", icon: Users, label: "Team Members" },
-        { key: "Team Attendance", icon: Clock, label: "Team Attendance" },
-        { key: "Team Leaves", icon: Umbrella, label: "Team Leaves" },
-        { key: "Team Performance", icon: Award, label: "Team Performance" }
-    ];
+    const tabs = React.useMemo(() => {
+        if (isGlobalAdmin || isHr) {
+            return [
+                { key: "Team Summary", icon: LayoutDashboard, label: "Team Summary" },
+                { key: "Team Members", icon: Users, label: "Team Members" },
+                { key: "Team Attendance", icon: Clock, label: "Team Attendance" },
+                { key: "Team Leaves", icon: Umbrella, label: "Team Leaves" },
+                { key: "Team Performance", icon: Award, label: "Team Performance" }
+            ];
+        }
+        if (isManager) {
+            return [
+                { key: "Team Members", icon: Users, label: "Team Members" },
+                { key: "Team Attendance", icon: Clock, label: "Team Attendance" },
+                { key: "Team Leaves", icon: Umbrella, label: "Team Leaves" }
+            ];
+        }
+        // Employee Role: Show ONLY Team Members
+        return [
+            { key: "Team Members", icon: Users, label: "Team Members" }
+        ];
+    }, [isGlobalAdmin, isHr, isManager]);
+
+    const [activeTab, setActiveTab] = useState(tabs[0]?.key || "Team Members");
+
+    useEffect(() => {
+        if (!tabs.some(t => t.key === activeTab)) {
+            setActiveTab(tabs[0]?.key || "Team Members");
+        }
+    }, [tabs, activeTab]);
 
     return (
         <div className="space-y-6 select-none animate-fadeIn">

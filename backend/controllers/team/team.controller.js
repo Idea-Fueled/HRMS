@@ -5,8 +5,17 @@ import Performance from "../../models/performance/performance.model.js";
 
 // Helper function to seed mock team data if DB has only the logged-in user
 const seedMockDataIfNeeded = async (currentUserId) => {
-    // Disabled seeding of mock data
     return;
+};
+
+// Helper function to get HR caller's assigned visible employee IDs
+const getHrVisibleFilter = async (currentUserId) => {
+    if (!currentUserId) return null;
+    const currentUser = await User.findById(currentUserId).select("role visibleEmployees").lean();
+    if (currentUser && currentUser.role === "hr" && currentUser.visibleEmployees && currentUser.visibleEmployees.length > 0) {
+        return currentUser.visibleEmployees.map(id => id.toString());
+    }
+    return null;
 };
 
 /* ─────────────────────────────────────────────
@@ -17,11 +26,16 @@ export const getTeamSummary = async (req, res) => {
         const userId = req.user?.id || req.user?.userId;
         await seedMockDataIfNeeded(userId);
 
+        const hrVisibleIds = await getHrVisibleFilter(userId);
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const userFilter = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {};
+        const activeUserFilter = hrVisibleIds ? { status: "active", _id: { $in: hrVisibleIds } } : { status: "active" };
 
         const [
             totalEmployees,
@@ -31,16 +45,17 @@ export const getTeamSummary = async (req, res) => {
             newJoiners,
             pendingApprovals
         ] = await Promise.all([
-            User.countDocuments(),
-            User.countDocuments({ status: "active" }),
-            Leave.countDocuments({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today } }),
-            Attendance.countDocuments({ date: today, workMode: { $regex: /work from home|wfh/i } }),
-            User.countDocuments({ joiningDate: { $gte: thirtyDaysAgo } }),
-            Leave.countDocuments({ status: "pending" })
+            User.countDocuments(userFilter),
+            User.countDocuments(activeUserFilter),
+            Leave.countDocuments({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            Attendance.countDocuments({ date: today, workMode: { $regex: /work from home|wfh/i }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            User.countDocuments({ joiningDate: { $gte: thirtyDaysAgo }, ...userFilter }),
+            Leave.countDocuments({ status: "pending", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
         ]);
 
         // Aggregate Department distribution
         const deptDistribution = await User.aggregate([
+            ...(hrVisibleIds ? [{ $match: { _id: { $in: hrVisibleIds.map(id => User.mongoose?.Types?.ObjectId?.createFromHexString ? User.mongoose.Types.ObjectId.createFromHexString(id) : id) } } }] : []),
             { $group: { _id: "$department", count: { $sum: 1 } } }
         ]);
 
@@ -53,6 +68,7 @@ export const getTeamSummary = async (req, res) => {
 
         // Aggregate Statuses
         const statusDistribution = await User.aggregate([
+            ...(hrVisibleIds ? [{ $match: { _id: { $in: hrVisibleIds.map(id => User.mongoose?.Types?.ObjectId?.createFromHexString ? User.mongoose.Types.ObjectId.createFromHexString(id) : id) } } }] : []),
             { $group: { _id: "$status", count: { $sum: 1 } } }
         ]);
 
@@ -101,8 +117,11 @@ export const getTeamMembers = async (req, res) => {
         const userId = req.user?.id || req.user?.userId;
         await seedMockDataIfNeeded(userId);
 
-        const members = await User.find()
-            .populate("managerId", "fullName email designation")
+        const hrVisibleIds = await getHrVisibleFilter(userId);
+        const query = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {};
+
+        const members = await User.find(query)
+            .populate("managerId", "fullName email designation department profilePicture")
             .sort({ fullName: 1 });
 
         const formattedMembers = members.map(m => ({
@@ -113,7 +132,7 @@ export const getTeamMembers = async (req, res) => {
             profilePicture: m.profilePicture || "",
             dept: m.department || "General",
             title: m.designation || "Employee",
-            manager: m.managerId ? m.managerId.fullName : "None",
+            manager: m.managerId ? (m.managerId.fullName || `${m.managerId.firstName || ""} ${m.managerId.lastName || ""}`) : "None",
             type: m.employementType === "full_time" ? "Full Time" : m.employementType === "intern" ? "Intern" : m.employementType === "contract" ? "Contract" : "Part Time",
             status: m.status === "active" ? "Active" : m.status === "on_notice" ? "On Notice" : "Inactive"
         }));
@@ -136,12 +155,18 @@ export const getTeamAttendance = async (req, res) => {
         const userId = req.user?.id || req.user?.userId;
         await seedMockDataIfNeeded(userId);
 
+        const hrVisibleIds = await getHrVisibleFilter(userId);
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const activeUsers = await User.find({ status: "active" });
-        const attendanceLogs = await Attendance.find({ date: today });
-        const leavesToday = await Leave.find({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today } });
+        const userQuery = hrVisibleIds ? { status: "active", _id: { $in: hrVisibleIds } } : { status: "active" };
+
+        const activeUsers = await User.find(userQuery);
+        const activeUserIds = activeUsers.map(u => u._id);
+
+        const attendanceLogs = await Attendance.find({ date: today, employeeId: { $in: activeUserIds } });
+        const leavesToday = await Leave.find({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today }, employeeId: { $in: activeUserIds } });
 
         let presentCount = 0;
         let absentCount = 0;
@@ -230,7 +255,10 @@ export const getTeamLeaves = async (req, res) => {
         const userId = req.user?.id || req.user?.userId;
         await seedMockDataIfNeeded(userId);
 
-        const leaves = await Leave.find()
+        const hrVisibleIds = await getHrVisibleFilter(userId);
+        const leaveQuery = hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {};
+
+        const leaves = await Leave.find(leaveQuery)
             .populate("employeeId", "fullName department profilePicture")
             .sort({ createdAt: -1 });
 

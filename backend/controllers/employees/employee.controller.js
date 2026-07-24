@@ -7,15 +7,15 @@ import Department from "../../models/departments/department.model.js";
  ───────────────────────────────────────────── */
 export const getAllEmployees = async (req, res) => {
     try {
-        const { search, department, designation, employementType, status, role } = req.query;
+        const { search, department, designation, employementType, status, role, all } = req.query;
 
         // Build query
         const query = {};
 
-        // Check if HR caller has specific visibleEmployees configured
+        // Check if HR caller has specific visibleEmployees configured (unless all=true requested for search)
         const currentUserId = req.user?.id || req.user?.userId;
         let hrVisibleIds = null;
-        if (currentUserId) {
+        if (all !== "true" && currentUserId) {
             const currentUser = await User.findById(currentUserId).select("role visibleEmployees").lean();
             if (currentUser && currentUser.role === "hr" && currentUser.visibleEmployees && currentUser.visibleEmployees.length > 0) {
                 hrVisibleIds = currentUser.visibleEmployees;

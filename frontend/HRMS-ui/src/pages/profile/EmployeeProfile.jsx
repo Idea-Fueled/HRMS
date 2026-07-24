@@ -136,11 +136,38 @@ export const EmployeeProfile = () => {
         return false;
     }, [id, currentUser, employee]);
 
-    // Role check: HR and Admin can edit & delete ANY employee profile. Employees can edit & delete ONLY their own.
     const userRole = (currentUser?.role || "employee").toLowerCase();
-    const canEdit = isOwnProfile || userRole === "global_admin" || userRole === "admin" || userRole === "hr";
-    const canDelete = isOwnProfile || userRole === "global_admin" || userRole === "admin" || userRole === "hr";
-    const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || userRole === "hr";
+
+    // Check employee visibility assignment
+    const isAssigned = useMemo(() => {
+        // 1. Global Admin always has full access
+        if (userRole === "global_admin" || userRole === "admin") return true;
+
+        // 2. Own Profile -> full access
+        if (isOwnProfile) return true;
+
+        // 3. For HR user:
+        if (userRole === "hr") {
+            const list = currentUser?.visibleEmployees;
+            // If HR has no specific visibleEmployees list configured -> Unrestricted access
+            if (!list || !Array.isArray(list) || list.length === 0) return true;
+
+            const targetMongoId = (employee?._id || id || "").toString();
+            const targetEmpCode = (employee?.employeeId || "").toString();
+
+            return list.some(v => {
+                const vId = (typeof v === "object" && v?._id) ? v._id.toString() : v?.toString();
+                return vId === targetMongoId || vId === targetEmpCode;
+            });
+        }
+
+        // Regular employees viewing other profiles get public view only
+        return false;
+    }, [currentUser, employee, id, isOwnProfile, userRole]);
+
+    const canEdit = isOwnProfile || ((userRole === "global_admin" || userRole === "admin" || userRole === "hr") && isAssigned);
+    const canDelete = (userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned));
+    const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
 
     // Fetch employee data from MongoDB
     const fetchProfile = useCallback(async () => {
@@ -506,12 +533,13 @@ export const EmployeeProfile = () => {
 
     const profileTabs = useMemo(() => {
         if (canViewConfidential) return allProfileTabs;
-        return allProfileTabs.filter(t => t.key === "Personal" || t.key === "Employment");
+        // Public read-only view for unassigned HR or employee: ONLY Employment overview tab
+        return [{ key: "Employment", label: "Overview", icon: Briefcase }];
     }, [canViewConfidential, allProfileTabs]);
 
     useEffect(() => {
-        if (!canViewConfidential && activeTab !== "Personal" && activeTab !== "Employment") {
-            setActiveTab("Personal");
+        if (!canViewConfidential && activeTab !== "Employment") {
+            setActiveTab("Employment");
         }
     }, [canViewConfidential, activeTab]);
 
