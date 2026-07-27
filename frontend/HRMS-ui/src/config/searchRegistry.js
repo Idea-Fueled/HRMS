@@ -61,6 +61,17 @@ export const SEARCH_REGISTRY = [
         iconName: "Clock"
     },
     {
+        id: "tab_leave_balance",
+        title: "Leave Balance & Leaves",
+        description: "View remaining paid leaves, casual & sick quota",
+        keywords: ["leave balance", "remaining leaves", "casual leave balance", "sick leave quota"],
+        category: "Navigation",
+        route: "/me",
+        state: { activeTab: "Leave" },
+        permissionKey: "me",
+        iconName: "Umbrella"
+    },
+    {
         id: "tab_team_leaves",
         title: "Team Leaves",
         description: "View and review leave applications & absence logs of team members",
@@ -210,9 +221,9 @@ export const SEARCH_REGISTRY = [
         description: "Submit a new leave application request for manager approval",
         keywords: ["apply leave", "take leave", "request leave", "vacation request", "sick leave", "casual leave", "apply time off"],
         category: "Actions",
-        route: "/time-attendance",
-        state: { activeTab: "Dashboard", openApplyLeaveModal: true },
-        permissionKey: "timeAndAttend",
+        route: "/me",
+        state: { activeTab: "Leave", openApplyLeaveModal: true },
+        permissionKey: "me",
         iconName: "CalendarPlus"
     },
     {
@@ -321,9 +332,9 @@ export const SEARCH_REGISTRY = [
         description: "Annual and monthly leave utilization analysis & pending requests",
         keywords: ["leave report", "absence report", "leave stats", "leave audit", "vacation report"],
         category: "Reports",
-        route: "/time-attendance",
-        state: { activeTab: "Requests" },
-        permissionKey: "timeAndAttend",
+        route: "/me",
+        state: { activeTab: "Leave" },
+        permissionKey: "me",
         iconName: "PieChart"
     },
     {

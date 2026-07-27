@@ -382,9 +382,9 @@ const GlobalSearch = () => {
                     
                     {/* ZERO-QUERY STATE (Focus with empty query) */}
                     {query.trim().length < 2 && (
-                        <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
+                        <div className="p-4 max-h-[75vh] overflow-y-auto">
                             {/* Recent Searches */}
-                            {recentSearches.length > 0 && (
+                            {recentSearches.length > 0 ? (
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <span className="flex items-center gap-1.5 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
@@ -413,34 +413,10 @@ const GlobalSearch = () => {
                                         ))}
                                     </div>
                                 </div>
-                            )}
-
-                            {/* Frequently Used Shortcuts */}
-                            {frequentlyUsed.length > 0 && (
-                                <div className="space-y-2 pt-1">
-                                    <span className="flex items-center gap-1.5 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
-                                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                                        Frequently Used Shortcuts
-                                    </span>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {frequentlyUsed.map(item => (
-                                            <button
-                                                key={item.id}
-                                                type="button"
-                                                onClick={() => handleSelectItem(item)}
-                                                className="flex items-center gap-3 p-2.5 bg-white hover:bg-blue-50/60 border border-gray-200/70 hover:border-blue-200 rounded-2xl transition-all cursor-pointer group shadow-2xs"
-                                            >
-                                                <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center shrink-0 border border-blue-100/60 group-hover:scale-105 transition-transform">
-                                                    <RenderRegistryIcon iconName={item.iconName} className="w-4 h-4" />
-                                                </div>
-                                                <div className="min-w-0 text-left flex-1">
-                                                    <p className="text-xs font-bold text-slate-800 group-hover:text-[#2D79C7] truncate">{item.title}</p>
-                                                    <p className="text-[10.5px] text-gray-400 truncate">{item.description}</p>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                            ) : (
+                                <p className="text-xs font-semibold text-gray-400 text-center py-2">
+                                    Type 2 or more characters to search pages, actions, employees, or reports...
+                                </p>
                             )}
                         </div>
                     )}

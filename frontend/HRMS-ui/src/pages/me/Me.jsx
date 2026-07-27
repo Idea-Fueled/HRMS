@@ -1947,8 +1947,11 @@ const ProfileTab = ({ user, refreshUser }) => {
 /* ─────────────────────────────────────────────
    Main "Me" Module Component
 ───────────────────────────────────────────── */
+import { useLocation } from "react-router-dom";
+
 const Me = () => {
     const { user, refreshUser } = useAuth();
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState("Attendance");
 
     // Leave Tab Integration States
@@ -1957,6 +1960,15 @@ const Me = () => {
     const [loadingSummary, setLoadingSummary] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+        }
+        if (location.state?.openApplyLeaveModal) {
+            setIsApplyModalOpen(true);
+        }
+    }, [location.state]);
 
     // Fetch user details
     const employeeId = user?._id || user?.id;
