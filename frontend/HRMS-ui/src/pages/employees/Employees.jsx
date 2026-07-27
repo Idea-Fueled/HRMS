@@ -1869,7 +1869,7 @@ const Employees = () => {
     const { user, can } = useAuth();
     const navigate = useNavigate();
     const userRole = (user?.role || "").toLowerCase();
-    const isHrOrAdmin = userRole === "admin" || userRole === "hr";
+    const isHrOrAdmin = userRole === "global_admin" || userRole === "admin" || userRole === "hr";
 
     const [data, setData] = useState({ employees: [], summary: null });
     const [loading, setLoading] = useState(true);
