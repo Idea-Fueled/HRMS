@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
     Users, UserCheck, UserX, UserPlus, Briefcase, FileText,
     Plus, Eye, EyeOff, Edit3, X, ChevronDown, Trash2,
@@ -1918,6 +1918,14 @@ const Employees = () => {
             console.error("Failed to load departments/managers dynamically:", err);
         }
     }, []);
+
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.state?.openDrawer) {
+            setDrawer({ mode: location.state.openDrawer });
+        }
+    }, [location.state]);
 
     useEffect(() => {
         fetchEmployees();

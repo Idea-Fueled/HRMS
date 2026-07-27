@@ -42,13 +42,23 @@ const EMPLOYEE_CATEGORIES = [
     "Other"
 ];
 
+import { useLocation } from "react-router-dom";
+
 export const Documents = () => {
     const { user } = useAuth();
-    const isHrOrAdmin = user?.role === "admin" || user?.role === "hr";
+    const location = useLocation();
+    const userRole = (user?.role || "").toLowerCase();
+    const isHrOrAdmin = userRole === "global_admin" || userRole === "admin" || userRole === "hr";
     const showEmployeeDocsTab = isHrOrAdmin;
 
     // Tab & Filtration States
     const [activeTab, setActiveTab] = useState("company"); // "company" or "employee"
+
+    useEffect(() => {
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+        }
+    }, [location.state]);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
     const [selectedEmployeeId, setSelectedEmployeeId] = useState(""); // filter employee docs by specific employee

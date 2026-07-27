@@ -944,8 +944,17 @@ const TimeAttendanceDashboard = () => {
 /* ─────────────────────────────────────────────
    MAIN TIME & ATTENDANCE MODULE COMPONENT
 ───────────────────────────────────────────── */
+import { useLocation } from "react-router-dom";
+
 export const TimeAttendance = () => {
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState("Dashboard");
+
+    useEffect(() => {
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+        }
+    }, [location.state]);
 
     const moduleTabs = [
         { key: "Dashboard", label: "Dashboard", icon: Activity },
