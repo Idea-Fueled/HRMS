@@ -79,6 +79,20 @@ const menuCategories = [
                     </svg>
                 ),
             },
+            {
+                name: "Organization",
+                to: "/organization",
+                permissionKey: "organization",
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                        <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+                        <line x1="9" y1="22" x2="9" y2="16" />
+                        <line x1="15" y1="22" x2="15" y2="16" />
+                        <line x1="9" y1="16" x2="15" y2="16" />
+                        <path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M12 6h.01M12 10h.01" />
+                    </svg>
+                ),
+            },
         ],
     },
     {
@@ -123,51 +137,12 @@ const menuCategories = [
                 ),
             },
             {
-                name: "Recruitment",
-                to: "/recruitment",
-                permissionKey: "recruitment",
-                icon: (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <polyline points="16 11 18 13 22 9" />
-                    </svg>
-                ),
-            },
-            {
-                name: "Hire",
-                to: "/hire",
-                permissionKey: "hire",
-                icon: (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <line x1="19" y1="8" x2="19" y2="14" />
-                        <line x1="16" y1="11" x2="22" y2="11" />
-                    </svg>
-                ),
-            },
-            {
                 name: "Offboarding & Onboarding",
                 to: "/offboarding-onboarding",
                 permissionKey: "offboardingAndOnboarding",
                 icon: (
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
                         <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                    </svg>
-                ),
-            },
-            {
-                name: "Organization",
-                to: "/organization",
-                permissionKey: "organization",
-                icon: (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
-                        <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-                        <line x1="9" y1="22" x2="9" y2="16" />
-                        <line x1="15" y1="22" x2="15" y2="16" />
-                        <line x1="9" y1="16" x2="15" y2="16" />
-                        <path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M12 6h.01M12 10h.01" />
                     </svg>
                 ),
             },
