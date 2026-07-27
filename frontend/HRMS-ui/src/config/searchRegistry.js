@@ -243,9 +243,9 @@ export const SEARCH_REGISTRY = [
         description: "Add a new official holiday to company calendar",
         keywords: ["create holiday", "add holiday", "new holiday", "festival setup", "holiday calendar"],
         category: "Actions",
-        route: "/time-attendance",
-        state: { activeTab: "Holidays", openAddHoliday: true },
-        permissionKey: "timeAndAttend",
+        route: "/dashboard",
+        state: { openCreateHolidayModal: true },
+        permissionKey: "dashboard",
         roles: ["global_admin", "admin", "hr"],
         iconName: "CalendarPlus"
     },

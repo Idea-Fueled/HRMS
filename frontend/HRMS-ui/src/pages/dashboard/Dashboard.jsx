@@ -544,14 +544,23 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
     );
 };
 
+import { useLocation } from "react-router-dom";
+
 const HolidaySection = ({ initialHolidays }) => {
     const { can } = useAuth();
+    const location = useLocation();
     const [holidays, setHolidays] = useState(initialHolidays || []);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isViewAllOpen, setIsViewAllOpen] = useState(false);
     const [editingHoliday, setEditingHoliday] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
+
+    useEffect(() => {
+        if (location.state?.openCreateHolidayModal) {
+            setIsCreateOpen(true);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         if (initialHolidays) setHolidays(initialHolidays);
