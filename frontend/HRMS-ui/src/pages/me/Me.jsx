@@ -37,7 +37,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../../components/SharedComponents";
 
 /* ──────────────────────────────────────────�/* ─────────────────────────────────────────────
-   ATTENDANCE TAB COMPONENTS (ENTERPRISE HANDCRAFTED UI)
+   ATTENDANCE TAB COMPONENTS (ENTERPRISE THEME BLUE UI)
 ───────────────────────────────────────────── */
 
 const AnalogClock = () => {
@@ -62,7 +62,7 @@ const AnalogClock = () => {
     const hourDeg = hours * 30;
 
     return (
-        <div className="relative w-36 h-36 rounded-full bg-white border border-slate-200 shadow-[0_8px_25px_rgba(0,0,0,0.05)] flex items-center justify-center shrink-0">
+        <div className="relative w-36 h-36 rounded-full bg-white border-2 border-[#2D79C7]/20 shadow-[0_8px_25px_rgba(45,121,199,0.12)] flex items-center justify-center shrink-0">
             {/* Clock Dial Hour Ticks */}
             {[...Array(12)].map((_, i) => (
                 <div
@@ -70,7 +70,7 @@ const AnalogClock = () => {
                     className="absolute w-full h-full flex justify-center pt-2"
                     style={{ transform: `rotate(${i * 30}deg)` }}
                 >
-                    <div className={`w-0.5 ${i % 3 === 0 ? "h-2.5 bg-slate-700" : "h-1.5 bg-slate-300"}`} />
+                    <div className={`w-0.5 ${i % 3 === 0 ? "h-2.5 bg-[#2D79C7]" : "h-1.5 bg-blue-200"}`} />
                 </div>
             ))}
 
@@ -79,7 +79,7 @@ const AnalogClock = () => {
                 className="absolute w-full h-full flex justify-center items-center"
                 style={{ transform: `rotate(${hourDeg}deg)` }}
             >
-                <div className="w-1 h-9 bg-slate-900 rounded-full origin-bottom -translate-y-4 shadow-xs" />
+                <div className="w-1 h-9 bg-[#2D79C7] rounded-full origin-bottom -translate-y-4 shadow-xs" />
             </div>
 
             {/* Minute Hand */}
@@ -87,7 +87,7 @@ const AnalogClock = () => {
                 className="absolute w-full h-full flex justify-center items-center"
                 style={{ transform: `rotate(${minuteDeg}deg)` }}
             >
-                <div className="w-0.5 h-12 bg-slate-700 rounded-full origin-bottom -translate-y-5 shadow-xs" />
+                <div className="w-0.5 h-12 bg-[#1F5EA8] rounded-full origin-bottom -translate-y-5 shadow-xs" />
             </div>
 
             {/* Second Hand */}
@@ -99,7 +99,7 @@ const AnalogClock = () => {
             </div>
 
             {/* Center Pin */}
-            <div className="w-2.5 h-2.5 bg-slate-900 border-2 border-white rounded-full z-10 shadow-xs" />
+            <div className="w-2.5 h-2.5 bg-[#2D79C7] border-2 border-white rounded-full z-10 shadow-xs" />
         </div>
     );
 };
@@ -134,7 +134,7 @@ const AttendanceHeroBar = () => {
                                 Good Morning, {userName}
                             </h2>
                             <p className="text-xs font-semibold text-slate-500 mt-1">
-                                Shift <span className="text-slate-800 font-mono font-bold ml-1">10:00 AM – 07:00 PM</span>
+                                Shift <span className="text-[#2D79C7] font-mono font-bold ml-1">10:00 AM – 07:00 PM</span>
                             </p>
                         </div>
 
@@ -142,7 +142,7 @@ const AttendanceHeroBar = () => {
                             <span className="text-xs font-medium text-slate-500">Status</span>
                             {isClockedIn ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                     <span>Clocked In</span>
                                 </span>
                             ) : (
@@ -155,15 +155,15 @@ const AttendanceHeroBar = () => {
                     </div>
                 </div>
 
-                {/* Right Side: Clean Action Buttons */}
+                {/* Right Side: Action Buttons with Theme Blue */}
                 <div className="flex flex-wrap items-center gap-3">
                     <button
                         type="button"
                         onClick={handleClockToggle}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 ${
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-blue-500/20 active:scale-95 ${
                             isClockedIn
-                                ? "bg-slate-900 hover:bg-slate-800 text-white"
-                                : "bg-blue-600 hover:bg-blue-700 text-white"
+                                ? "bg-[#2D79C7] hover:bg-[#2064aa] text-white"
+                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
                         }`}
                     >
                         <Clock className="w-4 h-4" />
@@ -173,18 +173,18 @@ const AttendanceHeroBar = () => {
                     <button
                         type="button"
                         onClick={() => toast.info("Work From Home request")}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
                     >
-                        <Home className="w-4 h-4 text-slate-500" />
+                        <Home className="w-4 h-4 text-[#2D79C7]" />
                         <span>Work From Home</span>
                     </button>
 
                     <button
                         type="button"
                         onClick={() => toast.info("Partial Day request")}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
                     >
-                        <FileText className="w-4 h-4 text-slate-500" />
+                        <FileText className="w-4 h-4 text-[#2D79C7]" />
                         <span>Partial Day</span>
                     </button>
                 </div>
@@ -262,18 +262,18 @@ const VisualWorkdayTimeline = () => {
                 </div>
                 <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
                     <span>Gross Logged: <strong className="text-slate-900 font-mono">5h 25m</strong></span>
-                    <span>Effective: <strong className="text-slate-900 font-mono">4h 48m</strong></span>
+                    <span>Effective: <strong className="text-[#2D79C7] font-mono">4h 48m</strong></span>
                 </div>
             </div>
 
             {/* Shift Progress Gauge */}
-            <div className="space-y-2 bg-slate-50 border border-slate-200/60 p-4 rounded-xl">
+            <div className="space-y-2 bg-blue-50/40 border border-blue-100/70 p-4 rounded-xl">
                 <div className="flex justify-between text-xs font-semibold text-slate-700">
                     <span>Shift Completion</span>
-                    <span className="font-mono text-slate-900 font-bold">53% (4h 12m remaining)</span>
+                    <span className="font-mono text-[#2D79C7] font-bold">53% (4h 12m remaining)</span>
                 </div>
-                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-600 rounded-full transition-all duration-300" style={{ width: "53%" }} />
+                <div className="w-full h-2 bg-blue-100/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#2D79C7] rounded-full transition-all duration-300" style={{ width: "53%" }} />
                 </div>
             </div>
 
@@ -284,17 +284,17 @@ const VisualWorkdayTimeline = () => {
                         key={idx}
                         className={`p-3 rounded-xl border text-center transition-all ${
                             item.active
-                                ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                                ? "bg-[#2D79C7] text-white border-[#2D79C7] shadow-md shadow-blue-500/20"
                                 : item.hours === "Off"
                                 ? "bg-slate-50 border-slate-200/60 text-slate-400"
-                                : "bg-white border-slate-200/80 text-slate-700"
+                                : "bg-white border-slate-200/80 text-slate-700 hover:border-slate-300"
                         }`}
                     >
-                        <span className={`text-[10px] font-bold uppercase tracking-wider block ${item.active ? "text-slate-300" : "text-slate-400"}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider block ${item.active ? "text-blue-100" : "text-slate-400"}`}>
                             {item.day}
                         </span>
                         <span className="text-xs font-bold block my-1">{item.date}</span>
-                        <span className={`text-[10px] font-medium block font-mono ${item.active ? "text-slate-200" : "text-slate-500"}`}>
+                        <span className={`text-[10px] font-medium block font-mono ${item.active ? "text-blue-50" : "text-slate-500"}`}>
                             {item.hours}
                         </span>
                     </div>
@@ -1703,7 +1703,7 @@ const AttendanceLogsAndRequestsHub = () => {
                                 onClick={() => setActivePeriod(p.key)}
                                 className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer shrink-0 ${
                                     isActive
-                                        ? "bg-slate-900 text-white shadow-xs"
+                                        ? "bg-[#2D79C7] text-white shadow-2xs"
                                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                                 }`}
                             >
