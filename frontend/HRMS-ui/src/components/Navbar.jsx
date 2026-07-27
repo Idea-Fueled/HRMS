@@ -522,13 +522,22 @@ const GlobalSearch = () => {
                     )}
 
                     {/* Footer bar */}
-                    <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t border-gray-100 text-[10.5px] text-gray-400 font-semibold select-none">
-                        <div className="flex items-center gap-3">
-                            <span className="flex items-center gap-1"><kbd className="px-1 bg-white border border-gray-200 rounded shadow-3xs">↑</kbd> <kbd className="px-1 bg-white border border-gray-200 rounded shadow-3xs">↓</kbd> navigate</span>
-                            <span className="flex items-center gap-1"><kbd className="px-1 bg-white border border-gray-200 rounded shadow-3xs">↵</kbd> select</span>
-                            <span className="flex items-center gap-1"><kbd className="px-1 bg-white border border-gray-200 rounded shadow-3xs">esc</kbd> close</span>
+                    <div className="flex items-center justify-start px-4 py-2.5 bg-slate-50/90 border-t border-slate-200/80 text-[11px] text-slate-600 font-bold select-none">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <span className="flex items-center gap-1.5">
+                                <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded-[5px] text-slate-800 font-mono font-bold text-[11px] shadow-2xs">↑</kbd>
+                                <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded-[5px] text-slate-800 font-mono font-bold text-[11px] shadow-2xs">↓</kbd>
+                                <span className="text-slate-600 font-bold">navigate</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded-[5px] text-slate-800 font-mono font-bold text-[11px] shadow-2xs">↵</kbd>
+                                <span className="text-slate-600 font-bold">select</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded-[5px] text-slate-800 font-mono font-bold text-[11px] shadow-2xs">esc</kbd>
+                                <span className="text-slate-600 font-bold">close</span>
+                            </span>
                         </div>
-                        <span className="text-[9.5px] text-gray-300 uppercase tracking-widest font-mono">HRMS Smart Search</span>
                     </div>
 
                 </div>
