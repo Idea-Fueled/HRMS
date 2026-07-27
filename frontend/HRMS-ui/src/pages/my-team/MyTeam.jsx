@@ -173,16 +173,16 @@ const TeamSummaryTab = () => {
                 <MiniStatCard title="Pending Approvals" value={summary.pendingApprovals} change="Action" isPositive={false} />
             </div>
 
-            {/* Distribution charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Department Distribution Donut Card */}
-                <Card>
-                    <CardHeader icon={LayoutDashboard} title="Department Distribution" />
-                    {summary.departments.length === 0 ? (
-                        <div className="p-8 text-center text-xs text-gray-400 font-bold flex-1 flex items-center justify-center">No department data available.</div>
-                    ) : (
-                        <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6 flex-1">
-                            <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
+            {/* Full Width Department Distribution Chart */}
+            <Card className="w-full">
+                <CardHeader icon={LayoutDashboard} title="Department Distribution" />
+                {summary.departments.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-gray-400 font-bold flex-1 flex items-center justify-center">No department data available.</div>
+                ) : (
+                    <div className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12">
+                        {/* Donut Chart Block */}
+                        <div className="flex flex-col items-center justify-center gap-3 shrink-0">
+                            <div className="relative w-44 h-44 flex items-center justify-center">
                                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
                                     {summary.departments.map((dept, idx) => {
                                         const strokeDash = (dept.percentage / 100) * circumference;
@@ -208,57 +208,46 @@ const TeamSummaryTab = () => {
                                 </svg>
                                 <div className="absolute flex flex-col items-center justify-center text-center select-none pointer-events-none">
                                     <span className="text-gray-400 text-[10px] font-black uppercase tracking-wider">Total</span>
-                                    <span className="text-[#1E1E1E] text-[18px] font-black mt-0.5 leading-none">{summary.totalEmployees}</span>
+                                    <span className="text-[#1E1E1E] text-2xl font-black mt-0.5 leading-none">{summary.totalEmployees}</span>
                                 </div>
                             </div>
+                            <div className="flex items-center gap-2 bg-blue-50/80 border border-blue-100/60 px-3.5 py-1 rounded-full text-[11px] font-bold text-[#2D79C7] shadow-3xs">
+                                <span>{summary.departments.length} Active Departments</span>
+                            </div>
+                        </div>
 
-                            {/* Legend */}
-                            <div className="flex-1 space-y-2.5 w-full">
-                                {summary.departments.map((dept, idx) => {
-                                    const color = colorsList[idx % colorsList.length];
-                                    return (
-                                        <div key={idx} className="flex items-center justify-between text-xs font-semibold text-gray-600">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                                                <span>{dept.label}</span>
+                        {/* Department Progress Cards Grid */}
+                        <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            {summary.departments.map((dept, idx) => {
+                                const color = colorsList[idx % colorsList.length];
+                                return (
+                                    <div
+                                        key={idx}
+                                        className="bg-slate-50/70 hover:bg-slate-50 border border-slate-200/60 rounded-2xl p-4 transition-all duration-200 flex flex-col gap-2.5 shadow-2xs hover:shadow-xs"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <div className="w-3 h-3 rounded-full shrink-0 shadow-3xs" style={{ backgroundColor: color }} />
+                                                <span className="text-xs font-bold text-slate-800 truncate">{dept.label}</span>
                                             </div>
-                                            <div className="flex gap-4 items-center">
-                                                <span className="text-gray-400 font-medium">{dept.count} Pax</span>
-                                                <span className="text-gray-800 font-extrabold font-mono w-8 text-right">{dept.percentage}%</span>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <span className="text-xs font-black text-slate-700">{dept.count} Pax</span>
+                                                <span className="text-[11px] font-extrabold text-[#2D79C7] bg-white border border-blue-100 px-2 py-0.5 rounded-md shadow-3xs">{dept.percentage}%</span>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </Card>
-
-                {/* Status Overview Card */}
-                <Card>
-                    <CardHeader icon={Briefcase} title="Employee Status Overview" />
-                    {summary.statuses.length === 0 ? (
-                        <div className="p-8 text-center text-xs text-gray-400 font-bold flex-1 flex items-center justify-center">No status data available.</div>
-                    ) : (
-                        <div className="p-6 flex flex-col justify-center space-y-5 flex-1">
-                            {summary.statuses.map((status, idx) => (
-                                <div key={idx} className="space-y-1.5">
-                                    <div className="flex justify-between items-center text-xs font-bold">
-                                        <span className="text-gray-700">{status.label}</span>
-                                        <span className="text-gray-400 font-semibold">{status.count} Pax ({status.pct}%)</span>
+                                        <div className="w-full h-2 bg-slate-200/60 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-500"
+                                                style={{ width: `${dept.percentage}%`, backgroundColor: color }}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="w-full h-3 bg-gray-50 border border-gray-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full rounded-full transition-all duration-500 ${status.color}`}
-                                            style={{ width: `${status.pct}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
-                    )}
-                </Card>
-            </div>
+                    </div>
+                )}
+            </Card>
         </div>
     );
 };
