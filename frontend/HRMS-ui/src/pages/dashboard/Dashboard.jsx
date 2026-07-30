@@ -1699,6 +1699,7 @@ const PeopleEventsCard = ({ events }) => {
 const WelcomeBanner = ({ user }) => {
     const [greeting, setGreeting] = useState("Good Morning");
     const [greetingIcon, setGreetingIcon] = useState("🌤️");
+    const [personalMessage, setPersonalMessage] = useState("nice to see you again!");
     const [formattedDate, setFormattedDate] = useState("");
 
     useEffect(() => {
@@ -1706,16 +1707,21 @@ const WelcomeBanner = ({ user }) => {
         if (hour >= 5 && hour < 12) {
             setGreeting("Good Morning");
             setGreetingIcon("🌤️");
+            setPersonalMessage("hope you have a great day ahead!");
         } else if (hour >= 12 && hour < 17) {
             setGreeting("Good Afternoon");
             setGreetingIcon("☀️");
+            setPersonalMessage("good to see you again!");
         } else {
             setGreeting("Good Evening");
             setGreetingIcon("🌙");
+            setPersonalMessage("nice to see you again!");
         }
         const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
         setFormattedDate(new Date().toLocaleDateString("en-US", options));
     }, []);
+
+    const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "";
 
     return (
         <section
@@ -1734,11 +1740,11 @@ const WelcomeBanner = ({ user }) => {
             <div className="flex flex-col text-left relative z-10 gap-1">
                 <div className="flex items-center gap-2">
                     <span className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.15em]">
-                        {greetingIcon} {greeting},
+                        {greetingIcon} {greeting}
                     </span>
                 </div>
                 <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">
-                    {user?.fullName || ""}
+                    {firstName ? `${firstName}, ${personalMessage} 👋` : "Welcome back! 👋"}
                 </h1>
             </div>
 

@@ -110,6 +110,13 @@ const AttendanceHeroBar = () => {
 
     const userName = user?.firstName || user?.fullName?.split(" ")[0] || "Employee";
 
+    const getTimeGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) return "Good Morning";
+        if (hour >= 12 && hour < 17) return "Good Afternoon";
+        return "Good Evening";
+    };
+
     const handleClockToggle = () => {
         if (isClockedIn) {
             setIsClockedIn(false);
@@ -131,7 +138,7 @@ const AttendanceHeroBar = () => {
                     <div className="space-y-3">
                         <div>
                             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                                Good Morning, {userName}
+                                {getTimeGreeting()}, {userName}
                             </h2>
                             <p className="text-xs font-semibold text-slate-500 mt-1">
                                 Shift <span className="text-[#2D79C7] font-mono font-bold ml-1">10:00 AM – 07:00 PM</span>
