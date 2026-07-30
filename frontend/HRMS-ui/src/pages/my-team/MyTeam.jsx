@@ -159,7 +159,20 @@ const TeamSummaryTab = () => {
     const circumference = 2 * Math.PI * radius;
     let currentOffset = 0;
 
-    const colorsList = ["#2D79C7", "#B09B71", "#7E8D5B", "#7D6E83", "#A67C52"];
+    const colorsList = [
+        "#2D79C7", // Blue
+        "#B09B71", // Warm Gold
+        "#7E8D5B", // Sage Green
+        "#7D6E83", // Slate Purple
+        "#A67C52", // Cinnamon Brown
+        "#E67E22", // Amber / Warm Orange
+        "#0D9488", // Deep Teal
+        "#E11D48", // Rose Red
+        "#6366F1", // Indigo
+        "#059669", // Emerald Green
+        "#8B5CF6", // Purple / Violet
+        "#D97706"  // Golden Bronze
+    ];
 
     return (
         <div className="space-y-6 animate-fadeIn">
