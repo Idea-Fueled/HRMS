@@ -1755,26 +1755,14 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-gray-500 font-bold mb-1">Current Company</label>
-                            <input
-                                type="text"
-                                value={form.currentCompany}
-                                onChange={e => setForm({ ...form, currentCompany: e.target.value })}
-                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-500 font-bold mb-1">Assigned HR</label>
-                            <select
-                                value={form.assignedHr}
-                                onChange={e => setForm({ ...form, assignedHr: e.target.value })}
-                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
-                            >
-                                {HR_ASSIGNESS.map(h => <option key={h} value={h}>{h}</option>)}
-                            </select>
-                        </div>
+                    <div>
+                        <label className="block text-gray-500 font-bold mb-1">Current Company</label>
+                        <input
+                            type="text"
+                            value={form.currentCompany}
+                            onChange={e => setForm({ ...form, currentCompany: e.target.value })}
+                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                        />
                     </div>
 
                     <div>

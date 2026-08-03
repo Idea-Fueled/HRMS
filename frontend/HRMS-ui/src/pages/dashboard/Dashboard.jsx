@@ -1699,7 +1699,7 @@ const PeopleEventsCard = ({ events }) => {
 const WelcomeBanner = ({ user }) => {
     const [greeting, setGreeting] = useState("Good Morning");
     const [greetingIcon, setGreetingIcon] = useState("🌤️");
-    const [personalMessage, setPersonalMessage] = useState("nice to see you again!");
+    const [personalMessage, setPersonalMessage] = useState("good to see you!");
     const [formattedDate, setFormattedDate] = useState("");
 
     useEffect(() => {
@@ -1711,11 +1711,11 @@ const WelcomeBanner = ({ user }) => {
         } else if (hour >= 12 && hour < 17) {
             setGreeting("Good Afternoon");
             setGreetingIcon("☀️");
-            setPersonalMessage("good to see you again!");
+            setPersonalMessage("good to see you!");
         } else {
             setGreeting("Good Evening");
             setGreetingIcon("🌙");
-            setPersonalMessage("nice to see you again!");
+            setPersonalMessage("hope you had a productive day!");
         }
         const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
         setFormattedDate(new Date().toLocaleDateString("en-US", options));
@@ -1744,7 +1744,7 @@ const WelcomeBanner = ({ user }) => {
                     </span>
                 </div>
                 <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">
-                    {firstName ? `${firstName}, ${personalMessage} 👋` : "Welcome back! 👋"}
+                    {firstName ? `Hi ${firstName}, ${personalMessage} 👋` : "Welcome back! 👋"}
                 </h1>
             </div>
 
