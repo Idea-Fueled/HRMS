@@ -41,17 +41,17 @@ const PIPELINE_STAGES = [
 ];
 
 const STAGE_CONFIG = {
-    "New Application":   { border: "border-t-indigo-500", headerBg: "bg-indigo-50/80 text-indigo-700", badge: "bg-indigo-100 text-indigo-800" },
-    "Resume Screening":  { border: "border-t-amber-500",  headerBg: "bg-amber-50/80 text-amber-700",   badge: "bg-amber-100 text-amber-800" },
-    "HR Round":          { border: "border-t-purple-500", headerBg: "bg-purple-50/80 text-purple-700", badge: "bg-purple-100 text-purple-800" },
-    "Technical Round 1": { border: "border-t-cyan-500",   headerBg: "bg-cyan-50/80 text-cyan-700",     badge: "bg-cyan-100 text-cyan-800" },
-    "Technical Round 2": { border: "border-t-blue-500",   headerBg: "bg-blue-50/80 text-blue-700",     badge: "bg-blue-100 text-blue-800" },
-    "Manager Round":     { border: "border-t-teal-500",   headerBg: "bg-teal-50/80 text-teal-700",     badge: "bg-teal-100 text-teal-800" },
-    "HR Discussion":     { border: "border-t-violet-500", headerBg: "bg-violet-50/80 text-violet-700", badge: "bg-violet-100 text-violet-800" },
-    "Offer Sent":        { border: "border-t-emerald-500",headerBg: "bg-emerald-50/80 text-emerald-700",badge: "bg-emerald-100 text-emerald-800" },
-    "Offer Accepted":    { border: "border-t-green-600",  headerBg: "bg-green-50/80 text-green-700",   badge: "bg-green-100 text-green-800" },
-    "Joined":            { border: "border-t-[#2D79C7]",  headerBg: "bg-blue-50 text-[#2D79C7]",       badge: "bg-[#2D79C7] text-white" },
-    "Rejected":          { border: "border-t-rose-400",   headerBg: "bg-rose-50/80 text-rose-700",     badge: "bg-rose-100 text-rose-800" }
+    "New Application":   { border: "border-t-indigo-500", dot: "bg-indigo-500", badge: "bg-indigo-50 text-indigo-700 border border-indigo-200" },
+    "Resume Screening":  { border: "border-t-amber-500",  dot: "bg-amber-500",  badge: "bg-amber-50 text-amber-700 border border-amber-200" },
+    "HR Round":          { border: "border-t-purple-500", dot: "bg-purple-500", badge: "bg-purple-50 text-purple-700 border border-purple-200" },
+    "Technical Round 1": { border: "border-t-cyan-500",   dot: "bg-cyan-500",   badge: "bg-cyan-50 text-cyan-700 border border-cyan-200" },
+    "Technical Round 2": { border: "border-t-blue-500",   dot: "bg-blue-500",   badge: "bg-blue-50 text-blue-700 border border-blue-200" },
+    "Manager Round":     { border: "border-t-teal-500",   dot: "bg-teal-500",   badge: "bg-teal-50 text-teal-700 border border-teal-200" },
+    "HR Discussion":     { border: "border-t-violet-500", dot: "bg-violet-500", badge: "bg-violet-50 text-violet-700 border border-violet-200" },
+    "Offer Sent":        { border: "border-t-emerald-500",dot: "bg-emerald-500",badge: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
+    "Offer Accepted":    { border: "border-t-green-600",  dot: "bg-green-600",  badge: "bg-green-50 text-green-700 border border-green-200" },
+    "Joined":            { border: "border-t-[#2D79C7]",  dot: "bg-[#2D79C7]",  badge: "bg-blue-100 text-[#2D79C7] border border-blue-200" },
+    "Rejected":          { border: "border-t-rose-500",   dot: "bg-rose-500",   badge: "bg-rose-50 text-rose-700 border border-rose-200" }
 };
 
 const POSITIONS = [
@@ -1062,20 +1062,23 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
         <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-thin select-none min-h-[580px] items-start">
             {stages.map(stg => {
                 const stageCandidates = candidates.filter(c => c.stage === stg);
-                const cfg = STAGE_CONFIG[stg] || { border: "border-t-gray-400", headerBg: "bg-gray-100 text-gray-700", badge: "bg-gray-200 text-gray-800" };
+                const cfg = STAGE_CONFIG[stg] || { border: "border-t-gray-400", dot: "bg-gray-400", badge: "bg-gray-100 text-gray-700" };
 
                 return (
                     <div
                         key={stg}
                         onDragOver={onDragOver}
                         onDrop={(e) => onDropStage(e, stg)}
-                        className={`w-[290px] shrink-0 bg-gray-50/90 border border-gray-200/90 border-t-4 ${cfg.border} rounded-[20px] p-3 flex flex-col justify-between shadow-xs transition-all`}
+                        className={`w-[320px] shrink-0 bg-[#F8FAFC] border border-gray-200 border-t-[4px] ${cfg.border} rounded-[20px] p-3.5 flex flex-col justify-between shadow-xs transition-all`}
                     >
                         <div>
                             {/* Column Header */}
-                            <div className={`flex items-center justify-between p-2.5 rounded-[12px] ${cfg.headerBg} mb-3.5 shadow-2xs`}>
-                                <h3 className="text-xs font-black tracking-tight truncate max-w-[190px]">{stg}</h3>
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${cfg.badge} shadow-xs`}>
+                            <div className="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-200/80 rounded-[14px] shadow-2xs mb-3.5 mt-0.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.dot}`} />
+                                    <h3 className="text-xs font-black text-[#1E1E1E] truncate">{stg}</h3>
+                                </div>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black shrink-0 ${cfg.badge}`}>
                                     {stageCandidates.length}
                                 </span>
                             </div>
@@ -1087,32 +1090,32 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
                                         key={cand.id}
                                         draggable
                                         onDragStart={(e) => onDragStart(e, cand.id)}
-                                        className="bg-white border border-gray-200/90 rounded-[16px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-lg hover:border-[#2D79C7]/50 transition-all duration-200 cursor-grab active:cursor-grabbing space-y-3 relative group"
+                                        className="bg-white border border-gray-200 rounded-[16px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-lg hover:border-[#2D79C7]/50 transition-all duration-200 cursor-grab active:cursor-grabbing space-y-3 relative group"
                                     >
                                         {/* Avatar & Info */}
                                         <div className="flex items-start gap-3">
                                             <img
                                                 src={cand.photo}
                                                 alt={cand.name}
-                                                className="w-10 h-10 min-w-10 min-h-10 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                                className="w-11 h-11 min-w-11 min-h-11 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
                                             />
                                             <div className="min-w-0 flex-1">
                                                 <h4
-                                                    className="text-xs font-black text-[#1E1E1E] truncate hover:text-[#2D79C7] cursor-pointer transition-colors"
+                                                    className="text-sm font-extrabold text-[#1E1E1E] truncate hover:text-[#2D79C7] cursor-pointer transition-colors leading-snug"
                                                     onClick={() => onOpenDrawer(cand)}
                                                 >
                                                     {cand.name}
                                                 </h4>
-                                                <p className="text-[11px] text-gray-500 font-medium truncate mt-0.5">{cand.position}</p>
+                                                <p className="text-xs text-gray-500 font-medium truncate mt-0.5">{cand.position}</p>
                                             </div>
                                         </div>
 
                                         {/* Company & Experience */}
-                                        <div className="flex items-center justify-between text-[10.5px] text-gray-600 font-medium pt-1 border-t border-gray-100">
-                                            <span className="bg-gray-100 text-gray-700 font-bold px-2 py-0.5 rounded-[6px] text-[10px]">
+                                        <div className="flex items-center justify-between text-xs text-gray-600 font-medium pt-1.5 border-t border-gray-100">
+                                            <span className="bg-blue-50 text-[#2D79C7] font-bold px-2.5 py-0.5 rounded-[8px] text-[11px] border border-blue-100">
                                                 {cand.experience}
                                             </span>
-                                            <span className="truncate text-gray-500 font-semibold max-w-[120px]">
+                                            <span className="truncate text-gray-700 font-semibold max-w-[130px]">
                                                 {cand.currentCompany}
                                             </span>
                                         </div>
@@ -1120,20 +1123,20 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
                                         {/* Skills tags */}
                                         <div className="flex flex-wrap gap-1">
                                             {(cand.skills || []).slice(0, 3).map((sk, idx) => (
-                                                <span key={idx} className="bg-blue-50/80 text-[#2D79C7] text-[9.5px] font-bold px-2 py-0.5 rounded-md border border-blue-100/60">
+                                                <span key={idx} className="bg-gray-100 text-gray-700 text-[10.5px] font-semibold px-2.5 py-1 rounded-[6px] border border-gray-200/60">
                                                     {sk}
                                                 </span>
                                             ))}
                                         </div>
 
                                         {/* Quick Move Stage Control & Details Button */}
-                                        <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-[10px]">
-                                            <span className="text-gray-400 font-semibold">{cand.assignedHr?.split(" ")[0]}</span>
+                                        <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
+                                            <span className="text-gray-500 font-bold text-[11px]">HR: {cand.assignedHr?.split(" ")[0]}</span>
 
                                             <div className="flex items-center gap-1.5">
                                                 <button
                                                     onClick={() => onOpenDrawer(cand)}
-                                                    className="p-1 text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 rounded-[6px] transition-colors cursor-pointer"
+                                                    className="p-1.5 text-gray-500 hover:text-[#2D79C7] hover:bg-blue-50 rounded-[8px] transition-colors cursor-pointer"
                                                     title="View Profile"
                                                 >
                                                     <Eye className="w-3.5 h-3.5" />
@@ -1142,7 +1145,7 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
                                                     value={cand.stage}
                                                     onChange={(e) => onMoveStage(cand.id, e.target.value)}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-[8px] px-2 py-1 text-[10px] text-gray-700 font-bold focus:outline-none cursor-pointer"
+                                                    className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-[8px] px-2 py-1 text-[10.5px] text-gray-700 font-bold focus:outline-none cursor-pointer max-w-[130px]"
                                                 >
                                                     {stages.map(s => (
                                                         <option key={s} value={s}>{s}</option>
