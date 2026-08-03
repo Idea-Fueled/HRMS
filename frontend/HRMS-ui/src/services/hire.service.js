@@ -385,6 +385,35 @@ export const getHireCandidates = async () => {
 
 export const addCandidateApi = async (candidateData) => {
     const current = getCandidatesFromStorage();
+    
+    // Process candidate CV/Resume upload if present
+    const docName = candidateData.cvName || candidateData.resume || (candidateData.cvFile ? candidateData.cvFile.name : null);
+    let docUrl = "#";
+    let docSize = "1.2 MB";
+
+    if (candidateData.cvFile) {
+        try {
+            docUrl = URL.createObjectURL(candidateData.cvFile);
+            if (candidateData.cvFile.size) {
+                const kb = candidateData.cvFile.size / 1024;
+                docSize = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
+            }
+        } catch {
+            docUrl = "#";
+        }
+    }
+
+    const initialDocs = docName ? [
+        {
+            id: `doc_${Date.now()}`,
+            name: docName,
+            type: docName.toLowerCase().endsWith(".pdf") ? "PDF Resume" : (docName.toLowerCase().endsWith(".doc") || docName.toLowerCase().endsWith(".docx")) ? "Word Resume" : "Resume / CV",
+            uploadDate: new Date().toISOString().split("T")[0],
+            size: docSize,
+            url: docUrl
+        }
+    ] : [];
+
     const newCandidate = {
         id: `cand_${Date.now()}`,
         name: candidateData.name || "New Candidate",
@@ -403,9 +432,9 @@ export const addCandidateApi = async (candidateData) => {
         stage: candidateData.stage || "New Application",
         status: candidateData.status || "In Progress",
         assignedHr: candidateData.assignedHr || "Priya Sharma",
-        resume: candidateData.resume || "Candidate_Resume.pdf",
+        resume: docName || "Candidate_Resume.pdf",
         interviews: [],
-        documents: candidateData.resume ? [{ id: `doc_${Date.now()}`, name: candidateData.resume, type: "Resume", uploadDate: new Date().toISOString().split("T")[0], size: "1.0 MB", url: "#" }] : [],
+        documents: initialDocs,
         offerDetails: null,
         archiveReason: null
     };

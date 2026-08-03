@@ -1694,7 +1694,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
         email: "",
         phone: "",
         address: "",
-        position: POSITIONS[0],
+        position: "Frontend Developer (React)",
         experience: "3 Yrs",
         currentCompany: "",
         currentCtc: "",
@@ -1711,7 +1711,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
             toast.error("Name and email are required");
             return;
         }
-        onSave({ ...form, cvFile });
+        onSave({ ...form, cvFile, cvName: cvFile ? cvFile.name : "" });
     };
 
     return (
@@ -1759,13 +1759,13 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-gray-500 font-bold mb-1">Position Applied</label>
-                            <select
+                            <input
+                                type="text"
                                 value={form.position}
                                 onChange={e => setForm({ ...form, position: e.target.value })}
+                                placeholder="e.g. Frontend Developer (React)"
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
-                            >
-                                {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
+                            />
                         </div>
                         <div>
                             <label className="block text-gray-500 font-bold mb-1">Experience</label>
