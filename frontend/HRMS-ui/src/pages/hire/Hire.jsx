@@ -809,35 +809,48 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
                     </div>
 
                     <div className="divide-y divide-gray-100">
-                        {recentCandidates.map(cand => (
-                            <div key={cand.id} className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50 px-2 rounded-[12px] transition-all">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <img
-                                        src={cand.photo}
-                                        alt={cand.name}
-                                        className="w-10 h-10 min-w-10 min-h-10 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
-                                    />
-                                    <div className="min-w-0">
-                                        <h4 className="text-xs font-bold text-[#1E1E1E] truncate hover:text-[#2D79C7] cursor-pointer" onClick={() => onOpenDrawer(cand)}>
-                                            {cand.name}
-                                        </h4>
-                                        <p className="text-[11px] text-gray-500 truncate">{cand.position} • {cand.experience}</p>
+                        {recentCandidates.length === 0 ? (
+                            <div className="py-10 text-center text-xs text-gray-400 font-bold space-y-2">
+                                <p>No candidates added yet in the recruitment pipeline.</p>
+                                <button
+                                    onClick={onAddCandidate}
+                                    className="px-3.5 py-2 bg-[#2D79C7] text-white rounded-[10px] text-xs font-bold hover:bg-[#1F5EA8] cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    <span>Add First Candidate</span>
+                                </button>
+                            </div>
+                        ) : (
+                            recentCandidates.map(cand => (
+                                <div key={cand.id} className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50 px-2 rounded-[12px] transition-all">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <img
+                                            src={cand.photo}
+                                            alt={cand.name}
+                                            className="w-10 h-10 min-w-10 min-h-10 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                        />
+                                        <div className="min-w-0">
+                                            <h4 className="text-xs font-bold text-[#1E1E1E] truncate hover:text-[#2D79C7] cursor-pointer" onClick={() => onOpenDrawer(cand)}>
+                                                {cand.name}
+                                            </h4>
+                                            <p className="text-[11px] text-gray-500 truncate">{cand.position} • {cand.experience}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-[#2D79C7] border border-blue-100">
+                                            {cand.stage}
+                                        </span>
+                                        <button
+                                            onClick={() => onOpenDrawer(cand)}
+                                            className="p-1.5 text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 rounded-[8px] transition-all cursor-pointer"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
-
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-[#2D79C7] border border-blue-100">
-                                        {cand.stage}
-                                    </span>
-                                    <button
-                                        onClick={() => onOpenDrawer(cand)}
-                                        className="p-1.5 text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 rounded-[8px] transition-all cursor-pointer"
-                                    >
-                                        <Eye className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
 
