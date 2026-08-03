@@ -1129,29 +1129,21 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
                                             ))}
                                         </div>
 
-                                        {/* Quick Move Stage Control & Details Button */}
+                                        {/* Footer Bar */}
                                         <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
                                             <span className="text-gray-500 font-bold text-[11px]">HR: {cand.assignedHr?.split(" ")[0]}</span>
 
-                                            <div className="flex items-center gap-1.5">
-                                                <button
-                                                    onClick={() => onOpenDrawer(cand)}
-                                                    className="p-1.5 text-gray-500 hover:text-[#2D79C7] hover:bg-blue-50 rounded-[8px] transition-colors cursor-pointer"
-                                                    title="View Profile"
-                                                >
-                                                    <Eye className="w-3.5 h-3.5" />
-                                                </button>
-                                                <select
-                                                    value={cand.stage}
-                                                    onChange={(e) => onMoveStage(cand.id, e.target.value)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-[8px] px-2 py-1 text-[10.5px] text-gray-700 font-bold focus:outline-none cursor-pointer max-w-[130px]"
-                                                >
-                                                    {stages.map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onOpenDrawer(cand);
+                                                }}
+                                                className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 hover:bg-blue-50 text-gray-600 hover:text-[#2D79C7] rounded-[8px] text-[11px] font-bold transition-all border border-gray-200/80 cursor-pointer"
+                                                title="View Profile"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                <span>View</span>
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
