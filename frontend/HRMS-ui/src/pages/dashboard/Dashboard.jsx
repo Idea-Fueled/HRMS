@@ -1738,11 +1738,6 @@ const WelcomeBanner = ({ user }) => {
             </div>
 
             <div className="flex flex-col text-left relative z-10 gap-1">
-                <div className="flex items-center gap-2">
-                    <span className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.15em]">
-                        {greetingIcon} {greeting}
-                    </span>
-                </div>
                 <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">
                     {firstName ? `Hi ${firstName}, ${personalMessage} 👋` : "Welcome back! 👋"}
                 </h1>

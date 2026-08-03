@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }) => {
         if (normPath === "employees") return user.permissions.employees !== false;
         if (normPath === "payroll") return user.permissions.payroll !== false;
         if (normPath === "recruitment") return user.permissions.recruitment !== false;
-        if (normPath === "hire") return user.permissions.hire !== false;
+        if (normPath === "hire") return role === "global_admin" || role === "hr";
         if (normPath === "offboarding-onboarding") return user.permissions.offboardingAndOnboarding !== false;
         if (normPath === "organization") return user.permissions.organization !== false;
 
