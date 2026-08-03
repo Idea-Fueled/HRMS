@@ -1688,6 +1688,7 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
    MODALS IMPLEMENTATION
 ───────────────────────────────────────────── */
 const AddCandidateModal = ({ onClose, onSave }) => {
+    const [cvFile, setCvFile] = useState(null);
     const [form, setForm] = useState({
         name: "",
         email: "",
@@ -1710,7 +1711,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
             toast.error("Name and email are required");
             return;
         }
-        onSave(form);
+        onSave({ ...form, cvFile });
     };
 
     return (
@@ -1807,6 +1808,28 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                             onChange={e => setForm({ ...form, skills: e.target.value })}
                             className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-gray-500 font-bold mb-1">Upload CV / Resume (PDF, DOC, DOCX)</label>
+                        <div className="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-[10px]">
+                            <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        setCvFile(file);
+                                    }
+                                }}
+                                className="w-full text-xs text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-[#2D79C7]/10 file:text-[#2D79C7] hover:file:bg-[#2D79C7]/20 cursor-pointer"
+                            />
+                        </div>
+                        {cvFile && (
+                            <p className="text-[11px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Selected: {cvFile.name}
+                            </p>
+                        )}
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">

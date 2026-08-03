@@ -580,11 +580,11 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
                             cy="40"
                             r={radius}
                             fill="none"
-                            stroke="#E11D48"
+                            stroke="#F59E0B"
                             strokeWidth={strokeWidth}
                             strokeDasharray={`${sickDash} ${circumference}`}
                             strokeDashoffset={-(casualDash + earnedDash)}
-                            className="hover:stroke-[#BE123C] transition-colors"
+                            className="hover:stroke-[#D97706] transition-colors"
                             onMouseEnter={(e) => {
                                 e.stopPropagation();
                                 setHoverText(`Sick: ${sickPct.toFixed(0)}% (${sickUsed} days)`);
@@ -617,7 +617,7 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-600">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#E11D48] shrink-0" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shrink-0" />
                         <div className="flex-1 flex justify-between">
                             <span>Sick</span>
                             <span className="text-gray-800 font-extrabold font-mono">{sickPct.toFixed(0)}%</span>
@@ -1210,7 +1210,7 @@ const LeaveTab = ({
                             consumed={sickUsed}
                             accrued={sickTotal}
                             annualQuota={sickTotal}
-                            color="#E11D48"
+                            color="#F59E0B"
                         />
                         <LeaveBalanceCard
                             label="Unpaid Leave"
@@ -1218,7 +1218,7 @@ const LeaveTab = ({
                             consumed={unpaidConsumed}
                             annualQuota="∞"
                             isInfinity={true}
-                            color="#F59E0B"
+                            color="#E11D48"
                         />
                     </div>
                 )}
