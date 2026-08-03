@@ -4,7 +4,7 @@ import {
     Search, Filter, Plus, Edit3, Trash2, Eye, X, CheckCircle2,
     XCircle, ArrowRight, ChevronRight, Star, ExternalLink,
     Upload, RefreshCw, AlertCircle, ShieldAlert, Award, UserCheck,
-    DollarSign, ArrowUpRight, ChevronDown, Check, Layers, MoveRight,
+    IndianRupee, ArrowUpRight, ChevronDown, Check, Layers, MoveRight,
     Building, Phone, Mail, MapPin, Download, Lock
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +39,20 @@ const PIPELINE_STAGES = [
     "Joined",
     "Rejected"
 ];
+
+const STAGE_CONFIG = {
+    "New Application":   { border: "border-t-indigo-500", headerBg: "bg-indigo-50/80 text-indigo-700", badge: "bg-indigo-100 text-indigo-800" },
+    "Resume Screening":  { border: "border-t-amber-500",  headerBg: "bg-amber-50/80 text-amber-700",   badge: "bg-amber-100 text-amber-800" },
+    "HR Round":          { border: "border-t-purple-500", headerBg: "bg-purple-50/80 text-purple-700", badge: "bg-purple-100 text-purple-800" },
+    "Technical Round 1": { border: "border-t-cyan-500",   headerBg: "bg-cyan-50/80 text-cyan-700",     badge: "bg-cyan-100 text-cyan-800" },
+    "Technical Round 2": { border: "border-t-blue-500",   headerBg: "bg-blue-50/80 text-blue-700",     badge: "bg-blue-100 text-blue-800" },
+    "Manager Round":     { border: "border-t-teal-500",   headerBg: "bg-teal-50/80 text-teal-700",     badge: "bg-teal-100 text-teal-800" },
+    "HR Discussion":     { border: "border-t-violet-500", headerBg: "bg-violet-50/80 text-violet-700", badge: "bg-violet-100 text-violet-800" },
+    "Offer Sent":        { border: "border-t-emerald-500",headerBg: "bg-emerald-50/80 text-emerald-700",badge: "bg-emerald-100 text-emerald-800" },
+    "Offer Accepted":    { border: "border-t-green-600",  headerBg: "bg-green-50/80 text-green-700",   badge: "bg-green-100 text-green-800" },
+    "Joined":            { border: "border-t-[#2D79C7]",  headerBg: "bg-blue-50 text-[#2D79C7]",       badge: "bg-[#2D79C7] text-white" },
+    "Rejected":          { border: "border-t-rose-400",   headerBg: "bg-rose-50/80 text-rose-700",     badge: "bg-rose-100 text-rose-800" }
+};
 
 const POSITIONS = [
     "Senior Full Stack Engineer",
@@ -168,7 +182,6 @@ export const Hire = () => {
         const baseList = activeTab === "archive" ? archivedCandidatesList : candidates;
 
         return baseList.filter(cand => {
-            // Search matching
             if (searchTerm.trim()) {
                 const term = searchTerm.toLowerCase();
                 const nameMatch = cand.name?.toLowerCase().includes(term);
@@ -181,19 +194,10 @@ export const Hire = () => {
                 }
             }
 
-            // Stage filter
             if (filterStage && cand.stage !== filterStage) return false;
-
-            // Position filter
             if (filterPosition && cand.position !== filterPosition) return false;
-
-            // Assigned HR filter
             if (filterHr && cand.assignedHr !== filterHr) return false;
-
-            // Status filter
             if (filterStatus && cand.status !== filterStatus) return false;
-
-            // Interviewer filter
             if (filterInterviewer) {
                 const hasInterviewer = cand.interviews?.some(i => i.interviewer === filterInterviewer);
                 if (!hasInterviewer) return false;
@@ -224,7 +228,6 @@ export const Hire = () => {
             }
         });
 
-        // Filter interviews if filterInterviewer is set
         if (filterInterviewer) {
             return list.filter(i => i.interviewer === filterInterviewer);
         }
@@ -247,13 +250,11 @@ export const Hire = () => {
        HANDLERS FOR ACTIONS
     ───────────────────────────────────────────── */
 
-    // Drawer Open
     const handleOpenDrawer = (cand) => {
         setSelectedCandidate(cand);
         setDrawerOpen(true);
     };
 
-    // Stage Mover
     const handleMoveStage = async (candidateId, nextStage) => {
         try {
             const updated = await updateCandidateStageApi(candidateId, nextStage);
@@ -267,7 +268,6 @@ export const Hire = () => {
         }
     };
 
-    // Rejection
     const handleConfirmReject = async (reason) => {
         if (!candidateToReject) return;
         try {
@@ -284,7 +284,6 @@ export const Hire = () => {
         }
     };
 
-    // Delete permanently from archive
     const handleDeleteCandidate = async (candidateId) => {
         if (!window.confirm("Are you sure you want to permanently delete this candidate record?")) return;
         try {
@@ -330,7 +329,7 @@ export const Hire = () => {
         { id: "candidates", label: "Candidates", icon: Users, count: candidates.length },
         { id: "kanban", label: "Kanban Pipeline", icon: Briefcase },
         { id: "interviews", label: "Interviews", icon: Calendar, count: stats.scheduledInterviewsCount },
-        { id: "offers", label: "Offers", icon: DollarSign, count: stats.offersSent },
+        { id: "offers", label: "Offers", icon: IndianRupee, count: stats.offersSent },
         { id: "archive", label: "Archive", icon: FileText, count: archivedCandidatesList.length }
     ];
 
@@ -395,11 +394,10 @@ export const Hire = () => {
                 })}
             </div>
 
-            {/* Search & Filter Bar (Shown across all listing tabs) */}
+            {/* Search & Filter Bar */}
             {activeTab !== "dashboard" && (
                 <div className="bg-white border border-[#E5E7EB] rounded-[18px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)] space-y-3">
                     <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-                        {/* Search Input */}
                         <div className="relative w-full lg:w-80">
                             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
@@ -416,13 +414,11 @@ export const Hire = () => {
                             )}
                         </div>
 
-                        {/* View Toggle (when in candidates tab) */}
                         {activeTab === "candidates" && (
                             <ViewToggle view={candidateView} onViewChange={setCandidateView} />
                         )}
                     </div>
 
-                    {/* Filter Dropdowns */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-2 border-t border-gray-100 text-xs">
                         <select
                             value={filterStage}
@@ -482,7 +478,6 @@ export const Hire = () => {
                         </select>
                     </div>
 
-                    {/* Reset Filters button if any filter applied */}
                     {(filterStage || filterPosition || filterHr || filterStatus || filterInterviewer || searchTerm) && (
                         <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 pt-1">
                             <span>Showing {filteredCandidates.length} matches</span>
@@ -771,7 +766,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
         { label: "New Applications", value: stats.newApps, icon: UserPlus, color: "text-indigo-600", bg: "bg-indigo-50" },
         { label: "Resume Screening", value: stats.screening, icon: FileText, color: "text-amber-600", bg: "bg-amber-50" },
         { label: "Interviews Scheduled", value: stats.scheduledInterviewsCount, icon: Calendar, color: "text-cyan-600", bg: "bg-cyan-50" },
-        { label: "Offers Sent", value: stats.offersSent, icon: DollarSign, color: "text-purple-600", bg: "bg-purple-50" },
+        { label: "Offers Sent", value: stats.offersSent, icon: IndianRupee, color: "text-purple-600", bg: "bg-purple-50" },
         { label: "Joined", value: stats.joined, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
         { label: "Rejected", value: stats.rejected, icon: XCircle, color: "text-rose-600", bg: "bg-rose-50" },
     ];
@@ -820,7 +815,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
                                     <img
                                         src={cand.photo}
                                         alt={cand.name}
-                                        className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0"
+                                        className="w-10 h-10 min-w-10 min-h-10 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
                                     />
                                     <div className="min-w-0">
                                         <h4 className="text-xs font-bold text-[#1E1E1E] truncate hover:text-[#2D79C7] cursor-pointer" onClick={() => onOpenDrawer(cand)}>
@@ -899,7 +894,11 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                             {/* Card Top */}
                             <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
-                                    <img src={cand.photo} alt={cand.name} className="w-11 h-11 rounded-full object-cover border border-gray-200" />
+                                    <img
+                                        src={cand.photo}
+                                        alt={cand.name}
+                                        className="w-11 h-11 min-w-11 min-h-11 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                    />
                                     <div>
                                         <h4 className="text-xs font-black text-[#1E1E1E] hover:text-[#2D79C7] cursor-pointer" onClick={() => onOpenDrawer(cand)}>
                                             {cand.name}
@@ -990,7 +989,11 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                         <tr key={cand.id} className="hover:bg-gray-50/80 transition-all">
                             <td className="py-3 px-4">
                                 <div className="flex items-center gap-3">
-                                    <img src={cand.photo} alt={cand.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                                    <img
+                                        src={cand.photo}
+                                        alt={cand.name}
+                                        className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                    />
                                     <div>
                                         <div className="font-bold text-[#1E1E1E] hover:text-[#2D79C7] cursor-pointer" onClick={() => onOpenDrawer(cand)}>
                                             {cand.name}
@@ -1052,84 +1055,108 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
 };
 
 /* ─────────────────────────────────────────────
-   COMPONENT: KANBAN PIPELINE VIEW
+   COMPONENT: ELEVATED KANBAN PIPELINE VIEW
 ───────────────────────────────────────────── */
 const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart, onDragOver, onDropStage }) => {
     return (
-        <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-thin select-none min-h-[550px]">
+        <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-thin select-none min-h-[580px] items-start">
             {stages.map(stg => {
                 const stageCandidates = candidates.filter(c => c.stage === stg);
+                const cfg = STAGE_CONFIG[stg] || { border: "border-t-gray-400", headerBg: "bg-gray-100 text-gray-700", badge: "bg-gray-200 text-gray-800" };
+
                 return (
                     <div
                         key={stg}
                         onDragOver={onDragOver}
                         onDrop={(e) => onDropStage(e, stg)}
-                        className="w-[280px] shrink-0 bg-gray-50/80 border border-[#E5E7EB] rounded-[18px] p-3 flex flex-col justify-between"
+                        className={`w-[290px] shrink-0 bg-gray-50/90 border border-gray-200/90 border-t-4 ${cfg.border} rounded-[20px] p-3 flex flex-col justify-between shadow-xs transition-all`}
                     >
                         <div>
                             {/* Column Header */}
-                            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-3">
-                                <h3 className="text-xs font-black text-[#1E1E1E] truncate max-w-[190px]">{stg}</h3>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white border border-gray-200 text-gray-700">
+                            <div className={`flex items-center justify-between p-2.5 rounded-[12px] ${cfg.headerBg} mb-3.5 shadow-2xs`}>
+                                <h3 className="text-xs font-black tracking-tight truncate max-w-[190px]">{stg}</h3>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${cfg.badge} shadow-xs`}>
                                     {stageCandidates.length}
                                 </span>
                             </div>
 
                             {/* Candidate Cards Column */}
-                            <div className="space-y-3 min-h-[150px]">
+                            <div className="space-y-3 min-h-[160px]">
                                 {stageCandidates.map(cand => (
                                     <div
                                         key={cand.id}
                                         draggable
                                         onDragStart={(e) => onDragStart(e, cand.id)}
-                                        className="bg-white border border-[#E5E7EB] rounded-[14px] p-3.5 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing space-y-2.5"
+                                        className="bg-white border border-gray-200/90 rounded-[16px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-lg hover:border-[#2D79C7]/50 transition-all duration-200 cursor-grab active:cursor-grabbing space-y-3 relative group"
                                     >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-center gap-2.5">
-                                                <img src={cand.photo} alt={cand.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-[#1E1E1E] hover:text-[#2D79C7] cursor-pointer" onClick={() => onOpenDrawer(cand)}>
-                                                        {cand.name}
-                                                    </h4>
-                                                    <p className="text-[10px] text-gray-500">{cand.position}</p>
-                                                </div>
+                                        {/* Avatar & Info */}
+                                        <div className="flex items-start gap-3">
+                                            <img
+                                                src={cand.photo}
+                                                alt={cand.name}
+                                                className="w-10 h-10 min-w-10 min-h-10 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <h4
+                                                    className="text-xs font-black text-[#1E1E1E] truncate hover:text-[#2D79C7] cursor-pointer transition-colors"
+                                                    onClick={() => onOpenDrawer(cand)}
+                                                >
+                                                    {cand.name}
+                                                </h4>
+                                                <p className="text-[11px] text-gray-500 font-medium truncate mt-0.5">{cand.position}</p>
                                             </div>
                                         </div>
 
-                                        <div className="text-[10px] text-gray-600 flex items-center justify-between font-semibold">
-                                            <span>Exp: {cand.experience}</span>
-                                            <span>HR: {cand.assignedHr}</span>
+                                        {/* Company & Experience */}
+                                        <div className="flex items-center justify-between text-[10.5px] text-gray-600 font-medium pt-1 border-t border-gray-100">
+                                            <span className="bg-gray-100 text-gray-700 font-bold px-2 py-0.5 rounded-[6px] text-[10px]">
+                                                {cand.experience}
+                                            </span>
+                                            <span className="truncate text-gray-500 font-semibold max-w-[120px]">
+                                                {cand.currentCompany}
+                                            </span>
                                         </div>
 
                                         {/* Skills tags */}
                                         <div className="flex flex-wrap gap-1">
-                                            {(cand.skills || []).slice(0, 2).map((sk, idx) => (
-                                                <span key={idx} className="bg-gray-100 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                            {(cand.skills || []).slice(0, 3).map((sk, idx) => (
+                                                <span key={idx} className="bg-blue-50/80 text-[#2D79C7] text-[9.5px] font-bold px-2 py-0.5 rounded-md border border-blue-100/60">
                                                     {sk}
                                                 </span>
                                             ))}
                                         </div>
 
-                                        {/* Quick Move Stage Control */}
-                                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[10px]">
-                                            <span className="text-gray-400">{cand.appliedDate}</span>
-                                            <select
-                                                value={cand.stage}
-                                                onChange={(e) => onMoveStage(cand.id, e.target.value)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-[10px] text-gray-700 font-bold focus:outline-none"
-                                            >
-                                                {stages.map(s => (
-                                                    <option key={s} value={s}>{s}</option>
-                                                ))}
-                                            </select>
+                                        {/* Quick Move Stage Control & Details Button */}
+                                        <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-[10px]">
+                                            <span className="text-gray-400 font-semibold">{cand.assignedHr?.split(" ")[0]}</span>
+
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    onClick={() => onOpenDrawer(cand)}
+                                                    className="p-1 text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 rounded-[6px] transition-colors cursor-pointer"
+                                                    title="View Profile"
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                </button>
+                                                <select
+                                                    value={cand.stage}
+                                                    onChange={(e) => onMoveStage(cand.id, e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-[8px] px-2 py-1 text-[10px] text-gray-700 font-bold focus:outline-none cursor-pointer"
+                                                >
+                                                    {stages.map(s => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
 
                                 {stageCandidates.length === 0 && (
-                                    <div className="h-24 border border-dashed border-gray-200 rounded-[12px] flex items-center justify-center text-[11px] text-gray-400 font-medium">
-                                        Drag candidate here
+                                    <div className="h-32 border-2 border-dashed border-gray-200/80 rounded-[16px] flex flex-col items-center justify-center text-gray-400 gap-1.5 bg-white/40 hover:bg-white/80 transition-all">
+                                        <Briefcase className="w-5 h-5 text-gray-300 stroke-[1.5]" />
+                                        <span className="text-[11px] font-bold">Drop candidate here</span>
                                     </div>
                                 )}
                             </div>
@@ -1179,7 +1206,11 @@ const InterviewsView = ({ interviews, candidates, onAddFeedback, onScheduleNew }
                                 <tr key={int.id} className="hover:bg-gray-50/80 transition-all">
                                     <td className="py-3 px-4">
                                         <div className="flex items-center gap-2.5">
-                                            <img src={int.candidatePhoto} alt={int.candidateName} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                                            <img
+                                                src={int.candidatePhoto}
+                                                alt={int.candidateName}
+                                                className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                            />
                                             <div>
                                                 <div className="font-bold text-[#1E1E1E]">{int.candidateName}</div>
                                                 <div className="text-[10px] text-gray-400">{int.candidatePosition}</div>
@@ -1276,7 +1307,11 @@ const OffersView = ({ offers, onOpenDrawer, onUpdateOffer }) => {
                             <tr key={cand.id} className="hover:bg-gray-50/80 transition-all">
                                 <td className="py-3 px-4">
                                     <div className="flex items-center gap-2.5">
-                                        <img src={cand.photo} alt={cand.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                                        <img
+                                            src={cand.photo}
+                                            alt={cand.name}
+                                            className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                        />
                                         <div>
                                             <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7]" onClick={() => onOpenDrawer(cand)}>
                                                 {cand.name}
@@ -1286,7 +1321,10 @@ const OffersView = ({ offers, onOpenDrawer, onUpdateOffer }) => {
                                     </div>
                                 </td>
                                 <td className="py-3 px-4 font-semibold text-gray-800">{cand.position}</td>
-                                <td className="py-3 px-4 font-black text-emerald-600">{offer.offeredCtc || cand.expectedCtc}</td>
+                                <td className="py-3 px-4 font-black text-emerald-600 flex items-center gap-0.5 mt-2">
+                                    <IndianRupee className="w-3.5 h-3.5" />
+                                    <span>{(offer.offeredCtc || cand.expectedCtc || "").replace(/^₹/, '')}</span>
+                                </td>
                                 <td className="py-3 px-4 text-gray-600">{offer.offerDate || cand.appliedDate}</td>
                                 <td className="py-3 px-4 text-gray-600">{offer.joiningDate || "TBD"}</td>
                                 <td className="py-3 px-4">
@@ -1340,7 +1378,11 @@ const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
                         <tr key={cand.id} className="hover:bg-gray-50/80 transition-all opacity-80 hover:opacity-100">
                             <td className="py-3 px-4">
                                 <div className="flex items-center gap-2.5">
-                                    <img src={cand.photo} alt={cand.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                                    <img
+                                        src={cand.photo}
+                                        alt={cand.name}
+                                        className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                    />
                                     <div>
                                         <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7]" onClick={() => onOpenDrawer(cand)}>
                                             {cand.name}
@@ -1385,7 +1427,7 @@ const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
    CANDIDATE DETAIL DRAWER
 ───────────────────────────────────────────── */
 const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview, onMoveStage, onReject, onAddFeedback, onUploadDoc }) => {
-    const [drawerTab, setDrawerTab] = useState("basic"); // "basic" | "timeline" | "documents"
+    const [drawerTab, setDrawerTab] = useState("basic");
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-xs transition-opacity animate-fadeIn select-none">
@@ -1393,7 +1435,11 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                 {/* Drawer Header */}
                 <div className="p-5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src={candidate.photo} alt={candidate.name} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" />
+                        <img
+                            src={candidate.photo}
+                            alt={candidate.name}
+                            className="w-12 h-12 min-w-12 min-h-12 aspect-square rounded-full object-cover shrink-0 border-2 border-white shadow-sm"
+                        />
                         <div>
                             <h3 className="text-base font-black text-[#1E1E1E]">{candidate.name}</h3>
                             <p className="text-xs text-gray-500 font-medium">{candidate.position}</p>
@@ -1421,7 +1467,7 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                         <select
                             value={candidate.stage}
                             onChange={(e) => onMoveStage(candidate.id, e.target.value)}
-                            className="bg-white border border-blue-200 rounded-[8px] px-2 py-1 text-xs text-gray-800 font-bold focus:outline-none"
+                            className="bg-white border border-blue-200 rounded-[8px] px-2 py-1 text-xs text-gray-800 font-bold focus:outline-none cursor-pointer"
                         >
                             {PIPELINE_STAGES.map(s => (
                                 <option key={s} value={s}>Move to {s}</option>
@@ -1457,7 +1503,6 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                     {/* TAB: BASIC & PROFESSIONAL */}
                     {drawerTab === "basic" && (
                         <div className="space-y-6">
-                            {/* Basic Details Section */}
                             <div>
                                 <h4 className="text-xs font-black text-[#1E1E1E] uppercase tracking-wider mb-3">Basic Details</h4>
                                 <div className="grid grid-cols-2 gap-4 bg-gray-50/70 p-4 rounded-[14px] border border-gray-200/80 text-xs">
@@ -1480,7 +1525,6 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                                 </div>
                             </div>
 
-                            {/* Professional Details Section */}
                             <div>
                                 <h4 className="text-xs font-black text-[#1E1E1E] uppercase tracking-wider mb-3">Professional Details</h4>
                                 <div className="grid grid-cols-2 gap-4 bg-gray-50/70 p-4 rounded-[14px] border border-gray-200/80 text-xs">
@@ -1511,7 +1555,6 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                                 </div>
                             </div>
 
-                            {/* Skills */}
                             <div>
                                 <h4 className="text-xs font-black text-[#1E1E1E] uppercase tracking-wider mb-2">Skills & Technologies</h4>
                                 <div className="flex flex-wrap gap-1.5">
@@ -1647,7 +1690,7 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
 };
 
 /* ─────────────────────────────────────────────
-   MODAL: ADD CANDIDATE
+   MODALS IMPLEMENTATION
 ───────────────────────────────────────────── */
 const AddCandidateModal = ({ onClose, onSave }) => {
     const [form, setForm] = useState({
@@ -1772,8 +1815,8 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8]">Save Candidate</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Save Candidate</button>
                     </div>
                 </form>
             </div>
@@ -1781,9 +1824,6 @@ const AddCandidateModal = ({ onClose, onSave }) => {
     );
 };
 
-/* ─────────────────────────────────────────────
-   MODAL: EDIT CANDIDATE
-───────────────────────────────────────────── */
 const EditCandidateModal = ({ candidate, onClose, onSave }) => {
     const [form, setForm] = useState({ ...candidate });
 
@@ -1856,8 +1896,8 @@ const EditCandidateModal = ({ candidate, onClose, onSave }) => {
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8]">Update</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Update</button>
                     </div>
                 </form>
             </div>
@@ -1865,9 +1905,6 @@ const EditCandidateModal = ({ candidate, onClose, onSave }) => {
     );
 };
 
-/* ─────────────────────────────────────────────
-   MODAL: SCHEDULE INTERVIEW
-───────────────────────────────────────────── */
 const ScheduleInterviewModal = ({ candidates, initialCandidate, onClose, onSave }) => {
     const [candId, setCandId] = useState(initialCandidate?.id || candidates[0]?.id || "");
     const [roundName, setRoundName] = useState("Technical Round 1");
@@ -1959,8 +1996,8 @@ const ScheduleInterviewModal = ({ candidates, initialCandidate, onClose, onSave 
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8]">Schedule</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Schedule</button>
                     </div>
                 </form>
             </div>
@@ -1968,9 +2005,6 @@ const ScheduleInterviewModal = ({ candidates, initialCandidate, onClose, onSave 
     );
 };
 
-/* ─────────────────────────────────────────────
-   MODAL: ADD FEEDBACK & RATING
-───────────────────────────────────────────── */
 const AddFeedbackModal = ({ interview, onClose, onSave }) => {
     const [rating, setRating] = useState(interview.rating || 4);
     const [feedback, setFeedback] = useState(interview.feedback || "");
@@ -2034,8 +2068,8 @@ const AddFeedbackModal = ({ interview, onClose, onSave }) => {
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8]">Save Feedback</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Save Feedback</button>
                     </div>
                 </form>
             </div>
@@ -2043,9 +2077,6 @@ const AddFeedbackModal = ({ interview, onClose, onSave }) => {
     );
 };
 
-/* ─────────────────────────────────────────────
-   MODAL: UPLOAD CANDIDATE DOCUMENT
-───────────────────────────────────────────── */
 const UploadDocumentModal = ({ candidate, onClose, onSave }) => {
     const [name, setName] = useState("");
     const [type, setType] = useState("Resume");
@@ -2092,8 +2123,8 @@ const UploadDocumentModal = ({ candidate, onClose, onSave }) => {
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8]">Upload</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Upload</button>
                     </div>
                 </form>
             </div>
@@ -2101,9 +2132,6 @@ const UploadDocumentModal = ({ candidate, onClose, onSave }) => {
     );
 };
 
-/* ─────────────────────────────────────────────
-   MODAL: UPDATE OFFER DETAILS
-───────────────────────────────────────────── */
 const UpdateOfferModal = ({ candidate, onClose, onSave }) => {
     const offer = candidate.offerDetails || {};
     const [offeredCtc, setOfferedCtc] = useState(offer.offeredCtc || candidate.expectedCtc || "₹20 LPA");
@@ -2172,8 +2200,8 @@ const UpdateOfferModal = ({ candidate, onClose, onSave }) => {
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8]">Save Offer</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Save Offer</button>
                     </div>
                 </form>
             </div>
@@ -2181,9 +2209,6 @@ const UpdateOfferModal = ({ candidate, onClose, onSave }) => {
     );
 };
 
-/* ─────────────────────────────────────────────
-   MODAL: REJECT CANDIDATE
-───────────────────────────────────────────── */
 const RejectCandidateModal = ({ candidate, onClose, onConfirm }) => {
     const [reason, setReason] = useState("Rejected");
 
@@ -2210,11 +2235,11 @@ const RejectCandidateModal = ({ candidate, onClose, onConfirm }) => {
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold">Cancel</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
                         <button
                             type="button"
                             onClick={() => onConfirm(reason)}
-                            className="px-4 py-2 bg-rose-600 text-white rounded-[10px] font-bold hover:bg-rose-700"
+                            className="px-4 py-2 bg-rose-600 text-white rounded-[10px] font-bold hover:bg-rose-700 cursor-pointer"
                         >
                             Confirm Rejection
                         </button>
