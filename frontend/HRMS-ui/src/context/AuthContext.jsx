@@ -120,15 +120,21 @@ export const AuthProvider = ({ children }) => {
     const canAccessRoute = useCallback((path) => {
         if (!user) return false;
 
-        // Global Admins have access to all routes unrestricted
         const userRole = user.role?.toLowerCase();
-        if (userRole === "global_admin" || userRole === "admin") return true;
-        
-        if (!user.permissions) return true; // Default fallback
-        
+
         // normalize: strip leading slash and trailing slash
         const normalize = (p) => p.replace(/^\//, "").replace(/\/$/, "");
         const normPath = normalize(path);
+
+        // Hire module is strictly accessible to Global Admin and HR roles only
+        if (normPath === "hire") {
+            return userRole === "global_admin" || userRole === "hr";
+        }
+
+        // Global Admins and Admins have access to all other routes
+        if (userRole === "global_admin" || userRole === "admin") return true;
+        
+        if (!user.permissions) return true; // Default fallback
 
         if (normPath === "dashboard" || normPath === "") return user.permissions.dashboard !== false;
         if (normPath === "me") return user.permissions.me !== false;
@@ -141,7 +147,6 @@ export const AuthProvider = ({ children }) => {
         if (normPath === "employees") return user.permissions.employees !== false;
         if (normPath === "payroll") return user.permissions.payroll !== false;
         if (normPath === "recruitment") return user.permissions.recruitment !== false;
-        if (normPath === "hire") return role === "global_admin" || role === "hr";
         if (normPath === "offboarding-onboarding") return user.permissions.offboardingAndOnboarding !== false;
         if (normPath === "organization") return user.permissions.organization !== false;
 
