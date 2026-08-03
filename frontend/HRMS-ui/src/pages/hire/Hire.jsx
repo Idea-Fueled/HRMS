@@ -41,17 +41,17 @@ const PIPELINE_STAGES = [
 ];
 
 const STAGE_CONFIG = {
-    "New Application":   { border: "border-t-indigo-500", dot: "bg-indigo-500", badge: "bg-indigo-50 text-indigo-700 border border-indigo-200" },
-    "Resume Screening":  { border: "border-t-amber-500",  dot: "bg-amber-500",  badge: "bg-amber-50 text-amber-700 border border-amber-200" },
-    "HR Round":          { border: "border-t-purple-500", dot: "bg-purple-500", badge: "bg-purple-50 text-purple-700 border border-purple-200" },
-    "Technical Round 1": { border: "border-t-cyan-500",   dot: "bg-cyan-500",   badge: "bg-cyan-50 text-cyan-700 border border-cyan-200" },
-    "Technical Round 2": { border: "border-t-blue-500",   dot: "bg-blue-500",   badge: "bg-blue-50 text-blue-700 border border-blue-200" },
-    "Manager Round":     { border: "border-t-teal-500",   dot: "bg-teal-500",   badge: "bg-teal-50 text-teal-700 border border-teal-200" },
-    "HR Discussion":     { border: "border-t-violet-500", dot: "bg-violet-500", badge: "bg-violet-50 text-violet-700 border border-violet-200" },
-    "Offer Sent":        { border: "border-t-emerald-500",dot: "bg-emerald-500",badge: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
-    "Offer Accepted":    { border: "border-t-green-600",  dot: "bg-green-600",  badge: "bg-green-50 text-green-700 border border-green-200" },
-    "Joined":            { border: "border-t-[#2D79C7]",  dot: "bg-[#2D79C7]",  badge: "bg-blue-100 text-[#2D79C7] border border-blue-200" },
-    "Rejected":          { border: "border-t-rose-500",   dot: "bg-rose-500",   badge: "bg-rose-50 text-rose-700 border border-rose-200" }
+    "New Application": { border: "border-t-indigo-500", dot: "bg-indigo-500", badge: "bg-indigo-50 text-indigo-700 border border-indigo-200" },
+    "Resume Screening": { border: "border-t-amber-500", dot: "bg-amber-500", badge: "bg-amber-50 text-amber-700 border border-amber-200" },
+    "HR Round": { border: "border-t-purple-500", dot: "bg-purple-500", badge: "bg-purple-50 text-purple-700 border border-purple-200" },
+    "Technical Round 1": { border: "border-t-cyan-500", dot: "bg-cyan-500", badge: "bg-cyan-50 text-cyan-700 border border-cyan-200" },
+    "Technical Round 2": { border: "border-t-blue-500", dot: "bg-blue-500", badge: "bg-blue-50 text-blue-700 border border-blue-200" },
+    "Manager Round": { border: "border-t-teal-500", dot: "bg-teal-500", badge: "bg-teal-50 text-teal-700 border border-teal-200" },
+    "HR Discussion": { border: "border-t-violet-500", dot: "bg-violet-500", badge: "bg-violet-50 text-violet-700 border border-violet-200" },
+    "Offer Sent": { border: "border-t-emerald-500", dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
+    "Offer Accepted": { border: "border-t-green-600", dot: "bg-green-600", badge: "bg-green-50 text-green-700 border border-green-200" },
+    "Joined": { border: "border-t-[#2D79C7]", dot: "bg-[#2D79C7]", badge: "bg-blue-100 text-[#2D79C7] border border-blue-200" },
+    "Rejected": { border: "border-t-rose-500", dot: "bg-rose-500", badge: "bg-rose-50 text-rose-700 border border-rose-200" }
 };
 
 const POSITIONS = [
@@ -374,18 +374,16 @@ export const Hire = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-[14px] text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                                isActive
-                                    ? "bg-[#2D79C7] text-white shadow-md shadow-blue-500/15"
-                                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                            }`}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-[14px] text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${isActive
+                                ? "bg-[#2D79C7] text-white shadow-md shadow-blue-500/15"
+                                : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                                }`}
                         >
                             <Icon className="w-4 h-4" />
                             <span>{tab.label}</span>
                             {tab.count !== undefined && (
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                                    isActive ? "bg-white/20 text-white" : "bg-gray-200/80 text-gray-700"
-                                }`}>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isActive ? "bg-white/20 text-white" : "bg-gray-200/80 text-gray-700"
+                                    }`}>
                                     {tab.count}
                                 </span>
                             )}
@@ -800,10 +798,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
                         <Users className="w-4 h-4 text-[#2D79C7]" />
                         Recent Candidates
                     </h3>
-                    <button onClick={onAddCandidate} className="text-xs text-[#2D79C7] font-bold hover:underline cursor-pointer flex items-center gap-1">
-                        <Plus className="w-3.5 h-3.5" />
-                        Add Candidate
-                    </button>
+
                 </div>
 
                 <div className="divide-y divide-gray-100">
@@ -1221,11 +1216,10 @@ const InterviewsView = ({ interviews, candidates, onAddFeedback, onScheduleNew }
                                             ) : (
                                                 <span className="text-gray-400 text-[10px]">No Rating</span>
                                             )}
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                int.status === "Passed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${int.status === "Passed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
                                                 int.status === "Failed" ? "bg-rose-50 text-rose-700 border border-rose-200" :
-                                                "bg-blue-50 text-blue-700 border border-blue-200"
-                                            }`}>
+                                                    "bg-blue-50 text-blue-700 border border-blue-200"
+                                                }`}>
                                                 {int.status}
                                             </span>
                                         </div>
@@ -1301,11 +1295,10 @@ const OffersView = ({ offers, onOpenDrawer, onUpdateOffer }) => {
                                 <td className="py-3 px-4 text-gray-600">{offer.offerDate || cand.appliedDate}</td>
                                 <td className="py-3 px-4 text-gray-600">{offer.joiningDate || "TBD"}</td>
                                 <td className="py-3 px-4">
-                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                        cand.status === "Joined" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
+                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${cand.status === "Joined" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
                                         cand.status === "Offer Accepted" ? "bg-cyan-100 text-cyan-800 border border-cyan-300" :
-                                        "bg-purple-100 text-purple-800 border border-purple-300"
-                                    }`}>
+                                            "bg-purple-100 text-purple-800 border border-purple-300"
+                                        }`}>
                                         {cand.status}
                                     </span>
                                 </td>
@@ -1564,10 +1557,9 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                                             <span className="absolute left-1.5 top-5 w-3 h-3 rounded-full bg-[#2D79C7] ring-4 ring-blue-50" />
                                             <div className="flex items-center justify-between">
                                                 <h5 className="text-xs font-bold text-[#1E1E1E]">{int.roundName}</h5>
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                    int.status === "Passed" ? "bg-emerald-50 text-emerald-700" :
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${int.status === "Passed" ? "bg-emerald-50 text-emerald-700" :
                                                     int.status === "Failed" ? "bg-rose-50 text-rose-700" : "bg-blue-50 text-blue-700"
-                                                }`}>
+                                                    }`}>
                                                     {int.status}
                                                 </span>
                                             </div>
@@ -2028,9 +2020,8 @@ const AddFeedbackModal = ({ interview, onClose, onSave }) => {
                                     key={num}
                                     type="button"
                                     onClick={() => setRating(num)}
-                                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                                        rating >= num ? "bg-amber-50 border-amber-300 text-amber-500" : "bg-gray-50 border-gray-200 text-gray-300"
-                                    }`}
+                                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${rating >= num ? "bg-amber-50 border-amber-300 text-amber-500" : "bg-gray-50 border-gray-200 text-gray-300"
+                                        }`}
                                 >
                                     <Star className={`w-5 h-5 ${rating >= num ? "fill-amber-400" : ""}`} />
                                 </button>
