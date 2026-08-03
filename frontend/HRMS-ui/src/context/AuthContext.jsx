@@ -61,7 +61,7 @@ const ROLE_PERMISSIONS = {
 /* Routes each role is allowed to visit */
 export const ROLE_ALLOWED_ROUTES = {
     global_admin: ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
-    admin:        ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
+    admin:        ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/offboarding-onboarding"],
     hr:           ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
     manager:      ["/dashboard", "/me", "/my-team", "/my-finances", "/documents", "/time-attendance"],
     employee:     ["/dashboard", "/me", "/my-finances", "/documents", "/time-attendance"],

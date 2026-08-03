@@ -137,6 +137,20 @@ const menuCategories = [
                 ),
             },
             {
+                name: "Hire",
+                to: "/hire",
+                permissionKey: "hire",
+                roles: ["global_admin", "hr"],
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <line x1="19" y1="8" x2="19" y2="14" />
+                        <line x1="16" y1="11" x2="22" y2="11" />
+                    </svg>
+                ),
+            },
+            {
                 name: "Offboarding & Onboarding",
                 to: "/offboarding-onboarding",
                 permissionKey: "offboardingAndOnboarding",
@@ -158,8 +172,14 @@ const Sidebar = ({ onClose }) => {
     const hasItemPermission = (item) => {
         if (!user) return false;
 
-        // Global Admins see all sidebar items
         const role = user.role?.toLowerCase();
+
+        // Hire module is strictly accessible to Global Admin and HR users only
+        if (item.permissionKey === "hire" || item.to === "/hire") {
+            return role === "global_admin" || role === "hr";
+        }
+
+        // Global Admins & Admins see all other sidebar items
         if (role === "global_admin" || role === "admin") return true;
 
         if (!user.permissions) return true; // Default fallback

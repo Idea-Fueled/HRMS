@@ -9,7 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "sonner";
 import {
-    Hire, Payroll, Recruitment, OffboardingOnboarding, Organization
+    Payroll, Recruitment, OffboardingOnboarding, Organization
 } from "./pages/placeholders/Placeholders";
 import TimeAttendance from "./pages/time-attendance/TimeAttendance";
 import { Documents } from "./pages/documents/Documents";
@@ -19,12 +19,14 @@ import Employees from "./pages/employees/Employees";
 import EmployeeProfile from "./pages/profile/EmployeeProfile";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
 import SessionTimeoutManager from "./components/SessionTimeoutModal";
+import Hire from "./pages/hire/Hire";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
 ───────────────────────────────────────────── */
 const ALL_ROLES        = ["global_admin", "admin", "hr", "manager", "employee"];
 const ADMIN_HR         = ["global_admin", "admin", "hr"];
+const GLOBAL_ADMIN_HR  = ["global_admin", "hr"];
 const ADMIN_HR_MANAGER = ["global_admin", "admin", "hr", "manager"];
 
 const router = createBrowserRouter([
@@ -135,7 +137,7 @@ const router = createBrowserRouter([
             {
                 path: "hire",
                 element: (
-                    <ProtectedRoute allowedRoles={ADMIN_HR}>
+                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_HR}>
                         <Hire />
                     </ProtectedRoute>
                 ),
