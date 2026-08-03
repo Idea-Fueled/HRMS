@@ -1664,13 +1664,13 @@ const AddCandidateModal = ({ onClose, onSave }) => {
         email: "",
         phone: "",
         address: "",
-        position: "Frontend Developer (React)",
-        experience: "3 Yrs",
+        position: "",
+        experience: "",
         currentCompany: "",
         currentCtc: "",
         expectedCtc: "",
-        noticePeriod: "30 Days",
-        skills: "React, Node.js",
+        noticePeriod: "",
+        skills: "",
         assignedHr: HR_ASSIGNESS[0],
         stage: "New Application"
     });
@@ -1681,7 +1681,13 @@ const AddCandidateModal = ({ onClose, onSave }) => {
             toast.error("Name and email are required");
             return;
         }
-        onSave({ ...form, cvFile, cvName: cvFile ? cvFile.name : "" });
+        const formattedExp = form.experience !== "" ? (String(form.experience).toLowerCase().includes("yr") ? form.experience : `${form.experience} Yrs`) : "0 Yrs";
+        onSave({
+            ...form,
+            experience: formattedExp,
+            cvFile,
+            cvName: cvFile ? cvFile.name : ""
+        });
     };
 
     return (
@@ -1733,14 +1739,15 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                                 type="text"
                                 value={form.position}
                                 onChange={e => setForm({ ...form, position: e.target.value })}
-                                placeholder="e.g. Frontend Developer (React)"
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                             />
                         </div>
                         <div>
-                            <label className="block text-gray-500 font-bold mb-1">Experience</label>
+                            <label className="block text-gray-500 font-bold mb-1">Experience (Years)</label>
                             <input
-                                type="text"
+                                type="number"
+                                min="0"
+                                step="0.5"
                                 value={form.experience}
                                 onChange={e => setForm({ ...form, experience: e.target.value })}
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
