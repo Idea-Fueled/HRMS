@@ -97,6 +97,7 @@ export const EmployeeProfile = () => {
 
     const [showEduModal, setShowEduModal] = useState(false);
     const [newEdu, setNewEdu] = useState({ degree: "", institution: "", fieldOfStudy: "", passingYear: "", level: "Post Graduate" });
+    const [editingEduIdx, setEditingEduIdx] = useState(null);
     
     const [showExpModal, setShowExpModal] = useState(false);
     const [newExp, setNewExp] = useState({ title: "", company: "", period: "", description: "" });
@@ -361,7 +362,7 @@ export const EmployeeProfile = () => {
     // 3. Education Operations
     const currentEducation = useMemo(() => {
         if (Array.isArray(employee?.education) && employee.education.length > 0) return employee.education;
-        return DEFAULT_EDUCATION;
+        return [];
     }, [employee]);
 
     const handleAddEducationSubmit = async (e) => {
@@ -370,16 +371,22 @@ export const EmployeeProfile = () => {
             toast.error("Degree and Institution are required.");
             return;
         }
-        const updated = [newEdu, ...currentEducation];
-        const ok = await persistEmployeeUpdate({ education: updated }, "Education record added!");
+        let updated;
+        if (editingEduIdx !== null) {
+            updated = currentEducation.map((edu, i) => i === editingEduIdx ? newEdu : edu);
+        } else {
+            updated = [newEdu, ...currentEducation];
+        }
+        const ok = await persistEmployeeUpdate({ education: updated }, editingEduIdx !== null ? "Education record updated!" : "Education record added!");
         if (ok) {
             setShowEduModal(false);
+            setEditingEduIdx(null);
             setNewEdu({ degree: "", institution: "", fieldOfStudy: "", passingYear: "", level: "Post Graduate" });
         }
     };
 
     const handleDeleteEducation = (idx) => {
-        if (!canDelete) return;
+        if (!canEdit) return;
         const target = currentEducation[idx];
         setConfirmDelete({
             isOpen: true,
@@ -463,7 +470,7 @@ export const EmployeeProfile = () => {
     // 6. Asset Operations
     const currentAssets = useMemo(() => {
         if (Array.isArray(employee?.assets) && employee.assets.length > 0) return employee.assets;
-        return DEFAULT_ASSETS;
+        return [];
     }, [employee]);
 
     const handleAddAssetSubmit = async (e) => {
@@ -777,7 +784,11 @@ export const EmployeeProfile = () => {
                                 {canEdit && (
                                     <button
                                         type="button"
-                                        onClick={() => setShowEduModal(true)}
+                                        onClick={() => {
+                                            setNewEdu({ degree: "", institution: "", fieldOfStudy: "", passingYear: "", level: "Post Graduate" });
+                                            setEditingEduIdx(null);
+                                            setShowEduModal(true);
+                                        }}
                                         className="text-[#2D79C7] hover:text-[#1F5EA8] text-xs font-bold flex items-center gap-1 cursor-pointer"
                                     >
                                         <Plus className="w-3.5 h-3.5" /> Add Degree
@@ -786,30 +797,48 @@ export const EmployeeProfile = () => {
                             </div>
 
                             <div className="space-y-3">
-                                {currentEducation.map((edu, idx) => (
-                                    <div key={idx} className="group bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
-                                        <div>
-                                            <h4 className="text-[#1E1E1E] text-xs font-bold">{edu.degree}</h4>
-                                            <p className="text-gray-500 text-[11px] font-medium">{edu.fieldOfStudy || edu.institution}</p>
-                                            <p className="text-gray-400 text-[10.5px]">{edu.institution} · Graduated {edu.passingYear}</p>
+                                {currentEducation.length === 0 ? (
+                                    <p className="text-gray-400 text-xs italic text-center py-4 font-semibold select-none">No education qualifications added yet.</p>
+                                ) : (
+                                    currentEducation.map((edu, idx) => (
+                                        <div key={idx} className="group bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-[#1E1E1E] text-xs font-bold">{edu.degree}</h4>
+                                                <p className="text-gray-500 text-[11px] font-medium">{edu.fieldOfStudy || edu.institution}</p>
+                                                <p className="text-gray-400 text-[10.5px]">{edu.institution} · Graduated {edu.passingYear}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="bg-blue-50 text-[#2D79C7] text-[10.5px] font-bold px-2.5 py-1 rounded-md border border-blue-100">
+                                                    {edu.level || "Qualification"}
+                                                </span>
+                                                {canEdit && (
+                                                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setNewEdu({ ...edu });
+                                                                setEditingEduIdx(idx);
+                                                                setShowEduModal(true);
+                                                            }}
+                                                            className="p-1 text-gray-400 hover:text-[#2D79C7] transition-colors cursor-pointer"
+                                                            title="Edit Education"
+                                                        >
+                                                            <Edit3 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteEducation(idx)}
+                                                            className="p-1 text-gray-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                                            title="Delete Education"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="bg-blue-50 text-[#2D79C7] text-[10.5px] font-bold px-2.5 py-1 rounded-md border border-blue-100">
-                                                {edu.level || "Qualification"}
-                                            </span>
-                                            {canDelete && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteEducation(idx)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                    title="Delete Education"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
 
@@ -1119,51 +1148,61 @@ export const EmployeeProfile = () => {
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {currentAssets.map((asset, idx) => (
-                            <div key={idx} className="premium-3d-card p-6 space-y-4 relative group">
-                                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
-                                            <Laptop className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-[#1E1E1E] text-xs font-extrabold">{asset.name}</h4>
-                                            <p className="text-gray-400 text-[10.5px]">{asset.category}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
-                                            {asset.status || "Active"}
-                                        </span>
-                                        {canDelete && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteAsset(idx)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                title="Delete Asset"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </div>
+                        {currentAssets.length === 0 ? (
+                            <div className="col-span-full py-12 text-center select-none bg-slate-50/50 rounded-[20px] border border-dashed border-slate-200 animate-fadeIn">
+                                <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] mx-auto mb-3">
+                                    <Laptop className="w-5 h-5" />
                                 </div>
-
-                                <div className="space-y-2 text-xs text-gray-600 font-medium">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-400">Asset Tag / Serial:</span>
-                                        <span className="font-mono font-bold text-[#1E1E1E]">{asset.assetTag || `${empCode}-AST`}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-400">Issued Date:</span>
-                                        <span className="font-semibold text-gray-700">{formatDateStr(asset.issuedDate)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-400">Condition:</span>
-                                        <span className="text-emerald-600 font-bold">{asset.condition || "Excellent"}</span>
-                                    </div>
-                                </div>
+                                <h4 className="text-slate-850 text-xs font-bold">No assets assigned yet</h4>
+                                <p className="text-slate-400 text-[11px] mt-1">Devices and items assigned to this employee will appear here.</p>
                             </div>
-                        ))}
+                        ) : (
+                            currentAssets.map((asset, idx) => (
+                                <div key={idx} className="premium-3d-card p-6 space-y-4 relative group">
+                                    <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
+                                                <Laptop className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">{asset.name}</h4>
+                                                <p className="text-gray-400 text-[10.5px]">{asset.category}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
+                                                {asset.status || "Active"}
+                                            </span>
+                                            {canDelete && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteAsset(idx)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                    title="Delete Asset"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 text-xs text-gray-600 font-medium">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-400">Asset Tag / Serial:</span>
+                                            <span className="font-mono font-bold text-[#1E1E1E]">{asset.assetTag || `${empCode}-AST`}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-400">Issued Date:</span>
+                                            <span className="font-semibold text-gray-700">{formatDateStr(asset.issuedDate)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-400">Condition:</span>
+                                            <span className="text-emerald-600 font-bold">{asset.condition || "Excellent"}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -1405,9 +1444,9 @@ export const EmployeeProfile = () => {
                         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                             <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
                                 <GraduationCap className="w-4 h-4 text-[#2D79C7]" />
-                                <span>Add Educational Qualification</span>
+                                <span>{editingEduIdx !== null ? "Edit Educational Qualification" : "Add Educational Qualification"}</span>
                             </h3>
-                            <button type="button" onClick={() => setShowEduModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                            <button type="button" onClick={() => { setShowEduModal(false); setEditingEduIdx(null); }} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -1464,11 +1503,11 @@ export const EmployeeProfile = () => {
                             </div>
 
                             <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
-                                <button type="button" onClick={() => setShowEduModal(false)} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
+                                <button type="button" onClick={() => { setShowEduModal(false); setEditingEduIdx(null); }} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
                                     Cancel
                                 </button>
                                 <button type="submit" disabled={saving} className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer">
-                                    Add Education
+                                    {editingEduIdx !== null ? "Save Changes" : "Add Education"}
                                 </button>
                             </div>
                         </form>
