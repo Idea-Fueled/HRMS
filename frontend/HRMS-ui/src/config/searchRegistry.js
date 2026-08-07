@@ -126,7 +126,7 @@ export const SEARCH_REGISTRY = [
     },
     {
         id: "nav_time_attendance",
-        title: "Time & Attendance",
+        title: "Time Attend",
         description: "Attendance check-ins, shift schedules, leave management & holidays",
         keywords: ["time", "attendance", "clock in", "clock out", "leaves", "holidays", "shifts", "presence"],
         category: "Navigation",

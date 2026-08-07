@@ -111,7 +111,7 @@ const menuCategories = [
                 ),
             },
             {
-                name: "Time & Attendance",
+                name: "Time Attend",
                 to: "/time-attendance",
                 permissionKey: "timeAndAttend",
                 icon: (
@@ -129,7 +129,7 @@ const menuCategories = [
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
                                 <path d="M6 3h12" />
                                 <path d="M6 8h12" />
-                                <path d="l6 13 8.5 8" />
+                                <path d="m6 13 8.5 8" />
                                 <path d="M6 13h3" />
                                 <path d="M9 13c6.667 0 6.667-10 0-10" />
                             </svg>
@@ -237,6 +237,7 @@ const Sidebar = ({ onClose }) => {
                                 const isActive = currentPath === item.to || (item.to === "/dashboard" && (currentPath === "/" || currentPath === ""));
                                 const hasSubItems = item.subItems && item.subItems.length > 0;
                                 const isAnySubActive = item.subItems?.some(sub => currentPath === sub.to);
+                                const isParentActive = isActive || isAnySubActive;
 
                                 return (
                                     <li key={item.name} className="list-none">
@@ -257,14 +258,14 @@ const Sidebar = ({ onClose }) => {
                                                         xmlns="http://www.w3.org/2000/svg" 
                                                         viewBox="0 0 20 20" 
                                                         fill="currentColor" 
-                                                        className={`w-4 h-4 transition-transform duration-200 ${isAnySubActive ? 'rotate-90' : 'group-hover/parent:rotate-90'}`}
+                                                        className={`w-4 h-4 transition-transform duration-200 ${isParentActive ? 'rotate-90' : 'group-hover/parent:rotate-90'}`}
                                                     >
                                                         <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
                                                     </svg>
                                                 )}
                                             </Link>
                                             {hasSubItems && (
-                                                <ul className={`pl-9 mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${isAnySubActive ? "max-h-40 opacity-100" : "max-h-0 opacity-0 group-hover/parent:max-h-40 group-hover/parent:opacity-100"}`}>
+                                                <ul className={`pl-9 mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${isParentActive ? "max-h-40 opacity-100" : "max-h-0 opacity-0 group-hover/parent:max-h-40 group-hover/parent:opacity-100"}`}>
                                                     {item.subItems.map((sub) => {
                                                         const isSubActive = currentPath === sub.to;
                                                         return (

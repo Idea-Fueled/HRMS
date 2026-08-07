@@ -1284,7 +1284,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                     {/* Time & Attendance */}
                                     <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
                                         <div>
-                                            <p className="text-xs font-black text-slate-800">Time & Attendance</p>
+                                            <p className="text-xs font-black text-slate-800">Time Attend</p>
                                             <p className="text-[10px] text-gray-400 font-bold">Check-ins, leaves tracking and shift times</p>
                                         </div>
                                         <input 

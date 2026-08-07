@@ -32,7 +32,7 @@ const pageMetadata = {
     "/employees": { title: "Employees", subtitle: "Manage employee records, profiles, and organizational data." },
     "/my-finances":           { title: "My Finances", subtitle: "Manage payslips, claims, and benefits." },
     "/documents":             { title: "Documents", subtitle: "Access your files, policy documents, and folders." },
-    "/time-attendance":       { title: "Time & Attendance", subtitle: "Track clock-ins, leaves, and work shifts." },
+    "/time-attendance":       { title: "Time Attend", subtitle: "Track clock-ins, leaves, and work shifts." },
     "/payroll":               { title: "Payroll", subtitle: "Manage payroll processing and salary records." },
     "/recruitment":           { title: "Recruitment", subtitle: "Manage job openings and candidates." },
     "/hire":                  { title: "Hire", subtitle: "Manage candidates, job openings, and interviews." },

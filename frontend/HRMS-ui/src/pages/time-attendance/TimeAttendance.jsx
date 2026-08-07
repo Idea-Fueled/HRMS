@@ -968,7 +968,7 @@ export const TimeAttendance = () => {
             {/* Header section matching Documents.jsx */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-150 gap-4">
                 <div>
-                    <h2 className="text-[#1E1E1E] text-[20px] font-black tracking-wide">Time & Attendance</h2>
+                    <h2 className="text-[#1E1E1E] text-[20px] font-black tracking-wide">Time Attend</h2>
                     <p className="text-gray-400 text-[12px] font-semibold mt-1">
                         Track clock-ins, leaves, department summaries, and work shifts.
                     </p>

@@ -76,9 +76,9 @@ export const MyTeam = () => (
 
 export const TimeAttendance = () => (
     <StandardPlaceholder 
-        title="Time & Attendance" 
+        title="Time Attend" 
         icon={Clock} 
-        message="Time & Attendance module is currently under development and will be available in an upcoming update." 
+        message="Time Attend module is currently under development and will be available in an upcoming update." 
     />
 );
 
