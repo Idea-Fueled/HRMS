@@ -9,10 +9,11 @@ import {
     getPeopleEvents,
     uploadProfilePicture,
     updateProfilePicture,
-    getUserFinances
+    getUserFinances,
+    uploadDocument
 } from "../../controllers/users/user.controller.js";
 import { isAuthenticated } from "../../middlewares/auth.middleware.js";
-import { upload } from "../../middlewares/upload.middleware.js";
+import { upload, uploadDoc } from "../../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -26,5 +27,6 @@ router.get("/away-today", isAuthenticated, getAwayToday);
 router.get("/people-events", isAuthenticated, getPeopleEvents);
 router.post("/upload-profile-picture", isAuthenticated, upload.single("image"), uploadProfilePicture);
 router.put("/update-profile-picture", isAuthenticated, updateProfilePicture);
+router.post("/upload-document", isAuthenticated, uploadDoc.single("file"), uploadDocument);
 
 export default router;

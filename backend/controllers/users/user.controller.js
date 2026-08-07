@@ -701,3 +701,26 @@ export const getUserFinances = async (req, res) => {
         });
     }
 };
+
+/* ─────────────────────────────────────────────
+   UPLOAD DOCUMENT (PDF OR IMAGE) TO CLOUDINARY
+ ───────────────────────────────────────────── */
+export const uploadDocument = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Please upload a file." });
+        }
+        
+        // Upload buffer to Cloudinary with resourceType = "auto" to handle PDFs and images
+        const result = await uploadToCloudinary(req.file.buffer, "employee_documents", "auto");
+        
+        return res.status(200).json({
+            success: true,
+            message: "File uploaded successfully.",
+            url: result.secure_url
+        });
+    } catch (error) {
+        console.error("Upload document controller error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};

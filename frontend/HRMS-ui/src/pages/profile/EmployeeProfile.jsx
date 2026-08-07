@@ -5,14 +5,14 @@ import {
     Shield, Clock, Edit3, X, Check, Eye, Download, Upload,
     Laptop, Mouse, ShieldCheck, Award, FileText,
     Heart, GraduationCap, PhoneCall, History, Loader2, Camera,
-    Plus, Trash2, PlusCircle, UserCheck, Lock
+    Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
-import { uploadProfilePicture } from "../../services/auth.service";
+import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
 
 /* ─────────────────────────────────────────────
    HELPERS & DEFAULT SEEDS
@@ -90,6 +90,7 @@ export const EmployeeProfile = () => {
     
     // Modals for adding items dynamically
     const [docModalFile, setDocModalFile] = useState(null);
+    const [docFile, setDocFile] = useState(null);
     const [showAddSkillInput, setShowAddSkillInput] = useState(false);
     const [newSkillText, setNewSkillText] = useState("");
     const [showAddInterestInput, setShowAddInterestInput] = useState(false);
@@ -437,7 +438,7 @@ export const EmployeeProfile = () => {
     // 5. Document Operations
     const currentDocuments = useMemo(() => {
         if (Array.isArray(employee?.userDocuments) && employee.userDocuments.length > 0) return employee.userDocuments;
-        return DEFAULT_DOCUMENTS;
+        return [];
     }, [employee]);
 
     const handleAddDocumentSubmit = async (e) => {
@@ -446,16 +447,41 @@ export const EmployeeProfile = () => {
             toast.error("Document Name is required.");
             return;
         }
-        const updated = [{ ...newDoc, uploadedAt: new Date(), status: "Verified" }, ...currentDocuments];
-        const ok = await persistEmployeeUpdate({ userDocuments: updated }, "Document added successfully!");
-        if (ok) {
-            setShowDocModal(false);
-            setNewDoc({ name: "", category: "Government ID", numberOrTag: "", url: "" });
+        setSaving(true);
+        try {
+            let fileUrl = "";
+            if (docFile) {
+                const formData = new FormData();
+                formData.append("file", docFile);
+                toast.loading("Uploading file...");
+                const uploadRes = await uploadDocumentFile(formData);
+                toast.dismiss();
+                if (uploadRes.data?.success && uploadRes.data?.url) {
+                    fileUrl = uploadRes.data.url;
+                } else {
+                    toast.error("File upload failed.");
+                    setSaving(false);
+                    return;
+                }
+            }
+            const updated = [{ ...newDoc, url: fileUrl, uploadedAt: new Date(), status: "Verified" }, ...currentDocuments];
+            const ok = await persistEmployeeUpdate({ userDocuments: updated }, "Document added successfully!");
+            if (ok) {
+                setShowDocModal(false);
+                setDocFile(null);
+                setNewDoc({ name: "", category: "Government ID", numberOrTag: "", url: "" });
+            }
+        } catch (err) {
+            console.error("Document upload failed:", err);
+            toast.dismiss();
+            toast.error(err.response?.data?.message || "Failed to upload document.");
+        } finally {
+            setSaving(false);
         }
     };
 
     const handleDeleteDocument = (idx) => {
-        if (!canDelete) return;
+        if (!canEdit) return;
         const target = currentDocuments[idx];
         setConfirmDelete({
             isOpen: true,
@@ -881,28 +907,28 @@ export const EmployeeProfile = () => {
                                     <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
                                         <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Blood Group</span>
                                         <span className="text-[#1E1E1E] font-bold block mt-1">
-                                            {employee?.bloodGroup || "O+"}
+                                            {employee?.bloodGroup || "—"}
                                         </span>
                                     </div>
 
                                     <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl">
                                         <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Father&apos;s Name</span>
                                         <span className="text-[#1E1E1E] font-bold block mt-1">
-                                            {employee?.fatherName || "Ramesh Kumar"}
+                                            {employee?.fatherName || "—"}
                                         </span>
                                     </div>
 
                                     <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
                                         <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Present Address</span>
                                         <span className="text-[#1E1E1E] font-medium block mt-1">
-                                            {employee?.presentAddress || "Flat 402, Block B, Idea Fueled Tech Residency, Electronic City, Bengaluru, KA 560100"}
+                                            {employee?.presentAddress || "—"}
                                         </span>
                                     </div>
 
                                     <div className="bg-[#F8FAFC] border border-gray-200/70 p-3.5 rounded-xl sm:col-span-2">
                                         <span className="text-gray-400 font-medium block text-[10.5px] uppercase tracking-wider">Permanent Address</span>
                                         <span className="text-[#1E1E1E] font-medium block mt-1">
-                                            {employee?.permanentAddress || "House No. 128, Sector 15, Green Park, New Delhi, India 110016"}
+                                            {employee?.permanentAddress || "—"}
                                         </span>
                                     </div>
 
@@ -914,16 +940,16 @@ export const EmployeeProfile = () => {
                                                 Emergency Contact
                                             </span>
                                             <h4 className="text-[#1E1E1E] text-xs font-black">
-                                                {employee?.emergencyContactName || "Ramesh Kumar"}
+                                                {employee?.emergencyContactName || "—"}
                                             </h4>
                                             <p className="text-gray-500 text-[11px] font-medium">
-                                                Relation: <span className="font-bold text-gray-700">{employee?.emergencyContactRelation || "Father"}</span>
+                                                Relation: <span className="font-bold text-gray-700">{employee?.emergencyContactRelation || "—"}</span>
                                             </p>
                                         </div>
 
                                         <div className="bg-white border border-rose-200 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 shadow-sm flex items-center gap-2">
                                             <Phone className="w-3.5 h-3.5 text-rose-500" />
-                                            <span>{employee?.emergencyContactNumber || employee?.phoneNumber || "+91 98123 45678"}</span>
+                                            <span>{employee?.emergencyContactNumber || employee?.phoneNumber || "—"}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1076,60 +1102,76 @@ export const EmployeeProfile = () => {
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {currentDocuments.map((doc, idx) => (
-                            <div key={idx} className="premium-3d-card p-5 flex flex-col justify-between space-y-4 relative group">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
-                                        <FileText className="w-5 h-5" />
+                        {currentDocuments.length === 0 ? (
+                            <div className="col-span-full py-12 text-center select-none bg-slate-50/50 rounded-[20px] border border-dashed border-slate-200 animate-fadeIn">
+                                <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] mx-auto mb-3">
+                                    <FileText className="w-5 h-5" />
+                                </div>
+                                <h4 className="text-slate-850 text-xs font-bold">No documents uploaded yet</h4>
+                                <p className="text-slate-400 text-[11px] mt-1">Official ID, agreements, or certificates will appear here.</p>
+                            </div>
+                        ) : (
+                            currentDocuments.map((doc, idx) => (
+                                <div key={idx} className="premium-3d-card p-5 flex flex-col justify-between space-y-4 relative group">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
+                                            <FileText className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
+                                                {doc.status || "Verified"}
+                                            </span>
+                                            {canEdit && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteDocument(idx)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                    title="Delete Document"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                            {doc.status || "Verified"}
-                                        </span>
-                                        {canDelete && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteDocument(idx)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                title="Delete Document"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+
+                                    <div>
+                                        <h4 className="text-[#1E1E1E] text-sm font-bold">{doc.name}</h4>
+                                        <p className="text-gray-400 text-xs mt-0.5">{doc.category}</p>
+                                        {doc.numberOrTag && (
+                                            <p className="text-gray-500 font-mono text-xs font-bold mt-2">
+                                                {doc.numberOrTag}
+                                            </p>
                                         )}
                                     </div>
-                                </div>
 
-                                <div>
-                                    <h4 className="text-[#1E1E1E] text-sm font-bold">{doc.name}</h4>
-                                    <p className="text-gray-400 text-xs mt-0.5">{doc.category}</p>
-                                    {doc.numberOrTag && (
-                                        <p className="text-gray-500 font-mono text-xs font-bold mt-2">
-                                            {doc.numberOrTag}
-                                        </p>
-                                    )}
-                                </div>
+                                    <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDocModalFile({ name: doc.name, tag: doc.numberOrTag || "Doc-Preview", type: doc.category, url: doc.url })}
+                                            className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                        >
+                                            <Eye className="w-3.5 h-3.5" />
+                                            <span>View</span>
+                                        </button>
 
-                                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                                    <button
-                                        type="button"
-                                        onClick={() => setDocModalFile({ name: doc.name, tag: doc.numberOrTag || "Doc-Preview", type: doc.category })}
-                                        className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                    >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        <span>View</span>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => toast.success(`Downloading ${doc.name}...`)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                    >
-                                        <Download className="w-3.5 h-3.5" />
-                                        <span>Download</span>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (doc.url) {
+                                                    window.open(doc.url, "_blank");
+                                                } else {
+                                                    toast.info("No download URL available.");
+                                                }
+                                            }}
+                                            className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                            <span>Download</span>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -1654,8 +1696,23 @@ export const EmployeeProfile = () => {
                                 />
                             </div>
 
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">Attach File (Image / PDF)</label>
+                                <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setDocFile(e.target.files[0]);
+                                        }
+                                    }}
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7]"
+                                    required
+                                />
+                            </div>
+
                             <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
-                                <button type="button" onClick={() => setShowDocModal(false)} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
+                                <button type="button" onClick={() => { setShowDocModal(false); setDocFile(null); }} className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer">
                                     Cancel
                                 </button>
                                 <button type="submit" disabled={saving} className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer">
@@ -1768,17 +1825,40 @@ export const EmployeeProfile = () => {
                             </button>
                         </div>
 
-                        <div className="bg-[#F8FAFC] border border-gray-200 rounded-2xl p-8 text-center space-y-3">
-                            <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto">
-                                <FileText className="w-8 h-8" />
-                            </div>
+                        <div className="bg-[#F8FAFC] border border-gray-200 rounded-2xl p-6 text-center space-y-3 select-none max-h-[350px] overflow-y-auto">
+                            {docModalFile.url ? (
+                                docModalFile.url.match(/\.(jpeg|jpg|gif|png|webp)/i) ? (
+                                    <div className="max-h-[220px] overflow-hidden rounded-xl border border-gray-200 bg-white flex items-center justify-center shadow-2xs">
+                                        <img src={docModalFile.url} alt={docModalFile.name} className="max-w-full max-h-[210px] object-contain" />
+                                    </div>
+                                ) : (
+                                    <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto shadow-inner">
+                                        <FileText className="w-8 h-8" />
+                                    </div>
+                                )
+                            ) : (
+                                <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto shadow-inner">
+                                    <FileText className="w-8 h-8" />
+                                </div>
+                            )}
                             <div>
                                 <p className="text-xs font-extrabold text-[#1E1E1E]">{docModalFile.type} Preview</p>
                                 <p className="text-[11px] font-mono text-gray-400 mt-0.5">{docModalFile.tag}</p>
                             </div>
-                            <p className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 inline-block">
+                            <p className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 inline-block select-none">
                                 Document Verified & Encrypted
                             </p>
+                            {docModalFile.url && (
+                                <a 
+                                    href={docModalFile.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-xs text-[#2D79C7] hover:underline font-bold flex items-center justify-center gap-1 mt-2 cursor-pointer"
+                                >
+                                    <span>Open file in new tab</span>
+                                    <ArrowUpRight className="w-3.5 h-3.5" />
+                                </a>
+                            )}
                         </div>
 
                         <div className="flex gap-3 justify-end pt-2">
@@ -1788,13 +1868,17 @@ export const EmployeeProfile = () => {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    toast.success(`Downloading ${docModalFile.name}...`);
+                                    if (docModalFile.url) {
+                                        window.open(docModalFile.url, "_blank");
+                                    } else {
+                                        toast.success(`Downloading ${docModalFile.name}...`);
+                                    }
                                     setDocModalFile(null);
                                 }}
                                 className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold py-2 px-5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                             >
                                 <Download className="w-3.5 h-3.5" />
-                                <span>Download Copy</span>
+                                <span>Open / Download</span>
                             </button>
                         </div>
                     </div>

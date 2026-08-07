@@ -24,4 +24,12 @@ export const updateProfilePicture = async (url) => {
     return API.put("/users/update-profile-picture", { profilePicture: url });
 };
 
+export const uploadDocumentFile = async (formData) => {
+    return API.post("/users/upload-document", formData, {
+        headers: {
+            "Content-Type": "multipart/form-data"
+        }
+    });
+};
+
 export default API;
