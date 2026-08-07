@@ -778,7 +778,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
                 {summaryCards.map((card, idx) => {
                     const Icon = card.icon;
                     return (
-                        <div key={idx} className="bg-white border border-[#E5E7EB] rounded-[16px] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:shadow-md transition-all">
+                        <div key={idx} className="premium-3d-card-mini p-4 flex flex-col justify-between">
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide truncate">{card.label}</span>
                                 <div className={`p-2 rounded-full ${card.bg} ${card.color}`}>
@@ -792,12 +792,13 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
             </div>
 
             {/* Middle Section: Recent Candidates */}
-            <div className="w-full bg-white border border-[#E5E7EB] rounded-[20px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+            <div className="w-full premium-3d-card p-5">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                     <h3 className="text-sm font-bold text-[#1E1E1E] flex items-center gap-2">
                         <Users className="w-4 h-4 text-[#2D79C7]" />
                         Recent Candidates
                     </h3>
+
 
                 </div>
 
@@ -862,7 +863,7 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {candidates.map(cand => (
-                    <div key={cand.id} className="bg-white border border-[#E5E7EB] rounded-[18px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:shadow-md transition-all">
+                    <div key={cand.id} className="premium-3d-card p-4 flex flex-col justify-between">
                         <div>
                             {/* Card Top */}
                             <div className="flex items-start justify-between gap-3 mb-3">
@@ -943,7 +944,7 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
 
     // Default List View Table
     return (
-        <div className="bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] overflow-x-auto">
+        <div className="premium-3d-card overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
@@ -1063,7 +1064,7 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
                                         key={cand.id}
                                         draggable
                                         onDragStart={(e) => onDragStart(e, cand.id)}
-                                        className="bg-white border border-gray-200 rounded-[16px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-lg hover:border-[#2D79C7]/50 transition-all duration-200 cursor-grab active:cursor-grabbing space-y-3 relative group"
+                                        className="premium-3d-card-mini p-4 cursor-grab active:cursor-grabbing space-y-3 relative group"
                                     >
                                         {/* Avatar & Info */}
                                         <div className="flex items-start gap-3">

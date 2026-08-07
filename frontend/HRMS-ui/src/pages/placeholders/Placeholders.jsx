@@ -22,7 +22,7 @@ const PageContainer = ({ title, children }) => {
 const StandardPlaceholder = ({ title, icon: Icon, message }) => {
     return (
         <PageContainer title={title}>
-            <div className="bg-white border border-[#E5E7EB] rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.02)] p-10 max-w-md w-full text-center flex flex-col items-center justify-center hover:shadow-[0_4px_20px_rgba(45,121,199,0.04)] transition-all duration-300">
+            <div className="premium-3d-card p-10 max-w-md w-full text-center flex flex-col items-center justify-center">
                 <div className="w-16 h-16 rounded-full bg-[#F0F7FF] border border-[#D0E5FC] flex items-center justify-center mb-5 text-[#2D79C7] shadow-inner">
                     <Icon className="w-7 h-7 stroke-[2]" />
                 </div>
@@ -43,7 +43,7 @@ const StandardPlaceholder = ({ title, icon: Icon, message }) => {
 const Phase2Placeholder = ({ title, icon: Icon }) => {
     return (
         <PageContainer title={title}>
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-10 max-w-md w-full text-center flex flex-col items-center justify-center hover:shadow-[0_8px_32px_rgba(45,121,199,0.06)] transition-all duration-300 relative overflow-hidden">
+            <div className="premium-3d-card p-10 max-w-md w-full text-center flex flex-col items-center justify-center relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8]" />
                 
                 <div className="w-16 h-16 rounded-full bg-blue-50 border border-blue-100/50 flex items-center justify-center mb-5 text-[#2D79C7] shadow-inner">

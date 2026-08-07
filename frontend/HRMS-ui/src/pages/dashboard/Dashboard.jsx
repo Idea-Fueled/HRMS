@@ -67,19 +67,7 @@ import {
    Section Card wrapper
 ───────────────────────────────────────────── */
 const Card = ({ children, className = "" }) => (
-    <div
-        className={`
-            bg-white
-            rounded-[28px]
-            border border-slate-100
-            shadow-[0_8px_20px_rgba(15,23,42,0.05),0_25px_50px_rgba(15,23,42,0.08),0_50px_100px_rgba(59,130,246,0.08)]
-            hover:-translate-y-1
-            hover:shadow-[0_12px_30px_rgba(15,23,42,0.08),0_35px_70px_rgba(15,23,42,0.12),0_70px_140px_rgba(59,130,246,0.12)]
-            transition-all
-            duration-300
-            ${className}
-        `}
-    >
+    <div className={`premium-3d-card flex flex-col overflow-hidden ${className}`}>
         {children}
     </div>
 );
