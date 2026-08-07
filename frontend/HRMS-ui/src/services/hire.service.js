@@ -172,6 +172,7 @@ export const updateCandidateStageApi = async (id, newStage) => {
 export const scheduleInterviewApi = async (candidateId, interviewData) => {
     const current = getCandidatesFromStorage();
     let createdInterview = null;
+    let candidateToUpdate = null;
 
     const updated = current.map(c => {
         if (c.id === candidateId) {
@@ -187,20 +188,31 @@ export const scheduleInterviewApi = async (candidateId, interviewData) => {
                 status: "Scheduled"
             };
             createdInterview = newInt;
-            return {
+            candidateToUpdate = {
                 ...c,
                 interviews: [...(c.interviews || []), newInt]
             };
+            return candidateToUpdate;
         }
         return c;
     });
 
     saveCandidatesToStorage(updated);
+
+    if (candidateToUpdate) {
+        try {
+            await API.put(`/hire/candidates/${candidateId}`, candidateToUpdate);
+        } catch (err) {
+            console.error("Failed to sync interview to backend", err);
+        }
+    }
+
     return createdInterview;
 };
 
 export const addInterviewFeedbackApi = async (candidateId, interviewId, feedbackData) => {
     const current = getCandidatesFromStorage();
+    let candidateToUpdate = null;
 
     const updated = current.map(c => {
         if (c.id === candidateId) {
@@ -215,17 +227,28 @@ export const addInterviewFeedbackApi = async (candidateId, interviewId, feedback
                 }
                 return int;
             });
-            return { ...c, interviews: updatedInterviews };
+            candidateToUpdate = { ...c, interviews: updatedInterviews };
+            return candidateToUpdate;
         }
         return c;
     });
 
     saveCandidatesToStorage(updated);
+
+    if (candidateToUpdate) {
+        try {
+            await API.put(`/hire/candidates/${candidateId}`, candidateToUpdate);
+        } catch (err) {
+            console.error("Failed to sync feedback to backend", err);
+        }
+    }
+
     return updated.find(c => c.id === candidateId);
 };
 
 export const addCandidateDocumentApi = async (candidateId, docData) => {
     const current = getCandidatesFromStorage();
+    let candidateToUpdate = null;
 
     const updated = current.map(c => {
         if (c.id === candidateId) {
@@ -237,20 +260,31 @@ export const addCandidateDocumentApi = async (candidateId, docData) => {
                 size: docData.size || "1.5 MB",
                 url: docData.url || "#"
             };
-            return {
+            candidateToUpdate = {
                 ...c,
                 documents: [...(c.documents || []), newDoc]
             };
+            return candidateToUpdate;
         }
         return c;
     });
 
     saveCandidatesToStorage(updated);
+
+    if (candidateToUpdate) {
+        try {
+            await API.put(`/hire/candidates/${candidateId}`, candidateToUpdate);
+        } catch (err) {
+            console.error("Failed to sync document to backend", err);
+        }
+    }
+
     return updated.find(c => c.id === candidateId);
 };
 
 export const updateOfferDetailsApi = async (candidateId, offerData) => {
     const current = getCandidatesFromStorage();
+    let candidateToUpdate = null;
 
     const updated = current.map(c => {
         if (c.id === candidateId) {
@@ -261,36 +295,57 @@ export const updateOfferDetailsApi = async (candidateId, offerData) => {
                 status: offerData.status || "Offer Sent",
                 notes: offerData.notes || ""
             };
-            return {
+            candidateToUpdate = {
                 ...c,
                 stage: offerData.status === "Joined" ? "Joined" : "Offer Sent",
                 status: offerData.status || "Offer Sent",
                 offerDetails: offerObj
             };
+            return candidateToUpdate;
         }
         return c;
     });
 
     saveCandidatesToStorage(updated);
+
+    if (candidateToUpdate) {
+        try {
+            await API.put(`/hire/candidates/${candidateId}`, candidateToUpdate);
+        } catch (err) {
+            console.error("Failed to sync offer details to backend", err);
+        }
+    }
+
     return updated.find(c => c.id === candidateId);
 };
 
 export const archiveCandidateApi = async (candidateId, reason) => {
     const current = getCandidatesFromStorage();
+    let candidateToUpdate = null;
 
     const updated = current.map(c => {
         if (c.id === candidateId) {
-            return {
+            candidateToUpdate = {
                 ...c,
                 stage: "Rejected",
                 status: "Rejected",
                 archiveReason: reason || "Rejected"
             };
+            return candidateToUpdate;
         }
         return c;
     });
 
     saveCandidatesToStorage(updated);
+
+    if (candidateToUpdate) {
+        try {
+            await API.put(`/hire/candidates/${candidateId}`, candidateToUpdate);
+        } catch (err) {
+            console.error("Failed to sync archive state to backend", err);
+        }
+    }
+
     return updated.find(c => c.id === candidateId);
 };
 
@@ -298,5 +353,12 @@ export const deleteCandidateApi = async (candidateId) => {
     const current = getCandidatesFromStorage();
     const updated = current.filter(c => c.id !== candidateId);
     saveCandidatesToStorage(updated);
+
+    try {
+        await API.delete(`/hire/candidates/${candidateId}`);
+    } catch (err) {
+        console.error("Failed to sync delete to backend", err);
+    }
+
     return true;
 };
