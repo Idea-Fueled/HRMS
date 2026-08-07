@@ -70,19 +70,6 @@ const menuCategories = [
         title: "Operations",
         items: [
             {
-                name: "Documents",
-                to: "/documents",
-                permissionKey: "documents",
-                icon: (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                    </svg>
-                ),
-            },
-            {
                 name: "Organization",
                 to: "/organization",
                 permissionKey: "organization",
@@ -93,6 +80,19 @@ const menuCategories = [
                         <line x1="15" y1="22" x2="15" y2="16" />
                         <line x1="9" y1="16" x2="15" y2="16" />
                         <path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M12 6h.01M12 10h.01" />
+                    </svg>
+                ),
+            },
+            {
+                name: "Documents",
+                to: "/documents",
+                permissionKey: "documents",
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
                     </svg>
                 ),
             },
