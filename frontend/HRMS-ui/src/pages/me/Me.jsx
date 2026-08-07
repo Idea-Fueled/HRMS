@@ -128,7 +128,7 @@ const AttendanceHeroBar = () => {
     };
 
     return (
-        <div className="bg-white border border-slate-200/80 rounded-[20px] p-6 sm:p-7 shadow-xs select-none">
+        <div className="premium-3d-card p-6 sm:p-7 select-none">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 
                 {/* Left Side: Analog Clock + User & Shift Info */}
@@ -230,7 +230,7 @@ const AttendanceKPIStats = () => {
             {kpis.map((kpi, idx) => (
                 <div
                     key={idx}
-                    className="bg-white border border-slate-200/80 rounded-[18px] p-5 shadow-2xs hover:border-slate-300 transition-all"
+                    className="premium-3d-card-mini p-5"
                 >
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{kpi.title}</span>
@@ -261,7 +261,7 @@ const VisualWorkdayTimeline = () => {
     ];
 
     return (
-        <div className="bg-white border border-slate-200/80 rounded-[20px] p-6 shadow-2xs space-y-6 select-none">
+        <div className="premium-3d-card p-6 space-y-6 select-none">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                 <div>
                     <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Weekly Schedule</h3>
@@ -1640,7 +1640,7 @@ const AttendanceLogsAndRequestsHub = () => {
     );
 
     return (
-        <div className="bg-white border border-slate-200/80 rounded-[24px] shadow-sm select-none overflow-hidden">
+        <div className="premium-3d-card select-none overflow-hidden">
             {/* Header Tabs Navigation */}
             <div className="border-b border-slate-200/80 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
                 <div className="flex items-center gap-2 bg-slate-200/60 p-1 rounded-2xl w-fit">
