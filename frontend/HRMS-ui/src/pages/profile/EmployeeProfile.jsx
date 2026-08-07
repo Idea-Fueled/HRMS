@@ -402,11 +402,12 @@ export const EmployeeProfile = () => {
     // 4. Experience Operations
     const currentExperience = useMemo(() => {
         if (Array.isArray(employee?.experienceTimeline) && employee.experienceTimeline.length > 0) return employee.experienceTimeline;
-        return DEFAULT_EXPERIENCE;
+        return [];
     }, [employee]);
 
     const handleAddExperienceSubmit = async (e) => {
         e.preventDefault();
+        if (!canDelete) return;
         if (!newExp.title.trim() || !newExp.company.trim()) {
             toast.error("Title and Company are required.");
             return;
@@ -1012,7 +1013,7 @@ export const EmployeeProfile = () => {
                                 <Briefcase className="w-4 h-4 text-[#2D79C7]" />
                                 <span>Experience Timeline</span>
                             </h3>
-                            {canEdit && (
+                            {canDelete && (
                                 <button
                                     type="button"
                                     onClick={() => setShowExpModal(true)}
@@ -1024,29 +1025,33 @@ export const EmployeeProfile = () => {
                         </div>
 
                         <div className="relative pl-6 space-y-5 border-l-2 border-gray-200 ml-2 pt-1">
-                            {currentExperience.map((exp, idx) => (
-                                <div key={idx} className="relative group">
-                                    <div className={`absolute -left-[31px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? "bg-[#2D79C7]" : "bg-gray-300"}`} />
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                            <h4 className="text-[#1E1E1E] text-xs font-extrabold">{exp.title}</h4>
-                                            <p className="text-[#2D79C7] text-[11px] font-bold">{exp.company}</p>
-                                            <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">{exp.period}</p>
-                                            {exp.description && <p className="text-gray-500 text-[11px] mt-1">{exp.description}</p>}
+                            {currentExperience.length === 0 ? (
+                                <p className="text-gray-400 text-xs italic py-2 font-semibold select-none">No experience timeline records added yet.</p>
+                            ) : (
+                                currentExperience.map((exp, idx) => (
+                                    <div key={idx} className="relative group">
+                                        <div className={`absolute -left-[31px] top-0 w-4 h-4 rounded-full border-4 border-white shadow-sm ${idx === 0 ? "bg-[#2D79C7]" : "bg-gray-300"}`} />
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">{exp.title}</h4>
+                                                <p className="text-[#2D79C7] text-[11px] font-bold">{exp.company}</p>
+                                                <p className="text-gray-400 text-[10.5px] font-mono mt-0.5">{exp.period}</p>
+                                                {exp.description && <p className="text-gray-500 text-[11px] mt-1">{exp.description}</p>}
+                                            </div>
+                                            {canDelete && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteExperience(idx)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                    title="Delete experience"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
-                                        {canDelete && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteExperience(idx)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                title="Delete experience"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
