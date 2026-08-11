@@ -82,6 +82,22 @@ const menuCategories = [
                         <path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M12 6h.01M12 10h.01" />
                     </svg>
                 ),
+                subItems: [
+                    {
+                        name: "Employees",
+                        to: "/employees",
+                        permissionKey: "employees",
+                        roles: ["global_admin", "admin", "hr"],
+                        icon: (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
+                        ),
+                    }
+                ]
             },
             {
                 name: "Documents",
@@ -166,6 +182,11 @@ const Sidebar = ({ onClose }) => {
         }
 
         const role = user.role?.toLowerCase();
+
+        // Check role restriction if item explicitly defines roles
+        if (item.roles && Array.isArray(item.roles) && item.roles.length > 0) {
+            if (!item.roles.includes(role)) return false;
+        }
 
         // Hire module is strictly accessible to Global Admin and HR users only
         if (item.permissionKey === "hire" || item.to === "/hire") {
