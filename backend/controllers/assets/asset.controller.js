@@ -45,7 +45,7 @@ export const getAllAssets = async (req, res) => {
             assigned: allAssets.filter(a => a.status === "Assigned" || a.assignedTo).length,
             available: allAssets.filter(a => a.status === "Available" && !a.assignedTo).length,
             inMaintenance: allAssets.filter(a => a.status === "In Maintenance").length,
-            retired: allAssets.filter(a => a.status === "Retired" || a.status === "Lost").length,
+            retired: allAssets.filter(a => a.status === "Not Assigned" || a.status === "Retired" || a.status === "Lost").length,
             damaged: allAssets.filter(a => a.condition === "Damaged" || a.condition === "Poor").length,
         };
 

@@ -31,7 +31,7 @@ const CATEGORIES = [
 
 const CONDITIONS = ["New", "Excellent", "Good", "Fair", "Poor", "Damaged"];
 
-const STATUSES = ["Available", "Assigned", "In Maintenance", "Retired", "Lost"];
+const STATUSES = ["Available", "Assigned", "In Maintenance", "Not Assigned", "Lost"];
 
 const conditionBadge = (c) => ({
     New: "bg-[#F0FDF4] text-[#166534] border-[#DCFCE7]",
@@ -46,6 +46,7 @@ const statusBadge = (s) => ({
     Available: "bg-[#F0FDF4] text-[#15803D] border-[#DCFCE7]",
     Assigned: "bg-[#F0F7FF] text-[#1F5EA8] border-[#D0E5FC]",
     "In Maintenance": "bg-[#FEFCE8] text-[#A16207] border-[#FEF08A]",
+    "Not Assigned": "bg-gray-100 text-gray-500 border-gray-200",
     Retired: "bg-gray-100 text-gray-500 border-gray-200",
     Lost: "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]",
 }[s] || "bg-gray-100 text-gray-600 border-gray-200");
