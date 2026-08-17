@@ -546,6 +546,14 @@ const GlobalSearch = () => {
     );
 };
 
+const ROLE_CONFIG = {
+    global_admin: { label: "Global Admin", badgeCls: "bg-blue-50/90 text-[#1F5EA8] border-blue-200/80" },
+    admin:        { label: "Admin",        badgeCls: "bg-indigo-50/90 text-indigo-700 border-indigo-200/80" },
+    hr:           { label: "HR",           badgeCls: "bg-purple-50/90 text-purple-700 border-purple-200/80" },
+    manager:      { label: "Manager",      badgeCls: "bg-amber-50/90 text-amber-700 border-amber-200/80" },
+    employee:     { label: "Employee",     badgeCls: "bg-slate-100/90 text-slate-700 border-slate-200/80" },
+};
+
 /* ─────────────────────────────────────────────
    NAVBAR
 ───────────────────────────────────────────── */
@@ -605,34 +613,38 @@ const Navbar = ({ onToggleSidebar }) => {
             </div>
 
             {/* Right — role badge, notifications, profile */}
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
 
                 {/* Role badge */}
-                <div className="bg-blue-50 text-[#2D79C7] text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100 shadow-sm flex items-center gap-1 uppercase tracking-wider">
-                    <Shield className="w-3 h-3 text-[#2D79C7]" />
-                    <span>{user?.role === "global_admin" ? "Global Admin" : user?.role || "—"}</span>
-                </div>
+                {user?.role && (
+                    <div className={`h-9 px-3 rounded-[12px] border text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs ${
+                        ROLE_CONFIG[user.role?.toLowerCase()]?.badgeCls || "bg-slate-100 text-slate-700 border-slate-200"
+                    }`}>
+                        <Shield className="w-3.5 h-3.5 shrink-0 stroke-[2.2] text-[#1F5EA8]" />
+                        <span className="whitespace-nowrap font-bold text-xs">{ROLE_CONFIG[user.role?.toLowerCase()]?.label || user.role}</span>
+                    </div>
+                )}
 
                 {/* Notifications */}
-                <button className="relative p-2 text-gray-500 hover:text-[#2D79C7] hover:bg-gray-50 rounded-xl transition-all duration-200 cursor-pointer">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#FFEA00] border-2 border-white rounded-full shadow-sm animate-pulse" />
+                <button className="relative w-9 h-9 flex items-center justify-center text-gray-500 hover:text-[#2D79C7] hover:bg-gray-100/80 rounded-[12px] border border-gray-200/60 transition-all duration-200 cursor-pointer shadow-2xs">
+                    <Bell className="w-4 h-4" />
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-[#FFEA00] border-2 border-white rounded-full shadow-2xs animate-pulse" />
                 </button>
 
-                <div className="h-8 w-px bg-gray-200 mx-1" />
+                <div className="h-6 w-px bg-gray-200 mx-0.5" />
 
                 {/* Profile dropdown */}
                 <div className="relative" ref={profileRef}>
                     <button
                         onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                        className="flex items-center gap-2.5 p-1.5 hover:bg-gray-50 rounded-2xl border border-transparent hover:border-gray-200/50 transition-all duration-200 cursor-pointer"
+                        className="flex items-center gap-2.5 p-1 text-left hover:bg-gray-100/70 rounded-[14px] border border-transparent hover:border-gray-200/60 transition-all duration-200 cursor-pointer"
                     >
                         <Avatar src={user?.profilePicture} name={fullName} size="w-9 h-9" />
                         <div className="hidden sm:flex flex-col text-left">
-                            <span className="text-[#1E1E1E] text-xs font-semibold tracking-wide leading-tight">{fullName}</span>
-                            <span className="text-gray-400 text-[10px] font-medium leading-none mt-0.5">{designation}</span>
+                            <span className="text-[#1E1E1E] text-xs font-bold tracking-tight leading-tight">{fullName}</span>
+                            <span className="text-gray-400 text-[10.5px] font-semibold leading-none mt-0.5">{designation || ROLE_CONFIG[user?.role?.toLowerCase()]?.label}</span>
                         </div>
-                        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                     </button>
 
                     {isProfileDropdownOpen && (
