@@ -86,6 +86,7 @@ export const Hire = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStage, setFilterStage] = useState("");
     const [filterPosition, setFilterPosition] = useState("");
+    const [filterHr, setFilterHr] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [filterInterviewer, setFilterInterviewer] = useState("");
 
@@ -195,6 +196,7 @@ export const Hire = () => {
 
             if (filterStage && cand.stage !== filterStage) return false;
             if (filterPosition && cand.position !== filterPosition) return false;
+            if (filterHr && cand.assignedHr !== filterHr) return false;
             if (filterStatus && cand.status !== filterStatus) return false;
             if (filterInterviewer) {
                 const hasInterviewer = cand.interviews?.some(i => i.interviewer === filterInterviewer);
@@ -203,7 +205,7 @@ export const Hire = () => {
 
             return true;
         });
-    }, [candidates, archivedCandidatesList, activeTab, searchTerm, filterStage, filterPosition, filterStatus, filterInterviewer]);
+    }, [candidates, archivedCandidatesList, activeTab, searchTerm, filterStage, filterPosition, filterHr, filterStatus, filterInterviewer]);
 
     /* ─────────────────────────────────────────────
        ALL SCHEDULED INTERVIEWS LIST
@@ -415,7 +417,7 @@ export const Hire = () => {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-gray-100 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-2 border-t border-gray-100 text-xs">
                         <select
                             value={filterStage}
                             onChange={(e) => setFilterStage(e.target.value)}
@@ -435,6 +437,17 @@ export const Hire = () => {
                             <option value="">All Positions</option>
                             {POSITIONS.map(pos => (
                                 <option key={pos} value={pos}>{pos}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={filterHr}
+                            onChange={(e) => setFilterHr(e.target.value)}
+                            className="bg-gray-50 border border-gray-200 rounded-[10px] px-3 py-1.5 text-xs text-gray-700 font-semibold focus:outline-none focus:border-[#2D79C7]"
+                        >
+                            <option value="">All Assigned HR</option>
+                            {HR_ASSIGNESS.map(hr => (
+                                <option key={hr} value={hr}>{hr}</option>
                             ))}
                         </select>
 
@@ -463,7 +476,7 @@ export const Hire = () => {
                         </select>
                     </div>
 
-                    {(filterStage || filterPosition || filterStatus || filterInterviewer || searchTerm) && (
+                    {(filterStage || filterPosition || filterHr || filterStatus || filterInterviewer || searchTerm) && (
                         <div className="flex items-center justify-between text-[11px] font-bold text-gray-500 pt-1">
                             <span>Showing {filteredCandidates.length} matches</span>
                             <button
@@ -471,6 +484,7 @@ export const Hire = () => {
                                     setSearchTerm("");
                                     setFilterStage("");
                                     setFilterPosition("");
+                                    setFilterHr("");
                                     setFilterStatus("");
                                     setFilterInterviewer("");
                                 }}
@@ -764,7 +778,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
                 {summaryCards.map((card, idx) => {
                     const Icon = card.icon;
                     return (
-                        <div key={idx} className="premium-3d-card-mini p-4 flex flex-col justify-between">
+                        <div key={idx} className="bg-white border border-[#E5E7EB] rounded-[16px] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:shadow-md transition-all">
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide truncate">{card.label}</span>
                                 <div className={`p-2 rounded-full ${card.bg} ${card.color}`}>
@@ -778,12 +792,14 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
             </div>
 
             {/* Middle Section: Recent Candidates */}
-            <div className="w-full premium-3d-card p-5">
+            <div className="w-full bg-white border border-[#E5E7EB] rounded-[20px] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                     <h3 className="text-sm font-bold text-[#1E1E1E] flex items-center gap-2">
                         <Users className="w-4 h-4 text-[#2D79C7]" />
                         Recent Candidates
                     </h3>
+
+
                 </div>
 
                 <div className="divide-y divide-gray-100">
@@ -847,7 +863,7 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {candidates.map(cand => (
-                    <div key={cand.id} className="premium-3d-card p-4 flex flex-col justify-between">
+                    <div key={cand.id} className="bg-white border border-[#E5E7EB] rounded-[18px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:shadow-md transition-all">
                         <div>
                             {/* Card Top */}
                             <div className="flex items-start justify-between gap-3 mb-3">
@@ -875,6 +891,10 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                                 <div className="flex items-center justify-between">
                                     <span className="text-gray-400">Company:</span>
                                     <span className="truncate max-w-[120px] text-gray-800 font-semibold">{cand.currentCompany}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-400">Assigned HR:</span>
+                                    <span className="text-gray-800 font-semibold">{cand.assignedHr}</span>
                                 </div>
                             </div>
 
@@ -924,7 +944,7 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
 
     // Default List View Table
     return (
-        <div className="premium-3d-card overflow-x-auto">
+        <div className="bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
@@ -933,6 +953,7 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                         <th className="py-3.5 px-4">Experience</th>
                         <th className="py-3.5 px-4">Company</th>
                         <th className="py-3.5 px-4">Stage</th>
+                        <th className="py-3.5 px-4">Assigned HR</th>
                         <th className="py-3.5 px-4">Applied Date</th>
                         <th className="py-3.5 px-4 text-right">Actions</th>
                     </tr>
@@ -963,7 +984,8 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                                     {cand.stage}
                                 </span>
                             </td>
-                            <td className="py-3 px-4 text-gray-450">{cand.appliedDate}</td>
+                            <td className="py-3 px-4 text-gray-600">{cand.assignedHr}</td>
+                            <td className="py-3 px-4 text-gray-400">{cand.appliedDate}</td>
                             <td className="py-3 px-4 text-right">
                                 <div className="flex items-center justify-end gap-1">
                                     <button
@@ -1042,7 +1064,7 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
                                         key={cand.id}
                                         draggable
                                         onDragStart={(e) => onDragStart(e, cand.id)}
-                                        className="premium-3d-card-mini p-4 cursor-grab active:cursor-grabbing space-y-3 relative group"
+                                        className="bg-white border border-gray-200 rounded-[16px] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-lg hover:border-[#2D79C7]/50 transition-all duration-200 cursor-grab active:cursor-grabbing space-y-3 relative group"
                                     >
                                         {/* Avatar & Info */}
                                         <div className="flex items-start gap-3">
@@ -1082,7 +1104,8 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
                                         </div>
 
                                         {/* Footer Bar */}
-                                        <div className="pt-2.5 border-t border-gray-100 flex items-center justify-end text-xs">
+                                        <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
+                                            <span className="text-gray-500 font-bold text-[11px]">HR: {cand.assignedHr?.split(" ")[0]}</span>
 
                                             <button
                                                 onClick={(e) => {
@@ -1492,6 +1515,10 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                                         <span className="text-gray-400 block text-[10px]">Notice Period</span>
                                         <span className="font-bold text-gray-800">{candidate.noticePeriod}</span>
                                     </div>
+                                    <div>
+                                        <span className="text-gray-400 block text-[10px]">Assigned HR</span>
+                                        <span className="font-bold text-gray-800">{candidate.assignedHr}</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1645,7 +1672,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
         expectedCtc: "",
         noticePeriod: "",
         skills: "",
-        assignedHr: "",
+        assignedHr: HR_ASSIGNESS[0],
         stage: "New Application"
     });
 
@@ -1817,6 +1844,16 @@ const EditCandidateModal = ({ candidate, onClose, onSave }) => {
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
                             >
                                 {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-gray-500 font-bold mb-1">Assigned HR</label>
+                            <select
+                                value={form.assignedHr}
+                                onChange={e => setForm({ ...form, assignedHr: e.target.value })}
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                            >
+                                {HR_ASSIGNESS.map(h => <option key={h} value={h}>{h}</option>)}
                             </select>
                         </div>
                     </div>

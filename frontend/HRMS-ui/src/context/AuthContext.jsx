@@ -60,7 +60,7 @@ const ROLE_PERMISSIONS = {
 
 /* Routes each role is allowed to visit */
 export const ROLE_ALLOWED_ROUTES = {
-    global_admin: ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
+    global_admin: ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding", "/assets"],
     admin:        ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/offboarding-onboarding"],
     hr:           ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
     manager:      ["/dashboard", "/me", "/my-team", "/my-finances", "/documents", "/time-attendance"],
@@ -125,6 +125,11 @@ export const AuthProvider = ({ children }) => {
         // normalize: strip leading slash and trailing slash
         const normalize = (p) => p.replace(/^\//, "").replace(/\/$/, "");
         const normPath = normalize(path);
+
+        // Assets module is strictly accessible to Global Admin role only
+        if (normPath === "assets") {
+            return userRole === "global_admin";
+        }
 
         // Hire module is strictly accessible to Global Admin and HR roles only
         if (normPath === "hire") {

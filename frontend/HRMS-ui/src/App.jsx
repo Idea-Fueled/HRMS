@@ -20,6 +20,7 @@ import EmployeeProfile from "./pages/profile/EmployeeProfile";
 import Unauthorized from "./pages/unauthorized/Unauthorized";
 import SessionTimeoutManager from "./components/SessionTimeoutModal";
 import Hire from "./pages/hire/Hire";
+import Assets from "./pages/assets/Assets";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
@@ -28,6 +29,7 @@ const ALL_ROLES        = ["global_admin", "admin", "hr", "manager", "employee"];
 const ADMIN_HR         = ["global_admin", "admin", "hr"];
 const GLOBAL_ADMIN_HR  = ["global_admin", "hr"];
 const ADMIN_HR_MANAGER = ["global_admin", "admin", "hr", "manager"];
+const GLOBAL_ADMIN_ONLY = ["global_admin"];
 
 const router = createBrowserRouter([
     {
@@ -139,6 +141,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={GLOBAL_ADMIN_HR}>
                         <Hire />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "assets",
+                element: (
+                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>
+                        <Assets />
                     </ProtectedRoute>
                 ),
             },
