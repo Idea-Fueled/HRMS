@@ -9,7 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "sonner";
 import {
-    Payroll, Recruitment, OffboardingOnboarding, Organization
+    Payroll, Recruitment, Organization
 } from "./pages/placeholders/Placeholders";
 import TimeAttendance from "./pages/time-attendance/TimeAttendance";
 import { Documents } from "./pages/documents/Documents";
@@ -21,6 +21,7 @@ import Unauthorized from "./pages/unauthorized/Unauthorized";
 import SessionTimeoutManager from "./components/SessionTimeoutModal";
 import Hire from "./pages/hire/Hire";
 import Assets from "./pages/assets/Assets";
+import OffboardingOnboarding from "./pages/offboarding-onboarding/OffboardingOnboarding";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
@@ -155,7 +156,7 @@ const router = createBrowserRouter([
             {
                 path: "offboarding-onboarding",
                 element: (
-                    <ProtectedRoute allowedRoles={ADMIN_HR}>
+                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_HR}>
                         <OffboardingOnboarding />
                     </ProtectedRoute>
                 ),

@@ -16,6 +16,7 @@ import documentRoutes from "./routes/documents/document.routes.js"
 import shiftRoutes from "./routes/shifts/shift.route.js"
 import hireRoutes from "./routes/hire/hire.routes.js"
 import assetRoutes from "./routes/assets/asset.routes.js"
+import offboardingOnboardingRoutes from "./routes/offboarding-onboarding/offboarding-onboarding.routes.js"
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,6 +53,7 @@ app.use("/api/documents", documentRoutes)
 app.use("/api/shifts", shiftRoutes)
 app.use("/api/hire", hireRoutes)
 app.use("/api/assets", assetRoutes)
+app.use("/api/offboarding-onboarding", offboardingOnboardingRoutes)
 
 connectDB()
 

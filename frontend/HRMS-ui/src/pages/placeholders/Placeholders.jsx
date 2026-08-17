@@ -99,10 +99,6 @@ export const Recruitment = () => (
     <Phase2Placeholder title="Recruitment" icon={Search} />
 );
 
-export const OffboardingOnboarding = () => (
-    <Phase2Placeholder title="Offboarding & Onboarding" icon={RefreshCw} />
-);
-
 export const Organization = () => (
     <Phase2Placeholder title="Organization" icon={Building2} />
 );

@@ -234,7 +234,9 @@ const userScehma = new mongoose.Schema({
             "active",
             "inactive",
             "on_notice",
-            "terminated"
+            "terminated",
+            "offboarding",
+            "exited"
         ],
         default: "active"
     },
