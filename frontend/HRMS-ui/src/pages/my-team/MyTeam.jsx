@@ -434,22 +434,6 @@ const TeamMembersTab = () => {
                 <div className="flex flex-wrap items-center gap-3">
                     <SearchBar value={search} onChange={(val) => { setSearch(val); setCurrentPage(1); }} placeholder="Search name or ID..." />
                     
-                    {/* Dept Select */}
-                    <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 px-3 py-2 rounded-[12px] h-[38px]">
-                        <Filter className="w-3.5 h-3.5 text-gray-400" />
-                        <select
-                            value={selectedDept}
-                            onChange={(e) => { setSelectedDept(e.target.value); setCurrentPage(1); }}
-                            className="bg-transparent border-0 text-xs font-bold text-gray-600 focus:outline-none cursor-pointer"
-                        >
-                            <option value="All">All Departments</option>
-                            <option value="Engineering">Engineering</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="HR">HR</option>
-                            <option value="Sales">Sales</option>
-                        </select>
-                    </div>
-
                     {/* Status Select */}
                     <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 px-3 py-2 rounded-[12px] h-[38px]">
                         <select
