@@ -104,11 +104,10 @@ const AnalogClock = () => {
     );
 };
 
-const AttendanceHeroBar = () => {
+const LiveClockCard = ({ onOpenPartialLeave }) => {
     const { user } = useAuth();
+    const userName = user?.firstName || user?.name || "Prashant";
     const [isClockedIn, setIsClockedIn] = useState(true);
-
-    const userName = user?.firstName || user?.fullName?.split(" ")[0] || "Employee";
 
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
@@ -188,7 +187,7 @@ const AttendanceHeroBar = () => {
 
                     <button
                         type="button"
-                        onClick={() => toast.info("Partial Day request")}
+                        onClick={onOpenPartialLeave}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
                     >
                         <FileText className="w-4 h-4 text-[#2D79C7]" />
@@ -1267,11 +1266,17 @@ const LeaveTab = ({
 /* ─────────────────────────────────────────────
    APPLY LEAVE MODAL COMPONENT
 ───────────────────────────────────────────── */
-const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
+const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = "casual_leave" }) => {
     const [leaveType, setLeaveType] = useState("casual_leave");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [isHalfDay, setIsHalfDay] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && initialLeaveType) {
+            setLeaveType(initialLeaveType);
+        }
+    }, [isOpen, initialLeaveType]);
     
     // Partial leave state
     const [partialCategory, setPartialCategory] = useState("leaving_early"); // "leaving_early" | "late_arrival" | "mid_day_absence"
@@ -2219,12 +2224,24 @@ const Me = () => {
     const [loadingSummary, setLoadingSummary] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+    const [initialLeaveType, setInitialLeaveType] = useState("casual_leave");
+
+    const handleOpenPartialLeaveModal = () => {
+        setInitialLeaveType("partial_leave");
+        setIsApplyModalOpen(true);
+    };
+
+    const handleOpenGeneralLeaveModal = (type = "casual_leave") => {
+        setInitialLeaveType(type);
+        setIsApplyModalOpen(true);
+    };
 
     useEffect(() => {
         if (location.state?.activeTab) {
             setActiveTab(location.state.activeTab);
         }
         if (location.state?.openApplyLeaveModal) {
+            setInitialLeaveType(location.state?.leaveType || "casual_leave");
             setIsApplyModalOpen(true);
         }
     }, [location.state]);
@@ -2279,7 +2296,7 @@ const Me = () => {
     return (
         <div className="space-y-6 select-none">
             {/* Top tab sub-navigation bar */}
-            <div className="bg-white border border-[#E5E7EB] rounded-[20px] px-6 py-1 flex items-center shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+            <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-[20px] px-6 py-1 flex items-center shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
                 <nav className="flex gap-4">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
@@ -2310,7 +2327,7 @@ const Me = () => {
             {/* Tab contents grid containing 3 independent cards side-by-side with custom widths on laptop/desktop */}
             {activeTab === "Attendance" && (
                 <div className="space-y-6">
-                    <AttendanceHeroBar />
+                    <LiveClockCard onOpenPartialLeave={handleOpenPartialLeaveModal} />
                     <AttendanceKPIStats />
                     <VisualWorkdayTimeline />
                     <AttendanceLogsAndRequestsHub />
@@ -2324,7 +2341,7 @@ const Me = () => {
                     leaveHistory={leaveHistory}
                     loadingSummary={loadingSummary}
                     loadingHistory={loadingHistory}
-                    onRequestLeave={() => setIsApplyModalOpen(true)}
+                    onRequestLeave={handleOpenGeneralLeaveModal}
                 />
             )}
 
@@ -2334,6 +2351,7 @@ const Me = () => {
             {/* Apply Leave Modal */}
             <ApplyLeaveModal
                 isOpen={isApplyModalOpen}
+                initialLeaveType={initialLeaveType}
                 onClose={() => setIsApplyModalOpen(false)}
                 onSubmitSuccess={fetchLeaveData}
             />
