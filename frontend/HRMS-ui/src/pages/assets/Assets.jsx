@@ -47,22 +47,22 @@ const categoryChip = (cat) => ({
 }[cat] || "bg-slate-100 text-slate-800 border-slate-200 font-extrabold");
 
 const conditionBadge = (c) => ({
-    New: "bg-emerald-100 text-emerald-800 border-emerald-300/80 font-bold",
-    Excellent: "bg-blue-100 text-blue-800 border-blue-300/80 font-bold",
-    Good: "bg-teal-100 text-teal-800 border-teal-300/80 font-bold",
-    Fair: "bg-amber-100 text-amber-800 border-amber-300/80 font-bold",
-    Poor: "bg-orange-100 text-orange-800 border-orange-300/80 font-bold",
-    Damaged: "bg-rose-100 text-rose-800 border-rose-300/80 font-bold",
-}[c] || "bg-slate-100 text-slate-800 border-slate-300/80 font-bold");
+    New: "bg-emerald-50 text-emerald-700 border-emerald-200/80 font-extrabold",
+    Excellent: "bg-blue-50 text-[#2D79C7] border-blue-200/80 font-extrabold",
+    Good: "bg-teal-50 text-teal-700 border-teal-200/80 font-extrabold",
+    Fair: "bg-amber-50 text-amber-700 border-amber-200/80 font-extrabold",
+    Poor: "bg-orange-50 text-orange-700 border-orange-200/80 font-extrabold",
+    Damaged: "bg-rose-50 text-rose-700 border-rose-200/80 font-extrabold",
+}[c] || "bg-slate-100 text-slate-700 border-slate-200/80 font-extrabold");
 
 const statusBadge = (s) => ({
-    Available: { cls: "bg-emerald-100 text-emerald-900 border-emerald-300 font-extrabold", dot: "bg-emerald-600 animate-pulse" },
-    Assigned: { cls: "bg-blue-100 text-blue-900 border-blue-300 font-extrabold", dot: "bg-blue-600" },
-    "In Maintenance": { cls: "bg-amber-100 text-amber-900 border-amber-300 font-extrabold", dot: "bg-amber-600" },
-    "Not Assigned": { cls: "bg-slate-100 text-slate-800 border-slate-300 font-extrabold", dot: "bg-slate-500" },
-    Retired: { cls: "bg-gray-100 text-gray-800 border-gray-300 font-extrabold", dot: "bg-gray-500" },
-    Lost: { cls: "bg-rose-100 text-rose-900 border-rose-300 font-extrabold", dot: "bg-rose-600" },
-}[s] || { cls: "bg-slate-100 text-slate-800 border-slate-300 font-extrabold", dot: "bg-slate-500" });
+    Available: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200/80 font-extrabold", dot: "bg-emerald-500 animate-pulse" },
+    Assigned: { cls: "bg-blue-50 text-[#2D79C7] border-blue-200/80 font-extrabold", dot: "bg-blue-500" },
+    "In Maintenance": { cls: "bg-amber-50 text-amber-700 border-amber-200/80 font-extrabold", dot: "bg-amber-500" },
+    "Not Assigned": { cls: "bg-slate-100 text-slate-700 border-slate-200 font-extrabold", dot: "bg-slate-400" },
+    Retired: { cls: "bg-gray-100 text-gray-600 border-gray-200 font-extrabold", dot: "bg-gray-400" },
+    Lost: { cls: "bg-rose-50 text-rose-700 border-rose-200/80 font-extrabold", dot: "bg-rose-500" },
+}[s] || { cls: "bg-slate-100 text-slate-700 border-slate-200 font-extrabold", dot: "bg-slate-400" });
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
@@ -401,86 +401,110 @@ const Assets = () => {
                     ) : sortedAssets.length === 0 ? (
                         <EmptyState message="No assets found" description="Try adjusting your search criteria or add a new asset to inventory." />
                     ) : viewMode === "list" ? (
-                        /* TABLE VIEW */
-                        <div className="bg-white border border-slate-200 rounded-[18px] shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                        /* FLOATING ROW HERO CELL VIEW */
+                        <div className="bg-white border border-slate-200/80 rounded-[20px] p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full min-w-[1050px] whitespace-nowrap">
                                     <thead>
-                                        <tr className="bg-slate-100/90 border-b-2 border-slate-200">
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">
-                                                <SortHeader label="Asset ID" field="assetId" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        <tr className="bg-slate-50/90 border-b border-slate-200">
+                                            <th className="text-left px-4 py-3.5 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">
+                                                <SortHeader label="Asset Details" field="brandModel" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">
+                                            <th className="text-left px-4 py-3.5 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">
                                                 <SortHeader label="Category" field="category" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Brand / Model</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Condition</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Status</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Assigned Employee</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Assigned Date</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Actions</th>
+                                            <th className="text-left px-4 py-3.5 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Condition</th>
+                                            <th className="text-left px-4 py-3.5 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Status</th>
+                                            <th className="text-left px-4 py-3.5 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Assigned To</th>
+                                            <th className="text-left px-4 py-3.5 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Assigned Date</th>
+                                            <th className="text-right px-4 py-3.5 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-200/80">
+                                    <tbody className="divide-y divide-slate-100">
                                         {sortedAssets.map((asset) => {
                                             const st = statusBadge(asset.status);
                                             return (
-                                                <tr key={asset._id} className="hover:bg-slate-50 transition-colors group">
-                                                    <td className="px-5 py-3.5">
-                                                        <span className="inline-flex items-center text-[11px] font-mono font-extrabold text-[#38BDF8] bg-[#0F172A] px-2.5 py-1 rounded-[6px] border border-slate-800 shadow-xs tracking-wider">
-                                                            #{asset.assetId}
-                                                        </span>
+                                                <tr key={asset._id} className="hover:bg-blue-50/20 transition-all group">
+                                                    {/* Asset Details (Hero Cell) */}
+                                                    <td className="px-4 py-3.5">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-[12px] bg-blue-50/90 border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0 shadow-2xs group-hover:bg-[#2D79C7] group-hover:text-white transition-all">
+                                                                <Laptop className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-extrabold text-sm text-slate-900 leading-tight">
+                                                                        {asset.brandModel || asset.category}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-mono font-extrabold text-[#2D79C7] bg-blue-50 px-2 py-0.5 rounded-[6px] border border-blue-100 shadow-2xs">
+                                                                        #{asset.assetId}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                                                                    Asset Code: {asset.assetId}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     </td>
-                                                    <td className="px-5 py-3.5">
-                                                        <span className={`inline-flex items-center text-xs px-2.5 py-0.5 rounded-[6px] border shadow-2xs ${categoryChip(asset.category)}`}>
+
+                                                    {/* Category */}
+                                                    <td className="px-4 py-3.5">
+                                                        <span className="inline-flex items-center text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-[8px] border border-slate-200/80 shadow-2xs">
                                                             {asset.category}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-3.5">
-                                                        <span className="text-sm font-extrabold text-slate-900 tracking-tight">{asset.brandModel || "—"}</span>
-                                                    </td>
-                                                    <td className="px-5 py-3.5">
-                                                        <span className={`inline-flex items-center text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
+
+                                                    {/* Condition */}
+                                                    <td className="px-4 py-3.5">
+                                                        <span className={`inline-flex items-center text-[11px] font-extrabold px-3 py-1 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
                                                             {asset.condition}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-3.5">
-                                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${st.cls}`}>
+
+                                                    {/* Status */}
+                                                    <td className="px-4 py-3.5">
+                                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1 rounded-full border shadow-2xs ${st.cls}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                                                             {asset.status}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-3.5">
+
+                                                    {/* Assigned To */}
+                                                    <td className="px-4 py-3.5">
                                                         {asset.assignedTo ? (
                                                             <div className="flex items-center gap-2.5">
-                                                                <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-7 h-7 ring-2 ring-slate-200 shadow-xs" />
+                                                                <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-8 h-8 ring-2 ring-blue-100 shadow-2xs" />
                                                                 <div>
                                                                     <p className="text-xs font-extrabold text-slate-900 leading-tight">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
-                                                                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
+                                                                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs font-semibold text-slate-400 italic">Unassigned</span>
+                                                            <span className="text-xs font-semibold text-slate-400 italic bg-slate-50 px-2.5 py-1 rounded-[8px] border border-slate-100">Unassigned</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-3.5">
+
+                                                    {/* Assigned Date */}
+                                                    <td className="px-4 py-3.5">
                                                         {asset.assignedDate ? (
-                                                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-[6px] border border-slate-200">
-                                                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-[8px] border border-slate-200/80">
+                                                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                                                 {formatDate(asset.assignedDate)}
                                                             </span>
                                                         ) : (
                                                             <span className="text-xs text-slate-400 font-medium">—</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="flex items-center gap-1.5">
+
+                                                    {/* Actions */}
+                                                    <td className="px-4 py-3.5 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
                                                             {/* Assign / Unassign Quick Button */}
                                                             {asset.assignedTo ? (
                                                                 <button
                                                                     onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
                                                                     title="Unassign Asset"
-                                                                    className="p-1.5 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-[8px] border border-amber-200 transition-colors cursor-pointer"
+                                                                    className="p-2 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-[10px] transition-all cursor-pointer border border-amber-100 shadow-2xs"
                                                                 >
                                                                     <UserMinus className="w-3.5 h-3.5" />
                                                                 </button>
@@ -492,7 +516,7 @@ const Assets = () => {
                                                                         setShowAssignModal(true);
                                                                     }}
                                                                     title="Assign Asset"
-                                                                    className="p-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-[8px] border border-emerald-200 transition-colors cursor-pointer"
+                                                                    className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-[10px] transition-all cursor-pointer border border-emerald-100 shadow-2xs"
                                                                 >
                                                                     <UserPlus className="w-3.5 h-3.5" />
                                                                 </button>
@@ -505,7 +529,7 @@ const Assets = () => {
                                                                     setShowStatusModal(true);
                                                                 }}
                                                                 title="Update Status / Condition"
-                                                                className="p-1.5 bg-blue-50 hover:bg-blue-600 text-[#2D79C7] hover:text-white rounded-[8px] border border-blue-200 transition-colors cursor-pointer"
+                                                                className="p-2 bg-blue-50 hover:bg-[#2D79C7] text-[#2D79C7] hover:text-white rounded-[10px] transition-all cursor-pointer border border-blue-100 shadow-2xs"
                                                             >
                                                                 <RefreshCw className="w-3.5 h-3.5" />
                                                             </button>
@@ -518,7 +542,7 @@ const Assets = () => {
                                                                     setShowAssetDrawer(true);
                                                                 }}
                                                                 title="Edit Asset"
-                                                                className="p-1.5 bg-slate-100 hover:bg-slate-800 text-slate-700 hover:text-white rounded-[8px] border border-slate-300 transition-colors cursor-pointer"
+                                                                className="p-2 bg-slate-100 hover:bg-slate-800 text-slate-700 hover:text-white rounded-[10px] transition-all cursor-pointer border border-slate-200 shadow-2xs"
                                                             >
                                                                 <Edit3 className="w-3.5 h-3.5" />
                                                             </button>
@@ -527,7 +551,7 @@ const Assets = () => {
                                                             <button
                                                                 onClick={() => setConfirmDialog({ isOpen: true, type: "delete", asset })}
                                                                 title="Delete Asset"
-                                                                className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-[8px] border border-rose-200 transition-colors cursor-pointer"
+                                                                className="p-2 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-[10px] transition-all cursor-pointer border border-rose-100 shadow-2xs"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </button>
