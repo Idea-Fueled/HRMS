@@ -716,9 +716,6 @@ const LeaveBalanceCard = ({
                 {/* Title */}
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="text-[#1E1E1E] text-[13px] font-extrabold text-left">{label}</h4>
-                    <button type="button" className="text-[#2D79C7] hover:text-[#1F5EA8] text-[10px] font-bold transition-colors">
-                        View details
-                    </button>
                 </div>
 
                 {/* Circular Progress Visualization */}
