@@ -680,7 +680,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                         <div className="grid grid-cols-3 gap-3 mt-2">
                             <LeaveCard 
                                 label="Casual" 
-                                total={employee.leaveBalance?.casual?.total ?? 8} 
+                                total={employee.leaveBalance?.casual?.total ?? 2.5} 
                                 used={employee.leaveBalance?.casual?.used ?? 0} 
                             />
                             <LeaveCard 
@@ -690,7 +690,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                             />
                             <LeaveCard 
                                 label="Earned" 
-                                total={employee.leaveBalance?.earned?.total ?? 20} 
+                                total={employee.leaveBalance?.earned?.total ?? 5} 
                                 used={employee.leaveBalance?.earned?.used ?? 0} 
                             />
                         </div>
@@ -731,9 +731,9 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 emergencyContactNumber: employee.emergencyContactNumber || "",
                 presentAddress: employee.presentAddress || "",
                 permanentAddress: employee.permanentAddress || "",
-                casualLeave: employee.leaveBalance?.casual?.total ?? 8,
+                casualLeave: employee.leaveBalance?.casual?.total ?? 2.5,
                 sickLeave: employee.leaveBalance?.sick?.total ?? 6,
-                earnedLeave: employee.leaveBalance?.earned?.total ?? 20,
+                earnedLeave: employee.leaveBalance?.earned?.total ?? 5,
                 password: "",
                 confirmPassword: "",
                 status: employee.status || "active",

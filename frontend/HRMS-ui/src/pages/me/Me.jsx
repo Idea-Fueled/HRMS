@@ -1130,25 +1130,31 @@ const LeaveTab = ({
         .reduce((sum, l) => sum + (l.totalDays || 0), 0);
 
     const balance = leaveSummary?.leaveBalance || {
-        sick: { total: 6, used: 0, pending: 0 },
-        casual: { total: 8, used: 0, pending: 0 },
-        earned: { total: 20, used: 0, pending: 0 }
+        sick: { total: 6, accrued: 6, annualQuota: 6, used: 0, pending: 0 },
+        casual: { total: 2.5, accrued: 2.5, annualQuota: 6, used: 0, pending: 0 },
+        earned: { total: 5, accrued: 5, annualQuota: 12, used: 0, pending: 0 }
     };
 
     // Casual Leave
-    const casualTotal = balance.casual?.total ?? 8;
+    const casualTotal = balance.casual?.total ?? 2.5;
+    const casualAccrued = balance.casual?.accrued ?? casualTotal;
+    const casualAnnualQuota = balance.casual?.annualQuota ?? 6;
     const casualUsed = balance.casual?.used ?? 0;
     const casualPending = balance.casual?.pending ?? 0;
     const casualAvailable = Math.max(0, casualTotal - casualUsed - casualPending);
 
     // Sick Leave
     const sickTotal = balance.sick?.total ?? 6;
+    const sickAccrued = balance.sick?.accrued ?? sickTotal;
+    const sickAnnualQuota = balance.sick?.annualQuota ?? 6;
     const sickUsed = balance.sick?.used ?? 0;
     const sickPending = balance.sick?.pending ?? 0;
     const sickAvailable = Math.max(0, sickTotal - sickUsed - sickPending);
 
     // Earned Leave
-    const earnedTotal = balance.earned?.total ?? 20;
+    const earnedTotal = balance.earned?.total ?? 5;
+    const earnedAccrued = balance.earned?.accrued ?? earnedTotal;
+    const earnedAnnualQuota = balance.earned?.annualQuota ?? 12;
     const earnedUsed = balance.earned?.used ?? 0;
     const earnedPending = balance.earned?.pending ?? 0;
     const earnedAvailable = Math.max(0, earnedTotal - earnedUsed - earnedPending);
@@ -1191,25 +1197,24 @@ const LeaveTab = ({
                             label="Casual Leave"
                             available={casualAvailable}
                             consumed={casualUsed}
-                            accrued={casualTotal}
-                            annualQuota={casualTotal}
+                            accrued={casualAccrued}
+                            annualQuota={casualAnnualQuota}
                             color="#38BDF8"
                         />
                         <LeaveBalanceCard
                             label="Earned Leave"
                             available={earnedAvailable}
                             consumed={earnedUsed}
-                            accrued={earnedTotal}
-                            carryOver={0}
-                            annualQuota={earnedTotal}
+                            accrued={earnedAccrued}
+                            annualQuota={earnedAnnualQuota}
                             color="#10B981"
                         />
                         <LeaveBalanceCard
                             label="Sick Leave"
                             available={sickAvailable}
                             consumed={sickUsed}
-                            accrued={sickTotal}
-                            annualQuota={sickTotal}
+                            accrued={sickAccrued}
+                            annualQuota={sickAnnualQuota}
                             color="#F59E0B"
                         />
                         <LeaveBalanceCard

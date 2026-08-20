@@ -3,9 +3,9 @@ import User from "../../models/users/user.model.js";
 
 /**
  * Calculates accrued leave quota for a financial year (1st April to 31st March)
- * - Casual Leave: 0.5 per month accrued automatically on current date/month
- * - Earned Leave: 1.0 per month accrued automatically on current date/month
- * - Sick Leave: 6.0 credited upfront on 1st April
+ * - Casual Leave: 0.5 per month accrued automatically on current date/month (Max 6/yr)
+ * - Earned Leave: 1.0 per month accrued automatically on current date/month (Max 12/yr)
+ * - Sick Leave: 6.0 credited upfront on 1st April (Max 6/yr)
  */
 export const calculateAccruedLeaves = (joiningDate = null, referenceDate = new Date()) => {
     const today = new Date(referenceDate);
@@ -31,18 +31,18 @@ export const calculateAccruedLeaves = (joiningDate = null, referenceDate = new D
     if (today >= calcStartDate) {
         const yearDiff = today.getFullYear() - calcStartDate.getFullYear();
         const monthDiff = today.getMonth() - calcStartDate.getMonth();
-        elapsedMonths = yearDiff * 12 + monthDiff + 1;
+        elapsedMonths = yearDiff * 12 + monthDiff + 1; // Includes current month
     }
     elapsedMonths = Math.min(12, Math.max(0, elapsedMonths));
 
-    const casualTotal = parseFloat((elapsedMonths * 0.5).toFixed(1));
-    const earnedTotal = parseFloat((elapsedMonths * 1.0).toFixed(1));
-    const sickTotal = 6.0;
+    const casualAccrued = parseFloat((elapsedMonths * 0.5).toFixed(1));
+    const earnedAccrued = parseFloat((elapsedMonths * 1.0).toFixed(1));
+    const sickAccrued = 6.0;
 
     return {
-        casual: casualTotal,
-        earned: earnedTotal,
-        sick: sickTotal,
+        casual: { accrued: casualAccrued, annualQuota: 6 },
+        earned: { accrued: earnedAccrued, annualQuota: 12 },
+        sick: { accrued: sickAccrued, annualQuota: 6 },
         elapsedMonths,
         fyStartYear
     };
@@ -137,19 +137,19 @@ export const getLeaveSummary = async (req, res) => {
         }
 
         // Calculate dynamic accrual for current financial year
-        const accrued = calculateAccruedLeaves(user.joiningDate);
+        const accruedData = calculateAccruedLeaves(user.joiningDate);
 
-        // Fallback to manual HR overrides if present, else use dynamic financial year accrual
-        const sickTotal = user.leaveBalance?.sick?.total !== undefined ? Number(user.leaveBalance.sick.total) : accrued.sick;
-        const casualTotal = user.leaveBalance?.casual?.total !== undefined ? Number(user.leaveBalance.casual.total) : accrued.casual;
-        const earnedTotal = user.leaveBalance?.earned?.total !== undefined ? Number(user.leaveBalance.earned.total) : accrued.earned;
+        // Always calculate dynamic accrued balances based on financial year current date
+        const casualTotal = accruedData.casual.accrued;
+        const earnedTotal = accruedData.earned.accrued;
+        const sickTotal = accruedData.sick.accrued;
 
         const leaves = await Leave.find({ employeeId });
 
         const balance = {
-            sick: { total: sickTotal, used: 0, pending: 0 },
-            casual: { total: casualTotal, used: 0, pending: 0 },
-            earned: { total: earnedTotal, used: 0, pending: 0 }
+            sick: { total: sickTotal, accrued: sickTotal, annualQuota: accruedData.sick.annualQuota, used: 0, pending: 0 },
+            casual: { total: casualTotal, accrued: casualTotal, annualQuota: accruedData.casual.annualQuota, used: 0, pending: 0 },
+            earned: { total: earnedTotal, accrued: earnedTotal, annualQuota: accruedData.earned.annualQuota, used: 0, pending: 0 }
         };
 
         leaves.forEach(leave => {
@@ -196,7 +196,7 @@ export const getLeaveSummary = async (req, res) => {
                 pendingLeaves,
                 availableLeaves,
                 leaveBalance: balance,
-                accruedDetails: accrued
+                accruedDetails: accruedData
             },
         });
     } catch (error) {
