@@ -464,13 +464,7 @@ const GlobalSearch = () => {
                                                                         isSelected ? "bg-blue-50/90 border-l-4 border-[#2D79C7]" : "hover:bg-gray-50"
                                                                     }`}
                                                                 >
-                                                                    {emp.profilePicture ? (
-                                                                        <img src={emp.profilePicture} alt={name} className="w-8 h-8 rounded-full object-cover border border-gray-100 shrink-0" />
-                                                                    ) : (
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px] border-2 border-white shadow-2xs shrink-0 ${avatarColor}`}>
-                                                                            {initials}
-                                                                        </div>
-                                                                    )}
+                                                                    <Avatar src={emp.profilePicture} name={name} size="w-8 h-8" />
                                                                     <div className="flex-1 min-w-0">
                                                                         <p className="text-xs font-bold text-slate-800 truncate">
                                                                             <HighlightMatch text={name} query={query} />

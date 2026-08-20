@@ -228,13 +228,17 @@ export const Avatar = ({ src, name = "User", size = "w-9 h-9", textSize = "text-
             <img 
                 src={src} 
                 alt={name} 
-                className={`${size} rounded-full object-cover border-2 border-white shadow-sm shrink-0 ${className}`} 
+                className={`${size} rounded-full aspect-square object-cover border-2 border-white shadow-sm shrink-0 ${className}`} 
+                style={{ aspectRatio: "1 / 1", objectFit: "cover" }}
             />
         );
     }
 
     return (
-        <div className={`${size} rounded-full ${color} flex items-center justify-center font-black ${textSize} border-2 border-white shadow-sm shrink-0 select-none ${className}`}>
+        <div 
+            className={`${size} rounded-full aspect-square ${color} flex items-center justify-center font-black ${textSize} border-2 border-white shadow-sm shrink-0 select-none ${className}`} 
+            style={{ aspectRatio: "1 / 1" }}
+        >
             {initials}
         </div>
     );
