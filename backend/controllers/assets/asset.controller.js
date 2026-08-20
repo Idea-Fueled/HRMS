@@ -115,6 +115,7 @@ export const createAsset = async (req, res) => {
             condition,
             status,
             assignedTo,
+            assignedDate,
             purchaseDate,
             warrantyInfo,
             serialNumber,
@@ -138,7 +139,7 @@ export const createAsset = async (req, res) => {
         }
 
         let assignedEmployeeId = null;
-        let assignedDate = null;
+        let finalAssignedDate = assignedDate ? new Date(assignedDate) : null;
         let finalStatus = status || "Available";
 
         if (assignedTo && assignedTo.trim() !== "") {
@@ -150,7 +151,9 @@ export const createAsset = async (req, res) => {
                 });
             }
             assignedEmployeeId = user._id;
-            assignedDate = new Date();
+            if (!finalAssignedDate) {
+                finalAssignedDate = new Date();
+            }
             finalStatus = "Assigned";
         }
 
@@ -162,7 +165,7 @@ export const createAsset = async (req, res) => {
             condition: condition || "Excellent",
             status: finalStatus,
             assignedTo: assignedEmployeeId,
-            assignedDate: assignedDate,
+            assignedDate: finalAssignedDate,
             purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
             warrantyInfo: warrantyInfo ? warrantyInfo.trim() : "",
             serialNumber: serialNumber ? serialNumber.trim() : "",
@@ -198,6 +201,7 @@ export const updateAsset = async (req, res) => {
             condition,
             status,
             assignedTo,
+            assignedDate,
             purchaseDate,
             warrantyInfo,
             serialNumber,
@@ -221,6 +225,7 @@ export const updateAsset = async (req, res) => {
         if (category) asset.category = category.trim();
         if (brandModel !== undefined) asset.brandModel = brandModel.trim();
         if (condition) asset.condition = condition;
+        if (assignedDate !== undefined) asset.assignedDate = assignedDate ? new Date(assignedDate) : null;
         if (purchaseDate !== undefined) asset.purchaseDate = purchaseDate ? new Date(purchaseDate) : null;
         if (warrantyInfo !== undefined) asset.warrantyInfo = warrantyInfo.trim();
         if (serialNumber !== undefined) asset.serialNumber = serialNumber.trim();

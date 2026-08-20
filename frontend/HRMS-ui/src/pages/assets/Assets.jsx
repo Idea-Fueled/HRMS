@@ -25,8 +25,8 @@ import { getManagers } from "../../services/employee.service";
    CONSTANTS & HELPERS
 ───────────────────────────────────────────── */
 const CATEGORIES = [
-    "Laptop", "Desktop", "Mobile", "Tablet", "Monitor",
-    "Peripheral", "Software", "Furniture", "Networking", "Other"
+    "Laptop", "Desktop", "Mobile", "Tablet", "Screen",
+    "Mouse", "Keyboard", "UPS", "CPU", "Other"
 ];
 
 const CONDITIONS = ["New", "Excellent", "Good", "Fair", "Poor", "Damaged"];
@@ -407,7 +407,7 @@ const Assets = () => {
                                             <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Condition</th>
                                             <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Status</th>
                                             <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Assigned Employee</th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Purchase Date</th>
+                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Assigned Date</th>
                                             <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
@@ -448,7 +448,7 @@ const Assets = () => {
                                                         <span className="text-xs font-semibold text-gray-400 italic">Unassigned</span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-gray-500">{formatDate(asset.purchaseDate)}</td>
+                                                <td className="px-4 py-3 text-xs text-gray-500">{formatDate(asset.assignedDate)}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5">
                                                         {/* Assign / Unassign Quick Button */}
@@ -542,8 +542,8 @@ const Assets = () => {
                                         </div>
 
                                         <div className="flex items-center justify-between">
-                                            <span className="text-gray-400 font-bold uppercase text-[10px]">Purchased:</span>
-                                            <span className="font-semibold text-gray-700">{formatDate(asset.purchaseDate)}</span>
+                                            <span className="text-gray-400 font-bold uppercase text-[10px]">Assigned Date:</span>
+                                            <span className="font-semibold text-gray-700">{formatDate(asset.assignedDate)}</span>
                                         </div>
 
                                         <div className="border-t border-[#F3F4F6] pt-2">
@@ -803,8 +803,7 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
                 condition: asset.condition || "Excellent",
                 status: asset.status || "Available",
                 assignedTo: asset.assignedTo?._id || asset.assignedTo || "",
-                purchaseDate: asset.purchaseDate ? asset.purchaseDate.split("T")[0] : "",
-                warrantyInfo: asset.warrantyInfo || "",
+                assignedDate: asset.assignedDate ? asset.assignedDate.split("T")[0] : "",
                 serialNumber: asset.serialNumber || "",
                 notes: asset.notes || ""
             };
@@ -817,8 +816,7 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
             condition: "Excellent",
             status: "Available",
             assignedTo: "",
-            purchaseDate: "",
-            warrantyInfo: "",
+            assignedDate: "",
             serialNumber: "",
             notes: ""
         };
@@ -989,26 +987,14 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
                         </div>
                     </FormField>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <FormField label="Purchase Date">
-                            <input
-                                type="date"
-                                value={form.purchaseDate}
-                                onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })}
-                                className={inputCls}
-                            />
-                        </FormField>
-
-                        <FormField label="Warranty Information">
-                            <input
-                                type="text"
-                                value={form.warrantyInfo}
-                                onChange={(e) => setForm({ ...form, warrantyInfo: e.target.value })}
-                                placeholder="e.g. 3 Years AppleCare+"
-                                className={inputCls}
-                            />
-                        </FormField>
-                    </div>
+                    <FormField label="Assigned Date">
+                        <input
+                            type="date"
+                            value={form.assignedDate}
+                            onChange={(e) => setForm({ ...form, assignedDate: e.target.value })}
+                            className={inputCls}
+                        />
+                    </FormField>
 
                     <FormField label="Notes">
                         <textarea
