@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-    Laptop, Box, UserCheck, CheckCircle2, AlertTriangle, Plus, Search,
+    Laptop, Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap, Box, UserCheck, CheckCircle2, AlertTriangle, Plus, Search,
     Edit3, Trash2, UserPlus, UserMinus, RefreshCw, X, ChevronDown,
     Building2, Shield, Calendar, Info, Layers, Tag, HardDrive, Check, Loader2, ArrowRight
 } from "lucide-react";
@@ -65,6 +65,30 @@ const statusBadge = (s) => ({
 }[s] || { cls: "bg-slate-100 text-slate-700 border-slate-200 font-extrabold", dot: "bg-slate-400" });
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+const getCategoryIcon = (category, className = "w-5 h-5") => {
+    switch (category) {
+        case "Screen":
+            return <Monitor className={className} />;
+        case "Keyboard":
+            return <KeyboardIcon className={className} />;
+        case "Mouse":
+            return <MouseIcon className={className} />;
+        case "Mobile":
+            return <Smartphone className={className} />;
+        case "Tablet":
+            return <TabletIcon className={className} />;
+        case "CPU":
+            return <Cpu className={className} />;
+        case "UPS":
+            return <Zap className={className} />;
+        case "Desktop":
+            return <Monitor className={className} />;
+        case "Laptop":
+        default:
+            return <Laptop className={className} />;
+    }
+};
 
 /* ─────────────────────────────────────────────
    FORM COMPONENTS
@@ -429,7 +453,7 @@ const Assets = () => {
                                                     <td className="px-4 py-3.5">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-10 h-10 rounded-[12px] bg-blue-50/90 border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0 shadow-2xs group-hover:bg-[#2D79C7] group-hover:text-white transition-all">
-                                                                <Laptop className="w-5 h-5" />
+                                                                {getCategoryIcon(asset.category, "w-5 h-5")}
                                                             </div>
                                                             <div>
                                                                 <div className="flex items-center gap-2">
@@ -720,7 +744,7 @@ const Assets = () => {
                                                 <div key={asset._id} className="bg-slate-50/80 border border-slate-200/70 rounded-[14px] p-3.5 flex items-center justify-between gap-3 hover:border-blue-200/80 hover:bg-blue-50/20 transition-all">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-[10px] bg-white border border-slate-200/80 flex items-center justify-center text-[#2D79C7] shadow-2xs shrink-0">
-                                                            <Laptop className="w-4.5 h-4.5" />
+                                                            {getCategoryIcon(asset.category, "w-4.5 h-4.5")}
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center gap-2">
