@@ -535,12 +535,14 @@ const TeamMembersTab = () => {
                                 </div>
                                 <div className="flex justify-between items-center pt-3.5 border-t border-[#F3F4F6] text-[11px] font-bold">
                                     <span className="text-gray-400">{emp.type}</span>
-                                    <button
-                                        onClick={() => handleAction("View Profile", emp)}
-                                        className="text-[#2D79C7] hover:underline cursor-pointer focus:outline-none font-bold"
-                                    >
-                                        View details
-                                    </button>
+                                    {!isEmployeeRole && (
+                                        <button
+                                            onClick={() => handleAction("View Profile", emp)}
+                                            className="text-[#2D79C7] hover:underline cursor-pointer focus:outline-none font-bold"
+                                        >
+                                            View details
+                                        </button>
+                                    )}
                                 </div>
                             </Card>
                         ))}
@@ -575,7 +577,7 @@ const TeamMembersTab = () => {
                                     <th className="px-6 py-4">
                                         <SortHeader label="Status" field="status" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     </th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
+                                    {!isEmployeeRole && <th className="px-6 py-4 text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#F9FAFB] text-xs font-semibold text-gray-600">
@@ -600,19 +602,20 @@ const TeamMembersTab = () => {
                                                 {emp.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-3.5 text-right">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (menuAnchor && menuAnchor.id === emp.id) {
-                                                        setMenuAnchor(null);
-                                                    } else {
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        setMenuAnchor({
-                                                            id: emp.id,
-                                                            employee: emp,
-                                                            rect: {
-                                                                top: rect.bottom + window.scrollY,
+                                        {!isEmployeeRole && (
+                                            <td className="px-6 py-3.5 text-right">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (menuAnchor && menuAnchor.id === emp.id) {
+                                                            setMenuAnchor(null);
+                                                        } else {
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            setMenuAnchor({
+                                                                id: emp.id,
+                                                                employee: emp,
+                                                                rect: {
+                                                                    top: rect.bottom + window.scrollY,
                                                                 left: rect.right - 144 + window.scrollX,
                                                             }
                                                         });
@@ -623,6 +626,7 @@ const TeamMembersTab = () => {
                                                 <MoreVertical className="w-4 h-4" />
                                             </button>
                                         </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
