@@ -1189,7 +1189,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
 
                     {/* Leave Configuration */}
                     <SectionTitle>Leave Configuration</SectionTitle>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <FormField label="Casual Leave">
                             <input type="number" min={0} step="0.5" value={form.casualLeave} onChange={set("casualLeave")} className={inputCls} />
                         </FormField>
@@ -1199,7 +1199,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         <FormField label="Earned Leave">
                             <input type="number" min={0} step="0.5" value={form.earnedLeave} onChange={set("earnedLeave")} className={inputCls} />
                         </FormField>
-                        <FormField label="Partial Leave (/mo)">
+                        <FormField label="Partial Leave (Monthly)">
                             <input type="number" min={0} step="1" value={form.partialLeave} onChange={set("partialLeave")} className={inputCls} />
                         </FormField>
                     </div>
