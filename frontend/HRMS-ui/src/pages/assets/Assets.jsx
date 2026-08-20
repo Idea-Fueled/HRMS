@@ -34,22 +34,22 @@ const CONDITIONS = ["New", "Excellent", "Good", "Fair", "Poor", "Damaged"];
 const STATUSES = ["Available", "Assigned", "In Maintenance", "Not Assigned", "Lost"];
 
 const conditionBadge = (c) => ({
-    New: "bg-[#F0FDF4] text-[#166534] border-[#DCFCE7]",
-    Excellent: "bg-[#F0F7FF] text-[#1F5EA8] border-[#D0E5FC]",
-    Good: "bg-[#F0FDF4] text-[#15803D] border-[#DCFCE7]",
-    Fair: "bg-[#FEFCE8] text-[#A16207] border-[#FEF08A]",
-    Poor: "bg-[#FFF7ED] text-[#C2410C] border-[#FFEDD5]",
-    Damaged: "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]",
+    New: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+    Excellent: "bg-blue-50 text-blue-700 border-blue-200/80",
+    Good: "bg-teal-50 text-teal-700 border-teal-200/80",
+    Fair: "bg-amber-50 text-amber-700 border-amber-200/80",
+    Poor: "bg-orange-50 text-orange-700 border-orange-200/80",
+    Damaged: "bg-rose-50 text-rose-700 border-rose-200/80",
 }[c] || "bg-gray-100 text-gray-600 border-gray-200");
 
 const statusBadge = (s) => ({
-    Available: "bg-[#F0FDF4] text-[#15803D] border-[#DCFCE7]",
-    Assigned: "bg-[#F0F7FF] text-[#1F5EA8] border-[#D0E5FC]",
-    "In Maintenance": "bg-[#FEFCE8] text-[#A16207] border-[#FEF08A]",
-    "Not Assigned": "bg-gray-100 text-gray-500 border-gray-200",
-    Retired: "bg-gray-100 text-gray-500 border-gray-200",
-    Lost: "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]",
-}[s] || "bg-gray-100 text-gray-600 border-gray-200");
+    Available: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200/80", dot: "bg-emerald-500 animate-pulse" },
+    Assigned: { cls: "bg-blue-50 text-[#1F5EA8] border-blue-200/80", dot: "bg-blue-500" },
+    "In Maintenance": { cls: "bg-amber-50 text-amber-700 border-amber-200/80", dot: "bg-amber-500" },
+    "Not Assigned": { cls: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
+    Retired: { cls: "bg-gray-100 text-gray-500 border-gray-200", dot: "bg-gray-400" },
+    Lost: { cls: "bg-rose-50 text-rose-700 border-rose-200/80", dot: "bg-rose-500" },
+}[s] || { cls: "bg-gray-100 text-gray-600 border-gray-200", dot: "bg-gray-400" });
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
@@ -236,54 +236,54 @@ const Assets = () => {
 
             {/* Summary Statistics Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div className="premium-3d-card-mini p-4 flex flex-col gap-2.5">
-                    <div className="w-8 h-8 rounded-[10px] border flex items-center justify-center bg-blue-50 text-[#2D79C7] border-blue-100">
-                        <Box className="w-4 h-4" />
+                <div className="bg-white border border-slate-200/80 rounded-[18px] p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col justify-between gap-3 group">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Total Assets</span>
+                        <div className="w-8 h-8 rounded-[10px] bg-blue-50 text-[#2D79C7] border border-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Box className="w-4 h-4" />
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[24px] font-black text-[#1E1E1E] leading-none">{summary.total || 0}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Total Assets</p>
-                    </div>
+                    <p className="text-[26px] font-black text-slate-800 leading-none tracking-tight">{summary.total || 0}</p>
                 </div>
 
-                <div className="premium-3d-card-mini p-4 flex flex-col gap-2.5">
-                    <div className="w-8 h-8 rounded-[10px] border flex items-center justify-center bg-emerald-50 text-emerald-700 border-emerald-100">
-                        <CheckCircle2 className="w-4 h-4" />
+                <div className="bg-white border border-slate-200/80 rounded-[18px] p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col justify-between gap-3 group">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Available</span>
+                        <div className="w-8 h-8 rounded-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <CheckCircle2 className="w-4 h-4" />
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[24px] font-black text-[#1E1E1E] leading-none">{summary.available || 0}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Available</p>
-                    </div>
+                    <p className="text-[26px] font-black text-slate-800 leading-none tracking-tight">{summary.available || 0}</p>
                 </div>
 
-                <div className="premium-3d-card-mini p-4 flex flex-col gap-2.5">
-                    <div className="w-8 h-8 rounded-[10px] border flex items-center justify-center bg-[#F0F7FF] text-[#1F5EA8] border-[#D0E5FC]">
-                        <UserCheck className="w-4 h-4" />
+                <div className="bg-white border border-slate-200/80 rounded-[18px] p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col justify-between gap-3 group">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Assigned</span>
+                        <div className="w-8 h-8 rounded-[10px] bg-[#F0F7FF] text-[#1F5EA8] border border-[#D0E5FC] flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <UserCheck className="w-4 h-4" />
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[24px] font-black text-[#1E1E1E] leading-none">{summary.assigned || 0}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Assigned</p>
-                    </div>
+                    <p className="text-[26px] font-black text-slate-800 leading-none tracking-tight">{summary.assigned || 0}</p>
                 </div>
 
-                <div className="premium-3d-card-mini p-4 flex flex-col gap-2.5">
-                    <div className="w-8 h-8 rounded-[10px] border flex items-center justify-center bg-amber-50 text-amber-700 border-amber-100">
-                        <AlertTriangle className="w-4 h-4" />
+                <div className="bg-white border border-slate-200/80 rounded-[18px] p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col justify-between gap-3 group">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">In Maintenance</span>
+                        <div className="w-8 h-8 rounded-[10px] bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <AlertTriangle className="w-4 h-4" />
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[24px] font-black text-[#1E1E1E] leading-none">{summary.inMaintenance || 0}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">In Maintenance</p>
-                    </div>
+                    <p className="text-[26px] font-black text-slate-800 leading-none tracking-tight">{summary.inMaintenance || 0}</p>
                 </div>
 
-                <div className="premium-3d-card-mini p-4 flex flex-col gap-2.5">
-                    <div className="w-8 h-8 rounded-[10px] border flex items-center justify-center bg-rose-50 text-rose-700 border-rose-100">
-                        <AlertTriangle className="w-4 h-4" />
+                <div className="bg-white border border-slate-200/80 rounded-[18px] p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col justify-between gap-3 group">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Damaged / Poor</span>
+                        <div className="w-8 h-8 rounded-[10px] bg-rose-50 text-rose-700 border border-rose-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <AlertTriangle className="w-4 h-4" />
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[24px] font-black text-[#1E1E1E] leading-none">{summary.damaged || 0}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Damaged / Poor</p>
-                    </div>
+                    <p className="text-[26px] font-black text-slate-800 leading-none tracking-tight">{summary.damaged || 0}</p>
                 </div>
             </div>
 
@@ -389,121 +389,141 @@ const Assets = () => {
                         <EmptyState message="No assets found" description="Try adjusting your search criteria or add a new asset to inventory." />
                     ) : viewMode === "list" ? (
                         /* TABLE VIEW */
-                        <div className="premium-3d-card overflow-hidden">
+                        <div className="bg-white border border-slate-200/80 rounded-[20px] shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full min-w-[1050px] whitespace-nowrap">
                                     <thead>
-                                        <tr className="bg-[#F9FAFB] border-b border-[#F3F4F6]">
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400">
+                                        <tr className="bg-slate-50/90 border-b border-slate-200/80">
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">
                                                 <SortHeader label="Asset ID" field="assetId" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">
                                                 <SortHeader label="Category" field="category" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Brand / Model</th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Condition</th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Status</th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Assigned Employee</th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Assigned Date</th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Actions</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Brand / Model</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Condition</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Status</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Assigned Employee</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Assigned Date</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-[#F3F4F6]">
-                                        {sortedAssets.map((asset) => (
-                                            <tr key={asset._id} className="hover:bg-blue-50/30 transition-colors group">
-                                                <td className="px-4 py-3">
-                                                    <span className="text-[11px] font-bold text-[#2D79C7] bg-blue-50 px-2 py-0.5 rounded-[6px] border border-blue-100">
-                                                        {asset.assetId}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-xs font-semibold text-gray-600">{asset.category}</td>
-                                                <td className="px-4 py-3 text-xs text-gray-600">{asset.brandModel || "—"}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${conditionBadge(asset.condition)}`}>
-                                                        {asset.condition}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${statusBadge(asset.status)}`}>
-                                                        {asset.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {asset.assignedTo ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-7 h-7" />
-                                                            <div>
-                                                                <p className="text-xs font-bold text-[#1E1E1E] leading-none">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
-                                                                <p className="text-[10px] text-gray-400 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs font-semibold text-gray-400 italic">Unassigned</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-xs text-gray-500">{formatDate(asset.assignedDate)}</td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-1.5">
-                                                        {/* Assign / Unassign Quick Button */}
+                                    <tbody className="divide-y divide-slate-100">
+                                        {sortedAssets.map((asset) => {
+                                            const st = statusBadge(asset.status);
+                                            return (
+                                                <tr key={asset._id} className="hover:bg-slate-50/80 transition-colors group">
+                                                    <td className="px-5 py-4">
+                                                        <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-[#2D79C7] bg-blue-50/90 px-2.5 py-1 rounded-[8px] border border-blue-100 font-mono shadow-2xs">
+                                                            <Box className="w-3 h-3 text-[#2D79C7]" />
+                                                            {asset.assetId}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <span className="inline-flex items-center text-xs font-bold text-slate-700 bg-slate-100/80 px-2.5 py-1 rounded-[8px] border border-slate-200/60 shadow-2xs">
+                                                            {asset.category}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-xs font-bold text-slate-800">
+                                                        {asset.brandModel || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
+                                                            {asset.condition}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-2xs ${st.cls}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                                                            {asset.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4">
                                                         {asset.assignedTo ? (
-                                                            <button
-                                                                onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
-                                                                title="Unassign Asset"
-                                                                className="p-1.5 bg-amber-50 hover:bg-amber-100 rounded-[8px] text-amber-700 transition-colors cursor-pointer border border-amber-100"
-                                                            >
-                                                                <UserMinus className="w-3.5 h-3.5" />
-                                                            </button>
+                                                            <div className="flex items-center gap-2.5">
+                                                                <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-8 h-8 ring-2 ring-blue-100 shadow-2xs" />
+                                                                <div>
+                                                                    <p className="text-xs font-bold text-slate-800 leading-tight">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
+                                                                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
+                                                                </div>
+                                                            </div>
                                                         ) : (
+                                                            <span className="text-xs font-semibold text-slate-400 italic bg-slate-50 px-2.5 py-1 rounded-[6px] border border-slate-100">Unassigned</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        {asset.assignedDate ? (
+                                                            <span className="text-xs font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-[8px] border border-slate-200/60 inline-flex items-center gap-1.5">
+                                                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                                {formatDate(asset.assignedDate)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {/* Assign / Unassign Quick Button */}
+                                                            {asset.assignedTo ? (
+                                                                <button
+                                                                    onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
+                                                                    title="Unassign Asset"
+                                                                    className="p-2 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-amber-100 shadow-2xs"
+                                                                >
+                                                                    <UserMinus className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setAssetToAssign(asset);
+                                                                        setPreselectedEmployeeId("");
+                                                                        setShowAssignModal(true);
+                                                                    }}
+                                                                    title="Assign Asset"
+                                                                    className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-emerald-100 shadow-2xs"
+                                                                >
+                                                                    <UserPlus className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            )}
+
+                                                            {/* Status Update Quick Button */}
                                                             <button
                                                                 onClick={() => {
-                                                                    setAssetToAssign(asset);
-                                                                    setPreselectedEmployeeId("");
-                                                                    setShowAssignModal(true);
+                                                                    setAssetForStatus(asset);
+                                                                    setShowStatusModal(true);
                                                                 }}
-                                                                title="Assign Asset"
-                                                                className="p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-[8px] text-emerald-700 transition-colors cursor-pointer border border-emerald-100"
+                                                                title="Update Status / Condition"
+                                                                className="p-2 bg-blue-50 hover:bg-[#2D79C7] text-[#2D79C7] hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-blue-100 shadow-2xs"
                                                             >
-                                                                <UserPlus className="w-3.5 h-3.5" />
+                                                                <RefreshCw className="w-3.5 h-3.5" />
                                                             </button>
-                                                        )}
 
-                                                        {/* Status Update Quick Button */}
-                                                        <button
-                                                            onClick={() => {
-                                                                setAssetForStatus(asset);
-                                                                setShowStatusModal(true);
-                                                            }}
-                                                            title="Update Status / Condition"
-                                                            className="p-1.5 bg-blue-50 hover:bg-blue-100 rounded-[8px] text-[#2D79C7] transition-colors cursor-pointer border border-blue-100"
-                                                        >
-                                                            <RefreshCw className="w-3.5 h-3.5" />
-                                                        </button>
+                                                            {/* Edit Asset */}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedAsset(asset);
+                                                                    setDrawerMode("edit");
+                                                                    setShowAssetDrawer(true);
+                                                                }}
+                                                                title="Edit Asset"
+                                                                className="p-2 bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-slate-200 shadow-2xs"
+                                                            >
+                                                                <Edit3 className="w-3.5 h-3.5" />
+                                                            </button>
 
-                                                        {/* Edit Asset */}
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedAsset(asset);
-                                                                setDrawerMode("edit");
-                                                                setShowAssetDrawer(true);
-                                                            }}
-                                                            title="Edit Asset"
-                                                            className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-[8px] text-slate-700 transition-colors cursor-pointer border border-slate-200"
-                                                        >
-                                                            <Edit3 className="w-3.5 h-3.5" />
-                                                        </button>
-
-                                                        {/* Delete Asset */}
-                                                        <button
-                                                            onClick={() => setConfirmDialog({ isOpen: true, type: "delete", asset })}
-                                                            title="Delete Asset"
-                                                            className="p-1.5 bg-rose-50 hover:bg-rose-100 rounded-[8px] text-rose-600 transition-colors cursor-pointer border border-rose-100"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                            {/* Delete Asset */}
+                                                            <button
+                                                                onClick={() => setConfirmDialog({ isOpen: true, type: "delete", asset })}
+                                                                title="Delete Asset"
+                                                                className="p-2 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-rose-100 shadow-2xs"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -511,89 +531,104 @@ const Assets = () => {
                     ) : (
                         /* CARD VIEW */
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                            {sortedAssets.map((asset) => (
-                                <div key={asset._id} className="premium-3d-card p-5 flex flex-col justify-between gap-4 relative">
-                                    <div>
-                                        <div className="flex items-start justify-between gap-2 mb-2">
-                                            <span className="text-[11px] font-bold text-[#2D79C7] bg-blue-50 px-2 py-0.5 rounded-[6px] border border-blue-100">
-                                                {asset.assetId}
-                                            </span>
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadge(asset.status)}`}>
-                                                {asset.status}
-                                            </span>
-                                        </div>
-                                        <h3 className="font-bold text-sm text-[#1E1E1E] truncate">{asset.brandModel || asset.category}</h3>
-                                        <p className="text-xs text-gray-500 font-medium">{asset.category}</p>
-                                    </div>
-
-                                    <div className="space-y-2 text-xs border-t border-[#F3F4F6] pt-3">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-gray-400 font-bold uppercase text-[10px]">Condition:</span>
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${conditionBadge(asset.condition)}`}>
-                                                {asset.condition}
-                                            </span>
+                            {sortedAssets.map((asset) => {
+                                const st = statusBadge(asset.status);
+                                return (
+                                    <div key={asset._id} className="bg-white border border-slate-200/80 rounded-[20px] p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4 relative group">
+                                        <div>
+                                            <div className="flex items-start justify-between gap-2 mb-3">
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#2D79C7] bg-blue-50 px-2.5 py-1 rounded-[8px] border border-blue-100 font-mono shadow-2xs">
+                                                    <Box className="w-3 h-3 text-[#2D79C7]" />
+                                                    {asset.assetId}
+                                                </span>
+                                                <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${st.cls}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                                                    {asset.status}
+                                                </span>
+                                            </div>
+                                            <h3 className="font-extrabold text-sm text-slate-800 truncate">{asset.brandModel || asset.category}</h3>
+                                            <p className="text-xs text-slate-500 font-semibold mt-0.5">{asset.category}</p>
                                         </div>
 
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-gray-400 font-bold uppercase text-[10px]">Assigned Date:</span>
-                                            <span className="font-semibold text-gray-700">{formatDate(asset.assignedDate)}</span>
+                                        <div className="space-y-2.5 text-xs border-t border-slate-100 pt-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-slate-400 font-extrabold uppercase text-[10px]">Condition:</span>
+                                                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${conditionBadge(asset.condition)}`}>
+                                                    {asset.condition}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-slate-400 font-extrabold uppercase text-[10px]">Assigned Date:</span>
+                                                <span className="font-semibold text-slate-700">{formatDate(asset.assignedDate)}</span>
+                                            </div>
+
+                                            <div className="border-t border-slate-100 pt-2.5">
+                                                <span className="text-slate-400 font-extrabold uppercase text-[10px] block mb-1.5">Assigned To:</span>
+                                                {asset.assignedTo ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-6 h-6 ring-2 ring-blue-100" />
+                                                        <span className="text-xs font-bold text-slate-800 truncate">{asset.assignedTo.fullName || asset.assignedTo.firstName}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic">Unassigned</span>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        <div className="border-t border-[#F3F4F6] pt-2">
-                                            <span className="text-gray-400 font-bold uppercase text-[10px] block mb-1">Assigned To:</span>
+                                        <div className="flex items-center gap-1.5 border-t border-slate-100 pt-3">
                                             {asset.assignedTo ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-6 h-6" />
-                                                    <span className="text-xs font-bold text-[#1E1E1E] truncate">{asset.assignedTo.fullName || asset.assignedTo.firstName}</span>
-                                                </div>
+                                                <button
+                                                    onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
+                                                    className="flex-1 py-2 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-600 hover:text-white rounded-[10px] border border-amber-100 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                                >
+                                                    <UserMinus className="w-3.5 h-3.5" /> Unassign
+                                                </button>
                                             ) : (
-                                                <span className="text-xs text-gray-400 italic">Unassigned</span>
+                                                <button
+                                                    onClick={() => {
+                                                        setAssetToAssign(asset);
+                                                        setPreselectedEmployeeId("");
+                                                        setShowAssignModal(true);
+                                                    }}
+                                                    className="flex-1 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-[10px] border border-emerald-100 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                                >
+                                                    <UserPlus className="w-3.5 h-3.5" /> Assign
+                                                </button>
                                             )}
-                                        </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-1.5 border-t border-[#F3F4F6] pt-3">
-                                        {asset.assignedTo ? (
-                                            <button
-                                                onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
-                                                className="flex-1 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-[8px] border border-amber-100 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                                            >
-                                                <UserMinus className="w-3.5 h-3.5" /> Unassign
-                                            </button>
-                                        ) : (
                                             <button
                                                 onClick={() => {
-                                                    setAssetToAssign(asset);
-                                                    setPreselectedEmployeeId("");
-                                                    setShowAssignModal(true);
+                                                    setAssetForStatus(asset);
+                                                    setShowStatusModal(true);
                                                 }}
-                                                className="flex-1 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-[8px] border border-emerald-100 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                                className="p-2 bg-blue-50 hover:bg-[#2D79C7] text-[#2D79C7] hover:text-white rounded-[10px] border border-blue-100 transition-all cursor-pointer"
+                                                title="Update Status / Condition"
                                             >
-                                                <UserPlus className="w-3.5 h-3.5" /> Assign
+                                                <RefreshCw className="w-3.5 h-3.5" />
                                             </button>
-                                        )}
-
-                                        <button
-                                            onClick={() => {
-                                                setSelectedAsset(asset);
-                                                setDrawerMode("edit");
-                                                setShowAssetDrawer(true);
-                                            }}
-                                            className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-[8px] text-slate-700 border border-slate-200 transition-colors cursor-pointer"
-                                            title="Edit Asset"
-                                        >
-                                            <Edit3 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            onClick={() => setConfirmDialog({ isOpen: true, type: "delete", asset })}
-                                            className="p-1.5 bg-rose-50 hover:bg-rose-100 rounded-[8px] text-rose-600 border border-rose-100 transition-colors cursor-pointer"
-                                            title="Delete Asset"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedAsset(asset);
+                                                    setDrawerMode("edit");
+                                                    setShowAssetDrawer(true);
+                                                }}
+                                                className="p-2 bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white rounded-[10px] border border-slate-200 transition-all cursor-pointer"
+                                                title="Edit Asset"
+                                            >
+                                                <Edit3 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                onClick={() => setConfirmDialog({ isOpen: true, type: "delete", asset })}
+                                                className="p-2 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-[10px] border border-rose-100 transition-all cursor-pointer"
+                                                title="Delete Asset"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
