@@ -33,23 +33,36 @@ const CONDITIONS = ["New", "Excellent", "Good", "Fair", "Poor", "Damaged"];
 
 const STATUSES = ["Available", "Assigned", "In Maintenance", "Not Assigned", "Lost"];
 
+const categoryChip = (cat) => ({
+    Screen: "bg-sky-100 text-sky-800 border-sky-200 font-extrabold",
+    Keyboard: "bg-purple-100 text-purple-800 border-purple-200 font-extrabold",
+    Mouse: "bg-indigo-100 text-indigo-800 border-indigo-200 font-extrabold",
+    Laptop: "bg-blue-100 text-blue-800 border-blue-200 font-extrabold",
+    Desktop: "bg-violet-100 text-violet-800 border-violet-200 font-extrabold",
+    Mobile: "bg-teal-100 text-teal-800 border-teal-200 font-extrabold",
+    Tablet: "bg-teal-100 text-teal-800 border-teal-200 font-extrabold",
+    UPS: "bg-amber-100 text-amber-800 border-amber-200 font-extrabold",
+    CPU: "bg-orange-100 text-orange-800 border-orange-200 font-extrabold",
+    Other: "bg-slate-100 text-slate-800 border-slate-200 font-extrabold",
+}[cat] || "bg-slate-100 text-slate-800 border-slate-200 font-extrabold");
+
 const conditionBadge = (c) => ({
-    New: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-    Excellent: "bg-blue-50 text-blue-700 border-blue-200/80",
-    Good: "bg-teal-50 text-teal-700 border-teal-200/80",
-    Fair: "bg-amber-50 text-amber-700 border-amber-200/80",
-    Poor: "bg-orange-50 text-orange-700 border-orange-200/80",
-    Damaged: "bg-rose-50 text-rose-700 border-rose-200/80",
-}[c] || "bg-gray-100 text-gray-600 border-gray-200");
+    New: "bg-emerald-100 text-emerald-800 border-emerald-300/80 font-bold",
+    Excellent: "bg-blue-100 text-blue-800 border-blue-300/80 font-bold",
+    Good: "bg-teal-100 text-teal-800 border-teal-300/80 font-bold",
+    Fair: "bg-amber-100 text-amber-800 border-amber-300/80 font-bold",
+    Poor: "bg-orange-100 text-orange-800 border-orange-300/80 font-bold",
+    Damaged: "bg-rose-100 text-rose-800 border-rose-300/80 font-bold",
+}[c] || "bg-slate-100 text-slate-800 border-slate-300/80 font-bold");
 
 const statusBadge = (s) => ({
-    Available: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200/80", dot: "bg-emerald-500 animate-pulse" },
-    Assigned: { cls: "bg-blue-50 text-[#1F5EA8] border-blue-200/80", dot: "bg-blue-500" },
-    "In Maintenance": { cls: "bg-amber-50 text-amber-700 border-amber-200/80", dot: "bg-amber-500" },
-    "Not Assigned": { cls: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
-    Retired: { cls: "bg-gray-100 text-gray-500 border-gray-200", dot: "bg-gray-400" },
-    Lost: { cls: "bg-rose-50 text-rose-700 border-rose-200/80", dot: "bg-rose-500" },
-}[s] || { cls: "bg-gray-100 text-gray-600 border-gray-200", dot: "bg-gray-400" });
+    Available: { cls: "bg-emerald-100 text-emerald-900 border-emerald-300 font-extrabold", dot: "bg-emerald-600 animate-pulse" },
+    Assigned: { cls: "bg-blue-100 text-blue-900 border-blue-300 font-extrabold", dot: "bg-blue-600" },
+    "In Maintenance": { cls: "bg-amber-100 text-amber-900 border-amber-300 font-extrabold", dot: "bg-amber-600" },
+    "Not Assigned": { cls: "bg-slate-100 text-slate-800 border-slate-300 font-extrabold", dot: "bg-slate-500" },
+    Retired: { cls: "bg-gray-100 text-gray-800 border-gray-300 font-extrabold", dot: "bg-gray-500" },
+    Lost: { cls: "bg-rose-100 text-rose-900 border-rose-300 font-extrabold", dot: "bg-rose-600" },
+}[s] || { cls: "bg-slate-100 text-slate-800 border-slate-300 font-extrabold", dot: "bg-slate-500" });
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
@@ -389,48 +402,50 @@ const Assets = () => {
                         <EmptyState message="No assets found" description="Try adjusting your search criteria or add a new asset to inventory." />
                     ) : viewMode === "list" ? (
                         /* TABLE VIEW */
-                        <div className="bg-white border border-slate-200/80 rounded-[20px] shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                        <div className="bg-white border border-slate-200 rounded-[18px] shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full min-w-[1050px] whitespace-nowrap">
                                     <thead>
-                                        <tr className="bg-slate-50/90 border-b border-slate-200/80">
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">
+                                        <tr className="bg-slate-100/90 border-b-2 border-slate-200">
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">
                                                 <SortHeader label="Asset ID" field="assetId" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">
                                                 <SortHeader label="Category" field="category" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Brand / Model</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Condition</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Status</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Assigned Employee</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Assigned Date</th>
-                                            <th className="text-left px-5 py-4 text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Actions</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Brand / Model</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Condition</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Status</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Assigned Employee</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Assigned Date</th>
+                                            <th className="text-left px-5 py-4 text-[11px] text-slate-700 font-black uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-slate-200/80">
                                         {sortedAssets.map((asset) => {
                                             const st = statusBadge(asset.status);
                                             return (
-                                                <tr key={asset._id} className="hover:bg-blue-50/20 transition-colors group">
+                                                <tr key={asset._id} className="hover:bg-slate-50 transition-colors group">
                                                     <td className="px-5 py-3.5">
-                                                        <span className="text-xs font-mono font-extrabold text-[#2D79C7] bg-blue-50/70 px-2 py-0.5 rounded-[6px] border border-blue-100/80">
-                                                            {asset.assetId}
+                                                        <span className="inline-flex items-center text-[11px] font-mono font-extrabold text-[#38BDF8] bg-[#0F172A] px-2.5 py-1 rounded-[6px] border border-slate-800 shadow-xs tracking-wider">
+                                                            #{asset.assetId}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-600">
-                                                        {asset.category}
-                                                    </td>
-                                                    <td className="px-5 py-3.5 text-xs font-bold text-slate-800">
-                                                        {asset.brandModel || "—"}
+                                                    <td className="px-5 py-3.5">
+                                                        <span className={`inline-flex items-center text-xs px-2.5 py-0.5 rounded-[6px] border shadow-2xs ${categoryChip(asset.category)}`}>
+                                                            {asset.category}
+                                                        </span>
                                                     </td>
                                                     <td className="px-5 py-3.5">
-                                                        <span className={`inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${conditionBadge(asset.condition)}`}>
+                                                        <span className="text-sm font-extrabold text-slate-900 tracking-tight">{asset.brandModel || "—"}</span>
+                                                    </td>
+                                                    <td className="px-5 py-3.5">
+                                                        <span className={`inline-flex items-center text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
                                                             {asset.condition}
                                                         </span>
                                                     </td>
                                                     <td className="px-5 py-3.5">
-                                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${st.cls}`}>
+                                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${st.cls}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                                                             {asset.status}
                                                         </span>
@@ -438,34 +453,34 @@ const Assets = () => {
                                                     <td className="px-5 py-3.5">
                                                         {asset.assignedTo ? (
                                                             <div className="flex items-center gap-2.5">
-                                                                <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-7 h-7" />
+                                                                <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-7 h-7 ring-2 ring-slate-200 shadow-xs" />
                                                                 <div>
-                                                                    <p className="text-xs font-bold text-slate-800 leading-none">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
-                                                                    <p className="text-[10px] text-slate-400 font-medium mt-1">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
+                                                                    <p className="text-xs font-extrabold text-slate-900 leading-tight">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
+                                                                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs font-medium text-slate-400 italic">Unassigned</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-5 py-3.5 text-xs font-medium text-slate-500">
-                                                        {asset.assignedDate ? (
-                                                            <span className="inline-flex items-center gap-1.5">
-                                                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                                                {formatDate(asset.assignedDate)}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-slate-400">—</span>
+                                                            <span className="text-xs font-semibold text-slate-400 italic">Unassigned</span>
                                                         )}
                                                     </td>
                                                     <td className="px-5 py-3.5">
-                                                        <div className="flex items-center gap-1">
+                                                        {asset.assignedDate ? (
+                                                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-[6px] border border-slate-200">
+                                                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                                                {formatDate(asset.assignedDate)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 font-medium">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-3.5">
+                                                        <div className="flex items-center gap-1.5">
                                                             {/* Assign / Unassign Quick Button */}
                                                             {asset.assignedTo ? (
                                                                 <button
                                                                     onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
                                                                     title="Unassign Asset"
-                                                                    className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-[8px] border border-amber-200/60 transition-colors cursor-pointer"
+                                                                    className="p-1.5 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-[8px] border border-amber-200 transition-colors cursor-pointer"
                                                                 >
                                                                     <UserMinus className="w-3.5 h-3.5" />
                                                                 </button>
@@ -477,7 +492,7 @@ const Assets = () => {
                                                                         setShowAssignModal(true);
                                                                     }}
                                                                     title="Assign Asset"
-                                                                    className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-[8px] border border-emerald-200/60 transition-colors cursor-pointer"
+                                                                    className="p-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-[8px] border border-emerald-200 transition-colors cursor-pointer"
                                                                 >
                                                                     <UserPlus className="w-3.5 h-3.5" />
                                                                 </button>
@@ -490,7 +505,7 @@ const Assets = () => {
                                                                     setShowStatusModal(true);
                                                                 }}
                                                                 title="Update Status / Condition"
-                                                                className="p-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] rounded-[8px] border border-blue-200/60 transition-colors cursor-pointer"
+                                                                className="p-1.5 bg-blue-50 hover:bg-blue-600 text-[#2D79C7] hover:text-white rounded-[8px] border border-blue-200 transition-colors cursor-pointer"
                                                             >
                                                                 <RefreshCw className="w-3.5 h-3.5" />
                                                             </button>
@@ -503,7 +518,7 @@ const Assets = () => {
                                                                     setShowAssetDrawer(true);
                                                                 }}
                                                                 title="Edit Asset"
-                                                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-[8px] border border-slate-200 transition-colors cursor-pointer"
+                                                                className="p-1.5 bg-slate-100 hover:bg-slate-800 text-slate-700 hover:text-white rounded-[8px] border border-slate-300 transition-colors cursor-pointer"
                                                             >
                                                                 <Edit3 className="w-3.5 h-3.5" />
                                                             </button>
@@ -512,7 +527,7 @@ const Assets = () => {
                                                             <button
                                                                 onClick={() => setConfirmDialog({ isOpen: true, type: "delete", asset })}
                                                                 title="Delete Asset"
-                                                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-[8px] border border-rose-200/60 transition-colors cursor-pointer"
+                                                                className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-[8px] border border-rose-200 transition-colors cursor-pointer"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </button>
