@@ -228,8 +228,8 @@ export const Avatar = ({ src, name = "User", size = "w-9 h-9", textSize = "text-
             <img 
                 src={src} 
                 alt={name} 
-                className={`${size} rounded-full aspect-square object-cover border-2 border-white shadow-sm shrink-0 ${className}`} 
-                style={{ aspectRatio: "1 / 1", objectFit: "cover" }}
+                className={`${size} rounded-full aspect-square object-contain bg-gray-50 border-2 border-white shadow-sm shrink-0 ${className}`} 
+                style={{ aspectRatio: "1 / 1", objectFit: "contain", objectPosition: "center top" }}
             />
         );
     }
