@@ -874,139 +874,141 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
                 </div>
 
                 {/* Form Body */}
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <FormField label="Asset ID" required error={errors.assetId}>
-                            <input
-                                type="text"
-                                value={form.assetId}
-                                onChange={(e) => setForm({ ...form, assetId: e.target.value })}
-                                placeholder="e.g. AST-1001"
-                                className={inputCls}
-                            />
-                        </FormField>
+                <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField label="Asset ID" required error={errors.assetId}>
+                                <input
+                                    type="text"
+                                    value={form.assetId}
+                                    onChange={(e) => setForm({ ...form, assetId: e.target.value })}
+                                    placeholder="e.g. AST-1001"
+                                    className={inputCls}
+                                />
+                            </FormField>
 
-                        <FormField label="Category" required error={errors.category}>
-                            <div className="relative">
-                                <select
-                                    value={form.category}
-                                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                                    className={selectCls}
-                                >
-                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                        </FormField>
-                    </div>
-
-                    <FormField label="Asset Name" required error={errors.name}>
-                        <input
-                            type="text"
-                            value={form.name}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            placeholder="e.g. MacBook Pro 16 M2 Max"
-                            className={inputCls}
-                        />
-                    </FormField>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <FormField label="Brand / Model">
-                            <input
-                                type="text"
-                                value={form.brandModel}
-                                onChange={(e) => setForm({ ...form, brandModel: e.target.value })}
-                                placeholder="e.g. Apple / A2780"
-                                className={inputCls}
-                            />
-                        </FormField>
-
-                        <FormField label="Serial Number">
-                            <input
-                                type="text"
-                                value={form.serialNumber}
-                                onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
-                                placeholder="e.g. C02G1234MD6R"
-                                className={inputCls}
-                            />
-                        </FormField>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <FormField label="Condition">
-                            <div className="relative">
-                                <select
-                                    value={form.condition}
-                                    onChange={(e) => setForm({ ...form, condition: e.target.value })}
-                                    className={selectCls}
-                                >
-                                    {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                        </FormField>
-
-                        <FormField label="Status">
-                            <div className="relative">
-                                <select
-                                    value={form.status}
-                                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                    className={selectCls}
-                                >
-                                    {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                        </FormField>
-                    </div>
-
-                    <FormField label="Assigned Employee (Optional)">
-                        <div className="relative">
-                            <select
-                                value={form.assignedTo}
-                                onChange={(e) => {
-                                    const empId = e.target.value;
-                                    setForm({
-                                        ...form,
-                                        assignedTo: empId,
-                                        status: empId ? "Assigned" : (form.status === "Assigned" ? "Available" : form.status)
-                                    });
-                                }}
-                                className={selectCls}
-                            >
-                                <option value="">None (Unassigned)</option>
-                                {employees.map(emp => (
-                                    <option key={emp._id} value={emp._id}>
-                                        {emp.fullName || `${emp.firstName} ${emp.lastName}`} ({emp.employeeId} - {emp.department})
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <FormField label="Category" required error={errors.category}>
+                                <div className="relative">
+                                    <select
+                                        value={form.category}
+                                        onChange={(e) => setForm({ ...form, category: e.target.value })}
+                                        className={selectCls}
+                                    >
+                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
+                            </FormField>
                         </div>
-                    </FormField>
 
-                    <FormField label="Assigned Date">
-                        <input
-                            type="date"
-                            value={form.assignedDate}
-                            onChange={(e) => setForm({ ...form, assignedDate: e.target.value })}
-                            className={inputCls}
-                        />
-                    </FormField>
+                        <FormField label="Asset Name" required error={errors.name}>
+                            <input
+                                type="text"
+                                value={form.name}
+                                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                placeholder="e.g. MacBook Pro 16 M2 Max"
+                                className={inputCls}
+                            />
+                        </FormField>
 
-                    {/* Footer Actions */}
-                    <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-2">
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField label="Brand / Model">
+                                <input
+                                    type="text"
+                                    value={form.brandModel}
+                                    onChange={(e) => setForm({ ...form, brandModel: e.target.value })}
+                                    placeholder="e.g. Apple / A2780"
+                                    className={inputCls}
+                                />
+                            </FormField>
+
+                            <FormField label="Serial Number">
+                                <input
+                                    type="text"
+                                    value={form.serialNumber}
+                                    onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
+                                    placeholder="e.g. C02G1234MD6R"
+                                    className={inputCls}
+                                />
+                            </FormField>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField label="Condition">
+                                <div className="relative">
+                                    <select
+                                        value={form.condition}
+                                        onChange={(e) => setForm({ ...form, condition: e.target.value })}
+                                        className={selectCls}
+                                    >
+                                        {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
+                            </FormField>
+
+                            <FormField label="Status">
+                                <div className="relative">
+                                    <select
+                                        value={form.status}
+                                        onChange={(e) => setForm({ ...form, status: e.target.value })}
+                                        className={selectCls}
+                                    >
+                                        {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
+                            </FormField>
+                        </div>
+
+                        <FormField label="Assigned Employee (Optional)">
+                            <div className="relative">
+                                <select
+                                    value={form.assignedTo}
+                                    onChange={(e) => {
+                                        const empId = e.target.value;
+                                        setForm({
+                                            ...form,
+                                            assignedTo: empId,
+                                            status: empId ? "Assigned" : (form.status === "Assigned" ? "Available" : form.status)
+                                        });
+                                    }}
+                                    className={selectCls}
+                                >
+                                    <option value="">None (Unassigned)</option>
+                                    {employees.map(emp => (
+                                        <option key={emp._id} value={emp._id}>
+                                            {emp.fullName || `${emp.firstName} ${emp.lastName}`} ({emp.employeeId} - {emp.department})
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
+                        </FormField>
+
+                        <FormField label="Assigned Date">
+                            <input
+                                type="date"
+                                value={form.assignedDate}
+                                onChange={(e) => setForm({ ...form, assignedDate: e.target.value })}
+                                className={inputCls}
+                            />
+                        </FormField>
+                    </div>
+
+                    {/* Fixed Bottom Footer Actions */}
+                    <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-3 shadow-lg">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-[10px] transition-colors cursor-pointer"
+                            className="w-full py-2.5 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-[10px] transition-colors cursor-pointer text-center"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] hover:opacity-95 rounded-[10px] shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            className="w-full py-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] hover:opacity-95 rounded-[10px] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                             {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                             <span>{isEdit ? "Update Asset" : "Save Asset"}</span>
