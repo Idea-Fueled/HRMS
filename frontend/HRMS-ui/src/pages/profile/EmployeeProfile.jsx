@@ -5,7 +5,8 @@ import {
     Shield, Clock, Edit3, X, Check, Eye, Download, Upload,
     Laptop, Mouse, ShieldCheck, Award, FileText,
     Heart, GraduationCap, PhoneCall, History, Loader2, Camera,
-    Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight
+    Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight,
+    Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
@@ -13,6 +14,7 @@ import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
 import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
+import { getAllAssets } from "../../services/asset.service";
 
 /* ─────────────────────────────────────────────
    HELPERS & DEFAULT SEEDS
@@ -494,11 +496,71 @@ export const EmployeeProfile = () => {
         });
     };
 
-    // 6. Asset Operations
-    const currentAssets = useMemo(() => {
-        if (Array.isArray(employee?.assets) && employee.assets.length > 0) return employee.assets;
-        return [];
-    }, [employee]);
+    // 6. Asset Operations - Live sync with Assets Module
+    const [userAssets, setUserAssets] = useState([]);
+    const [loadingAssets, setLoadingAssets] = useState(false);
+
+    const fetchUserAssets = useCallback(async () => {
+        if (!employee?._id && !employee?.employeeId) return;
+        setLoadingAssets(true);
+        try {
+            const res = await getAllAssets();
+            if (res.data?.success && Array.isArray(res.data.assets)) {
+                const empIdStr = (employee._id || "").toString();
+                const empCodeStr = (employee.employeeId || "").toString();
+                const empEmailStr = (employee.email || "").toLowerCase().trim();
+
+                const matched = res.data.assets.filter(asset => {
+                    if (!asset.assignedTo) return false;
+                    const assignedObj = asset.assignedTo;
+                    const assignedId = typeof assignedObj === "object" ? (assignedObj._id || "").toString() : (assignedObj || "").toString();
+                    const assignedEmpCode = typeof assignedObj === "object" ? (assignedObj.employeeId || "").toString() : "";
+                    const assignedEmail = typeof assignedObj === "object" ? (assignedObj.email || "").toLowerCase().trim() : "";
+
+                    return (
+                        (assignedId && assignedId === empIdStr) ||
+                        (assignedEmpCode && assignedEmpCode === empCodeStr) ||
+                        (assignedEmail && empEmailStr && assignedEmail === empEmailStr)
+                    );
+                });
+                setUserAssets(matched);
+            }
+        } catch (err) {
+            console.error("Error loading employee assigned assets:", err);
+        } finally {
+            setLoadingAssets(false);
+        }
+    }, [employee?._id, employee?.employeeId, employee?.email]);
+
+    useEffect(() => {
+        if (activeTab === "Assets") {
+            fetchUserAssets();
+        }
+    }, [activeTab, fetchUserAssets]);
+
+    const getCategoryIcon = (category, className = "w-5 h-5") => {
+        switch (category) {
+            case "Screen":
+                return <Monitor className={className} />;
+            case "Keyboard":
+                return <KeyboardIcon className={className} />;
+            case "Mouse":
+                return <MouseIcon className={className} />;
+            case "Mobile":
+                return <Smartphone className={className} />;
+            case "Tablet":
+                return <TabletIcon className={className} />;
+            case "CPU":
+                return <Cpu className={className} />;
+            case "UPS":
+                return <Zap className={className} />;
+            case "Desktop":
+                return <Monitor className={className} />;
+            case "Laptop":
+            default:
+                return <Laptop className={className} />;
+        }
+    };
 
     const handleAddAssetSubmit = async (e) => {
         e.preventDefault();
@@ -1181,35 +1243,26 @@ export const EmployeeProfile = () => {
             ───────────────────────────────────────────── */}
             {activeTab === "Assets" && (
                 <div className="space-y-6">
-                    {canEdit && (
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setShowAssetModal(true)}
-                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>Assign New Asset</span>
-                            </button>
-                        </div>
-                    )}
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {currentAssets.length === 0 ? (
+                        {loadingAssets ? (
+                            <div className="col-span-full py-12 text-center text-slate-400 font-bold">
+                                Loading assigned assets...
+                            </div>
+                        ) : userAssets.length === 0 ? (
                             <div className="col-span-full py-12 text-center select-none bg-slate-50/50 rounded-[20px] border border-dashed border-slate-200 animate-fadeIn">
                                 <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] mx-auto mb-3">
                                     <Laptop className="w-5 h-5" />
                                 </div>
                                 <h4 className="text-slate-850 text-xs font-bold">No assets assigned yet</h4>
-                                <p className="text-slate-400 text-[11px] mt-1">Devices and items assigned to this employee will appear here.</p>
+                                <p className="text-slate-400 text-[11px] mt-1">Devices and items assigned to this employee from the Assets tab will appear here.</p>
                             </div>
                         ) : (
-                            currentAssets.map((asset, idx) => (
-                                <div key={idx} className="premium-3d-card p-6 space-y-4 relative group">
+                            userAssets.map((asset, idx) => (
+                                <div key={asset._id || idx} className="premium-3d-card p-6 space-y-4 relative group">
                                     <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
-                                                <Laptop className="w-5 h-5" />
+                                                {getCategoryIcon(asset.category)}
                                             </div>
                                             <div>
                                                 <h4 className="text-[#1E1E1E] text-xs font-extrabold">{asset.name}</h4>
@@ -1218,29 +1271,19 @@ export const EmployeeProfile = () => {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
-                                                {asset.status || "Active"}
+                                                {asset.status || "Assigned"}
                                             </span>
-                                            {canDelete && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteAsset(idx)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                    title="Delete Asset"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
 
                                     <div className="space-y-2 text-xs text-gray-600 font-medium">
                                         <div className="flex justify-between">
                                             <span className="text-gray-400">Asset Tag / Serial:</span>
-                                            <span className="font-mono font-bold text-[#1E1E1E]">{asset.assetTag || `${empCode}-AST`}</span>
+                                            <span className="font-mono font-bold text-[#1E1E1E]">{asset.assetTag || asset.serialNumber || `${empCode}-AST`}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-400">Issued Date:</span>
-                                            <span className="font-semibold text-gray-700">{formatDateStr(asset.issuedDate)}</span>
+                                            <span className="font-semibold text-gray-700">{formatDateStr(asset.assignedDate || asset.issuedDate || asset.createdAt)}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-400">Condition:</span>
