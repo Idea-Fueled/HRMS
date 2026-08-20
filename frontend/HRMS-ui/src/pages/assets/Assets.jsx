@@ -815,9 +815,8 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
 
     const validate = () => {
         const errs = {};
-        if (!form.assetId.trim()) errs.assetId = "Asset ID is required.";
-        if (!form.name.trim()) errs.name = "Asset Name is required.";
-        if (!form.category.trim()) errs.category = "Category is required.";
+        if (!form.assetId || !form.assetId.trim()) errs.assetId = "Asset ID is required.";
+        if (!form.category || !form.category.trim()) errs.category = "Category is required.";
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -828,14 +827,18 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
 
         setSubmitting(true);
         try {
+            const payload = {
+                ...form,
+                name: form.brandModel ? form.brandModel.trim() : form.category
+            };
             if (isEdit) {
-                const res = await updateAsset(asset._id, form);
+                const res = await updateAsset(asset._id, payload);
                 if (res.data?.success) {
                     toast.success(res.data.message || "Asset updated successfully.");
                     onSuccess();
                 }
             } else {
-                const res = await createAsset(form);
+                const res = await createAsset(payload);
                 if (res.data?.success) {
                     toast.success(res.data.message || "Asset created successfully.");
                     onSuccess();
