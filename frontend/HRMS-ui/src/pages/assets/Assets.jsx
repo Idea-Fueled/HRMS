@@ -456,16 +456,14 @@ const Assets = () => {
                                                                 {getCategoryIcon(asset.category, "w-5 h-5")}
                                                             </div>
                                                             <div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-extrabold text-sm text-slate-900 leading-tight">
-                                                                        {asset.brandModel || asset.category}
+                                                                <h4 className="font-extrabold text-sm text-slate-900 leading-tight">
+                                                                    {asset.brandModel || asset.category}
+                                                                </h4>
+                                                                <p className="text-xs font-bold text-slate-500 mt-1 inline-flex items-center gap-1.5">
+                                                                    <span>Asset Code:</span>
+                                                                    <span className="font-mono font-extrabold text-[#2D79C7] bg-blue-50/90 px-1.5 py-0.2 rounded border border-blue-100/80">
+                                                                        {asset.assetId}
                                                                     </span>
-                                                                    <span className="text-[10px] font-mono font-extrabold text-[#2D79C7] bg-blue-50 px-2 py-0.5 rounded-[6px] border border-blue-100 shadow-2xs">
-                                                                        #{asset.assetId}
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-                                                                    Asset Code: {asset.assetId}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -500,7 +498,7 @@ const Assets = () => {
                                                                 <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-8 h-8 ring-2 ring-blue-100 shadow-2xs" />
                                                                 <div>
                                                                     <p className="text-xs font-extrabold text-slate-900 leading-tight">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
-                                                                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
+                                                                    <p className="text-xs font-bold text-slate-600 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
                                                                 </div>
                                                             </div>
                                                         ) : (
@@ -727,7 +725,7 @@ const Assets = () => {
                                                 <Avatar src={emp?.profilePicture} name={empName} size="w-10 h-10 ring-2 ring-blue-100 shadow-2xs" />
                                                 <div>
                                                     <h3 className="font-extrabold text-sm text-slate-800 leading-tight">{empName}</h3>
-                                                    <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                                                    <p className="text-xs text-slate-600 font-bold mt-0.5">
                                                         {emp?.employeeId} · {emp?.department || "N/A"} · {emp?.designation || "N/A"}
                                                     </p>
                                                 </div>
