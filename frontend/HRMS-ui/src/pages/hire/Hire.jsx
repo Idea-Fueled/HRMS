@@ -417,7 +417,7 @@ export const Hire = () => {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-gray-100 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-gray-100 text-xs">
                         <select
                             value={filterStage}
                             onChange={(e) => setFilterStage(e.target.value)}
@@ -426,17 +426,6 @@ export const Hire = () => {
                             <option value="">All Stages</option>
                             {PIPELINE_STAGES.map(stg => (
                                 <option key={stg} value={stg}>{stg}</option>
-                            ))}
-                        </select>
-
-                        <select
-                            value={filterPosition}
-                            onChange={(e) => setFilterPosition(e.target.value)}
-                            className="bg-gray-50 border border-gray-200 rounded-[10px] px-3 py-1.5 text-xs text-gray-700 font-semibold focus:outline-none focus:border-[#2D79C7]"
-                        >
-                            <option value="">All Positions</option>
-                            {POSITIONS.map(pos => (
-                                <option key={pos} value={pos}>{pos}</option>
                             ))}
                         </select>
 
