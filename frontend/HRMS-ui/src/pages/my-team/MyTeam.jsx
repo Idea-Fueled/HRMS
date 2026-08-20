@@ -271,8 +271,6 @@ const TeamSummaryTab = () => {
 const TeamMembersTab = () => {
     const { user } = useAuth();
     const userRole = (user?.role || "employee").toLowerCase();
-    const isEmployee = userRole === "employee";
-    const managerInfo = typeof user?.managerId === "object" ? user?.managerId : null;
 
     const [loading, setLoading] = useState(true);
     const [employees, setEmployees] = useState([]);
@@ -366,13 +364,28 @@ const TeamMembersTab = () => {
     };
 
     const isGlobalAdminOrHr = userRole === "global_admin" || userRole === "hr";
+    const isManagerRole = userRole === "manager";
+    const isEmployeeRole = userRole === "employee";
+
     const currentUserId = user?._id || user?.id;
     const currentUserName = (user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`).trim().toLowerCase();
+    const currentUserDept = (user?.department || "").trim().toLowerCase();
+    const currentUserManagerId = typeof user?.managerId === "object" ? user?.managerId?._id?.toString() : user?.managerId?.toString();
+
+    // Resolve reporting manager object if available
+    const managerInfo = (typeof user?.managerId === "object" && user?.managerId !== null)
+        ? user.managerId
+        : employees.find(e => e._id === user?.managerId || e.id === user?.managerId);
 
     // Filter
     const filtered = employees.filter(e => {
-        // Manager or Employee role: ONLY show employees reporting to this logged-in manager
-        if (!isGlobalAdminOrHr) {
+        // Exclude self from team members list
+        if (e._id === currentUserId || e.id === user?.employeeId) {
+            return false;
+        }
+
+        if (isManagerRole) {
+            // Manager role: ONLY show employees reporting to this logged-in manager
             const empManagerId = typeof e.managerId === "object" ? e.managerId?._id : (e.managerId || e._id);
             const empManagerName = (e.manager || "").trim().toLowerCase();
             
@@ -382,12 +395,24 @@ const TeamMembersTab = () => {
             if (!matchesId && !matchesName) {
                 return false;
             }
+        } else if (isEmployeeRole) {
+            // Employee role: Show team members in SAME DEPARTMENT or sharing the SAME REPORTING MANAGER
+            const empDept = (e.dept || e.department || "").trim().toLowerCase();
+            const empManagerId = typeof e.managerId === "object" ? e.managerId?._id?.toString() : e.managerId?.toString();
+            const empManagerName = (e.manager || "").trim().toLowerCase();
+
+            const sameDept = currentUserDept && empDept && empDept === currentUserDept;
+            const sameManager = (currentUserManagerId && empManagerId && currentUserManagerId === empManagerId) ||
+                                (currentUserName && empManagerName && empManagerName.includes(currentUserName));
+
+            if (!sameDept && !sameManager) {
+                return false;
+            }
         }
 
         const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) || e.id.toLowerCase().includes(search.toLowerCase());
-        const matchesDept = selectedDept === "All" || e.dept === selectedDept;
         const matchesStatus = selectedStatus === "All" || e.status === selectedStatus;
-        return matchesSearch && matchesDept && matchesStatus;
+        return matchesSearch && matchesStatus;
     });
 
     // Sort
@@ -409,8 +434,8 @@ const TeamMembersTab = () => {
 
     return (
         <div className="space-y-6">
-            {/* Reporting Manager Card for Employee role */}
-            {isEmployee && managerInfo && (
+            {/* Reporting Manager Card for Employee & Manager roles */}
+            {managerInfo && (
                 <div className="premium-3d-card p-5 bg-white border border-gray-150 rounded-[20px] flex items-center justify-between animate-fadeIn">
                     <div className="flex items-center gap-4">
                         <Avatar
@@ -422,8 +447,8 @@ const TeamMembersTab = () => {
                         <div className="space-y-0.5 text-left">
                             <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Reporting Manager</span>
                             <h4 className="text-[#1E1E1E] text-sm font-black">{managerInfo.fullName || `${managerInfo.firstName || ''} ${managerInfo.lastName || ''}`}</h4>
-                            <p className="text-gray-500 text-xs font-semibold">{managerInfo.designation || "Manager"}</p>
-                            <p className="text-[#2D79C7] text-xs font-bold">{managerInfo.department || "Engineering"}</p>
+                            <p className="text-gray-500 text-xs font-semibold">{managerInfo.designation || managerInfo.title || "Manager"}</p>
+                            <p className="text-[#2D79C7] text-xs font-bold">{managerInfo.department || managerInfo.dept || "Engineering"}</p>
                         </div>
                     </div>
                 </div>
