@@ -10,7 +10,7 @@ const assetSchema = new mongoose.Schema(
         },
         name: {
             type: String,
-            required: true,
+            default: "",
             trim: true
         },
         category: {

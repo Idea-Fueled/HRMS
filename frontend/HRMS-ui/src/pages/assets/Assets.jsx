@@ -334,7 +334,7 @@ const Assets = () => {
                         <SearchBar
                             value={filters.search}
                             onChange={(v) => setFilters({ ...filters, search: v })}
-                            placeholder="Search asset name, ID, brand..."
+                            placeholder="Search asset ID, category, brand..."
                         />
                         <div className="relative">
                             <select
@@ -397,10 +397,7 @@ const Assets = () => {
                                             <th className="text-left px-4 py-3 text-xs text-gray-400">
                                                 <SortHeader label="Asset ID" field="assetId" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400">
-                                                <SortHeader label="Asset Name" field="name" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                            </th>
-                                            <th className="text-left px-4 py-3 text-xs text-gray-400">
+                                            <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">
                                                 <SortHeader label="Category" field="category" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                             </th>
                                             <th className="text-left px-4 py-3 text-xs text-gray-400 font-extrabold uppercase tracking-wider">Brand / Model</th>
@@ -418,10 +415,6 @@ const Assets = () => {
                                                     <span className="text-[11px] font-bold text-[#2D79C7] bg-blue-50 px-2 py-0.5 rounded-[6px] border border-blue-100">
                                                         {asset.assetId}
                                                     </span>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="font-bold text-sm text-[#1E1E1E]">{asset.name}</div>
-                                                    {asset.serialNumber && <div className="text-[10px] text-gray-400">SN: {asset.serialNumber}</div>}
                                                 </td>
                                                 <td className="px-4 py-3 text-xs font-semibold text-gray-600">{asset.category}</td>
                                                 <td className="px-4 py-3 text-xs text-gray-600">{asset.brandModel || "—"}</td>
@@ -529,8 +522,8 @@ const Assets = () => {
                                                 {asset.status}
                                             </span>
                                         </div>
-                                        <h3 className="font-bold text-sm text-[#1E1E1E] truncate">{asset.name}</h3>
-                                        <p className="text-xs text-gray-500 font-medium">{asset.category} · {asset.brandModel || "N/A"}</p>
+                                        <h3 className="font-bold text-sm text-[#1E1E1E] truncate">{asset.brandModel || asset.category}</h3>
+                                        <p className="text-xs text-gray-500 font-medium">{asset.category}</p>
                                     </div>
 
                                     <div className="space-y-2 text-xs border-t border-[#F3F4F6] pt-3">
@@ -662,7 +655,7 @@ const Assets = () => {
                                                                 <span className="text-[10px] font-bold text-[#2D79C7] bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
                                                                     {asset.assetId}
                                                                 </span>
-                                                                <span className="font-bold text-xs text-[#1E1E1E]">{asset.name}</span>
+                                                                <span className="font-bold text-xs text-[#1E1E1E]">{asset.brandModel || asset.category}</span>
                                                             </div>
                                                             <p className="text-[11px] text-gray-500 font-medium mt-0.5">
                                                                 {asset.category} · Assigned: {formatDate(asset.assignedDate)}
@@ -767,8 +760,8 @@ const Assets = () => {
                 title={confirmDialog.type === "delete" ? "Delete Asset" : "Unassign Asset"}
                 message={
                     confirmDialog.type === "delete"
-                        ? `Are you sure you want to permanently delete asset ${confirmDialog.asset?.assetId} (${confirmDialog.asset?.name})? This action cannot be undone.`
-                        : `Are you sure you want to unassign asset ${confirmDialog.asset?.assetId} (${confirmDialog.asset?.name}) from ${confirmDialog.asset?.assignedTo?.fullName || "employee"}?`
+                        ? `Are you sure you want to permanently delete asset ${confirmDialog.asset?.assetId} (${confirmDialog.asset?.brandModel || confirmDialog.asset?.category})? This action cannot be undone.`
+                        : `Are you sure you want to unassign asset ${confirmDialog.asset?.assetId} (${confirmDialog.asset?.brandModel || confirmDialog.asset?.category}) from ${confirmDialog.asset?.assignedTo?.fullName || "employee"}?`
                 }
                 confirmText={confirmDialog.type === "delete" ? "Delete Asset" : "Unassign Asset"}
                 type={confirmDialog.type === "delete" ? "danger" : "warning"}
@@ -797,19 +790,16 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
         if (isEdit && asset) {
             return {
                 assetId: asset.assetId || "",
-                name: asset.name || "",
                 category: asset.category || "Laptop",
                 brandModel: asset.brandModel || "",
                 condition: asset.condition || "Excellent",
                 status: asset.status || "Available",
                 assignedTo: asset.assignedTo?._id || asset.assignedTo || "",
-                assignedDate: asset.assignedDate ? asset.assignedDate.split("T")[0] : "",
-                serialNumber: asset.serialNumber || ""
+                assignedDate: asset.assignedDate ? asset.assignedDate.split("T")[0] : ""
             };
         }
         return {
             assetId: `AST-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "",
             category: "Laptop",
             brandModel: "",
             condition: "Excellent",
@@ -901,37 +891,15 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
                             </FormField>
                         </div>
 
-                        <FormField label="Asset Name" required error={errors.name}>
+                        <FormField label="Brand / Model">
                             <input
                                 type="text"
-                                value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                placeholder="e.g. MacBook Pro 16 M2 Max"
+                                value={form.brandModel}
+                                onChange={(e) => setForm({ ...form, brandModel: e.target.value })}
+                                placeholder="e.g. Apple MacBook Pro / A2780"
                                 className={inputCls}
                             />
                         </FormField>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField label="Brand / Model">
-                                <input
-                                    type="text"
-                                    value={form.brandModel}
-                                    onChange={(e) => setForm({ ...form, brandModel: e.target.value })}
-                                    placeholder="e.g. Apple / A2780"
-                                    className={inputCls}
-                                />
-                            </FormField>
-
-                            <FormField label="Serial Number">
-                                <input
-                                    type="text"
-                                    value={form.serialNumber}
-                                    onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
-                                    placeholder="e.g. C02G1234MD6R"
-                                    className={inputCls}
-                                />
-                            </FormField>
-                        </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <FormField label="Condition">
@@ -1065,7 +1033,7 @@ const AssignAssetModal = ({ asset, allAssets, employees, preselectedEmployeeId, 
                     {asset ? (
                         <div className="bg-blue-50 border border-blue-100 p-3 rounded-[12px]">
                             <span className="text-[10px] font-bold text-[#2D79C7] uppercase tracking-wider block mb-1">Target Asset</span>
-                            <div className="font-bold text-sm text-[#1E1E1E]">{asset.name}</div>
+                            <div className="font-bold text-sm text-[#1E1E1E]">{asset.brandModel || asset.category}</div>
                             <div className="text-xs text-gray-500">{asset.assetId} · {asset.category}</div>
                         </div>
                     ) : (
@@ -1167,7 +1135,7 @@ const UpdateStatusModal = ({ asset, onClose, onSuccess }) => {
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 text-left">
                     <div className="text-xs text-gray-500 font-bold">
-                        Asset: <span className="text-[#1E1E1E]">{asset.name}</span> ({asset.assetId})
+                        Asset: <span className="text-[#1E1E1E]">{asset.brandModel || asset.category}</span> ({asset.assetId})
                     </div>
 
                     <FormField label="Asset Status">

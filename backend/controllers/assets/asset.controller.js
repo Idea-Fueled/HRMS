@@ -122,10 +122,10 @@ export const createAsset = async (req, res) => {
             notes
         } = req.body;
 
-        if (!assetId || !name || !category) {
+        if (!assetId || !category) {
             return res.status(400).json({
                 success: false,
-                message: "Asset ID, Asset Name, and Category are required."
+                message: "Asset ID and Category are required."
             });
         }
 
@@ -157,9 +157,11 @@ export const createAsset = async (req, res) => {
             finalStatus = "Assigned";
         }
 
+        const assetName = name ? name.trim() : (brandModel ? brandModel.trim() : category.trim());
+
         const newAsset = await Asset.create({
             assetId: assetId.trim(),
-            name: name.trim(),
+            name: assetName,
             category: category.trim(),
             brandModel: brandModel ? brandModel.trim() : "",
             condition: condition || "Excellent",
