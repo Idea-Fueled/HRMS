@@ -412,63 +412,60 @@ const Assets = () => {
                                         {sortedAssets.map((asset) => {
                                             const st = statusBadge(asset.status);
                                             return (
-                                                <tr key={asset._id} className="hover:bg-slate-50/80 transition-colors group">
-                                                    <td className="px-5 py-4">
-                                                        <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-[#2D79C7] bg-blue-50/90 px-2.5 py-1 rounded-[8px] border border-blue-100 font-mono shadow-2xs">
-                                                            <Box className="w-3 h-3 text-[#2D79C7]" />
+                                                <tr key={asset._id} className="hover:bg-blue-50/20 transition-colors group">
+                                                    <td className="px-5 py-3.5">
+                                                        <span className="text-xs font-mono font-extrabold text-[#2D79C7] bg-blue-50/70 px-2 py-0.5 rounded-[6px] border border-blue-100/80">
                                                             {asset.assetId}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-4">
-                                                        <span className="inline-flex items-center text-xs font-bold text-slate-700 bg-slate-100/80 px-2.5 py-1 rounded-[8px] border border-slate-200/60 shadow-2xs">
-                                                            {asset.category}
-                                                        </span>
+                                                    <td className="px-5 py-3.5 text-xs font-semibold text-slate-600">
+                                                        {asset.category}
                                                     </td>
-                                                    <td className="px-5 py-4 text-xs font-bold text-slate-800">
+                                                    <td className="px-5 py-3.5 text-xs font-bold text-slate-800">
                                                         {asset.brandModel || "—"}
                                                     </td>
-                                                    <td className="px-5 py-4">
-                                                        <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
+                                                    <td className="px-5 py-3.5">
+                                                        <span className={`inline-flex items-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${conditionBadge(asset.condition)}`}>
                                                             {asset.condition}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-4">
-                                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-2xs ${st.cls}`}>
+                                                    <td className="px-5 py-3.5">
+                                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${st.cls}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                                                             {asset.status}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-4">
+                                                    <td className="px-5 py-3.5">
                                                         {asset.assignedTo ? (
                                                             <div className="flex items-center gap-2.5">
-                                                                <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-8 h-8 ring-2 ring-blue-100 shadow-2xs" />
+                                                                <Avatar src={asset.assignedTo.profilePicture} name={asset.assignedTo.fullName || asset.assignedTo.firstName} size="w-7 h-7" />
                                                                 <div>
-                                                                    <p className="text-xs font-bold text-slate-800 leading-tight">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
-                                                                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
+                                                                    <p className="text-xs font-bold text-slate-800 leading-none">{asset.assignedTo.fullName || `${asset.assignedTo.firstName} ${asset.assignedTo.lastName}`}</p>
+                                                                    <p className="text-[10px] text-slate-400 font-medium mt-1">{asset.assignedTo.employeeId} · {asset.assignedTo.department}</p>
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs font-semibold text-slate-400 italic bg-slate-50 px-2.5 py-1 rounded-[6px] border border-slate-100">Unassigned</span>
+                                                            <span className="text-xs font-medium text-slate-400 italic">Unassigned</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-4">
+                                                    <td className="px-5 py-3.5 text-xs font-medium text-slate-500">
                                                         {asset.assignedDate ? (
-                                                            <span className="text-xs font-semibold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-[8px] border border-slate-200/60 inline-flex items-center gap-1.5">
+                                                            <span className="inline-flex items-center gap-1.5">
                                                                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                                                 {formatDate(asset.assignedDate)}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-xs text-slate-400">—</span>
+                                                            <span className="text-slate-400">—</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-4">
-                                                        <div className="flex items-center gap-1.5">
+                                                    <td className="px-5 py-3.5">
+                                                        <div className="flex items-center gap-1">
                                                             {/* Assign / Unassign Quick Button */}
                                                             {asset.assignedTo ? (
                                                                 <button
                                                                     onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
                                                                     title="Unassign Asset"
-                                                                    className="p-2 bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-amber-100 shadow-2xs"
+                                                                    className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-[8px] border border-amber-200/60 transition-colors cursor-pointer"
                                                                 >
                                                                     <UserMinus className="w-3.5 h-3.5" />
                                                                 </button>
@@ -480,7 +477,7 @@ const Assets = () => {
                                                                         setShowAssignModal(true);
                                                                     }}
                                                                     title="Assign Asset"
-                                                                    className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-emerald-100 shadow-2xs"
+                                                                    className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-[8px] border border-emerald-200/60 transition-colors cursor-pointer"
                                                                 >
                                                                     <UserPlus className="w-3.5 h-3.5" />
                                                                 </button>
@@ -493,7 +490,7 @@ const Assets = () => {
                                                                     setShowStatusModal(true);
                                                                 }}
                                                                 title="Update Status / Condition"
-                                                                className="p-2 bg-blue-50 hover:bg-[#2D79C7] text-[#2D79C7] hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-blue-100 shadow-2xs"
+                                                                className="p-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] rounded-[8px] border border-blue-200/60 transition-colors cursor-pointer"
                                                             >
                                                                 <RefreshCw className="w-3.5 h-3.5" />
                                                             </button>
@@ -506,7 +503,7 @@ const Assets = () => {
                                                                     setShowAssetDrawer(true);
                                                                 }}
                                                                 title="Edit Asset"
-                                                                className="p-2 bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-slate-200 shadow-2xs"
+                                                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-[8px] border border-slate-200 transition-colors cursor-pointer"
                                                             >
                                                                 <Edit3 className="w-3.5 h-3.5" />
                                                             </button>
@@ -515,7 +512,7 @@ const Assets = () => {
                                                             <button
                                                                 onClick={() => setConfirmDialog({ isOpen: true, type: "delete", asset })}
                                                                 title="Delete Asset"
-                                                                className="p-2 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-[10px] transition-all duration-150 cursor-pointer border border-rose-100 shadow-2xs"
+                                                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-[8px] border border-rose-200/60 transition-colors cursor-pointer"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </button>
