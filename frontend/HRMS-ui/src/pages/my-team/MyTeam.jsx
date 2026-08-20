@@ -502,7 +502,7 @@ const TeamMembersTab = () => {
                 <div className="space-y-6 animate-fadeIn">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {paginated.map((emp) => (
-                            <Card key={emp.id} className="p-5 flex flex-col justify-between h-[280px]">
+                            <Card key={emp.id} className={`p-5 flex flex-col justify-between ${isEmployeeRole ? 'h-auto' : 'h-[280px]'}`}>
                                 <div>
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
@@ -533,17 +533,17 @@ const TeamMembersTab = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center pt-3.5 border-t border-[#F3F4F6] text-[11px] font-bold">
-                                    <span className="text-gray-400">{emp.type}</span>
-                                    {!isEmployeeRole && (
+                                {!isEmployeeRole && (
+                                    <div className="flex justify-between items-center pt-3.5 border-t border-[#F3F4F6] text-[11px] font-bold">
+                                        <span className="text-gray-400">{emp.type}</span>
                                         <button
                                             onClick={() => handleAction("View Profile", emp)}
                                             className="text-[#2D79C7] hover:underline cursor-pointer focus:outline-none font-bold"
                                         >
                                             View details
                                         </button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </Card>
                         ))}
                     </div>
