@@ -277,7 +277,7 @@ const TeamMembersTab = () => {
     const [loading, setLoading] = useState(true);
     const [employees, setEmployees] = useState([]);
     const [error, setError] = useState(null);
-    const [view, setView] = useState("list");
+    const [view, setView] = useState("card");
     const [search, setSearch] = useState("");
     const [selectedDept, setSelectedDept] = useState("All");
     const [selectedStatus, setSelectedStatus] = useState("All");
@@ -365,8 +365,25 @@ const TeamMembersTab = () => {
         setCurrentPage(1);
     };
 
+    const isGlobalAdminOrHr = userRole === "global_admin" || userRole === "hr";
+    const currentUserId = user?._id || user?.id;
+    const currentUserName = (user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`).trim().toLowerCase();
+
     // Filter
     const filtered = employees.filter(e => {
+        // Manager or Employee role: ONLY show employees reporting to this logged-in manager
+        if (!isGlobalAdminOrHr) {
+            const empManagerId = typeof e.managerId === "object" ? e.managerId?._id : (e.managerId || e._id);
+            const empManagerName = (e.manager || "").trim().toLowerCase();
+            
+            const matchesId = empManagerId && currentUserId && empManagerId.toString() === currentUserId.toString();
+            const matchesName = currentUserName && empManagerName && (empManagerName === currentUserName || currentUserName.includes(empManagerName) || empManagerName.includes(currentUserName));
+            
+            if (!matchesId && !matchesName) {
+                return false;
+            }
+        }
+
         const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) || e.id.toLowerCase().includes(search.toLowerCase());
         const matchesDept = selectedDept === "All" || e.dept === selectedDept;
         const matchesStatus = selectedStatus === "All" || e.status === selectedStatus;

@@ -132,6 +132,7 @@ export const getTeamMembers = async (req, res) => {
             profilePicture: m.profilePicture || "",
             dept: m.department || "General",
             title: m.designation || "Employee",
+            managerId: m.managerId ? (m.managerId._id || m.managerId) : null,
             manager: m.managerId ? (m.managerId.fullName || `${m.managerId.firstName || ""} ${m.managerId.lastName || ""}`) : "None",
             type: m.employementType === "full_time" ? "Full Time" : m.employementType === "intern" ? "Intern" : m.employementType === "contract" ? "Contract" : "Part Time",
             status: m.status === "active" ? "Active" : m.status === "on_notice" ? "On Notice" : "Inactive"
