@@ -28,6 +28,7 @@ import {
 } from "../../services/employee.service";
 import { useAuth } from "../../context/AuthContext";
 import { uploadProfilePicture } from "../../services/auth.service";
+import { getLeaveSummary } from "../../services/dashboard.service";
 
 const useResponsivePageSize = (viewMode) => {
     const [windowWidth, setWindowWidth] = React.useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -538,6 +539,34 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
     if (!employee) return null;
     const name = employee.fullName || `${employee.firstName} ${employee.lastName}`;
 
+    const [liveSummary, setLiveSummary] = useState(null);
+
+    useEffect(() => {
+        if (employee?._id) {
+            getLeaveSummary(employee._id)
+                .then(res => {
+                    if (res.data?.success) {
+                        setLiveSummary(res.data.leaveSummary);
+                    }
+                })
+                .catch(err => console.error("Error fetching live leave summary:", err));
+        }
+    }, [employee?._id]);
+
+    const balance = liveSummary?.leaveBalance || employee.leaveBalance || {};
+
+    const casualTotal = balance.casual?.total ?? 2.5;
+    const casualUsed = balance.casual?.used ?? 0;
+
+    const sickTotal = balance.sick?.total ?? 6;
+    const sickUsed = balance.sick?.used ?? 0;
+
+    const earnedTotal = balance.earned?.total ?? 5;
+    const earnedUsed = balance.earned?.used ?? 0;
+
+    const partialTotal = balance.partial?.total ?? 1;
+    const partialUsed = balance.partial?.used ?? 0;
+
     const InfoRow = ({ icon: Icon, label, value, className = "" }) => (
         <div className={`flex flex-col gap-1 ${className}`}>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
@@ -548,7 +577,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
         </div>
     );
 
-    const LeaveCard = ({ label, total, used }) => {
+    const LeaveCard = ({ label, total, used, unit = "Days" }) => {
         const remaining = total - used;
         const percentage = total > 0 ? Math.max(0, (remaining / total) * 100) : 0;
         
@@ -572,19 +601,26 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                 bar: "bg-gradient-to-r from-emerald-500 to-teal-500",
                 text: "text-emerald-900"
             };
+        } else if (label.toLowerCase() === "partial") {
+            theme = {
+                bg: "bg-purple-50/30 border-purple-100/50 hover:bg-purple-50/50",
+                badge: "bg-purple-100 text-purple-700",
+                bar: "bg-gradient-to-r from-purple-500 to-indigo-500",
+                text: "text-purple-900"
+            };
         }
 
         return (
-            <div className={`border rounded-[16px] p-3.5 shadow-2xs flex flex-col gap-2.5 transition-all duration-300 hover:shadow-xs hover:-translate-y-0.5 ${theme.bg}`}>
-                <div className="flex justify-between items-center gap-2">
+            <div className={`border rounded-[16px] p-3 shadow-2xs flex flex-col gap-2 transition-all duration-300 hover:shadow-xs hover:-translate-y-0.5 ${theme.bg}`}>
+                <div className="flex justify-between items-center gap-1">
                     <span className={`text-[10px] font-black uppercase tracking-wider ${theme.text}`}>{label}</span>
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full whitespace-nowrap shadow-3xs ${theme.badge}`}>
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap shadow-3xs ${theme.badge}`}>
                         {remaining} Left
                     </span>
                 </div>
                 <div className="flex items-baseline gap-0.5 mt-0.5">
-                    <span className={`text-xl font-black leading-none ${theme.text}`}>{remaining}</span>
-                    <span className="text-[9px] text-slate-400 font-bold">/ {total} Days</span>
+                    <span className={`text-lg font-black leading-none ${theme.text}`}>{remaining}</span>
+                    <span className="text-[9px] text-slate-400 font-bold">/ {total} {unit}</span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-200/70 rounded-full overflow-hidden mt-0.5">
                     <div className={`h-full rounded-full transition-all duration-500 ${theme.bar}`} style={{ width: `${percentage}%` }} />
@@ -677,21 +713,27 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                     {/* Leave Balance Container */}
                     <div className="bg-white border border-slate-200/60 rounded-[20px] p-5 shadow-xs space-y-4">
                         <SectionTitle>Leave Balance</SectionTitle>
-                        <div className="grid grid-cols-3 gap-3 mt-2">
+                        <div className="grid grid-cols-2 gap-3 mt-2">
                             <LeaveCard 
                                 label="Casual" 
-                                total={employee.leaveBalance?.casual?.total ?? 2.5} 
-                                used={employee.leaveBalance?.casual?.used ?? 0} 
+                                total={casualTotal} 
+                                used={casualUsed} 
                             />
                             <LeaveCard 
                                 label="Sick" 
-                                total={employee.leaveBalance?.sick?.total ?? 6} 
-                                used={employee.leaveBalance?.sick?.used ?? 0} 
+                                total={sickTotal} 
+                                used={sickUsed} 
                             />
                             <LeaveCard 
                                 label="Earned" 
-                                total={employee.leaveBalance?.earned?.total ?? 5} 
-                                used={employee.leaveBalance?.earned?.used ?? 0} 
+                                total={earnedTotal} 
+                                used={earnedUsed} 
+                            />
+                            <LeaveCard 
+                                label="Partial" 
+                                total={partialTotal} 
+                                used={partialUsed} 
+                                unit="Day/mo"
                             />
                         </div>
                     </div>
