@@ -1,6 +1,53 @@
 import Leave from "../../models/leaves/leave.model.js";
 import User from "../../models/users/user.model.js";
 
+/**
+ * Calculates accrued leave quota for a financial year (1st April to 31st March)
+ * - Casual Leave: 0.5 per month accrued automatically on current date/month
+ * - Earned Leave: 1.0 per month accrued automatically on current date/month
+ * - Sick Leave: 6.0 credited upfront on 1st April
+ */
+export const calculateAccruedLeaves = (joiningDate = null, referenceDate = new Date()) => {
+    const today = new Date(referenceDate);
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0 = Jan, 3 = April
+
+    // Financial Year starts April 1st
+    let fyStartYear = currentYear;
+    if (currentMonth < 3) {
+        fyStartYear = currentYear - 1;
+    }
+    const fyStartDate = new Date(fyStartYear, 3, 1); // 1st April
+
+    let calcStartDate = fyStartDate;
+    if (joiningDate) {
+        const jDate = new Date(joiningDate);
+        if (!isNaN(jDate.getTime()) && jDate > fyStartDate) {
+            calcStartDate = jDate;
+        }
+    }
+
+    let elapsedMonths = 0;
+    if (today >= calcStartDate) {
+        const yearDiff = today.getFullYear() - calcStartDate.getFullYear();
+        const monthDiff = today.getMonth() - calcStartDate.getMonth();
+        elapsedMonths = yearDiff * 12 + monthDiff + 1;
+    }
+    elapsedMonths = Math.min(12, Math.max(0, elapsedMonths));
+
+    const casualTotal = parseFloat((elapsedMonths * 0.5).toFixed(1));
+    const earnedTotal = parseFloat((elapsedMonths * 1.0).toFixed(1));
+    const sickTotal = 6.0;
+
+    return {
+        casual: casualTotal,
+        earned: earnedTotal,
+        sick: sickTotal,
+        elapsedMonths,
+        fyStartYear
+    };
+};
+
 export const applyLeave = async (req, res) => {
     try {
         const {
@@ -12,8 +59,8 @@ export const applyLeave = async (req, res) => {
             reason,
         } = req.body;
 
-        let days = totalDays;
-        if (!days && startDate && endDate) {
+        let days = Number(totalDays);
+        if ((!days || isNaN(days)) && startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
             const diffTime = Math.abs(end - start);
@@ -26,11 +73,12 @@ export const applyLeave = async (req, res) => {
             !startDate ||
             !endDate ||
             !days ||
+            days <= 0 ||
             !reason
         ) {
             return res.status(400).json({
                 success: false,
-                message: "All fields are required.",
+                message: "All fields are required with valid positive leave duration.",
             });
         }
 
@@ -88,12 +136,20 @@ export const getLeaveSummary = async (req, res) => {
             });
         }
 
+        // Calculate dynamic accrual for current financial year
+        const accrued = calculateAccruedLeaves(user.joiningDate);
+
+        // Fallback to manual HR overrides if present, else use dynamic financial year accrual
+        const sickTotal = user.leaveBalance?.sick?.total !== undefined ? Number(user.leaveBalance.sick.total) : accrued.sick;
+        const casualTotal = user.leaveBalance?.casual?.total !== undefined ? Number(user.leaveBalance.casual.total) : accrued.casual;
+        const earnedTotal = user.leaveBalance?.earned?.total !== undefined ? Number(user.leaveBalance.earned.total) : accrued.earned;
+
         const leaves = await Leave.find({ employeeId });
 
         const balance = {
-            sick: { total: user.leaveBalance?.sick?.total ?? 6, used: 0, pending: 0 },
-            casual: { total: user.leaveBalance?.casual?.total ?? 8, used: 0, pending: 0 },
-            earned: { total: user.leaveBalance?.earned?.total ?? 20, used: 0, pending: 0 }
+            sick: { total: sickTotal, used: 0, pending: 0 },
+            casual: { total: casualTotal, used: 0, pending: 0 },
+            earned: { total: earnedTotal, used: 0, pending: 0 }
         };
 
         leaves.forEach(leave => {
@@ -103,8 +159,8 @@ export const getLeaveSummary = async (req, res) => {
             else if (leave.leaveType === "earned_leave") key = "earned";
 
             if (key) {
-                let days = leave.totalDays;
-                if (days === undefined || days === null) {
+                let days = Number(leave.totalDays);
+                if (isNaN(days) || days === undefined || days === null) {
                     const start = new Date(leave.startDate);
                     const end = new Date(leave.endDate);
                     const diffTime = Math.abs(end - start);
@@ -119,10 +175,18 @@ export const getLeaveSummary = async (req, res) => {
             }
         });
 
-        const usedLeaves = balance.sick.used + balance.casual.used + balance.earned.used;
-        const pendingLeaves = balance.sick.pending + balance.casual.pending + balance.earned.pending;
-        const totalLeaves = balance.sick.total + balance.casual.total + balance.earned.total;
-        const availableLeaves = totalLeaves - usedLeaves - pendingLeaves;
+        // Round all numbers cleanly to 1 decimal place
+        balance.sick.used = parseFloat(balance.sick.used.toFixed(1));
+        balance.sick.pending = parseFloat(balance.sick.pending.toFixed(1));
+        balance.casual.used = parseFloat(balance.casual.used.toFixed(1));
+        balance.casual.pending = parseFloat(balance.casual.pending.toFixed(1));
+        balance.earned.used = parseFloat(balance.earned.used.toFixed(1));
+        balance.earned.pending = parseFloat(balance.earned.pending.toFixed(1));
+
+        const usedLeaves = parseFloat((balance.sick.used + balance.casual.used + balance.earned.used).toFixed(1));
+        const pendingLeaves = parseFloat((balance.sick.pending + balance.casual.pending + balance.earned.pending).toFixed(1));
+        const totalLeaves = parseFloat((balance.sick.total + balance.casual.total + balance.earned.total).toFixed(1));
+        const availableLeaves = parseFloat((totalLeaves - usedLeaves - pendingLeaves).toFixed(1));
 
         return res.status(200).json({
             success: true,
@@ -131,7 +195,8 @@ export const getLeaveSummary = async (req, res) => {
                 usedLeaves,
                 pendingLeaves,
                 availableLeaves,
-                leaveBalance: balance
+                leaveBalance: balance,
+                accruedDetails: accrued
             },
         });
     } catch (error) {
@@ -163,4 +228,3 @@ export const getLeaveHistory = async (req, res) => {
         });
     }
 };
-

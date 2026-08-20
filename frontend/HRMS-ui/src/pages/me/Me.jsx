@@ -1251,31 +1251,40 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
     const [leaveType, setLeaveType] = useState("casual_leave");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [isHalfDay, setIsHalfDay] = useState(false);
     const [reason, setReason] = useState("");
     const [duration, setDuration] = useState(0);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const diffTime = end.getTime() - start.getTime();
-            if (diffTime >= 0) {
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                setDuration(diffDays);
+        if (startDate) {
+            if (isHalfDay) {
+                setEndDate(startDate);
+                setDuration(0.5);
+            } else if (endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const diffTime = end.getTime() - start.getTime();
+                if (diffTime >= 0) {
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    setDuration(diffDays);
+                } else {
+                    setDuration(0);
+                }
             } else {
                 setDuration(0);
             }
         } else {
             setDuration(0);
         }
-    }, [startDate, endDate]);
+    }, [startDate, endDate, isHalfDay]);
 
     if (!isOpen) return null;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!startDate || !endDate || !reason || duration <= 0) {
+        const activeEndDate = isHalfDay ? startDate : endDate;
+        if (!startDate || (!isHalfDay && !activeEndDate) || !reason || duration <= 0) {
             toast.error("Please fill in all fields with valid dates.");
             return;
         }
@@ -1289,7 +1298,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                 employeeId,
                 leaveType,
                 startDate,
-                endDate,
+                endDate: activeEndDate,
                 totalDays: duration,
                 reason: reason.trim()
             });
@@ -1301,6 +1310,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                 // Reset inputs
                 setStartDate("");
                 setEndDate("");
+                setIsHalfDay(false);
                 setReason("");
             } else {
                 toast.error(res.data?.message || "Failed to apply for leave.");
@@ -1344,6 +1354,20 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                         </div>
                     </div>
 
+                    {/* Half Day Option Toggle */}
+                    <div className="flex items-center justify-between p-2.5 bg-blue-50/50 border border-blue-100 rounded-[10px]">
+                        <div>
+                            <span className="text-xs font-extrabold text-slate-800 block">Apply as Half Day (0.5 Days)</span>
+                            <span className="text-[10px] font-medium text-slate-500">Applies 0.5 days leave for single date</span>
+                        </div>
+                        <input
+                            type="checkbox"
+                            checked={isHalfDay}
+                            onChange={(e) => setIsHalfDay(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-[#2D79C7] focus:ring-0 accent-[#2D79C7] cursor-pointer"
+                        />
+                    </div>
+
                     {/* Date Inputs Grid */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
@@ -1359,9 +1383,10 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                             <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">End Date</label>
                             <input
                                 type="date"
-                                value={endDate}
+                                value={isHalfDay ? startDate : endDate}
+                                disabled={isHalfDay}
                                 onChange={(e) => setEndDate(e.target.value)}
-                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                             />
                         </div>
                     </div>
@@ -1373,7 +1398,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                             type="text"
                             readOnly
                             value={duration > 0 ? `${duration} Day${duration !== 1 ? 's' : ''}` : "Select valid dates"}
-                            className="w-full bg-[#F3F4F6] border border-gray-200 text-gray-500 text-[12px] font-bold py-2 px-3 rounded-[8px] outline-none"
+                            className="w-full bg-[#F3F4F6] border border-gray-200 text-gray-700 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
                         />
                     </div>
 
