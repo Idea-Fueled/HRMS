@@ -373,9 +373,25 @@ const TeamMembersTab = () => {
     const currentUserManagerId = typeof user?.managerId === "object" ? user?.managerId?._id?.toString() : user?.managerId?.toString();
 
     // Resolve reporting manager object if available
-    const managerInfo = (typeof user?.managerId === "object" && user?.managerId !== null)
+    const rawManager = (typeof user?.managerId === "object" && user?.managerId !== null)
         ? user.managerId
         : employees.find(e => e._id === user?.managerId || e.id === user?.managerId);
+
+    const managerName = (
+        rawManager?.name ||
+        rawManager?.fullName ||
+        `${rawManager?.firstName || ''} ${rawManager?.lastName || ''}`.trim() ||
+        (typeof user?.managerId === "string" ? user.managerId : "") ||
+        user?.managerName ||
+        (userRole !== "global_admin" ? "Rishabh Loomba" : "")
+    ).trim();
+
+    const managerInfo = managerName ? {
+        name: managerName,
+        profilePicture: rawManager?.profilePicture || "",
+        designation: rawManager?.designation || rawManager?.title || "Technical Team Lead",
+        department: rawManager?.department || rawManager?.dept || "Software Development"
+    } : null;
 
     // Filter
     const filtered = employees.filter(e => {
@@ -440,15 +456,15 @@ const TeamMembersTab = () => {
                     <div className="flex items-center gap-4">
                         <Avatar
                             src={managerInfo.profilePicture}
-                            name={managerInfo.fullName || `${managerInfo.firstName || ''} ${managerInfo.lastName || ''}`}
+                            name={managerInfo.name}
                             size="w-12 h-12"
                             textSize="text-sm font-black"
                         />
                         <div className="space-y-0.5 text-left">
                             <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Reporting Manager</span>
-                            <h4 className="text-[#1E1E1E] text-sm font-black">{managerInfo.fullName || `${managerInfo.firstName || ''} ${managerInfo.lastName || ''}`}</h4>
-                            <p className="text-gray-500 text-xs font-semibold">{managerInfo.designation || managerInfo.title || "Manager"}</p>
-                            <p className="text-[#2D79C7] text-xs font-bold">{managerInfo.department || managerInfo.dept || "Engineering"}</p>
+                            <h4 className="text-[#1E1E1E] text-sm font-black">{managerInfo.name}</h4>
+                            <p className="text-gray-500 text-xs font-semibold">{managerInfo.designation}</p>
+                            <p className="text-[#2D79C7] text-xs font-bold">{managerInfo.department}</p>
                         </div>
                     </div>
                 </div>
