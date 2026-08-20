@@ -1272,13 +1272,31 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [isHalfDay, setIsHalfDay] = useState(false);
+    
+    // Partial leave state
+    const [partialCategory, setPartialCategory] = useState("leaving_early"); // "leaving_early" | "late_arrival" | "mid_day_absence"
     const [partialMinutes, setPartialMinutes] = useState(120);
-    const [partialTiming, setPartialTiming] = useState("Leaving Early (120 mins)");
+    const [fromTime, setFromTime] = useState("13:00");
+    const [toTime, setToTime] = useState("15:00");
+    
     const [reason, setReason] = useState("");
     const [duration, setDuration] = useState(0);
     const [submitting, setSubmitting] = useState(false);
 
     const isPartial = leaveType === "partial_leave";
+
+    // Auto-calculate minutes for Mid-day Absence from time inputs
+    useEffect(() => {
+        if (isPartial && partialCategory === "mid_day_absence" && fromTime && toTime) {
+            const [h1, m1] = fromTime.split(":").map(Number);
+            const [h2, m2] = toTime.split(":").map(Number);
+            const startMins = h1 * 60 + (m1 || 0);
+            const endMins = h2 * 60 + (m2 || 0);
+            if (endMins > startMins) {
+                setPartialMinutes(endMins - startMins);
+            }
+        }
+    }, [isPartial, partialCategory, fromTime, toTime]);
 
     useEffect(() => {
         if (startDate) {
@@ -1321,6 +1339,17 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
             const user = JSON.parse(localStorage.getItem("user") || "null");
             const employeeId = user?._id || user?.id;
 
+            let partialTimingText = "";
+            if (isPartial) {
+                if (partialCategory === "mid_day_absence") {
+                    partialTimingText = `Mid-day Absence (${fromTime} - ${toTime}, ${partialMinutes} mins)`;
+                } else if (partialCategory === "late_arrival") {
+                    partialTimingText = `Late Arrival (${partialMinutes} mins)`;
+                } else {
+                    partialTimingText = `Leaving Early (${partialMinutes} mins)`;
+                }
+            }
+
             const res = await applyLeave({
                 employeeId,
                 leaveType,
@@ -1328,7 +1357,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                 endDate: activeEndDate,
                 totalDays: duration,
                 partialMinutes: isPartial ? partialMinutes : 0,
-                partialTiming: isPartial ? partialTiming : "",
+                partialTiming: partialTimingText,
                 reason: reason.trim()
             });
 
@@ -1341,6 +1370,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                 setEndDate("");
                 setIsHalfDay(false);
                 setPartialMinutes(120);
+                setPartialCategory("leaving_early");
                 setReason("");
             } else {
                 toast.error(res.data?.message || "Failed to apply for leave.");
@@ -1385,48 +1415,76 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                         </div>
                     </div>
 
-                    {/* Partial Leave Duration Input */}
+                    {/* Partial Leave Section */}
                     {isPartial ? (
-                        <div className="space-y-3 bg-purple-50/60 p-3 rounded-[12px] border border-purple-100">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Duration (Mins)</label>
-                                    <input
-                                        type="number"
-                                        min={15}
-                                        max={480}
-                                        step={15}
-                                        value={partialMinutes}
-                                        onChange={(e) => {
-                                            const val = Number(e.target.value);
-                                            setPartialMinutes(val);
-                                            setPartialTiming(`Leaving ${val} mins early`);
-                                        }}
-                                        className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Duration in Hours</label>
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={`${(partialMinutes / 60).toFixed(1)} Hours`}
-                                        className="w-full bg-purple-100/70 border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
-                                    />
-                                </div>
-                            </div>
+                        <div className="space-y-3 bg-purple-50/60 p-3.5 rounded-[12px] border border-purple-100">
                             <div>
                                 <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Partial Type</label>
                                 <select
-                                    value={partialTiming}
-                                    onChange={(e) => setPartialTiming(e.target.value)}
-                                    className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-bold py-1.5 px-3 rounded-[8px] focus:outline-none focus:border-purple-500 cursor-pointer"
+                                    value={partialCategory}
+                                    onChange={(e) => setPartialCategory(e.target.value)}
+                                    className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500 cursor-pointer"
                                 >
-                                    <option value={`Leaving Early (${partialMinutes} mins)`}>Leaving Early ({partialMinutes} mins)</option>
-                                    <option value={`Late Arrival (${partialMinutes} mins)`}>Late Arrival ({partialMinutes} mins)</option>
-                                    <option value={`Mid-day Break (${partialMinutes} mins)`}>Mid-day Absence ({partialMinutes} mins)</option>
+                                    <option value="leaving_early">Leaving Early</option>
+                                    <option value="late_arrival">Late Arrival</option>
+                                    <option value="mid_day_absence">Mid-day Absence (Select Time Range)</option>
                                 </select>
                             </div>
+
+                            {/* Show Time Picker ONLY for Mid-day Absence */}
+                            {partialCategory === "mid_day_absence" ? (
+                                <div className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">From Time</label>
+                                            <input
+                                                type="time"
+                                                value={fromTime}
+                                                onChange={(e) => setFromTime(e.target.value)}
+                                                className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-bold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500 cursor-pointer"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">To Time</label>
+                                            <input
+                                                type="time"
+                                                value={toTime}
+                                                onChange={(e) => setToTime(e.target.value)}
+                                                className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-bold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500 cursor-pointer"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-purple-100/70 p-2 rounded-[8px] border border-purple-200/80">
+                                        <span className="text-[11px] font-bold text-purple-900">Auto Calculated Duration:</span>
+                                        <span className="text-[12px] font-black text-purple-950">{partialMinutes} Mins ({(partialMinutes / 60).toFixed(1)} Hrs)</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Duration (Mins)</label>
+                                        <input
+                                            type="number"
+                                            min={15}
+                                            max={480}
+                                            step={15}
+                                            value={partialMinutes}
+                                            onChange={(e) => setPartialMinutes(Number(e.target.value))}
+                                            className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Duration in Hours</label>
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={`${(partialMinutes / 60).toFixed(1)} Hours`}
+                                            className="w-full bg-purple-100/70 border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <p className="text-[10px] font-semibold text-purple-700">
                                 ℹ️ Quota: 1 Partial Leave allowed per calendar month.
                             </p>
