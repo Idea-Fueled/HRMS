@@ -224,6 +224,11 @@ const userScehma = new mongoose.Schema({
             total: { type: Number, default: 20 },
             used: { type: Number, default: 0 },
             pending: { type: Number, default: 0 }
+        },
+        partial: {
+            total: { type: Number, default: 1 },
+            used: { type: Number, default: 0 },
+            pending: { type: Number, default: 0 }
         }
     },
 

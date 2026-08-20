@@ -105,7 +105,7 @@ const EMPTY_FORM = {
     dateOfBirth: "", gender: "", bloodGroup: "",
     fatherName: "", emergencyContactNumber: "",
     presentAddress: "", permanentAddress: "",
-    casualLeave: 8, sickLeave: 6, earnedLeave: 20,
+    casualLeave: 2.5, sickLeave: 6, earnedLeave: 5, partialLeave: 1,
     password: "", confirmPassword: "", status: "active",
     permissions: { ...DEFAULT_PERMISSIONS }
 };
@@ -734,6 +734,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 casualLeave: employee.leaveBalance?.casual?.total ?? 2.5,
                 sickLeave: employee.leaveBalance?.sick?.total ?? 6,
                 earnedLeave: employee.leaveBalance?.earned?.total ?? 5,
+                partialLeave: employee.leaveBalance?.partial?.total ?? 1,
                 password: "",
                 confirmPassword: "",
                 status: employee.status || "active",
@@ -1188,7 +1189,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
 
                     {/* Leave Configuration */}
                     <SectionTitle>Leave Configuration</SectionTitle>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                         <FormField label="Casual Leave">
                             <input type="number" min={0} step="0.5" value={form.casualLeave} onChange={set("casualLeave")} className={inputCls} />
                         </FormField>
@@ -1197,6 +1198,9 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         </FormField>
                         <FormField label="Earned Leave">
                             <input type="number" min={0} step="0.5" value={form.earnedLeave} onChange={set("earnedLeave")} className={inputCls} />
+                        </FormField>
+                        <FormField label="Partial Leave (/mo)">
+                            <input type="number" min={0} step="1" value={form.partialLeave} onChange={set("partialLeave")} className={inputCls} />
                         </FormField>
                     </div>
 

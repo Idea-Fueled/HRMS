@@ -6,6 +6,7 @@ import User from "../../models/users/user.model.js";
  * - Casual Leave: 0.5 per month accrued automatically on current date/month (Max 6/yr)
  * - Earned Leave: 1.0 per month accrued automatically on current date/month (Max 12/yr)
  * - Sick Leave: 6.0 credited upfront on 1st April (Max 6/yr)
+ * - Partial Leave: 1 per month quota (Max 12/yr)
  */
 export const calculateAccruedLeaves = (joiningDate = null, referenceDate = new Date()) => {
     const today = new Date(referenceDate);
@@ -38,11 +39,13 @@ export const calculateAccruedLeaves = (joiningDate = null, referenceDate = new D
     const casualAccrued = parseFloat((elapsedMonths * 0.5).toFixed(1));
     const earnedAccrued = parseFloat((elapsedMonths * 1.0).toFixed(1));
     const sickAccrued = 6.0;
+    const partialAccrued = 1.0; // 1 per month quota
 
     return {
         casual: { accrued: casualAccrued, annualQuota: 6 },
         earned: { accrued: earnedAccrued, annualQuota: 12 },
         sick: { accrued: sickAccrued, annualQuota: 6 },
+        partial: { accrued: partialAccrued, annualQuota: 12 },
         elapsedMonths,
         fyStartYear
     };
@@ -56,11 +59,15 @@ export const applyLeave = async (req, res) => {
             startDate,
             endDate,
             totalDays,
+            partialMinutes,
+            partialTiming,
             reason,
         } = req.body;
 
-        let days = Number(totalDays);
-        if ((!days || isNaN(days)) && startDate && endDate) {
+        const isPartial = leaveType === "partial_leave";
+        let days = isPartial ? (totalDays || 0.25) : Number(totalDays);
+
+        if (!isPartial && (!days || isNaN(days)) && startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
             const diffTime = Math.abs(end - start);
@@ -71,23 +78,48 @@ export const applyLeave = async (req, res) => {
             !employeeId ||
             !leaveType ||
             !startDate ||
-            !endDate ||
-            !days ||
-            days <= 0 ||
+            (!isPartial && !endDate) ||
             !reason
         ) {
             return res.status(400).json({
                 success: false,
-                message: "All fields are required with valid positive leave duration.",
+                message: "All required fields must be provided.",
             });
+        }
+
+        // Validate monthly quota for Partial Leave
+        if (isPartial) {
+            const user = await User.findById(employeeId);
+            const monthlyQuota = user?.leaveBalance?.partial?.total ?? 1;
+
+            // Start & End of current calendar month
+            const reqStart = new Date(startDate);
+            const monthStart = new Date(reqStart.getFullYear(), reqStart.getMonth(), 1);
+            const monthEnd = new Date(reqStart.getFullYear(), reqStart.getMonth() + 1, 0, 23, 59, 59);
+
+            const existingMonthPartials = await Leave.countDocuments({
+                employeeId,
+                leaveType: "partial_leave",
+                status: { $ne: "rejected" },
+                startDate: { $gte: monthStart, $lte: monthEnd }
+            });
+
+            if (existingMonthPartials >= monthlyQuota) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Monthly Partial Leave quota reached (${monthlyQuota} allowed per month). You can apply again next month.`,
+                });
+            }
         }
 
         const leave = await Leave.create({
             employeeId,
             leaveType,
             startDate,
-            endDate,
+            endDate: endDate || startDate,
             totalDays: days,
+            partialMinutes: isPartial ? (Number(partialMinutes) || 120) : 0,
+            partialTiming: isPartial ? (partialTiming || "Leaving Early") : "",
             reason,
         });
 
@@ -95,13 +127,14 @@ export const applyLeave = async (req, res) => {
         if (leaveType === "sick_leave") key = "sick";
         else if (leaveType === "casual_leave") key = "casual";
         else if (leaveType === "earned_leave") key = "earned";
+        else if (leaveType === "partial_leave") key = "partial";
 
         const updateObj = {
             pendingLeaves: days
         };
 
         if (key) {
-            updateObj[`leaveBalance.${key}.pending`] = days;
+            updateObj[`leaveBalance.${key}.pending`] = 1;
         }
 
         await User.findByIdAndUpdate(employeeId, {
@@ -110,7 +143,7 @@ export const applyLeave = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            message: "Leave applied successfully.",
+            message: isPartial ? "Partial leave applied successfully." : "Leave applied successfully.",
             leave,
         });
     } catch (error) {
@@ -139,38 +172,57 @@ export const getLeaveSummary = async (req, res) => {
         // Calculate dynamic accrual for current financial year
         const accruedData = calculateAccruedLeaves(user.joiningDate);
 
-        // Always calculate dynamic accrued balances based on financial year current date
         const casualTotal = accruedData.casual.accrued;
         const earnedTotal = accruedData.earned.accrued;
         const sickTotal = accruedData.sick.accrued;
+
+        // Current month bounds for partial leave quota tracking
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        const partialMonthlyQuota = user.leaveBalance?.partial?.total ?? 1;
 
         const leaves = await Leave.find({ employeeId });
 
         const balance = {
             sick: { total: sickTotal, accrued: sickTotal, annualQuota: accruedData.sick.annualQuota, used: 0, pending: 0 },
             casual: { total: casualTotal, accrued: casualTotal, annualQuota: accruedData.casual.annualQuota, used: 0, pending: 0 },
-            earned: { total: earnedTotal, accrued: earnedTotal, annualQuota: accruedData.earned.annualQuota, used: 0, pending: 0 }
+            earned: { total: earnedTotal, accrued: earnedTotal, annualQuota: accruedData.earned.annualQuota, used: 0, pending: 0 },
+            partial: { total: partialMonthlyQuota, accrued: 1, annualQuota: 12, used: 0, pending: 0, available: partialMonthlyQuota, usedMinutes: 0 }
         };
 
         leaves.forEach(leave => {
-            let key = "";
-            if (leave.leaveType === "sick_leave") key = "sick";
-            else if (leave.leaveType === "casual_leave") key = "casual";
-            else if (leave.leaveType === "earned_leave") key = "earned";
-
-            if (key) {
-                let days = Number(leave.totalDays);
-                if (isNaN(days) || days === undefined || days === null) {
-                    const start = new Date(leave.startDate);
-                    const end = new Date(leave.endDate);
-                    const diffTime = Math.abs(end - start);
-                    days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            if (leave.leaveType === "partial_leave") {
+                const leaveDate = new Date(leave.startDate);
+                if (leaveDate >= currentMonthStart && leaveDate <= currentMonthEnd) {
+                    if (leave.status === "approved") {
+                        balance.partial.used += 1;
+                        balance.partial.usedMinutes += (leave.partialMinutes || 120);
+                    } else if (leave.status === "pending") {
+                        balance.partial.pending += 1;
+                    }
                 }
+            } else {
+                let key = "";
+                if (leave.leaveType === "sick_leave") key = "sick";
+                else if (leave.leaveType === "casual_leave") key = "casual";
+                else if (leave.leaveType === "earned_leave") key = "earned";
 
-                if (leave.status === "approved") {
-                    balance[key].used += days;
-                } else if (leave.status === "pending") {
-                    balance[key].pending += days;
+                if (key) {
+                    let days = Number(leave.totalDays);
+                    if (isNaN(days) || days === undefined || days === null) {
+                        const start = new Date(leave.startDate);
+                        const end = new Date(leave.endDate);
+                        const diffTime = Math.abs(end - start);
+                        days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    }
+
+                    if (leave.status === "approved") {
+                        balance[key].used += days;
+                    } else if (leave.status === "pending") {
+                        balance[key].pending += days;
+                    }
                 }
             }
         });
@@ -182,6 +234,8 @@ export const getLeaveSummary = async (req, res) => {
         balance.casual.pending = parseFloat(balance.casual.pending.toFixed(1));
         balance.earned.used = parseFloat(balance.earned.used.toFixed(1));
         balance.earned.pending = parseFloat(balance.earned.pending.toFixed(1));
+
+        balance.partial.available = Math.max(0, balance.partial.total - balance.partial.used - balance.partial.pending);
 
         const usedLeaves = parseFloat((balance.sick.used + balance.casual.used + balance.earned.used).toFixed(1));
         const pendingLeaves = parseFloat((balance.sick.pending + balance.casual.pending + balance.earned.pending).toFixed(1));
