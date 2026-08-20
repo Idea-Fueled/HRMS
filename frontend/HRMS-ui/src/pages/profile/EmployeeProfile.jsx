@@ -1265,7 +1265,7 @@ export const EmployeeProfile = () => {
                                                 {getCategoryIcon(asset.category)}
                                             </div>
                                             <div>
-                                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">{asset.name}</h4>
+                                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">{asset.brandModel || asset.name || asset.category}</h4>
                                                 <p className="text-gray-400 text-[10.5px]">{asset.category}</p>
                                             </div>
                                         </div>
@@ -1278,8 +1278,8 @@ export const EmployeeProfile = () => {
 
                                     <div className="space-y-2 text-xs text-gray-600 font-medium">
                                         <div className="flex justify-between">
-                                            <span className="text-gray-400">Asset Tag / Serial:</span>
-                                            <span className="font-mono font-bold text-[#1E1E1E]">{asset.assetTag || asset.serialNumber || `${empCode}-AST`}</span>
+                                            <span className="text-gray-400">Asset Code:</span>
+                                            <span className="font-mono font-bold text-[#1E1E1E]">{asset.assetId || asset.assetCode || asset.assetTag || asset.serialNumber || `${empCode}-AST`}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-400">Issued Date:</span>
