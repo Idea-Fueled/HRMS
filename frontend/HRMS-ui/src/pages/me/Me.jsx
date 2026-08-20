@@ -1413,7 +1413,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                                 <option value="casual_leave">Casual Leave</option>
                                 <option value="sick_leave">Sick Leave</option>
                                 <option value="earned_leave">Earned Leave</option>
-                                <option value="partial_leave">Partial Leave (Hours/Mins)</option>
+                                <option value="partial_leave">Partial Leave</option>
                                 <option value="unpaid_leave">Unpaid Leave</option>
                             </select>
                             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
@@ -1422,52 +1422,54 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
                     {/* Partial Leave Section */}
                     {isPartial ? (
-                        <div className="space-y-3 bg-purple-50/60 p-3.5 rounded-[12px] border border-purple-100">
-                            <div>
-                                <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Partial Type</label>
-                                <select
-                                    value={partialCategory}
-                                    onChange={(e) => setPartialCategory(e.target.value)}
-                                    className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500 cursor-pointer"
-                                >
-                                    <option value="leaving_early">Leaving Early</option>
-                                    <option value="late_arrival">Late Arrival</option>
-                                    <option value="mid_day_absence">Mid-day Absence (Select Time Range)</option>
-                                </select>
+                        <div className="space-y-3 pt-1">
+                            <div className="space-y-1.5">
+                                <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Partial Type</label>
+                                <div className="relative">
+                                    <select
+                                        value={partialCategory}
+                                        onChange={(e) => setPartialCategory(e.target.value)}
+                                        className="w-full appearance-none bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12.5px] font-bold py-2 pl-3 pr-8 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                    >
+                                        <option value="leaving_early">Leaving Early</option>
+                                        <option value="late_arrival">Late Arrival</option>
+                                        <option value="mid_day_absence">Mid-day Absence</option>
+                                    </select>
+                                    <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                                </div>
                             </div>
 
                             {/* Show Time Picker ONLY for Mid-day Absence */}
                             {partialCategory === "mid_day_absence" ? (
-                                <div className="space-y-2">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">From Time</label>
+                                <div className="space-y-1.5">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">From Time</label>
                                             <input
                                                 type="time"
                                                 value={fromTime}
                                                 onChange={(e) => setFromTime(e.target.value)}
-                                                className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-bold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500 cursor-pointer"
+                                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
                                             />
                                         </div>
-                                        <div>
-                                            <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">To Time</label>
+                                        <div className="space-y-1.5">
+                                            <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">To Time</label>
                                             <input
                                                 type="time"
                                                 value={toTime}
                                                 onChange={(e) => setToTime(e.target.value)}
-                                                className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-bold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500 cursor-pointer"
+                                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between bg-purple-100/70 p-2 rounded-[8px] border border-purple-200/80">
-                                        <span className="text-[11px] font-bold text-purple-900">Auto Calculated Duration:</span>
-                                        <span className="text-[12px] font-black text-purple-950">{partialMinutes} Mins ({(partialMinutes / 60).toFixed(1)} Hrs)</span>
-                                    </div>
+                                    <p className="text-[11px] font-medium text-gray-500 pt-1">
+                                        Duration: <span className="font-bold text-[#2D79C7]">{partialMinutes} mins ({(partialMinutes / 60).toFixed(1)} hrs)</span>
+                                    </p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Duration (Mins)</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Duration (Mins)</label>
                                         <input
                                             type="number"
                                             min={15}
@@ -1475,23 +1477,23 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                                             step={15}
                                             value={partialMinutes}
                                             onChange={(e) => setPartialMinutes(Number(e.target.value))}
-                                            className="w-full bg-white border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] focus:outline-none focus:border-purple-500"
+                                            className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7]"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-purple-800 text-[10px] font-bold uppercase tracking-wider block mb-1">Duration in Hours</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Duration in Hours</label>
                                         <input
                                             type="text"
                                             readOnly
                                             value={`${(partialMinutes / 60).toFixed(1)} Hours`}
-                                            className="w-full bg-purple-100/70 border border-purple-200 text-purple-900 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
+                                            className="w-full bg-[#F3F4F6] border border-gray-200 text-gray-700 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
                                         />
                                     </div>
                                 </div>
                             )}
 
-                            <p className="text-[10px] font-semibold text-purple-700">
-                                ℹ️ Quota: 1 Partial Leave allowed per calendar month.
+                            <p className="text-[10.5px] font-medium text-gray-400">
+                                Quota: 1 partial leave allowed per calendar month.
                             </p>
                         </div>
                     ) : (
