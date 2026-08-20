@@ -692,6 +692,7 @@ const LeaveBalanceCard = ({
     accrued,
     carryOver,
     annualQuota,
+    totalQuotaNum,
     color,
     noData = false,
     isInfinity = false
@@ -701,7 +702,9 @@ const LeaveBalanceCard = ({
     const radius = 66;
     const strokeWidth = 14;
     const circumference = 2 * Math.PI * radius; // ~414.69
-    const pct = isInfinity ? circumference : (annualQuota > 0 ? (available / annualQuota) * circumference : 0);
+    const quotaDenominator = totalQuotaNum !== undefined ? totalQuotaNum : (typeof annualQuota === 'number' ? annualQuota : 1);
+    const availNum = typeof available === 'number' ? available : parseFloat(available) || 0;
+    const pct = isInfinity ? circumference : (quotaDenominator > 0 ? Math.min(1, availNum / quotaDenominator) * circumference : 0);
     const strokeDashoffset = circumference - pct;
 
     const availableLabel = isInfinity ? "∞ Days" : `${available} Day${available !== 1 ? 's' : ''}`;
@@ -1227,8 +1230,9 @@ const LeaveTab = ({
                             label="Partial Leave"
                             available={partialAvailable}
                             consumed={partialUsed}
-                            accrued={1}
-                            annualQuota={12}
+                            accrued="1 / mo"
+                            annualQuota="1 / mo"
+                            totalQuotaNum={partialTotal || 1}
                             color="#8B5CF6"
                         />
                         <LeaveBalanceCard
