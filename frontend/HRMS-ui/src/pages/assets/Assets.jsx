@@ -706,19 +706,26 @@ const Assets = () => {
                                                         <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
                                                             {asset.condition}
                                                         </span>
-                                                        <button
-                                                            onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
-                                                            className="text-xs font-extrabold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-100 px-3 py-1.5 rounded-[8px] transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-                                                        >
-                                                            <UserMinus className="w-3.5 h-3.5" /> Unassign
-                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
 
                                         {/* Action footer */}
-                                        <div className="border-t border-slate-100 pt-3 flex justify-end">
+                                        <div className="border-t border-slate-100 pt-3 flex flex-wrap items-center justify-between gap-3">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {group.assets.map((asset) => (
+                                                    <button
+                                                        key={asset._id}
+                                                        onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
+                                                        className="text-xs font-extrabold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-100 px-3.5 py-2 rounded-[10px] transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
+                                                    >
+                                                        <UserMinus className="w-3.5 h-3.5" />
+                                                        <span>Unassign {group.assets.length > 1 ? `(${asset.assetId})` : "Asset"}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+
                                             <button
                                                 onClick={() => {
                                                     setAssetToAssign(null);
