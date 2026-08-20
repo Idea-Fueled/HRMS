@@ -660,19 +660,20 @@ const Assets = () => {
                                 const empName = emp?.fullName || `${emp?.firstName || ""} ${emp?.lastName || ""}`;
 
                                 return (
-                                    <div key={emp?._id} className="premium-3d-card p-5 flex flex-col justify-between gap-4">
+                                    <div key={emp?._id} className="bg-white border border-slate-200/80 rounded-[20px] p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4 group">
                                         {/* Employee Header */}
-                                        <div className="flex items-center justify-between border-b border-[#F3F4F6] pb-3">
+                                        <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
                                             <div className="flex items-center gap-3">
-                                                <Avatar src={emp?.profilePicture} name={empName} size="w-10 h-10" />
+                                                <Avatar src={emp?.profilePicture} name={empName} size="w-10 h-10 ring-2 ring-blue-100 shadow-2xs" />
                                                 <div>
-                                                    <h3 className="font-bold text-sm text-[#1E1E1E] leading-tight">{empName}</h3>
-                                                    <p className="text-xs text-gray-400 font-medium mt-0.5">
+                                                    <h3 className="font-extrabold text-sm text-slate-800 leading-tight">{empName}</h3>
+                                                    <p className="text-xs text-slate-400 font-semibold mt-0.5">
                                                         {emp?.employeeId} · {emp?.department || "N/A"} · {emp?.designation || "N/A"}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className="text-[10px] font-black bg-blue-50 text-[#2D79C7] border border-blue-100 px-2.5 py-1 rounded-full">
+                                            <span className="text-[11px] font-extrabold bg-blue-50/90 text-[#2D79C7] border border-blue-100 px-3 py-1 rounded-full font-mono shadow-2xs flex items-center gap-1">
+                                                <Box className="w-3 h-3 text-[#2D79C7]" />
                                                 {group.assets.length} {group.assets.length === 1 ? "Asset" : "Assets"}
                                             </span>
                                         </div>
@@ -680,33 +681,36 @@ const Assets = () => {
                                         {/* Assets Allocated */}
                                         <div className="space-y-3">
                                             {group.assets.map((asset) => (
-                                                <div key={asset._id} className="bg-slate-50 border border-slate-200/80 rounded-[12px] p-3 flex items-center justify-between gap-3">
+                                                <div key={asset._id} className="bg-slate-50/80 border border-slate-200/70 rounded-[14px] p-3.5 flex items-center justify-between gap-3 hover:border-blue-200/80 hover:bg-blue-50/20 transition-all">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-[8px] bg-white border border-slate-200 flex items-center justify-center text-[#2D79C7] shrink-0">
-                                                            <Laptop className="w-4 h-4" />
+                                                        <div className="w-9 h-9 rounded-[10px] bg-white border border-slate-200/80 flex items-center justify-center text-[#2D79C7] shadow-2xs shrink-0">
+                                                            <Laptop className="w-4.5 h-4.5" />
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] font-bold text-[#2D79C7] bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                                                                <span className="text-[10px] font-extrabold text-[#2D79C7] bg-blue-50 px-2 py-0.5 rounded-[6px] border border-blue-100 font-mono shadow-2xs">
                                                                     {asset.assetId}
                                                                 </span>
-                                                                <span className="font-bold text-xs text-[#1E1E1E]">{asset.brandModel || asset.category}</span>
+                                                                <span className="font-extrabold text-xs text-slate-800">{asset.brandModel || asset.category}</span>
                                                             </div>
-                                                            <p className="text-[11px] text-gray-500 font-medium mt-0.5">
-                                                                {asset.category} · Assigned: {formatDate(asset.assignedDate)}
+                                                            <p className="text-[11px] text-slate-500 font-medium mt-1 inline-flex items-center gap-1">
+                                                                <span>{asset.category}</span>
+                                                                <span>·</span>
+                                                                <Calendar className="w-3 h-3 text-slate-400" />
+                                                                <span>Assigned: {formatDate(asset.assignedDate)}</span>
                                                             </p>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex items-center gap-2 shrink-0">
-                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${conditionBadge(asset.condition)}`}>
+                                                        <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
                                                             {asset.condition}
                                                         </span>
                                                         <button
                                                             onClick={() => setConfirmDialog({ isOpen: true, type: "unassign", asset })}
-                                                            className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer"
+                                                            className="text-xs font-extrabold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-100 px-3 py-1.5 rounded-[8px] transition-all cursor-pointer shadow-2xs flex items-center gap-1"
                                                         >
-                                                            Unassign
+                                                            <UserMinus className="w-3.5 h-3.5" /> Unassign
                                                         </button>
                                                     </div>
                                                 </div>
@@ -714,14 +718,14 @@ const Assets = () => {
                                         </div>
 
                                         {/* Action footer */}
-                                        <div className="border-t border-[#F3F4F6] pt-3 flex justify-end">
+                                        <div className="border-t border-slate-100 pt-3 flex justify-end">
                                             <button
                                                 onClick={() => {
                                                     setAssetToAssign(null);
                                                     setPreselectedEmployeeId(emp._id);
                                                     setShowAssignModal(true);
                                                 }}
-                                                className="text-xs font-bold text-[#2D79C7] hover:text-[#1F5EA8] bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-1.5 rounded-[8px] transition-colors cursor-pointer flex items-center gap-1.5"
+                                                className="text-xs font-extrabold text-[#2D79C7] hover:text-white bg-blue-50 hover:bg-[#2D79C7] border border-blue-100 px-3.5 py-2 rounded-[10px] transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
                                             >
                                                 <Plus className="w-3.5 h-3.5" /> Assign Another Asset
                                             </button>
