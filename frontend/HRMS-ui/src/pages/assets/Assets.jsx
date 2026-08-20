@@ -804,8 +804,7 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
                 status: asset.status || "Available",
                 assignedTo: asset.assignedTo?._id || asset.assignedTo || "",
                 assignedDate: asset.assignedDate ? asset.assignedDate.split("T")[0] : "",
-                serialNumber: asset.serialNumber || "",
-                notes: asset.notes || ""
+                serialNumber: asset.serialNumber || ""
             };
         }
         return {
@@ -817,8 +816,7 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
             status: "Available",
             assignedTo: "",
             assignedDate: "",
-            serialNumber: "",
-            notes: ""
+            serialNumber: ""
         };
     });
 
@@ -993,16 +991,6 @@ const AssetDrawer = ({ mode, asset, employees, onClose, onSuccess }) => {
                             value={form.assignedDate}
                             onChange={(e) => setForm({ ...form, assignedDate: e.target.value })}
                             className={inputCls}
-                        />
-                    </FormField>
-
-                    <FormField label="Notes">
-                        <textarea
-                            value={form.notes}
-                            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                            rows={3}
-                            placeholder="Additional details or remarks..."
-                            className={`${inputCls} resize-none`}
                         />
                     </FormField>
 
