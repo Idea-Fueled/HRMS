@@ -452,19 +452,19 @@ const TeamMembersTab = () => {
         <div className="space-y-6">
             {/* Reporting Manager Card for Employee & Manager roles */}
             {managerInfo && (
-                <div className="premium-3d-card p-5 bg-white border border-gray-150 rounded-[20px] flex items-center justify-between animate-fadeIn">
-                    <div className="flex items-center gap-4">
+                <div className="premium-3d-card p-5.5 bg-white border border-gray-150 rounded-[22px] flex items-center justify-between animate-fadeIn">
+                    <div className="flex items-center gap-5">
                         <Avatar
                             src={managerInfo.profilePicture}
                             name={managerInfo.name}
-                            size="w-12 h-12"
-                            textSize="text-sm font-black"
+                            size="w-16 h-16 sm:w-20 sm:h-20"
+                            textSize="text-lg font-black"
                         />
                         <div className="space-y-0.5 text-left">
                             <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Reporting Manager</span>
-                            <h4 className="text-[#1E1E1E] text-sm font-black">{managerInfo.name}</h4>
-                            <p className="text-gray-500 text-xs font-semibold">{managerInfo.designation}</p>
-                            <p className="text-[#2D79C7] text-xs font-bold">{managerInfo.department}</p>
+                            <h4 className="text-[#1E1E1E] text-base sm:text-lg font-black">{managerInfo.name}</h4>
+                            <p className="text-gray-500 text-xs sm:text-sm font-semibold">{managerInfo.designation}</p>
+                            <p className="text-[#2D79C7] text-xs sm:text-sm font-bold">{managerInfo.department}</p>
                         </div>
                     </div>
                 </div>
