@@ -101,11 +101,14 @@ const DEFAULT_PERMISSIONS = {
 const EMPTY_FORM = {
     employeeId: "", firstName: "", lastName: "", email: "",
     phoneNumber: "", profilePicture: "",
+    companyEntity: "Idea Fueled",
     role: "employee", department: "", designation: "", managerId: "", dottedManagerId: "",
     employementType: "full_time", workLocation: "Office", joiningDate: "",
     dateOfBirth: "", gender: "", bloodGroup: "",
     fatherName: "", emergencyContactNumber: "",
     presentAddress: "", permanentAddress: "",
+    paymentMode: "Bank Transfer", bankName: "HDFC Bank", accountNumber: "", ifscCode: "", panNumber: "",
+    ctc: 0, basic: 0, hra: 0, specialAllowance: 0, otherAllowances: 0,
     casualLeave: 2.5, sickLeave: 6, earnedLeave: 5, partialLeave: 1,
     password: "", confirmPassword: "", status: "active",
     permissions: { ...DEFAULT_PERMISSIONS }
@@ -758,6 +761,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 email: employee.email || "",
                 phoneNumber: employee.phoneNumber || "",
                 profilePicture: employee.profilePicture || "",
+                companyEntity: employee.companyEntity || "Idea Fueled",
                 role: employee.role || "employee",
                 department: employee.department || "",
                 designation: employee.designation || "",
@@ -773,6 +777,16 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 emergencyContactNumber: employee.emergencyContactNumber || "",
                 presentAddress: employee.presentAddress || "",
                 permanentAddress: employee.permanentAddress || "",
+                paymentMode: employee.paymentMode || "Bank Transfer",
+                bankName: employee.bankName || "HDFC Bank",
+                accountNumber: employee.accountNumber || "",
+                ifscCode: employee.ifscCode || "",
+                panNumber: employee.panNumber || "",
+                ctc: employee.salaryStructure?.ctc ?? 0,
+                basic: employee.salaryStructure?.basic ?? 0,
+                hra: employee.salaryStructure?.hra ?? 0,
+                specialAllowance: employee.salaryStructure?.specialAllowance ?? 0,
+                otherAllowances: employee.salaryStructure?.otherAllowances ?? 0,
                 casualLeave: employee.leaveBalance?.casual?.total ?? 2.5,
                 sickLeave: employee.leaveBalance?.sick?.total ?? 6,
                 earnedLeave: employee.leaveBalance?.earned?.total ?? 5,
@@ -1001,7 +1015,16 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
         if (Object.keys(errs).length) { setErrors(errs); toast.error("Please fix the errors before submitting."); return; }
         setSubmitting(true);
         try {
-            const payload = { ...form };
+            const payload = {
+                ...form,
+                salaryStructure: {
+                    ctc: Number(form.ctc) || 0,
+                    basic: Number(form.basic) || 0,
+                    hra: Number(form.hra) || 0,
+                    specialAllowance: Number(form.specialAllowance) || 0,
+                    otherAllowances: Number(form.otherAllowances) || 0
+                }
+            };
             if (!payload.managerId) payload.managerId = null;
             if (!payload.dottedManagerId) payload.dottedManagerId = null;
             delete payload.confirmPassword;
@@ -1129,6 +1152,14 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     {/* Organizational Information */}
                     <SectionTitle>Organizational Information</SectionTitle>
                     <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                            <FormField label="Company / Organization Entity" required>
+                                <SelectField value={form.companyEntity} onChange={set("companyEntity")}>
+                                    <option value="Idea Fueled">Idea Fueled</option>
+                                    <option value="Idea Fueled LLP">Idea Fueled LLP</option>
+                                </SelectField>
+                            </FormField>
+                        </div>
                         <FormField label="Role" required error={errors.role}>
                             <SelectField value={form.role} onChange={set("role")} error={errors.role}>
                                 <option value="">Select role</option>
@@ -1189,6 +1220,49 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                 <input type="date" value={form.joiningDate} onChange={set("joiningDate")} className={`${inputCls} ${errors.joiningDate ? "border-rose-300" : ""}`} />
                             </FormField>
                         </div>
+                    </div>
+
+                    {/* Financial & Salary Details */}
+                    <SectionTitle>Financial & Salary Breakdown</SectionTitle>
+                    <div className="grid grid-cols-2 gap-3 bg-slate-50/60 p-4 border border-slate-200/80 rounded-[16px]">
+                        <FormField label="PAN Number">
+                            <input value={form.panNumber} onChange={set("panNumber")} placeholder="e.g. ABCDE1234F" className={inputCls} />
+                        </FormField>
+                        <FormField label="Payment Mode">
+                            <SelectField value={form.paymentMode} onChange={set("paymentMode")}>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="Cash">Cash</option>
+                            </SelectField>
+                        </FormField>
+                        <FormField label="Bank Name">
+                            <input value={form.bankName} onChange={set("bankName")} placeholder="e.g. HDFC Bank" className={inputCls} />
+                        </FormField>
+                        <FormField label="Bank Account Number">
+                            <input value={form.accountNumber} onChange={set("accountNumber")} placeholder="e.g. 501002345678" className={inputCls} />
+                        </FormField>
+                        <div className="col-span-2">
+                            <FormField label="IFSC Code">
+                                <input value={form.ifscCode} onChange={set("ifscCode")} placeholder="e.g. HDFC0001234" className={inputCls} />
+                            </FormField>
+                        </div>
+
+                        <div className="col-span-2 border-t border-slate-200 pt-3 mt-1">
+                            <span className="text-xs font-black text-slate-700 block mb-2 uppercase tracking-wider">Salary Components (Monthly ₹)</span>
+                        </div>
+
+                        <FormField label="Basic Pay (₹)">
+                            <input type="number" value={form.basic} onChange={set("basic")} placeholder="0" className={inputCls} />
+                        </FormField>
+                        <FormField label="HRA (₹)">
+                            <input type="number" value={form.hra} onChange={set("hra")} placeholder="0" className={inputCls} />
+                        </FormField>
+                        <FormField label="Special Allowance (₹)">
+                            <input type="number" value={form.specialAllowance} onChange={set("specialAllowance")} placeholder="0" className={inputCls} />
+                        </FormField>
+                        <FormField label="Other Allowances (₹)">
+                            <input type="number" value={form.otherAllowances} onChange={set("otherAllowances")} placeholder="0" className={inputCls} />
+                        </FormField>
                     </div>
 
                     {/* Personal Information */}

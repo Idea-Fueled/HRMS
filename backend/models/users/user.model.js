@@ -170,30 +170,53 @@ const userScehma = new mongoose.Schema({
     }],
 
     // bank details
+    companyEntity: {
+        type: String,
+        enum: ["Idea Fueled", "Idea Fueled LLP"],
+        default: "Idea Fueled"
+    },
+    paymentMode: {
+        type: String,
+        default: "Bank Transfer"
+    },
     bankName: {
         type: String,
+        default: ""
     },
 
     accountHolderName: {
         type: String,
+        default: ""
     },
 
     accountNumber: {
         type: String,
+        default: ""
     },
 
     ifscCode: {
         type: String,
+        default: ""
     },
 
     // identity information
 
     panNumber: {
         type: String,
+        default: ""
     },
 
     aadhaarNumber: {
         type: String,
+        default: ""
+    },
+
+    salaryStructure: {
+        ctc: { type: Number, default: 0 },
+        basic: { type: Number, default: 0 },
+        hra: { type: Number, default: 0 },
+        specialAllowance: { type: Number, default: 0 },
+        otherAllowances: { type: Number, default: 0 }
     },
 
     //leave summary
