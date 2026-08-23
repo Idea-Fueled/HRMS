@@ -112,10 +112,29 @@ td {
     font-weight: 500;
 }
 
-/* Buttons */
+/* Buttons - Premium Card-Matching 3D Hover & Click Animation */
 
 button {
     font-weight: 600;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-2.5px);
+    box-shadow: 0 6px 18px rgba(45, 121, 199, 0.18), 0 3px 8px rgba(15, 23, 42, 0.08);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(0px) scale(0.97);
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 /* Images */
