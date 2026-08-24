@@ -54,8 +54,6 @@ const OrgNodeCard = ({ emp, reportCount = "-", onSelect, isMe = false }) => {
 const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer, currentUserId }) => {
     const [expanded, setExpanded] = useState(true);
 
-    const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
-
     // Find direct reports
     const directReports = allEmployees.filter(e => {
         if (!e.managerId) return false;
@@ -224,7 +222,7 @@ export default function Organization() {
         });
     };
 
-    // Navigation Quick Action Buttons (Top of Org / Me / My Department)
+    // Navigation Quick Action Buttons (Top of Org / Me)
     const scrollToTopOrg = () => {
         setZoomLevel(0.95);
         if (treeContainerRef.current) {
@@ -280,6 +278,21 @@ export default function Organization() {
         setIsDragging(false);
     };
 
+    // Mouse wheel panning & Ctrl + wheel zoom
+    const handleWheel = (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                handleZoomIn();
+            } else {
+                handleZoomOut();
+            }
+        } else if (treeContainerRef.current) {
+            treeContainerRef.current.scrollLeft += e.deltaX || e.deltaY;
+            treeContainerRef.current.scrollTop += e.deltaY;
+        }
+    };
+
     // Filter employees by search & entity
     const filteredEmployees = employees.filter(emp => {
         const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
@@ -310,7 +323,7 @@ export default function Organization() {
 
     return (
         <div className="space-y-4 pb-12 animate-fadeIn select-none">
-            {/* Top Navigation Tabs Header (Matching Sample Screenshot) */}
+            {/* Top Navigation Tabs Header */}
             <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-8">
                     <button
@@ -392,7 +405,7 @@ export default function Organization() {
                 </div>
             </div>
 
-            {/* VIEW MODE 1: INFINITE CANVAS ORG TREE */}
+            {/* VIEW MODE 1: INFINITE PAN CANVAS ORG TREE (HIDDEN SCROLLBARS) */}
             {viewMode === "tree" && (
                 <div className="relative bg-[#F8FAFC] border border-gray-200/90 rounded-[16px] shadow-sm overflow-hidden min-h-[620px]">
                     {/* Floating Instruction Badge */}
@@ -401,7 +414,7 @@ export default function Organization() {
                         <span>Hold & drag to pan • Zoom controls on right</span>
                     </div>
 
-                    {/* Floating Right Zoom Controls Toolbar (Matching Screenshot) */}
+                    {/* Floating Right Zoom Controls Toolbar */}
                     <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-xs border border-gray-200 rounded-xl shadow-md p-1 flex flex-col gap-1">
                         <button
                             onClick={handleZoomIn}
@@ -426,16 +439,18 @@ export default function Organization() {
                         </button>
                     </div>
 
-                    {/* Canvas Scroll & Drag Area */}
+                    {/* Canvas Scroll & Drag Area with Hidden Scrollbars */}
                     <div
                         ref={treeContainerRef}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUpOrLeave}
                         onMouseLeave={handleMouseUpOrLeave}
-                        className={`w-full h-full min-h-[620px] max-h-[780px] overflow-auto p-16 flex justify-center ${
+                        onWheel={handleWheel}
+                        className={`w-full h-full min-h-[620px] max-h-[780px] overflow-auto p-16 flex justify-center [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
                             isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
                         }`}
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
                         {filteredEmployees.length === 0 ? (
                             <div className="text-center py-20 text-gray-400 font-medium">
