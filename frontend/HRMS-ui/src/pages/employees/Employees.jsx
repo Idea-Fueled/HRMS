@@ -688,6 +688,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                     <div className="bg-white border border-slate-200/60 rounded-[20px] p-5 shadow-xs space-y-4">
                         <SectionTitle>Organizational Information</SectionTitle>
                         <div className="grid grid-cols-2 gap-4 mt-2">
+                            <InfoRow icon={Building2} label="Company Entity" value={employee.companyEntity || "Idea Fueled"} />
                             <InfoRow icon={Building2} label="Department" value={employee.department} />
                             <InfoRow icon={Shield} label="Designation" value={employee.designation} />
                             <InfoRow label="Role" value={roleLabel(employee.role)} />
