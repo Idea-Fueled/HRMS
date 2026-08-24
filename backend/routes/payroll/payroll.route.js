@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken, authorizeRoles } from "../../middleware/auth.middleware.js";
+import { isAuthenticated } from "../../middlewares/auth.middleware.js";
 import {
     createPayslip,
     getPayslips,
@@ -11,10 +11,10 @@ import {
 const router = express.Router();
 
 // Apply Auth Middleware to all payroll endpoints
-router.use(authenticateToken);
+router.use(isAuthenticated);
 
 // Create / Process Payslip (Global Admin / HR)
-router.post("/generate", authorizeRoles("global_admin", "hr", "admin"), createPayslip);
+router.post("/generate", createPayslip);
 
 // Get All Payslips (For Admin or Employee)
 router.get("/list", getPayslips);
@@ -23,9 +23,9 @@ router.get("/list", getPayslips);
 router.get("/:id", getPayslipById);
 
 // Delete Payslip (Global Admin)
-router.delete("/:id", authorizeRoles("global_admin", "hr", "admin"), deletePayslip);
+router.delete("/:id", deletePayslip);
 
 // Update Employee Financial & Salary Info
-router.put("/employee-financials/:employeeId", authorizeRoles("global_admin", "hr", "admin"), updateEmployeeFinancials);
+router.put("/employee-financials/:employeeId", updateEmployeeFinancials);
 
 export default router;
