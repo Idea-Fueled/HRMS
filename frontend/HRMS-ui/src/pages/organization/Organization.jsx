@@ -17,7 +17,7 @@ const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer }) => {
     const department = (emp.department || "SOFTWARE DEVELOPMENT").toUpperCase();
     const location = emp.location || emp.city || "Punjab";
 
-    // Find all direct reports of this employee
+    // Find all direct reports of this employee by matching managerId
     const directReports = allEmployees.filter(e => {
         if (!e.managerId) return false;
         const mId = typeof e.managerId === 'object' ? e.managerId._id : e.managerId;
@@ -68,7 +68,7 @@ const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer }) => {
                     {/* Vertical line from parent badge */}
                     <div className="w-0.5 h-6 bg-gray-300" />
 
-                    {/* Horizontal connector line */}
+                    {/* Horizontal connector line across children */}
                     {reportCount > 1 && (
                         <div className="w-[85%] h-0.5 bg-gray-300" />
                     )}
@@ -127,68 +127,72 @@ export default function Organization() {
         }
     };
 
-    // Auto-enrich hierarchy so BOTH Esha Mohindru & Puneet Chopra are at the SAME TOP LEVEL (Root Nodes: managerId = null)
+    // Auto-enrich hierarchy matching actual database managerId & sample flowchart
     const enrichHierarchy = (list) => {
         if (list.length === 0) return [];
 
-        // Identify Top Leaders (Founders / CEO / CTO)
-        const topLeaders = list.filter(e => {
-            const name = (e.fullName || `${e.firstName || ''} ${e.lastName || ''}`).toLowerCase();
-            const desig = (e.designation || '').toLowerCase();
-            return desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || 
-                   name.includes('esha') || name.includes('puneet');
-        });
-
-        const puneetLeader = topLeaders.find(l => {
+        // Identify Top Leaders
+        const puneetLeader = list.find(l => {
             const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
             const desig = (l.designation || '').toLowerCase();
             return name.includes('puneet') || desig.includes('cto') || desig.includes('co-founder');
-        }) || topLeaders[0];
+        }) || list[0];
 
-        const eshaLeader = topLeaders.find(l => l._id !== puneetLeader?._id) || (topLeaders.length > 1 ? topLeaders[1] : null);
+        const eshaLeader = list.find(l => {
+            const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
+            const desig = (l.designation || '').toLowerCase();
+            return (name.includes('esha') || desig.includes('ceo')) && l._id !== puneetLeader?._id;
+        }) || null;
 
-        // Identify Middle Leads / Managers
-        const leads = list.filter(e => {
-            if (e._id === puneetLeader?._id || (eshaLeader && e._id === eshaLeader._id)) return false;
-            const desig = (e.designation || '').toLowerCase();
-            return desig.includes('lead') || desig.includes('manager') || desig.includes('head') || desig.includes('senior') || e.role === 'manager';
+        // Identify Leads
+        const rishabhLead = list.find(l => {
+            const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
+            return name.includes('rishabh');
         });
 
-        // Software Lead (Rishabh Loomba) & Sales/Business Lead (Yogesh Sharma)
-        const techLead = leads.find(l => {
+        const yogeshLead = list.find(l => {
             const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
-            const dept = (l.department || '').toLowerCase();
-            return name.includes('rishabh') || dept.includes('software') || dept.includes('tech');
-        }) || leads[0];
+            return name.includes('yogesh');
+        });
 
-        const salesLead = leads.find(l => {
+        const rajeevLead = list.find(l => {
             const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
-            const dept = (l.department || '').toLowerCase();
-            return name.includes('yogesh') || dept.includes('sales') || dept.includes('business');
-        }) || (leads.length > 1 ? leads[1] : null);
+            return name.includes('rajeev');
+        });
 
         return list.map(emp => {
             const empCopy = { ...emp };
-            const nameLower = (empCopy.fullName || `${empCopy.firstName || ''} ${empCopy.lastName || ''}`).toLowerCase();
 
-            // BOTH Esha & Puneet MUST be Root Nodes (managerId = null) at Top Level!
-            if (empCopy._id === puneetLeader?._id || (eshaLeader && empCopy._id === eshaLeader._id) || nameLower.includes('esha') || nameLower.includes('puneet')) {
-                empCopy.managerId = null;
-            } else if (empCopy._id === techLead?._id || nameLower.includes('rishabh') || nameLower.includes('rajeev')) {
-                // Tech Lead reports to Puneet (CTO)
-                empCopy.managerId = puneetLeader ? puneetLeader._id : null;
-            } else if (empCopy._id === salesLead?._id || nameLower.includes('yogesh')) {
-                // Sales Lead reports to Esha (CEO)
-                empCopy.managerId = eshaLeader ? eshaLeader._id : (puneetLeader ? puneetLeader._id : null);
-            } else {
-                // Software Engineers report to Tech Lead (Rishabh); Sales Reps report to Sales Lead (Yogesh)
-                const dept = (empCopy.department || '').toLowerCase();
-                if (dept.includes('sales') || dept.includes('business')) {
-                    empCopy.managerId = salesLead ? salesLead._id : (eshaLeader ? eshaLeader._id : null);
-                } else {
-                    empCopy.managerId = techLead ? techLead._id : (puneetLeader ? puneetLeader._id : null);
+            // If managerId is already populated from DB, respect DB value
+            if (empCopy.managerId) {
+                // Ensure Root Nodes have managerId = null
+                if (empCopy._id === puneetLeader?._id || (eshaLeader && empCopy._id === eshaLeader._id)) {
+                    empCopy.managerId = null;
                 }
+                return empCopy;
             }
+
+            const nameLower = (empCopy.fullName || `${empCopy.firstName || ''} ${empCopy.lastName || ''}`).toLowerCase();
+            const deptLower = (empCopy.department || '').toLowerCase();
+            const desigLower = (empCopy.designation || '').toLowerCase();
+
+            // 1. Top Level Founders
+            if (empCopy._id === puneetLeader?._id || (eshaLeader && empCopy._id === eshaLeader._id) || nameLower.includes('puneet') || nameLower.includes('esha')) {
+                empCopy.managerId = null;
+            }
+            // 2. Direct reports to Puneet Chopra (Rajeev Kumar, Rishabh Loomba, Yogesh Sharma)
+            else if (empCopy._id === rishabhLead?._id || empCopy._id === yogeshLead?._id || empCopy._id === rajeevLead?._id || nameLower.includes('rishabh') || nameLower.includes('yogesh') || nameLower.includes('rajeev')) {
+                empCopy.managerId = puneetLeader ? puneetLeader._id : null;
+            }
+            // 3. Sales / Business Execs report to Yogesh Sharma (Bhumika, Vanshika, Anshik)
+            else if (deptLower.includes('sales') || desigLower.includes('business associate') || desigLower.includes('business development') || nameLower.includes('bhumika') || nameLower.includes('vanshika') || nameLower.includes('anshik')) {
+                empCopy.managerId = yogeshLead ? yogeshLead._id : (puneetLeader ? puneetLeader._id : null);
+            }
+            // 4. Software Engineers report to Rishabh Loomba (Sahil, Akriti, Harpreet, Anirudh)
+            else {
+                empCopy.managerId = rishabhLead ? rishabhLead._id : (puneetLeader ? puneetLeader._id : null);
+            }
+
             return empCopy;
         });
     };
@@ -235,7 +239,7 @@ export default function Organization() {
         return matchesSearch && matchesEntity;
     });
 
-    // Root level nodes (No manager) -> Esha & Puneet side-by-side
+    // Root level nodes (No manager) -> Puneet Chopra & Esha Mohindru side-by-side
     const rootNodes = filteredEmployees.filter(emp => {
         if (!emp.managerId) return true;
         const mId = typeof emp.managerId === 'object' ? emp.managerId._id : emp.managerId;
