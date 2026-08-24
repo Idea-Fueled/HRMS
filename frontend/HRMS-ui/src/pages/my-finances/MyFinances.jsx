@@ -105,6 +105,7 @@ const MyFinances = () => {
     const specialAllowance = Number(salaryStructure.specialAllowance) || 0;
     const otherAllowances = Number(salaryStructure.otherAllowances) || 0;
     const totalEarnings = basic + hra + specialAllowance + otherAllowances;
+    const annualCtc = Number(salaryStructure.ctc) || (totalEarnings > 0 ? totalEarnings * 12 : 0);
 
     const lastPayslip = payslips.length > 0 ? payslips[0] : null;
 
@@ -133,10 +134,8 @@ const MyFinances = () => {
                                 key={tab.key}
                                 type="button"
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 px-3 py-4 text-[13px] font-bold border-b-2 transition-all cursor-pointer relative whitespace-nowrap ${
-                                    isActive
-                                        ? "border-[#2D79C7] text-[#2D79C7]"
-                                        : "border-transparent text-gray-400 hover:text-gray-600"
+                                className={`flex items-center gap-2 py-3 px-1 text-xs font-bold transition-all relative cursor-pointer ${
+                                    isActive ? "text-[#2D79C7]" : "text-gray-500 hover:text-gray-800"
                                 }`}
                             >
                                 <Icon className={`w-4 h-4 ${isActive ? "text-[#2D79C7]" : "text-gray-400"}`} />
@@ -163,16 +162,16 @@ const MyFinances = () => {
                     {/* Top Stat Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <MiniStatCard 
-                            title="Monthly Basic Pay" 
-                            value={basic ? `₹${basic.toLocaleString("en-IN")}` : "Not Configured"} 
-                            change={companyEntity}
+                            title="Annual CTC / Salary" 
+                            value={annualCtc ? `₹${annualCtc.toLocaleString("en-IN")}` : "Not Configured"} 
+                            change="Annual Pay"
                             isPositive={true}
                             icon={Wallet}
                         />
                         <MiniStatCard 
-                            title="Monthly Total Salary" 
+                            title="Monthly Salary" 
                             value={totalEarnings ? `₹${totalEarnings.toLocaleString("en-IN")}` : "Not Configured"} 
-                            change="Gross Pay" 
+                            change="Gross Monthly" 
                             isPositive={true}
                             icon={CreditCard}
                         />
