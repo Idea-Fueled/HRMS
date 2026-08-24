@@ -130,6 +130,7 @@ export const createEmployee = async (req, res) => {
             email,
             phoneNumber,
             profilePicture,
+            companyEntity,
             role,
             department,
             designation,
@@ -145,6 +146,12 @@ export const createEmployee = async (req, res) => {
             emergencyContactNumber,
             presentAddress,
             permanentAddress,
+            paymentMode,
+            bankName,
+            accountNumber,
+            ifscCode,
+            panNumber,
+            salaryStructure,
             casualLeave,
             sickLeave,
             earnedLeave,
@@ -215,6 +222,7 @@ export const createEmployee = async (req, res) => {
             password: hashedPassword,
             phoneNumber: phoneNumber || "",
             profilePicture: profilePicture || "",
+            companyEntity: companyEntity || "Idea Fueled",
             role: role === "admin" ? "global_admin" : role,
             department,
             designation,
@@ -230,6 +238,12 @@ export const createEmployee = async (req, res) => {
             emergencyContactNumber: emergencyContactNumber || undefined,
             presentAddress: presentAddress || "",
             permanentAddress: permanentAddress || "",
+            paymentMode: paymentMode || "Bank Transfer",
+            bankName: bankName || "",
+            accountNumber: accountNumber || "",
+            ifscCode: ifscCode || "",
+            panNumber: panNumber || "",
+            salaryStructure: salaryStructure || { ctc: 0, basic: 0, hra: 0, specialAllowance: 0, otherAllowances: 0 },
             leaveBalance: {
                 casual: { total: casualLeave !== undefined ? Number(casualLeave) : 8, used: 0, pending: 0 },
                 sick: { total: sickLeave !== undefined ? Number(sickLeave) : 6, used: 0, pending: 0 },
@@ -265,6 +279,7 @@ export const updateEmployee = async (req, res) => {
             email,
             phoneNumber,
             profilePicture,
+            companyEntity,
             role,
             department,
             designation,
@@ -280,6 +295,12 @@ export const updateEmployee = async (req, res) => {
             emergencyContactNumber,
             presentAddress,
             permanentAddress,
+            paymentMode,
+            bankName,
+            accountNumber,
+            ifscCode,
+            panNumber,
+            salaryStructure,
             casualLeave,
             sickLeave,
             earnedLeave,
@@ -325,6 +346,13 @@ export const updateEmployee = async (req, res) => {
 
         if (phoneNumber !== undefined) employee.phoneNumber = phoneNumber;
         if (profilePicture !== undefined) employee.profilePicture = profilePicture;
+        if (companyEntity) employee.companyEntity = companyEntity;
+        if (paymentMode !== undefined) employee.paymentMode = paymentMode;
+        if (bankName !== undefined) employee.bankName = bankName;
+        if (accountNumber !== undefined) employee.accountNumber = accountNumber;
+        if (ifscCode !== undefined) employee.ifscCode = ifscCode;
+        if (panNumber !== undefined) employee.panNumber = panNumber;
+        if (salaryStructure !== undefined) employee.salaryStructure = salaryStructure;
         if (role) employee.role = role === "admin" ? "global_admin" : role;
         if (department) employee.department = department;
         if (designation) employee.designation = designation;
