@@ -262,6 +262,10 @@ const MyFinances = () => {
                                         </div>
                                     </div>
 
+                                    <p className="mt-3 text-[10.5px] text-gray-500 font-medium leading-relaxed italic bg-gray-50/80 p-2.5 rounded-lg border border-gray-100">
+                                        <strong className="text-gray-700 not-italic font-bold">*Note:</strong> Other Allowances include transportation, medical, and other miscellaneous allowances.
+                                    </p>
+
                                     <div className="mt-4 pt-4 border-t border-gray-200/80 flex justify-between items-center bg-blue-50/50 p-4 rounded-xl border border-blue-100/60">
                                         <span className="text-gray-900 font-bold text-xs">Monthly Total Salary</span>
                                         <span className="text-[#2D79C7] font-black text-base">₹{totalEarnings.toLocaleString("en-IN")}</span>
