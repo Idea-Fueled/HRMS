@@ -1,9 +1,9 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import ideaFueledLogo from "../assets/idea_fueled_logo.png";
+import IFBlackLogo from "../assets/IF-black.png";
 
 export const renderPayslipHtml = (payslip) => {
-    const period = payslip.periodString || `${payslip.month || "JUN"} ${payslip.year || 2026}`;
+    const period = payslip.periodString || `${payslip.month || "AUG"} ${payslip.year || 2026}`;
     const entity = payslip.companyEntity || "Idea Fueled";
     const isLLP = entity.toLowerCase().includes("llp");
 
@@ -34,10 +34,10 @@ export const renderPayslipHtml = (payslip) => {
             left: -9999px;
         ">
             <!-- HEADER SECTION -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
                 <div>
-                    <h1 style="font-size: 26px; font-weight: 900; margin: 0; color: #000000; letter-spacing: -0.5px;">PAYSLIP ${period}</h1>
-                    <h2 style="font-size: 13px; font-weight: 800; margin: 12px 0 4px 0; color: #1E1E1E; text-transform: uppercase;">${entity}</h2>
+                    <h1 style="font-size: 24px; font-weight: 900; margin: 0; color: #000000; letter-spacing: -0.3px;">PAYSLIP ${period}</h1>
+                    <h2 style="font-size: 13px; font-weight: 800; margin: 10px 0 4px 0; color: #1E1E1E; text-transform: uppercase;">${entity}</h2>
                     <p style="font-size: 10.5px; color: #4B5563; margin: 0; line-height: 1.45; font-weight: 500;">
                         UNIT NO. 805, TOWER B, BESTECH BUSINESS TOWERS, SECTOR 66<br/>
                         MOHALI PUNJAB 160066<br/>
@@ -45,7 +45,7 @@ export const renderPayslipHtml = (payslip) => {
                     </p>
                 </div>
                 <div>
-                    <img src="${ideaFueledLogo}" alt="Idea Fueled" style="height: 48px; width: auto; object-fit: contain;" />
+                    <img src="${IFBlackLogo}" alt="Idea Fueled" style="height: 52px; width: auto; object-fit: contain;" />
                 </div>
             </div>
 
@@ -55,7 +55,7 @@ export const renderPayslipHtml = (payslip) => {
             </div>
 
             <!-- EMPLOYEE DETAILS TABLE -->
-            <div style="border-bottom: 1px solid #E5E7EB; padding-bottom: 16px; margin-bottom: 24px;">
+            <div style="margin-bottom: 24px;">
                 <table style="width: 100%; font-size: 11px; border-collapse: collapse; text-align: left;">
                     <tr style="color: #6B7280; font-weight: 500;">
                         <td style="padding: 4px 0; width: 25%;">Employee Number</td>
@@ -94,7 +94,7 @@ export const renderPayslipHtml = (payslip) => {
             <div style="border-top: 2px solid #000000; padding-top: 10px; margin-bottom: 12px;">
                 <h3 style="font-size: 13px; font-weight: 900; color: #000000; margin: 0; text-transform: uppercase; letter-spacing: 0.2px;">SALARY DETAILS</h3>
             </div>
-            <div style="border-bottom: 1px solid #E5E7EB; padding-bottom: 16px; margin-bottom: 24px;">
+            <div style="margin-bottom: 24px;">
                 <table style="width: 100%; font-size: 11px; border-collapse: collapse; text-align: left;">
                     <tr style="color: #6B7280; font-weight: 500;">
                         <td style="padding: 4px 0; width: 25%;">Actual Payable Days</td>
@@ -112,7 +112,7 @@ export const renderPayslipHtml = (payslip) => {
             </div>
 
             <!-- EARNINGS BREAKDOWN SECTION -->
-            <div style="display: flex; min-height: 170px; border-bottom: 1px solid #E5E7EB; margin-bottom: 24px;">
+            <div style="display: flex; min-height: 160px; border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; padding: 16px 0; margin-bottom: 24px;">
                 <div style="width: 50%; padding-right: 24px;">
                     <h3 style="font-size: 13px; font-weight: 900; color: #000000; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.2px;">EARNINGS</h3>
                     <table style="width: 100%; font-size: 11.5px; border-collapse: collapse;">
