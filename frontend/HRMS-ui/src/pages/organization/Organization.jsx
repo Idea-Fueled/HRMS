@@ -127,50 +127,67 @@ export default function Organization() {
         }
     };
 
-    // Auto-enrich hierarchy so BOTH Esha & Puneet are top root nodes, with direct reports divided appropriately
+    // Auto-enrich hierarchy so BOTH Esha Mohindru & Puneet Chopra are at the SAME TOP LEVEL (Root Nodes: managerId = null)
     const enrichHierarchy = (list) => {
         if (list.length === 0) return [];
 
-        // Find top founders / leaders
-        const leaders = list.filter(e => {
+        // Identify Top Leaders (Founders / CEO / CTO)
+        const topLeaders = list.filter(e => {
+            const name = (e.fullName || `${e.firstName || ''} ${e.lastName || ''}`).toLowerCase();
             const desig = (e.designation || '').toLowerCase();
-            const role = (e.role || '').toLowerCase();
-            return desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || desig.includes('coo') || role === 'global_admin';
+            return desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || 
+                   name.includes('esha') || name.includes('puneet');
         });
 
-        // Puneet Chopra (CTO) & Esha Mohindru (CEO)
-        const ctoLeader = leaders.find(l => (l.designation || '').toLowerCase().includes('cto') || (l.fullName || '').toLowerCase().includes('puneet')) || leaders[0];
-        const ceoLeader = leaders.find(l => l._id !== ctoLeader?._id) || (leaders.length > 1 ? leaders[1] : null);
+        const puneetLeader = topLeaders.find(l => {
+            const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
+            const desig = (l.designation || '').toLowerCase();
+            return name.includes('puneet') || desig.includes('cto') || desig.includes('co-founder');
+        }) || topLeaders[0];
 
-        // Find department leads
+        const eshaLeader = topLeaders.find(l => l._id !== puneetLeader?._id) || (topLeaders.length > 1 ? topLeaders[1] : null);
+
+        // Identify Middle Leads / Managers
         const leads = list.filter(e => {
-            if (e._id === ctoLeader?._id || (ceoLeader && e._id === ceoLeader._id)) return false;
+            if (e._id === puneetLeader?._id || (eshaLeader && e._id === eshaLeader._id)) return false;
             const desig = (e.designation || '').toLowerCase();
             return desig.includes('lead') || desig.includes('manager') || desig.includes('head') || desig.includes('senior') || e.role === 'manager';
         });
 
-        const techLead = leads.find(l => (l.department || '').toLowerCase().includes('software') || (l.designation || '').toLowerCase().includes('tech') || (l.fullName || '').toLowerCase().includes('rishabh')) || leads[0];
+        // Software Lead (Rishabh Loomba) & Sales/Business Lead (Yogesh Sharma)
+        const techLead = leads.find(l => {
+            const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
+            const dept = (l.department || '').toLowerCase();
+            return name.includes('rishabh') || dept.includes('software') || dept.includes('tech');
+        }) || leads[0];
+
+        const salesLead = leads.find(l => {
+            const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
+            const dept = (l.department || '').toLowerCase();
+            return name.includes('yogesh') || dept.includes('sales') || dept.includes('business');
+        }) || (leads.length > 1 ? leads[1] : null);
 
         return list.map(emp => {
             const empCopy = { ...emp };
+            const nameLower = (empCopy.fullName || `${empCopy.firstName || ''} ${empCopy.lastName || ''}`).toLowerCase();
 
-            // If managerId already assigned in DB, preserve it
-            if (empCopy.managerId) return empCopy;
-
-            // Top Root Founders (No Manager)
-            if (empCopy._id === ctoLeader?._id || (ceoLeader && empCopy._id === ceoLeader._id)) {
+            // BOTH Esha & Puneet MUST be Root Nodes (managerId = null) at Top Level!
+            if (empCopy._id === puneetLeader?._id || (eshaLeader && empCopy._id === eshaLeader._id) || nameLower.includes('esha') || nameLower.includes('puneet')) {
                 empCopy.managerId = null;
-            } else if (leads.some(l => l._id === empCopy._id)) {
-                // Technical Leads report to Puneet (CTO), Business/Sales Leads report to Esha (CEO)
-                const dept = (empCopy.department || '').toLowerCase();
-                if (dept.includes('software') || dept.includes('tech') || dept.includes('dev')) {
-                    empCopy.managerId = ctoLeader ? ctoLeader._id : null;
-                } else {
-                    empCopy.managerId = ceoLeader ? ceoLeader._id : (ctoLeader ? ctoLeader._id : null);
-                }
+            } else if (empCopy._id === techLead?._id || nameLower.includes('rishabh') || nameLower.includes('rajeev')) {
+                // Tech Lead reports to Puneet (CTO)
+                empCopy.managerId = puneetLeader ? puneetLeader._id : null;
+            } else if (empCopy._id === salesLead?._id || nameLower.includes('yogesh')) {
+                // Sales Lead reports to Esha (CEO)
+                empCopy.managerId = eshaLeader ? eshaLeader._id : (puneetLeader ? puneetLeader._id : null);
             } else {
-                // Team Members report to Tech Lead or Manager
-                empCopy.managerId = techLead ? techLead._id : (ctoLeader ? ctoLeader._id : null);
+                // Software Engineers report to Tech Lead (Rishabh); Sales Reps report to Sales Lead (Yogesh)
+                const dept = (empCopy.department || '').toLowerCase();
+                if (dept.includes('sales') || dept.includes('business')) {
+                    empCopy.managerId = salesLead ? salesLead._id : (eshaLeader ? eshaLeader._id : null);
+                } else {
+                    empCopy.managerId = techLead ? techLead._id : (puneetLeader ? puneetLeader._id : null);
+                }
             }
             return empCopy;
         });
@@ -218,7 +235,7 @@ export default function Organization() {
         return matchesSearch && matchesEntity;
     });
 
-    // Root level nodes (No manager)
+    // Root level nodes (No manager) -> Esha & Puneet side-by-side
     const rootNodes = filteredEmployees.filter(emp => {
         if (!emp.managerId) return true;
         const mId = typeof emp.managerId === 'object' ? emp.managerId._id : emp.managerId;
@@ -406,23 +423,23 @@ export default function Organization() {
                 </div>
             </div>
 
-            {/* VIEW MODE 1: RECURSIVE ORG TREE WITH DRAG (PAN) & ZOOM */}
+            {/* VIEW MODE 1: RECURSIVE ORG TREE WITH CANVAS BOUNDS & DRAG/ZOOM */}
             {viewMode === "tree" && (
-                <div className="relative bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden min-h-[580px]">
+                <div className="relative bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden min-h-[600px]">
                     {/* Floating Drag/Pan Instruction Badge */}
                     <div className="absolute top-4 left-4 z-20 bg-gray-900/80 text-white backdrop-blur-xs text-[10.5px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-md border border-gray-700">
                         <Move className="w-3.5 h-3.5 text-blue-300" />
                         <span>Hold & drag to pan • Scroll/buttons to zoom</span>
                     </div>
 
-                    {/* Canvas Scroll Container */}
+                    {/* Canvas Scroll & Drag Container with Ample Horizontal Padding */}
                     <div
                         ref={treeContainerRef}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUpOrLeave}
                         onMouseLeave={handleMouseUpOrLeave}
-                        className={`w-full h-full min-h-[580px] overflow-auto p-12 flex justify-center ${
+                        className={`w-full h-full min-h-[600px] overflow-auto p-12 flex justify-center ${
                             isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
                         }`}
                     >
@@ -432,7 +449,7 @@ export default function Organization() {
                             </div>
                         ) : (
                             <div 
-                                className="inline-flex gap-10 sm:gap-16 justify-center py-6 transition-transform duration-100 ease-out origin-top"
+                                className="inline-flex gap-16 sm:gap-24 justify-center items-start min-w-max px-20 sm:px-32 py-8 transition-transform duration-100 ease-out origin-top"
                                 style={{ transform: `scale(${zoomLevel})` }}
                             >
                                 {rootNodes.map((rootEmp) => (
