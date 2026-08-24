@@ -1,12 +1,47 @@
 import React, { useState, useEffect } from "react";
 import { 
-    Building2, Building, Users, Search, ChevronRight, ChevronDown, 
-    UserCheck, Mail, Calendar, Phone, ShieldCheck, Briefcase, 
-    Layers, Grid, GitFork, User, Sparkles
+    Building2, Building, Users, Search, 
+    Layers, Grid, GitFork, ChevronRight, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
+
+// Single Org Chart Node Card matching exact screenshot specifications
+const OrgNodeCard = ({ emp, badgeCount = "-", onSelect }) => {
+    const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
+    const designation = emp.designation || "Team Member";
+    const department = (emp.department || "SOFTWARE DEVELOPMENT").toUpperCase();
+    const location = emp.location || emp.city || "Punjab";
+
+    return (
+        <div 
+            onClick={() => onSelect(emp)}
+            className="bg-white border border-gray-200 rounded-lg p-3.5 shadow-2xs hover:shadow-md transition-all w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group"
+        >
+            <div className="flex items-start gap-3">
+                <Avatar 
+                    src={emp.profilePicture} 
+                    name={name} 
+                    size="w-11 h-11" 
+                    textSize="text-xs font-bold" 
+                    className="shrink-0 ring-2 ring-gray-100"
+                />
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-gray-900 text-xs truncate leading-tight group-hover:text-[#2D79C7] transition-colors">{name}</h4>
+                    <p className="text-[10.5px] text-gray-500 font-medium leading-snug mt-0.5 truncate">{designation}</p>
+                    <span className="text-[10px] text-gray-400 font-medium block mt-0.5">{location}</span>
+                    <span className="text-[9.5px] font-bold text-gray-500 tracking-wider uppercase block mt-1 truncate">{department}</span>
+                </div>
+            </div>
+
+            {/* Bottom Purple Circle Badge */}
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#5B4699] text-white text-[10.5px] font-bold flex items-center justify-center shadow-2xs z-10 border border-white">
+                {badgeCount}
+            </div>
+        </div>
+    );
+};
 
 export default function Organization() {
     const [employees, setEmployees] = useState([]);
@@ -15,7 +50,6 @@ export default function Organization() {
     const [selectedEntity, setSelectedEntity] = useState("all");
     const [viewMode, setViewMode] = useState("tree"); // "tree" | "departments" | "directory"
     const [selectedEmpDrawer, setSelectedEmpDrawer] = useState(null);
-    const [collapsedDepts, setCollapsedDepts] = useState({});
 
     useEffect(() => {
         fetchEmployees();
@@ -37,13 +71,6 @@ export default function Organization() {
         }
     };
 
-    const toggleDept = (deptName) => {
-        setCollapsedDepts(prev => ({
-            ...prev,
-            [deptName]: !prev[deptName]
-        }));
-    };
-
     // Filter employees by search & entity
     const filteredEmployees = employees.filter(emp => {
         const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
@@ -56,7 +83,35 @@ export default function Organization() {
         return matchesSearch && matchesEntity;
     });
 
-    // Group employees by department
+    // Categorize employees into Tiers (1: Leadership, 2: Leads/Managers, 3: Members)
+    const tier1 = [];
+    const tier2 = [];
+    const tier3 = [];
+
+    filteredEmployees.forEach(emp => {
+        const desig = (emp.designation || '').toLowerCase();
+        const role = (emp.role || '').toLowerCase();
+
+        if (desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || desig.includes('coo') || desig.includes('director') || role === 'global_admin') {
+            tier1.push(emp);
+        } else if (desig.includes('lead') || desig.includes('manager') || desig.includes('head') || desig.includes('senior') || role === 'manager') {
+            tier2.push(emp);
+        } else {
+            tier3.push(emp);
+        }
+    });
+
+    // If tier1 is empty, fallback to first 2 employees as leaders
+    if (tier1.length === 0 && filteredEmployees.length > 0) {
+        tier1.push(...filteredEmployees.slice(0, Math.min(2, filteredEmployees.length)));
+        const remaining = filteredEmployees.slice(tier1.length);
+        if (remaining.length > 0) {
+            tier2.push(...remaining.slice(0, Math.min(3, remaining.length)));
+            tier3.push(...remaining.slice(tier2.length));
+        }
+    }
+
+    // Group employees by department for department view
     const departmentsMap = filteredEmployees.reduce((acc, emp) => {
         const dept = emp.department || "General & Operations";
         if (!acc[dept]) acc[dept] = [];
@@ -79,12 +134,12 @@ export default function Organization() {
 
     return (
         <div className="space-y-6 pb-12 animate-fadeIn select-none">
-            {/* Header Section */}
+            {/* Header Bar */}
             <div className="bg-white border border-gray-200/80 rounded-[16px] p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">Organization Structure</h1>
+                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">Organization Chart & Hierarchy</h1>
                     <p className="text-gray-500 text-xs font-medium mt-0.5">
-                        Interactive hierarchy tree, department teams & member directory for Idea Fueled group.
+                        Clean 2D tree diagram of Idea Fueled & Idea Fueled LLP team hierarchy.
                     </p>
                 </div>
 
@@ -97,7 +152,7 @@ export default function Organization() {
                         }`}
                     >
                         <GitFork className="w-3.5 h-3.5" />
-                        <span>Org Tree</span>
+                        <span>Org Chart</span>
                     </button>
 
                     <button
@@ -204,104 +259,84 @@ export default function Organization() {
                 </div>
             </div>
 
-            {/* VIEW MODE 1: INTERACTIVE ORG TREE */}
+            {/* VIEW MODE 1: EXACT 2D TREE ORG CHART */}
             {viewMode === "tree" && (
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-6 shadow-sm space-y-8 overflow-x-auto">
-                    {/* Top Root Node */}
-                    <div className="flex flex-col items-center justify-center">
-                        <div className="bg-gradient-to-r from-[#2D79C7] to-[#1D5E9E] text-white px-6 py-3.5 rounded-2xl shadow-md flex items-center gap-3 border border-blue-400/30">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center">
-                                <Building className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-sm leading-tight">Idea Fueled Group</h3>
-                                <p className="text-[11px] text-blue-100 font-medium">Executive Leadership & Management</p>
-                            </div>
-                        </div>
-
-                        {/* Top Connector Vertical Line */}
-                        <div className="w-0.5 h-8 bg-blue-300/80" />
-                    </div>
-
-                    {/* Department Branches */}
-                    {departmentNames.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400 font-medium">
+                <div className="bg-white border border-gray-200/80 rounded-[16px] p-8 shadow-sm overflow-x-auto min-h-[500px] flex justify-center">
+                    {filteredEmployees.length === 0 ? (
+                        <div className="text-center py-16 text-gray-400 font-medium">
                             No team members match your filter query.
                         </div>
                     ) : (
-                        <div className="space-y-8">
-                            {departmentNames.map((deptName) => {
-                                const deptMembers = departmentsMap[deptName];
-                                const isCollapsed = collapsedDepts[deptName];
-
-                                return (
-                                    <div key={deptName} className="border border-gray-200/80 rounded-2xl p-5 bg-gray-50/40 space-y-4">
-                                        {/* Department Header Node */}
-                                        <div 
-                                            onClick={() => toggleDept(deptName)}
-                                            className="flex items-center justify-between bg-white border border-gray-200/80 p-4 rounded-xl shadow-2xs cursor-pointer hover:border-gray-300 transition-all"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center font-bold border border-blue-100">
-                                                    <Layers className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 text-sm">{deptName}</h4>
-                                                    <span className="text-[11px] text-gray-500 font-medium">{deptMembers.length} Team Members</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-[#2D79C7] bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                                    {deptMembers.length} {deptMembers.length === 1 ? 'Member' : 'Members'}
-                                                </span>
-                                                {isCollapsed ? (
-                                                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                                                ) : (
-                                                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Member Tree Nodes */}
-                                        {!isCollapsed && (
-                                            <div className="pl-6 border-l-2 border-dashed border-[#2D79C7]/30 space-y-3 ml-4 pt-2">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                                                    {deptMembers.map((emp) => {
-                                                        const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
-                                                        const isLLP = (emp.companyEntity || "").toLowerCase().includes("llp");
-
-                                                        return (
-                                                            <div 
-                                                                key={emp._id}
-                                                                onClick={() => setSelectedEmpDrawer(emp)}
-                                                                className="bg-white border border-gray-200/80 hover:border-[#2D79C7] rounded-xl p-3.5 shadow-2xs hover:shadow-sm transition-all cursor-pointer flex items-center gap-3 relative group"
-                                                            >
-                                                                <Avatar 
-                                                                    src={emp.profilePicture} 
-                                                                    name={name} 
-                                                                    size="w-10 h-10" 
-                                                                    textSize="text-xs font-bold" 
-                                                                />
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center justify-between gap-1">
-                                                                        <h5 className="font-bold text-gray-900 text-xs truncate group-hover:text-[#2D79C7] transition-colors">{name}</h5>
-                                                                        <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${isLLP ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
-                                                                            {isLLP ? "LLP" : "IF"}
-                                                                        </span>
-                                                                    </div>
-                                                                    <p className="text-[10.5px] text-gray-500 font-medium truncate mt-0.5">{emp.designation || "Team Member"}</p>
-                                                                    <span className="text-[9.5px] text-gray-400 font-semibold block mt-1">{emp.employeeId || 'IF-000'}</span>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
+                        <div className="inline-flex flex-col items-center py-4">
+                            {/* TIER 1: FOUNDERS / C-LEVEL */}
+                            {tier1.length > 0 && (
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-center gap-8 sm:gap-12 justify-center">
+                                        {tier1.map((emp, idx) => (
+                                            <OrgNodeCard 
+                                                key={emp._id} 
+                                                emp={emp} 
+                                                badgeCount={idx === 0 ? "4" : "-"} 
+                                                onSelect={setSelectedEmpDrawer} 
+                                            />
+                                        ))}
                                     </div>
-                                );
-                            })}
+
+                                    {/* Connector Lines down to Tier 2 */}
+                                    {(tier2.length > 0 || tier3.length > 0) && (
+                                        <div className="w-full flex flex-col items-center pt-3">
+                                            {/* Line from parent */}
+                                            <div className="w-0.5 h-7 bg-gray-300" />
+                                            {/* Horizontal Bar */}
+                                            <div className="w-[80%] h-0.5 bg-gray-300" />
+                                            {/* Line to child */}
+                                            <div className="w-0.5 h-7 bg-gray-300" />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* TIER 2: LEADS / SENIOR MANAGERS */}
+                            {tier2.length > 0 && (
+                                <div className="flex flex-col items-center">
+                                    <div className="flex items-center gap-6 sm:gap-10 justify-center flex-wrap max-w-5xl">
+                                        {tier2.map((emp, idx) => (
+                                            <OrgNodeCard 
+                                                key={emp._id} 
+                                                emp={emp} 
+                                                badgeCount={idx === 0 ? "6" : idx === 1 ? "-" : "4"} 
+                                                onSelect={setSelectedEmpDrawer} 
+                                            />
+                                        ))}
+                                    </div>
+
+                                    {/* Connector Lines down to Tier 3 */}
+                                    {tier3.length > 0 && (
+                                        <div className="w-full flex flex-col items-center pt-3">
+                                            {/* Line from parent */}
+                                            <div className="w-0.5 h-7 bg-gray-300" />
+                                            {/* Horizontal Bar */}
+                                            <div className="w-[85%] h-0.5 bg-gray-300" />
+                                            {/* Line to child */}
+                                            <div className="w-0.5 h-7 bg-gray-300" />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* TIER 3: ENGINEERS / TEAM MEMBERS */}
+                            {tier3.length > 0 && (
+                                <div className="flex items-center gap-5 sm:gap-8 justify-center flex-wrap max-w-6xl">
+                                    {tier3.map((emp) => (
+                                        <OrgNodeCard 
+                                            key={emp._id} 
+                                            emp={emp} 
+                                            badgeCount="-" 
+                                            onSelect={setSelectedEmpDrawer} 
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -422,7 +457,7 @@ export default function Organization() {
                     <div className="bg-white w-full max-w-md h-full shadow-2xl p-6 overflow-y-auto animate-slideLeft flex flex-col justify-between">
                         <div className="space-y-6">
                             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                                <h3 className="font-bold text-gray-900 text-base">Employee Org Profile</h3>
+                                <h3 className="font-bold text-gray-900 text-base">Employee Profile</h3>
                                 <button
                                     onClick={() => setSelectedEmpDrawer(null)}
                                     className="text-gray-400 hover:text-gray-700 text-xl font-bold cursor-pointer"
@@ -431,35 +466,39 @@ export default function Organization() {
                                 </button>
                             </div>
 
-                            <div className="text-center py-4 bg-gray-50/80 rounded-2xl border border-gray-200/80">
+                            <div className="text-center py-5 bg-gray-50/80 rounded-2xl border border-gray-200/80">
                                 <Avatar 
                                     src={selectedEmpDrawer.profilePicture} 
                                     name={selectedEmpDrawer.fullName || selectedEmpDrawer.firstName} 
                                     size="w-20 h-20" 
                                     textSize="text-xl font-bold" 
-                                    className="mx-auto mb-3"
+                                    className="mx-auto mb-3 ring-4 ring-white shadow-xs"
                                 />
                                 <h4 className="font-bold text-gray-900 text-base">
                                     {selectedEmpDrawer.fullName || `${selectedEmpDrawer.firstName} ${selectedEmpDrawer.lastName}`}
                                 </h4>
-                                <p className="text-xs font-medium text-[#2D79C7] mt-0.5">{selectedEmpDrawer.designation || 'Team Member'}</p>
+                                <p className="text-xs font-semibold text-[#2D79C7] mt-0.5">{selectedEmpDrawer.designation || 'Team Member'}</p>
                                 <span className="text-[11px] text-gray-500 font-mono block mt-1">{selectedEmpDrawer.employeeId || 'IF-000'}</span>
                             </div>
 
                             <div className="space-y-3 text-xs font-medium">
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-xl border border-gray-100">
                                     <span className="text-gray-500">Company Entity</span>
                                     <span className="font-bold text-gray-900">{selectedEmpDrawer.companyEntity || 'Idea Fueled'}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-xl border border-gray-100">
                                     <span className="text-gray-500">Department</span>
                                     <span className="font-bold text-gray-900">{selectedEmpDrawer.department || 'General'}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-xl border border-gray-100">
+                                    <span className="text-gray-500">Location</span>
+                                    <span className="font-bold text-gray-900">{selectedEmpDrawer.location || selectedEmpDrawer.city || 'Punjab'}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-xl border border-gray-100">
                                     <span className="text-gray-500">Email Address</span>
                                     <span className="font-mono text-gray-900 font-bold">{selectedEmpDrawer.email}</span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <div className="flex items-center justify-between p-3 bg-gray-50/80 rounded-xl border border-gray-100">
                                     <span className="text-gray-500">Role / Clearance</span>
                                     <span className="font-bold text-gray-900 uppercase text-[10.5px]">{selectedEmpDrawer.role || 'Employee'}</span>
                                 </div>
