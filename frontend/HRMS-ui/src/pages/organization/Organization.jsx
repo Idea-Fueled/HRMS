@@ -2,79 +2,108 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
     Building2, Building, Users, Search, 
     Layers, Grid, GitFork, ChevronRight, CheckCircle2,
-    ZoomIn, ZoomOut, RotateCcw, Move
+    ZoomIn, ZoomOut, RotateCcw, Move, Target, User, Compass
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
+import { useAuth } from "../../context/AuthContext";
 
-// Recursive Org Tree Node Component
-const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer }) => {
-    const [expanded, setExpanded] = useState(true);
-
+// Single Org Node Card matching sample screenshot
+const OrgNodeCard = ({ emp, reportCount = "-", onSelect, isMe = false }) => {
     const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
     const designation = emp.designation || "Team Member";
     const department = (emp.department || "SOFTWARE DEVELOPMENT").toUpperCase();
     const location = emp.location || emp.city || "Punjab";
 
-    // Find all direct reports of this employee by matching managerId
+    return (
+        <div 
+            id={`org-node-${emp._id}`}
+            onClick={() => onSelect(emp)}
+            className={`bg-white border rounded-lg p-3.5 shadow-2xs hover:shadow-md transition-all w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group z-10 ${
+                isMe ? "border-[#2D79C7] ring-2 ring-blue-100" : "border-gray-200"
+            }`}
+        >
+            <div className="flex items-start gap-3">
+                <Avatar 
+                    src={emp.profilePicture} 
+                    name={name} 
+                    size="w-11 h-11" 
+                    textSize="text-xs font-bold" 
+                    className="shrink-0 ring-2 ring-gray-100"
+                />
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-gray-900 text-xs truncate leading-tight group-hover:text-[#2D79C7] transition-colors">
+                        {name} {isMe && <span className="text-[9px] bg-blue-100 text-[#2D79C7] px-1 py-0.5 rounded font-extrabold ml-1">YOU</span>}
+                    </h4>
+                    <p className="text-[10.5px] text-gray-500 font-medium leading-snug mt-0.5 truncate">{designation}</p>
+                    <span className="text-[10px] text-gray-400 font-medium block mt-0.5">{location}</span>
+                    <span className="text-[9.5px] font-bold text-gray-500 tracking-wider uppercase block mt-1 truncate">{department}</span>
+                </div>
+            </div>
+
+            {/* Bottom Purple Circle Badge */}
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#5B4699] text-white text-[10.5px] font-bold flex items-center justify-center shadow-2xs z-20 border border-white">
+                {reportCount}
+            </div>
+        </div>
+    );
+};
+
+// Recursive Tree Node Component
+const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer, currentUserId }) => {
+    const [expanded, setExpanded] = useState(true);
+
+    const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
+
+    // Find direct reports
     const directReports = allEmployees.filter(e => {
         if (!e.managerId) return false;
         const mId = typeof e.managerId === 'object' ? e.managerId._id : e.managerId;
         return mId && String(mId) === String(emp._id);
     });
 
-    const reportCount = directReports.length;
+    const reportCount = directReports.length > 0 ? directReports.length : "-";
+    const isMe = String(emp._id) === String(currentUserId);
 
     return (
         <div className="flex flex-col items-center shrink-0">
-            {/* Employee Card */}
-            <div 
-                onClick={() => onSelectDrawer(emp)}
-                className="bg-white border border-gray-200 rounded-lg p-3.5 shadow-2xs hover:shadow-md transition-all w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group z-10"
-            >
-                <div className="flex items-start gap-3">
-                    <Avatar 
-                        src={emp.profilePicture} 
-                        name={name} 
-                        size="w-11 h-11" 
-                        textSize="text-xs font-bold" 
-                        className="shrink-0 ring-2 ring-gray-100"
-                    />
-                    <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 text-xs truncate leading-tight group-hover:text-[#2D79C7] transition-colors">{name}</h4>
-                        <p className="text-[10.5px] text-gray-500 font-medium leading-snug mt-0.5 truncate">{designation}</p>
-                        <span className="text-[10px] text-gray-400 font-medium block mt-0.5">{location}</span>
-                        <span className="text-[9.5px] font-bold text-gray-500 tracking-wider uppercase block mt-1 truncate">{department}</span>
-                    </div>
-                </div>
+            {/* Employee Card Container */}
+            <div className="relative flex flex-col items-center">
+                <OrgNodeCard 
+                    emp={emp} 
+                    reportCount={reportCount} 
+                    onSelect={onSelectDrawer} 
+                    isMe={isMe} 
+                />
 
-                {/* Bottom Purple Circle Badge */}
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setExpanded(!expanded);
-                    }}
-                    className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#5B4699] hover:bg-[#48367A] text-white text-[10.5px] font-bold flex items-center justify-center shadow-2xs z-20 border border-white cursor-pointer transition-colors"
-                >
-                    {reportCount > 0 ? reportCount : "-"}
-                </button>
+                {/* Expand / Collapse toggle click on badge area */}
+                {directReports.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setExpanded(!expanded);
+                        }}
+                        className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full opacity-0 z-30 cursor-pointer"
+                        title={expanded ? "Collapse Branch" : "Expand Branch"}
+                    />
+                )}
             </div>
 
             {/* Direct Reports Sub-Branch */}
-            {reportCount > 0 && expanded && (
+            {directReports.length > 0 && expanded && (
                 <div className="flex flex-col items-center pt-3 w-full">
-                    {/* Vertical line from parent badge */}
+                    {/* Vertical connector line from parent */}
                     <div className="w-0.5 h-6 bg-gray-300" />
 
                     {/* Horizontal connector line across children */}
-                    {reportCount > 1 && (
-                        <div className="w-[85%] h-0.5 bg-gray-300" />
+                    {directReports.length > 1 && (
+                        <div className="w-[88%] h-0.5 bg-gray-300" />
                     )}
 
                     {/* Vertical lines to child nodes */}
-                    <div className="flex gap-6 sm:gap-10 items-start justify-center">
+                    <div className="flex gap-6 sm:gap-10 items-start justify-center pt-0">
                         {directReports.map((child) => (
                             <div key={child._id} className="flex flex-col items-center">
                                 <div className="w-0.5 h-6 bg-gray-300" />
@@ -82,6 +111,7 @@ const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer }) => {
                                     emp={child} 
                                     allEmployees={allEmployees} 
                                     onSelectDrawer={onSelectDrawer} 
+                                    currentUserId={currentUserId}
                                 />
                             </div>
                         ))}
@@ -93,15 +123,16 @@ const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer }) => {
 };
 
 export default function Organization() {
+    const { user } = useAuth();
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedEntity, setSelectedEntity] = useState("all");
-    const [viewMode, setViewMode] = useState("tree"); // "tree" | "departments" | "directory"
+    const [viewMode, setViewMode] = useState("tree"); // "tree" | "directory"
     const [selectedEmpDrawer, setSelectedEmpDrawer] = useState(null);
 
     // Zoom & Pan Canvas State
-    const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100%
+    const [zoomLevel, setZoomLevel] = useState(0.9); // Default centered fit (~90%)
     const [isDragging, setIsDragging] = useState(false);
     const treeContainerRef = useRef(null);
     const panStateRef = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
@@ -127,11 +158,10 @@ export default function Organization() {
         }
     };
 
-    // Auto-enrich hierarchy matching actual database managerId & sample flowchart
+    // Auto-enrich hierarchy matching database & sample flowchart
     const enrichHierarchy = (list) => {
         if (list.length === 0) return [];
 
-        // Identify Top Leaders
         const puneetLeader = list.find(l => {
             const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
             const desig = (l.designation || '').toLowerCase();
@@ -144,7 +174,6 @@ export default function Organization() {
             return (name.includes('esha') || desig.includes('ceo')) && l._id !== puneetLeader?._id;
         }) || null;
 
-        // Identify Leads
         const rishabhLead = list.find(l => {
             const name = (l.fullName || `${l.firstName || ''} ${l.lastName || ''}`).toLowerCase();
             return name.includes('rishabh');
@@ -163,9 +192,7 @@ export default function Organization() {
         return list.map(emp => {
             const empCopy = { ...emp };
 
-            // If managerId is already populated from DB, respect DB value
             if (empCopy.managerId) {
-                // Ensure Root Nodes have managerId = null
                 if (empCopy._id === puneetLeader?._id || (eshaLeader && empCopy._id === eshaLeader._id)) {
                     empCopy.managerId = null;
                 }
@@ -176,19 +203,19 @@ export default function Organization() {
             const deptLower = (empCopy.department || '').toLowerCase();
             const desigLower = (empCopy.designation || '').toLowerCase();
 
-            // 1. Top Level Founders
+            // Top Level Leaders (Esha & Puneet side-by-side)
             if (empCopy._id === puneetLeader?._id || (eshaLeader && empCopy._id === eshaLeader._id) || nameLower.includes('puneet') || nameLower.includes('esha')) {
                 empCopy.managerId = null;
             }
-            // 2. Direct reports to Puneet Chopra (Rajeev Kumar, Rishabh Loomba, Yogesh Sharma)
+            // Direct reports to Puneet (Rishabh, Yogesh, Rajeev)
             else if (empCopy._id === rishabhLead?._id || empCopy._id === yogeshLead?._id || empCopy._id === rajeevLead?._id || nameLower.includes('rishabh') || nameLower.includes('yogesh') || nameLower.includes('rajeev')) {
                 empCopy.managerId = puneetLeader ? puneetLeader._id : null;
             }
-            // 3. Sales / Business Execs report to Yogesh Sharma (Bhumika, Vanshika, Anshik)
+            // Sales Execs report to Yogesh
             else if (deptLower.includes('sales') || desigLower.includes('business associate') || desigLower.includes('business development') || nameLower.includes('bhumika') || nameLower.includes('vanshika') || nameLower.includes('anshik')) {
                 empCopy.managerId = yogeshLead ? yogeshLead._id : (puneetLeader ? puneetLeader._id : null);
             }
-            // 4. Software Engineers report to Rishabh Loomba (Sahil, Akriti, Harpreet, Anirudh)
+            // Software Engineers report to Rishabh
             else {
                 empCopy.managerId = rishabhLead ? rishabhLead._id : (puneetLeader ? puneetLeader._id : null);
             }
@@ -197,12 +224,38 @@ export default function Organization() {
         });
     };
 
-    // Zoom Handlers
-    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.15, 1.8));
-    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.15, 0.5));
-    const handleZoomReset = () => setZoomLevel(1);
+    // Navigation Quick Action Buttons (Top of Org / Me / My Department)
+    const scrollToTopOrg = () => {
+        setZoomLevel(0.95);
+        if (treeContainerRef.current) {
+            treeContainerRef.current.scrollTo({
+                top: 0,
+                left: (treeContainerRef.current.scrollWidth - treeContainerRef.current.clientWidth) / 2,
+                behavior: 'smooth'
+            });
+        }
+    };
 
-    // Mouse Drag (Pan) Handlers
+    const scrollToMe = () => {
+        if (!user) return;
+        const myNode = employees.find(e => String(e._id) === String(user.id || user._id));
+        if (myNode) {
+            setSelectedEmpDrawer(myNode);
+            toast.info(`Centered on profile: ${myNode.fullName || myNode.firstName}`);
+        } else {
+            toast.info("Your profile is highlighted in the organization tree.");
+        }
+    };
+
+    // Zoom Controls
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.15, 1.6));
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.15, 0.4));
+    const handleZoomReset = () => {
+        setZoomLevel(0.9);
+        scrollToTopOrg();
+    };
+
+    // Mouse Drag (Pan Canvas)
     const handleMouseDown = (e) => {
         if (!treeContainerRef.current) return;
         setIsDragging(true);
@@ -239,24 +292,12 @@ export default function Organization() {
         return matchesSearch && matchesEntity;
     });
 
-    // Root level nodes (No manager) -> Puneet Chopra & Esha Mohindru side-by-side
+    // Root level nodes (Esha & Puneet top leaders)
     const rootNodes = filteredEmployees.filter(emp => {
         if (!emp.managerId) return true;
         const mId = typeof emp.managerId === 'object' ? emp.managerId._id : emp.managerId;
         return !filteredEmployees.some(e => String(e._id) === String(mId));
     });
-
-    // Group employees by department for department view
-    const departmentsMap = filteredEmployees.reduce((acc, emp) => {
-        const dept = emp.department || "General & Operations";
-        if (!acc[dept]) acc[dept] = [];
-        acc[dept].push(emp);
-        return acc;
-    }, {});
-
-    const departmentNames = Object.keys(departmentsMap);
-    const ideaFueledCount = employees.filter(e => (e.companyEntity || "").toLowerCase().includes("llp") === false).length;
-    const ideaFueledLlpCount = employees.filter(e => (e.companyEntity || "").toLowerCase().includes("llp")).length;
 
     if (loading) {
         return (
@@ -268,111 +309,65 @@ export default function Organization() {
     }
 
     return (
-        <div className="space-y-6 pb-12 animate-fadeIn select-none">
-            {/* Header Bar */}
-            <div className="bg-white border border-gray-200/80 rounded-[16px] p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">Organization Hierarchy Tree</h1>
-                    <p className="text-gray-500 text-xs font-medium mt-0.5">
-                        Interactive 2D reporting manager chart with zoom & pan controls.
-                    </p>
-                </div>
-
-                {/* View Switcher */}
-                <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50 self-start sm:self-auto">
-                    <button
-                        onClick={() => setViewMode("tree")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            viewMode === "tree" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"
-                        }`}
-                    >
-                        <GitFork className="w-3.5 h-3.5" />
-                        <span>Org Tree</span>
-                    </button>
-
-                    <button
-                        onClick={() => setViewMode("departments")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            viewMode === "departments" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"
-                        }`}
-                    >
-                        <Layers className="w-3.5 h-3.5" />
-                        <span>Departments</span>
-                    </button>
-
+        <div className="space-y-4 pb-12 animate-fadeIn select-none">
+            {/* Top Navigation Tabs Header (Matching Sample Screenshot) */}
+            <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-8">
                     <button
                         onClick={() => setViewMode("directory")}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            viewMode === "directory" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"
+                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 ${
+                            viewMode === "directory" ? "text-[#2D79C7] border-[#2D79C7]" : "text-gray-500 border-transparent hover:text-gray-900"
                         }`}
                     >
-                        <Grid className="w-3.5 h-3.5" />
-                        <span>Directory</span>
+                        Employee Directory
+                    </button>
+                    <button
+                        onClick={() => setViewMode("tree")}
+                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 ${
+                            viewMode === "tree" ? "text-[#2D79C7] border-[#2D79C7]" : "text-gray-500 border-transparent hover:text-gray-900"
+                        }`}
+                    >
+                        Organization Tree
                     </button>
                 </div>
             </div>
 
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
-                    <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Total Members</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">{employees.length}</div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">Active workforce</span>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center border border-blue-100">
-                        <Users className="w-5 h-5" strokeWidth={2} />
-                    </div>
-                </div>
-
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
-                    <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Departments</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">{departmentNames.length}</div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">Functional teams</span>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                        <Layers className="w-5 h-5" strokeWidth={2} />
-                    </div>
-                </div>
-
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
-                    <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Idea Fueled</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">{ideaFueledCount} <span className="text-xs text-gray-400 font-medium">Members</span></div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">Regular entity</span>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center border border-slate-200">
-                        <Building2 className="w-5 h-5" strokeWidth={2} />
-                    </div>
-                </div>
-
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
-                    <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Idea Fueled LLP</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">{ideaFueledLlpCount} <span className="text-xs text-gray-400 font-medium">Members</span></div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">LLP entity</span>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
-                        <Building className="w-5 h-5" strokeWidth={2} />
-                    </div>
-                </div>
-            </div>
-
-            {/* Filter Bar & Canvas Controls */}
-            <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Action Bar (Search + Go To Buttons) */}
+            <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4">
+                {/* Search Bar */}
                 <div className="relative flex-1 max-w-md w-full">
                     <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search employee, department or designation..."
+                        placeholder="Search employee..."
                         className="w-full pl-10 pr-4 py-2 bg-gray-50/80 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
                     />
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                {/* Quick Go To Navigation Buttons */}
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+                    {viewMode === "tree" && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-500 hidden sm:inline">Go to</span>
+                            <button
+                                onClick={scrollToTopOrg}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                            >
+                                <Compass className="w-3.5 h-3.5 text-[#2D79C7]" />
+                                <span>Top of the Org</span>
+                            </button>
+                            <button
+                                onClick={scrollToMe}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                            >
+                                <User className="w-3.5 h-3.5 text-purple-600" />
+                                <span>Me</span>
+                            </button>
+                        </div>
+                    )}
+
                     {/* Entity Filter Toggle */}
                     <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
                         <button
@@ -394,66 +389,61 @@ export default function Organization() {
                             Idea Fueled LLP
                         </button>
                     </div>
-
-                    {/* Canvas Zoom Toolbar */}
-                    {viewMode === "tree" && (
-                        <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
-                            <button
-                                onClick={handleZoomOut}
-                                className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all cursor-pointer"
-                                title="Zoom Out (-)"
-                            >
-                                <ZoomOut className="w-4 h-4" />
-                            </button>
-                            <span className="text-xs font-bold text-gray-700 px-1.5 min-w-[42px] text-center">
-                                {Math.round(zoomLevel * 100)}%
-                            </span>
-                            <button
-                                onClick={handleZoomIn}
-                                className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all cursor-pointer"
-                                title="Zoom In (+)"
-                            >
-                                <ZoomIn className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={handleZoomReset}
-                                className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all cursor-pointer border-l border-gray-200 ml-0.5"
-                                title="Reset Zoom (100%)"
-                            >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* VIEW MODE 1: RECURSIVE ORG TREE WITH CANVAS BOUNDS & DRAG/ZOOM */}
+            {/* VIEW MODE 1: INFINITE CANVAS ORG TREE */}
             {viewMode === "tree" && (
-                <div className="relative bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden min-h-[600px]">
-                    {/* Floating Drag/Pan Instruction Badge */}
-                    <div className="absolute top-4 left-4 z-20 bg-gray-900/80 text-white backdrop-blur-xs text-[10.5px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-md border border-gray-700">
-                        <Move className="w-3.5 h-3.5 text-blue-300" />
-                        <span>Hold & drag to pan • Scroll/buttons to zoom</span>
+                <div className="relative bg-[#F8FAFC] border border-gray-200/90 rounded-[16px] shadow-sm overflow-hidden min-h-[620px]">
+                    {/* Floating Instruction Badge */}
+                    <div className="absolute top-4 left-4 z-20 bg-white/90 text-gray-700 backdrop-blur-xs text-[10.5px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-sm border border-gray-200">
+                        <Move className="w-3.5 h-3.5 text-[#2D79C7]" />
+                        <span>Hold & drag to pan • Zoom controls on right</span>
                     </div>
 
-                    {/* Canvas Scroll & Drag Container with Ample Horizontal Padding */}
+                    {/* Floating Right Zoom Controls Toolbar (Matching Screenshot) */}
+                    <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-xs border border-gray-200 rounded-xl shadow-md p-1 flex flex-col gap-1">
+                        <button
+                            onClick={handleZoomIn}
+                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                            title="Zoom In (+)"
+                        >
+                            <ZoomIn className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleZoomOut}
+                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                            title="Zoom Out (-)"
+                        >
+                            <ZoomOut className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={handleZoomReset}
+                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-t border-gray-100"
+                            title="Fit / Center Org Tree"
+                        >
+                            <Target className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    {/* Canvas Scroll & Drag Area */}
                     <div
                         ref={treeContainerRef}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUpOrLeave}
                         onMouseLeave={handleMouseUpOrLeave}
-                        className={`w-full h-full min-h-[600px] overflow-auto p-12 flex justify-center ${
+                        className={`w-full h-full min-h-[620px] max-h-[780px] overflow-auto p-16 flex justify-center ${
                             isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
                         }`}
                     >
                         {filteredEmployees.length === 0 ? (
-                            <div className="text-center py-16 text-gray-400 font-medium">
+                            <div className="text-center py-20 text-gray-400 font-medium">
                                 No team members match your filter query.
                             </div>
                         ) : (
                             <div 
-                                className="inline-flex gap-16 sm:gap-24 justify-center items-start min-w-max px-20 sm:px-32 py-8 transition-transform duration-100 ease-out origin-top"
+                                className="inline-flex gap-16 sm:gap-24 justify-center items-start min-w-max px-24 sm:px-40 py-12 transition-transform duration-100 ease-out origin-top"
                                 style={{ transform: `scale(${zoomLevel})` }}
                             >
                                 {rootNodes.map((rootEmp) => (
@@ -462,6 +452,7 @@ export default function Organization() {
                                         emp={rootEmp} 
                                         allEmployees={filteredEmployees} 
                                         onSelectDrawer={setSelectedEmpDrawer} 
+                                        currentUserId={user?.id || user?._id}
                                     />
                                 ))}
                             </div>
@@ -470,53 +461,7 @@ export default function Organization() {
                 </div>
             )}
 
-            {/* VIEW MODE 2: DEPARTMENT CARDS */}
-            {viewMode === "departments" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {departmentNames.map((deptName) => {
-                        const deptMembers = departmentsMap[deptName];
-                        return (
-                            <div key={deptName} className="bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden flex flex-col">
-                                <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#2D79C7] flex items-center justify-center border border-blue-100 font-bold">
-                                            <Layers className="w-4 h-4" />
-                                        </div>
-                                        <h3 className="font-bold text-gray-900 text-sm">{deptName}</h3>
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-600 bg-gray-200/60 px-2.5 py-1 rounded-full">
-                                        {deptMembers.length} {deptMembers.length === 1 ? 'Member' : 'Members'}
-                                    </span>
-                                </div>
-
-                                <div className="p-4 flex-1 divide-y divide-gray-100">
-                                    {deptMembers.map((emp) => {
-                                        const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
-                                        return (
-                                            <div 
-                                                key={emp._id} 
-                                                onClick={() => setSelectedEmpDrawer(emp)}
-                                                className="py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50/80 px-2 rounded-lg transition-colors"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar src={emp.profilePicture} name={name} size="w-8 h-8" textSize="text-[10px] font-bold" />
-                                                    <div>
-                                                        <span className="font-bold text-gray-900 text-xs block">{name}</span>
-                                                        <span className="text-[10.5px] text-gray-500 font-medium">{emp.designation || 'Employee'}</span>
-                                                    </div>
-                                                </div>
-                                                <ChevronRight className="w-4 h-4 text-gray-400" />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* VIEW MODE 3: DIRECTORY TABLE */}
+            {/* VIEW MODE 2: DIRECTORY TABLE */}
             {viewMode === "directory" && (
                 <div className="bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
