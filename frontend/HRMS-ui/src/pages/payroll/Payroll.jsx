@@ -204,8 +204,8 @@ export default function Payroll() {
                         <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Total Payroll Outflow</span>
                         <div className="text-xl font-black text-emerald-600 mt-1">₹{totalOutflow.toLocaleString("en-IN")}</div>
                     </div>
-                    <div className="w-9 h-9 rounded-[10px] bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                        <DollarSign className="w-4 h-4" />
+                    <div className="w-9 h-9 rounded-[10px] bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 font-black text-base">
+                        ₹
                     </div>
                 </div>
 
@@ -362,8 +362,8 @@ export default function Payroll() {
                     <div className="bg-white rounded-[24px] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 animate-scaleIn border border-gray-150">
                         <div className="flex items-center justify-between border-b border-gray-150 pb-4 mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-[12px] bg-[#2D79C7]/10 text-[#2D79C7] flex items-center justify-center">
-                                    <DollarSign className="w-5 h-5 font-black" />
+                                <div className="w-10 h-10 rounded-[12px] bg-[#2D79C7]/10 text-[#2D79C7] flex items-center justify-center font-black text-xl">
+                                    ₹
                                 </div>
                                 <div>
                                     <h3 className="font-black text-gray-900 text-lg">Process Employee Monthly Salary</h3>
