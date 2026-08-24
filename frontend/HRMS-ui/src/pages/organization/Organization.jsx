@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
     Building2, Building, Users, Search, 
     Layers, Grid, GitFork, ChevronRight, CheckCircle2,
-    ZoomIn, ZoomOut, RotateCcw, Move, Target, User, Compass
+    ZoomIn, ZoomOut, RotateCcw, Move, Target, User, Compass, Filter
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
@@ -127,6 +127,7 @@ export default function Organization() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedEntity, setSelectedEntity] = useState("all");
     const [viewMode, setViewMode] = useState("tree"); // "tree" | "directory"
+    const [filterMeDeptOnly, setFilterMeDeptOnly] = useState(false);
     const [selectedEmpDrawer, setSelectedEmpDrawer] = useState(null);
 
     // Zoom & 360-degree Infinite 2D Transform Canvas State
@@ -222,20 +223,29 @@ export default function Organization() {
         });
     };
 
-    // Navigation Quick Action Buttons (Top of Org / Me)
+    // Navigation Quick Action Buttons (Top of Org / Me Filter)
     const scrollToTopOrg = () => {
+        setFilterMeDeptOnly(false);
         setZoomLevel(0.85);
         setPanPos({ x: 0, y: 0 });
     };
 
-    const scrollToMe = () => {
-        if (!user) return;
-        const myNode = employees.find(e => String(e._id) === String(user.id || user._id));
-        if (myNode) {
-            setSelectedEmpDrawer(myNode);
-            toast.info(`Profile drawer opened for: ${myNode.fullName || myNode.firstName}`);
+    const handleMeFilterClick = () => {
+        const myEmp = employees.find(e => String(e._id) === String(user?.id || user?._id));
+        const myDept = myEmp?.department || user?.department || "HUMAN RESOURCES";
+
+        setFilterMeDeptOnly(prev => !prev);
+        setZoomLevel(0.9);
+        setPanPos({ x: 0, y: 0 });
+
+        if (myEmp) {
+            setSelectedEmpDrawer(myEmp);
+        }
+
+        if (!filterMeDeptOnly) {
+            toast.success(`Showing only ${myDept} department members in Org Tree`);
         } else {
-            toast.info("Your profile node is highlighted in the tree canvas.");
+            toast.info("Restored full organization tree");
         }
     };
 
@@ -243,6 +253,7 @@ export default function Organization() {
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.15, 1.8));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.15, 0.35));
     const handleZoomReset = () => {
+        setFilterMeDeptOnly(false);
         setZoomLevel(0.85);
         setPanPos({ x: 0, y: 0 });
     };
@@ -286,19 +297,28 @@ export default function Organization() {
         }
     };
 
-    // Filter employees by search & entity
+    // Find logged-in user department
+    const myEmp = employees.find(e => String(e._id) === String(user?.id || user?._id));
+    const myDepartment = (myEmp?.department || user?.department || "HUMAN RESOURCES").toLowerCase();
+
+    // Filter employees by search, entity, and "Me" department mode
     const filteredEmployees = employees.filter(emp => {
         const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
-        const dept = emp.department || '';
+        const dept = (emp.department || '').toLowerCase();
         const desig = emp.designation || '';
+
         const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              dept.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              dept.includes(searchQuery.toLowerCase()) ||
                               desig.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesEntity = selectedEntity === "all" || (emp.companyEntity || "Idea Fueled") === selectedEntity;
-        return matchesSearch && matchesEntity;
+        
+        // If "Me" filter active, only include members of user's department or leadership
+        const matchesMeDept = !filterMeDeptOnly || dept.includes(myDepartment) || emp._id === myEmp?._id || !emp.managerId;
+
+        return matchesSearch && matchesEntity && matchesMeDept;
     });
 
-    // Root level nodes (Esha & Puneet top leaders)
+    // Root level nodes
     const rootNodes = filteredEmployees.filter(emp => {
         if (!emp.managerId) return true;
         const mId = typeof emp.managerId === 'object' ? emp.managerId._id : emp.managerId;
@@ -359,17 +379,21 @@ export default function Organization() {
                             <span className="text-xs font-semibold text-gray-500 hidden sm:inline">Go to</span>
                             <button
                                 onClick={scrollToTopOrg}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+                                    !filterMeDeptOnly ? "bg-blue-50 text-[#2D79C7] border-blue-200" : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
+                                }`}
                             >
                                 <Compass className="w-3.5 h-3.5 text-[#2D79C7]" />
                                 <span>Top of the Org</span>
                             </button>
                             <button
-                                onClick={scrollToMe}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                                onClick={handleMeFilterClick}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+                                    filterMeDeptOnly ? "bg-purple-100 text-purple-800 border-purple-300 ring-2 ring-purple-200" : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
+                                }`}
                             >
                                 <User className="w-3.5 h-3.5 text-purple-600" />
-                                <span>Me</span>
+                                <span>Me {filterMeDeptOnly && "(Filtered)"}</span>
                             </button>
                         </div>
                     )}
@@ -398,13 +422,17 @@ export default function Organization() {
                 </div>
             </div>
 
-            {/* VIEW MODE 1: TRUE 360-DEGREE INFINITE TRANSFORM CANVAS (FIGMA/MIRO STYLE) */}
+            {/* VIEW MODE 1: TRUE 360-DEGREE INFINITE TRANSFORM CANVAS */}
             {viewMode === "tree" && (
                 <div className="relative bg-[#F8FAFC] border border-gray-200/90 rounded-[16px] shadow-sm overflow-hidden h-[660px]">
-                    {/* Floating Instruction Badge */}
+                    {/* Floating Instruction / Filter Status Badge */}
                     <div className="absolute top-4 left-4 z-20 bg-white/90 text-gray-700 backdrop-blur-xs text-[10.5px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-sm border border-gray-200">
                         <Move className="w-3.5 h-3.5 text-[#2D79C7]" />
-                        <span>Infinite 360° Drag & Pan • Zoom controls on right</span>
+                        {filterMeDeptOnly ? (
+                            <span className="text-purple-700">Filtered: My Department Only ({myDepartment.toUpperCase()})</span>
+                        ) : (
+                            <span>Infinite 360° Drag & Pan • Zoom controls on right</span>
+                        )}
                     </div>
 
                     {/* Floating Right Zoom Controls Toolbar */}
@@ -445,7 +473,7 @@ export default function Organization() {
                     >
                         {filteredEmployees.length === 0 ? (
                             <div className="text-center py-20 text-gray-400 font-medium">
-                                No team members match your filter query.
+                                No team members match your department filter.
                             </div>
                         ) : (
                             <div 
