@@ -19,8 +19,7 @@ const OrgNodeCard = ({ emp, reportCount = "-", onSelect, isMe = false }) => {
     return (
         <div 
             id={`org-node-${emp._id}`}
-            onClick={() => onSelect(emp)}
-            className={`bg-white border rounded-xl p-3.5 shadow-2xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group z-10 animate-node-in ${
+            className={`bg-white border rounded-xl p-3.5 shadow-2xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out w-[240px] sm:w-[255px] relative shrink-0 cursor-default text-left group z-10 animate-node-in ${
                 isMe ? "border-[#2D79C7] ring-2 ring-blue-200/70 pulse-active-node bg-blue-50/10" : "border-gray-200/90 hover:border-[#2D79C7]/60"
             }`}
         >
