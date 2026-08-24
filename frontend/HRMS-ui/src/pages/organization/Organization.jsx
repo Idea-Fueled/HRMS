@@ -238,10 +238,6 @@ export default function Organization() {
         setZoomLevel(0.9);
         setPanPos({ x: 0, y: 0 });
 
-        if (myEmp) {
-            setSelectedEmpDrawer(myEmp);
-        }
-
         if (!filterMeDeptOnly) {
             toast.success(`Showing only ${myDept} department members in Org Tree`);
         } else {
