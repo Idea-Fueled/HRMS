@@ -7,38 +7,86 @@ import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 
-// Single Org Chart Node Card matching exact screenshot specifications
-const OrgNodeCard = ({ emp, badgeCount = "-", onSelect }) => {
+// Recursive Org Tree Node Component
+const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer }) => {
+    const [expanded, setExpanded] = useState(true);
+
     const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
     const designation = emp.designation || "Team Member";
     const department = (emp.department || "SOFTWARE DEVELOPMENT").toUpperCase();
     const location = emp.location || emp.city || "Punjab";
 
+    // Find all direct reports of this employee
+    const directReports = allEmployees.filter(e => {
+        if (!e.managerId) return false;
+        const mId = typeof e.managerId === 'object' ? e.managerId._id : e.managerId;
+        return mId && String(mId) === String(emp._id);
+    });
+
+    const reportCount = directReports.length;
+
     return (
-        <div 
-            onClick={() => onSelect(emp)}
-            className="bg-white border border-gray-200 rounded-lg p-3.5 shadow-2xs hover:shadow-md transition-all w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group"
-        >
-            <div className="flex items-start gap-3">
-                <Avatar 
-                    src={emp.profilePicture} 
-                    name={name} 
-                    size="w-11 h-11" 
-                    textSize="text-xs font-bold" 
-                    className="shrink-0 ring-2 ring-gray-100"
-                />
-                <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-gray-900 text-xs truncate leading-tight group-hover:text-[#2D79C7] transition-colors">{name}</h4>
-                    <p className="text-[10.5px] text-gray-500 font-medium leading-snug mt-0.5 truncate">{designation}</p>
-                    <span className="text-[10px] text-gray-400 font-medium block mt-0.5">{location}</span>
-                    <span className="text-[9.5px] font-bold text-gray-500 tracking-wider uppercase block mt-1 truncate">{department}</span>
+        <div className="flex flex-col items-center shrink-0">
+            {/* Employee Card */}
+            <div 
+                onClick={() => onSelectDrawer(emp)}
+                className="bg-white border border-gray-200 rounded-lg p-3.5 shadow-2xs hover:shadow-md transition-all w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group z-10"
+            >
+                <div className="flex items-start gap-3">
+                    <Avatar 
+                        src={emp.profilePicture} 
+                        name={name} 
+                        size="w-11 h-11" 
+                        textSize="text-xs font-bold" 
+                        className="shrink-0 ring-2 ring-gray-100"
+                    />
+                    <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-gray-900 text-xs truncate leading-tight group-hover:text-[#2D79C7] transition-colors">{name}</h4>
+                        <p className="text-[10.5px] text-gray-500 font-medium leading-snug mt-0.5 truncate">{designation}</p>
+                        <span className="text-[10px] text-gray-400 font-medium block mt-0.5">{location}</span>
+                        <span className="text-[9.5px] font-bold text-gray-500 tracking-wider uppercase block mt-1 truncate">{department}</span>
+                    </div>
                 </div>
+
+                {/* Bottom Purple Circle Badge */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setExpanded(!expanded);
+                    }}
+                    className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#5B4699] hover:bg-[#48367A] text-white text-[10.5px] font-bold flex items-center justify-center shadow-2xs z-20 border border-white cursor-pointer transition-colors"
+                >
+                    {reportCount > 0 ? reportCount : "-"}
+                </button>
             </div>
 
-            {/* Bottom Purple Circle Badge */}
-            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#5B4699] text-white text-[10.5px] font-bold flex items-center justify-center shadow-2xs z-10 border border-white">
-                {badgeCount}
-            </div>
+            {/* Direct Reports Sub-Branch */}
+            {reportCount > 0 && expanded && (
+                <div className="flex flex-col items-center pt-3 w-full">
+                    {/* Vertical line from parent badge */}
+                    <div className="w-0.5 h-6 bg-gray-300" />
+
+                    {/* Horizontal connector line (spanning direct children) */}
+                    {reportCount > 1 && (
+                        <div className="w-[85%] h-0.5 bg-gray-300" />
+                    )}
+
+                    {/* Vertical lines to child nodes */}
+                    <div className="flex gap-6 sm:gap-10 items-start justify-center">
+                        {directReports.map((child) => (
+                            <div key={child._id} className="flex flex-col items-center">
+                                <div className="w-0.5 h-6 bg-gray-300" />
+                                <RecursiveOrgNode 
+                                    emp={child} 
+                                    allEmployees={allEmployees} 
+                                    onSelectDrawer={onSelectDrawer} 
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -61,7 +109,10 @@ export default function Organization() {
             const res = await getAllEmployees();
             if (res.data?.success) {
                 const list = res.data.employees || res.data.users || [];
-                setEmployees(list);
+                
+                // Helper to enrich employees with managerId hierarchy if unassigned
+                const processed = enrichHierarchy(list);
+                setEmployees(processed);
             }
         } catch (err) {
             console.error("Error fetching employees:", err);
@@ -69,6 +120,48 @@ export default function Organization() {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Auto-enrich managerId if unassigned in DB so org tree renders seamlessly
+    const enrichHierarchy = (list) => {
+        if (list.length === 0) return [];
+
+        // Find top leadership
+        const leaders = list.filter(e => {
+            const desig = (e.designation || '').toLowerCase();
+            return desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || desig.includes('coo') || e.role === 'global_admin';
+        });
+
+        const mainLeader = leaders.length > 0 ? leaders[0] : list[0];
+        const secondLeader = leaders.length > 1 ? leaders[1] : null;
+
+        // Find department leads / managers
+        const leads = list.filter(e => {
+            if (e._id === mainLeader._id || (secondLeader && e._id === secondLeader._id)) return false;
+            const desig = (e.designation || '').toLowerCase();
+            return desig.includes('lead') || desig.includes('manager') || desig.includes('head') || desig.includes('senior') || e.role === 'manager';
+        });
+
+        const techLead = leads.find(l => (l.department || '').toLowerCase().includes('software') || (l.designation || '').toLowerCase().includes('tech')) || leads[0];
+
+        return list.map(emp => {
+            const empCopy = { ...emp };
+
+            // If managerId already set in DB, preserve it
+            if (empCopy.managerId) return empCopy;
+
+            // Otherwise, construct reporting hierarchy
+            if (empCopy._id === mainLeader._id || (secondLeader && empCopy._id === secondLeader._id)) {
+                empCopy.managerId = null; // Top root node
+            } else if (leads.some(l => l._id === empCopy._id)) {
+                // Leads report to Top Leader
+                empCopy.managerId = mainLeader._id;
+            } else {
+                // Engineers & Staff report to Tech Lead or Top Leader
+                empCopy.managerId = techLead ? techLead._id : mainLeader._id;
+            }
+            return empCopy;
+        });
     };
 
     // Filter employees by search & entity
@@ -83,33 +176,13 @@ export default function Organization() {
         return matchesSearch && matchesEntity;
     });
 
-    // Categorize employees into Tiers (1: Leadership, 2: Leads/Managers, 3: Members)
-    const tier1 = [];
-    const tier2 = [];
-    const tier3 = [];
-
-    filteredEmployees.forEach(emp => {
-        const desig = (emp.designation || '').toLowerCase();
-        const role = (emp.role || '').toLowerCase();
-
-        if (desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || desig.includes('coo') || desig.includes('director') || role === 'global_admin') {
-            tier1.push(emp);
-        } else if (desig.includes('lead') || desig.includes('manager') || desig.includes('head') || desig.includes('senior') || role === 'manager') {
-            tier2.push(emp);
-        } else {
-            tier3.push(emp);
-        }
+    // Root level nodes (No manager)
+    const rootNodes = filteredEmployees.filter(emp => {
+        if (!emp.managerId) return true;
+        const mId = typeof emp.managerId === 'object' ? emp.managerId._id : emp.managerId;
+        // If manager not in current filtered list, treat as root
+        return !filteredEmployees.some(e => String(e._id) === String(mId));
     });
-
-    // If tier1 is empty, fallback to first 2 employees as leaders
-    if (tier1.length === 0 && filteredEmployees.length > 0) {
-        tier1.push(...filteredEmployees.slice(0, Math.min(2, filteredEmployees.length)));
-        const remaining = filteredEmployees.slice(tier1.length);
-        if (remaining.length > 0) {
-            tier2.push(...remaining.slice(0, Math.min(3, remaining.length)));
-            tier3.push(...remaining.slice(tier2.length));
-        }
-    }
 
     // Group employees by department for department view
     const departmentsMap = filteredEmployees.reduce((acc, emp) => {
@@ -137,9 +210,9 @@ export default function Organization() {
             {/* Header Bar */}
             <div className="bg-white border border-gray-200/80 rounded-[16px] p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">Organization Chart & Hierarchy</h1>
+                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">Organization Hierarchy Tree</h1>
                     <p className="text-gray-500 text-xs font-medium mt-0.5">
-                        Clean 2D tree diagram of Idea Fueled & Idea Fueled LLP team hierarchy.
+                        Interactive reporting manager tree diagram for Idea Fueled & Idea Fueled LLP.
                     </p>
                 </div>
 
@@ -152,7 +225,7 @@ export default function Organization() {
                         }`}
                     >
                         <GitFork className="w-3.5 h-3.5" />
-                        <span>Org Chart</span>
+                        <span>Org Tree</span>
                     </button>
 
                     <button
@@ -259,84 +332,23 @@ export default function Organization() {
                 </div>
             </div>
 
-            {/* VIEW MODE 1: EXACT 2D TREE ORG CHART */}
+            {/* VIEW MODE 1: RECURSIVE REPORTING MANAGER TREE */}
             {viewMode === "tree" && (
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-8 shadow-sm overflow-x-auto min-h-[500px] flex justify-center">
+                <div className="bg-white border border-gray-200/80 rounded-[16px] p-8 shadow-sm overflow-x-auto min-h-[550px] flex justify-center">
                     {filteredEmployees.length === 0 ? (
                         <div className="text-center py-16 text-gray-400 font-medium">
                             No team members match your filter query.
                         </div>
                     ) : (
-                        <div className="inline-flex flex-col items-center py-4">
-                            {/* TIER 1: FOUNDERS / C-LEVEL */}
-                            {tier1.length > 0 && (
-                                <div className="flex flex-col items-center">
-                                    <div className="flex items-center gap-8 sm:gap-12 justify-center">
-                                        {tier1.map((emp, idx) => (
-                                            <OrgNodeCard 
-                                                key={emp._id} 
-                                                emp={emp} 
-                                                badgeCount={idx === 0 ? "4" : "-"} 
-                                                onSelect={setSelectedEmpDrawer} 
-                                            />
-                                        ))}
-                                    </div>
-
-                                    {/* Connector Lines down to Tier 2 */}
-                                    {(tier2.length > 0 || tier3.length > 0) && (
-                                        <div className="w-full flex flex-col items-center pt-3">
-                                            {/* Line from parent */}
-                                            <div className="w-0.5 h-7 bg-gray-300" />
-                                            {/* Horizontal Bar */}
-                                            <div className="w-[80%] h-0.5 bg-gray-300" />
-                                            {/* Line to child */}
-                                            <div className="w-0.5 h-7 bg-gray-300" />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* TIER 2: LEADS / SENIOR MANAGERS */}
-                            {tier2.length > 0 && (
-                                <div className="flex flex-col items-center">
-                                    <div className="flex items-center gap-6 sm:gap-10 justify-center flex-wrap max-w-5xl">
-                                        {tier2.map((emp, idx) => (
-                                            <OrgNodeCard 
-                                                key={emp._id} 
-                                                emp={emp} 
-                                                badgeCount={idx === 0 ? "6" : idx === 1 ? "-" : "4"} 
-                                                onSelect={setSelectedEmpDrawer} 
-                                            />
-                                        ))}
-                                    </div>
-
-                                    {/* Connector Lines down to Tier 3 */}
-                                    {tier3.length > 0 && (
-                                        <div className="w-full flex flex-col items-center pt-3">
-                                            {/* Line from parent */}
-                                            <div className="w-0.5 h-7 bg-gray-300" />
-                                            {/* Horizontal Bar */}
-                                            <div className="w-[85%] h-0.5 bg-gray-300" />
-                                            {/* Line to child */}
-                                            <div className="w-0.5 h-7 bg-gray-300" />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* TIER 3: ENGINEERS / TEAM MEMBERS */}
-                            {tier3.length > 0 && (
-                                <div className="flex items-center gap-5 sm:gap-8 justify-center flex-wrap max-w-6xl">
-                                    {tier3.map((emp) => (
-                                        <OrgNodeCard 
-                                            key={emp._id} 
-                                            emp={emp} 
-                                            badgeCount="-" 
-                                            onSelect={setSelectedEmpDrawer} 
-                                        />
-                                    ))}
-                                </div>
-                            )}
+                        <div className="inline-flex gap-8 sm:gap-12 justify-center py-4">
+                            {rootNodes.map((rootEmp) => (
+                                <RecursiveOrgNode 
+                                    key={rootEmp._id} 
+                                    emp={rootEmp} 
+                                    allEmployees={filteredEmployees} 
+                                    onSelectDrawer={setSelectedEmpDrawer} 
+                                />
+                            ))}
                         </div>
                     )}
                 </div>
