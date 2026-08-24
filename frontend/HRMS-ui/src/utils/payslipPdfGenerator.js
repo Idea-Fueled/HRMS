@@ -39,7 +39,7 @@ export const renderPayslipHtml = (payslip) => {
             background: #ffffff;
             color: #111827;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            padding: 48px 56px;
+            padding: 32px 56px 48px 56px;
             box-sizing: border-box;
             border: 1px solid #E5E7EB;
             position: absolute;
@@ -47,7 +47,7 @@ export const renderPayslipHtml = (payslip) => {
             left: -9999px;
         ">
             <!-- HEADER SECTION -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
                 <div>
                     <h1 style="font-size: 22px; font-weight: 800; margin: 0; color: #000000; letter-spacing: -0.3px;">PAYSLIP ${period}</h1>
                     <h2 style="font-size: 12px; font-weight: 700; margin: 8px 0 4px 0; color: #1E1E1E; text-transform: uppercase;">${entity}</h2>
@@ -58,7 +58,7 @@ export const renderPayslipHtml = (payslip) => {
                     </p>
                 </div>
                 <div>
-                    <img src="${IFBlackLogo}" alt="Idea Fueled" style="height: 46px; width: auto; object-fit: contain;" />
+                    <img src="${IFBlackLogo}" alt="Idea Fueled" style="height: 76px; width: auto; object-fit: contain;" />
                 </div>
             </div>
 
