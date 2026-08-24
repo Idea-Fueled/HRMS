@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
     Building2, Building, Users, Search, 
     Layers, Grid, GitFork, ChevronRight, CheckCircle2,
-    ZoomIn, ZoomOut, RotateCcw, Move, Target, User, Compass, Filter
+    ZoomIn, ZoomOut, RotateCcw, Move, Target, User, Compass
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 import { useAuth } from "../../context/AuthContext";
 
-// Single Org Node Card matching sample screenshot
+// Single Org Node Card matching sample screenshot with sleek micro-animations
 const OrgNodeCard = ({ emp, reportCount = "-", onSelect, isMe = false }) => {
     const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`;
     const designation = emp.designation || "Team Member";
@@ -20,8 +20,8 @@ const OrgNodeCard = ({ emp, reportCount = "-", onSelect, isMe = false }) => {
         <div 
             id={`org-node-${emp._id}`}
             onClick={() => onSelect(emp)}
-            className={`bg-white border rounded-lg p-3.5 shadow-2xs hover:shadow-md transition-all w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group z-10 ${
-                isMe ? "border-[#2D79C7] ring-2 ring-blue-100" : "border-gray-200"
+            className={`bg-white border rounded-xl p-3.5 shadow-2xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out w-[240px] sm:w-[255px] relative shrink-0 cursor-pointer text-left group z-10 animate-node-in ${
+                isMe ? "border-[#2D79C7] ring-2 ring-blue-200/70 pulse-active-node bg-blue-50/10" : "border-gray-200/90 hover:border-[#2D79C7]/60"
             }`}
         >
             <div className="flex items-start gap-3">
@@ -30,20 +30,20 @@ const OrgNodeCard = ({ emp, reportCount = "-", onSelect, isMe = false }) => {
                     name={name} 
                     size="w-11 h-11" 
                     textSize="text-xs font-bold" 
-                    className="shrink-0 ring-2 ring-gray-100"
+                    className="shrink-0 ring-2 ring-gray-100 group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-gray-900 text-xs truncate leading-tight group-hover:text-[#2D79C7] transition-colors">
-                        {name} {isMe && <span className="text-[9px] bg-blue-100 text-[#2D79C7] px-1 py-0.5 rounded font-extrabold ml-1">YOU</span>}
+                        {name} {isMe && <span className="text-[9px] bg-blue-100 text-[#2D79C7] px-1.5 py-0.5 rounded-full font-extrabold ml-1 inline-block shadow-2xs">YOU</span>}
                     </h4>
                     <p className="text-[10.5px] text-gray-500 font-medium leading-snug mt-0.5 truncate">{designation}</p>
                     <span className="text-[10px] text-gray-400 font-medium block mt-0.5">{location}</span>
-                    <span className="text-[9.5px] font-bold text-gray-500 tracking-wider uppercase block mt-1 truncate">{department}</span>
+                    <span className="text-[9.5px] font-bold text-gray-500 tracking-wider uppercase block mt-1 truncate group-hover:text-gray-700 transition-colors">{department}</span>
                 </div>
             </div>
 
-            {/* Bottom Purple Circle Badge */}
-            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#5B4699] text-white text-[10.5px] font-bold flex items-center justify-center shadow-2xs z-20 border border-white">
+            {/* Bottom Purple Circle Badge with Spring Scale Animation */}
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#5B4699] text-white text-[10.5px] font-bold flex items-center justify-center shadow-md z-20 border-2 border-white group-hover:scale-115 group-hover:bg-[#48367A] transition-all duration-300">
                 {reportCount}
             </div>
         </div>
@@ -89,22 +89,22 @@ const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer, currentUserId }) 
                 )}
             </div>
 
-            {/* Direct Reports Sub-Branch */}
+            {/* Direct Reports Sub-Branch with Line Animations */}
             {directReports.length > 0 && expanded && (
-                <div className="flex flex-col items-center pt-3 w-full">
+                <div className="flex flex-col items-center pt-3 w-full animate-fadeIn">
                     {/* Vertical connector line from parent */}
-                    <div className="w-0.5 h-6 bg-gray-300" />
+                    <div className="w-0.5 h-6 bg-gray-300/90 animate-line-grow" />
 
                     {/* Horizontal connector line across children */}
                     {directReports.length > 1 && (
-                        <div className="w-[88%] h-0.5 bg-gray-300" />
+                        <div className="w-[88%] h-0.5 bg-gray-300/90 animate-fadeIn" />
                     )}
 
                     {/* Vertical lines to child nodes */}
                     <div className="flex gap-6 sm:gap-10 items-start justify-center pt-0">
                         {directReports.map((child) => (
                             <div key={child._id} className="flex flex-col items-center">
-                                <div className="w-0.5 h-6 bg-gray-300" />
+                                <div className="w-0.5 h-6 bg-gray-300/90 animate-line-grow" />
                                 <RecursiveOrgNode 
                                     emp={child} 
                                     allEmployees={allEmployees} 
@@ -237,12 +237,6 @@ export default function Organization() {
         setFilterMeDeptOnly(prev => !prev);
         setZoomLevel(0.9);
         setPanPos({ x: 0, y: 0 });
-
-        if (!filterMeDeptOnly) {
-            toast.success(`Showing only ${myDept} department members in Org Tree`);
-        } else {
-            toast.info("Restored full organization tree");
-        }
     };
 
     // Zoom Controls
@@ -337,7 +331,7 @@ export default function Organization() {
                 <div className="flex items-center gap-8">
                     <button
                         onClick={() => setViewMode("directory")}
-                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 ${
+                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 hover:scale-105 active:scale-95 ${
                             viewMode === "directory" ? "text-[#2D79C7] border-[#2D79C7]" : "text-gray-500 border-transparent hover:text-gray-900"
                         }`}
                     >
@@ -345,7 +339,7 @@ export default function Organization() {
                     </button>
                     <button
                         onClick={() => setViewMode("tree")}
-                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 ${
+                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 hover:scale-105 active:scale-95 ${
                             viewMode === "tree" ? "text-[#2D79C7] border-[#2D79C7]" : "text-gray-500 border-transparent hover:text-gray-900"
                         }`}
                     >
@@ -364,7 +358,7 @@ export default function Organization() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search employee..."
-                        className="w-full pl-10 pr-4 py-2 bg-gray-50/80 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                        className="w-full pl-10 pr-4 py-2 bg-gray-50/80 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7] transition-all focus:bg-white focus:shadow-xs"
                     />
                 </div>
 
@@ -375,7 +369,7 @@ export default function Organization() {
                             <span className="text-xs font-semibold text-gray-500 hidden sm:inline">Go to</span>
                             <button
                                 onClick={scrollToTopOrg}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border hover:scale-105 active:scale-95 ${
                                     !filterMeDeptOnly ? "bg-blue-50 text-[#2D79C7] border-blue-200" : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
                                 }`}
                             >
@@ -384,7 +378,7 @@ export default function Organization() {
                             </button>
                             <button
                                 onClick={handleMeFilterClick}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border ${
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs border hover:scale-105 active:scale-95 ${
                                     filterMeDeptOnly ? "bg-purple-100 text-purple-800 border-purple-300 ring-2 ring-purple-200" : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200"
                                 }`}
                             >
@@ -398,19 +392,19 @@ export default function Organization() {
                     <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
                         <button
                             onClick={() => setSelectedEntity("all")}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 ${selectedEntity === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             All Entities
                         </button>
                         <button
                             onClick={() => setSelectedEntity("Idea Fueled")}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 ${selectedEntity === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             Idea Fueled
                         </button>
                         <button
                             onClick={() => setSelectedEntity("Idea Fueled LLP")}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 ${selectedEntity === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             Idea Fueled LLP
                         </button>
@@ -425,21 +419,21 @@ export default function Organization() {
                     <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-xs border border-gray-200 rounded-xl shadow-md p-1 flex flex-col gap-1">
                         <button
                             onClick={handleZoomIn}
-                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-blue-50 rounded-lg transition-all cursor-pointer hover:scale-110 active:scale-95"
                             title="Zoom In (+)"
                         >
                             <ZoomIn className="w-4 h-4" />
                         </button>
                         <button
                             onClick={handleZoomOut}
-                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-blue-50 rounded-lg transition-all cursor-pointer hover:scale-110 active:scale-95"
                             title="Zoom Out (-)"
                         >
                             <ZoomOut className="w-4 h-4" />
                         </button>
                         <button
                             onClick={handleZoomReset}
-                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-t border-gray-100"
+                            className="p-2 text-gray-600 hover:text-[#2D79C7] hover:bg-blue-50 rounded-lg transition-all cursor-pointer border-t border-gray-100 hover:scale-110 active:scale-95"
                             title="Fit / Center Org Tree"
                         >
                             <Target className="w-4 h-4" />
@@ -458,12 +452,12 @@ export default function Organization() {
                         }`}
                     >
                         {filteredEmployees.length === 0 ? (
-                            <div className="text-center py-20 text-gray-400 font-medium">
+                            <div className="text-center py-20 text-gray-400 font-medium animate-fadeIn">
                                 No team members match your department filter.
                             </div>
                         ) : (
                             <div 
-                                className="inline-flex gap-16 sm:gap-24 justify-center items-start min-w-max transition-transform duration-75 ease-out"
+                                className="inline-flex gap-16 sm:gap-24 justify-center items-start min-w-max transition-transform duration-200 ease-out"
                                 style={{ 
                                     transform: `translate(${panPos.x}px, ${panPos.y}px) scale(${zoomLevel})`,
                                     transformOrigin: 'center center'
@@ -486,7 +480,7 @@ export default function Organization() {
 
             {/* VIEW MODE 2: DIRECTORY TABLE */}
             {viewMode === "directory" && (
-                <div className="bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden">
+                <div className="bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden animate-fadeIn">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -556,7 +550,7 @@ export default function Organization() {
                                 <h3 className="font-bold text-gray-900 text-base">Employee Profile</h3>
                                 <button
                                     onClick={() => setSelectedEmpDrawer(null)}
-                                    className="text-gray-400 hover:text-gray-700 text-xl font-bold cursor-pointer"
+                                    className="text-gray-400 hover:text-gray-700 text-xl font-bold cursor-pointer hover:scale-110 active:scale-95 transition-transform"
                                 >
                                     ✕
                                 </button>

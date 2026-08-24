@@ -220,3 +220,50 @@ aside {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
+
+/* ─────────────────────────────────────────────
+   ORGANIZATION CHART ANIMATIONS
+───────────────────────────────────────────── */
+@keyframes nodeScaleIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.92) translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes lineGrow {
+    0% {
+        opacity: 0;
+        transform: scaleY(0);
+    }
+    100% {
+        opacity: 1;
+        transform: scaleY(1);
+    }
+}
+
+@keyframes pulseBorder {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(45, 121, 199, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(45, 121, 199, 0);
+    }
+}
+
+.animate-node-in {
+    animation: nodeScaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-line-grow {
+    transform-origin: top;
+    animation: lineGrow 0.3s ease-out forwards;
+}
+
+.pulse-active-node {
+    animation: pulseBorder 2.5s infinite;
+}
