@@ -1,11 +1,15 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import ideaFueledLogo from "../assets/idea_fueled_logo.png";
+import simplePayslipBg from "../assets/llp_payslip_bg.jpg"; // Idea Fueled template
+import llpPayslipBg from "../assets/simple_payslip_bg.jpg"; // Idea Fueled LLP template
 
 export const renderPayslipHtml = (payslip) => {
     const period = payslip.periodString || `${payslip.month || "JUN"} ${payslip.year || 2026}`;
     const entity = payslip.companyEntity || "Idea Fueled";
     const isLLP = entity.toLowerCase().includes("llp");
+
+    // Select exact background template image uploaded by user
+    const bgImage = isLLP ? llpPayslipBg : simplePayslipBg;
 
     const emp = payslip.employeeDetails || {};
     const att = payslip.attendanceDetails || {};
@@ -23,141 +27,99 @@ export const renderPayslipHtml = (payslip) => {
     return `
         <div id="payslip-pdf-container" style="
             width: 794px;
-            background: #ffffff;
-            color: #1E1E1E;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 48px 56px;
-            box-sizing: border-box;
-            border: 1px solid #E5E7EB;
+            height: 1123px;
+            background-image: url('${bgImage}');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
             position: absolute;
             top: -9999px;
             left: -9999px;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+            color: #111827;
         ">
-            <!-- HEADER SECTION -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px;">
-                <div>
-                    <h1 style="font-size: 26px; font-weight: 900; margin: 0; color: #000000; letter-spacing: -0.5px;">PAYSLIP ${period}</h1>
-                    <h2 style="font-size: 13px; font-weight: 800; margin: 12px 0 4px 0; color: #1E1E1E; text-transform: uppercase;">${entity}</h2>
-                    <p style="font-size: 10.5px; color: #4B5563; margin: 0; line-height: 1.45; font-weight: 500;">
-                        UNIT NO. 805, TOWER B, BESTECH BUSINESS TOWERS, SECTOR 66<br/>
-                        MOHALI PUNJAB 160066<br/>
-                        ${isLLP ? '<span style="font-weight: 700; color: #111827;">LLPIN: ACZ-5286</span>' : ''}
-                    </p>
-                </div>
-                <div>
-                    <img src="${ideaFueledLogo}" alt="Idea Fueled" style="height: 48px; width: auto; object-fit: contain;" />
-                </div>
+            <!-- Dynamic Period -->
+            <div style="position: absolute; top: 58px; left: 198px; font-size: 22px; font-weight: 800; color: #1E1E1E;">
+                ${period}
             </div>
 
-            <!-- EMPLOYEE NAME BAR -->
-            <div style="border-top: 2px solid #000000; padding-top: 10px; margin-bottom: 12px;">
-                <h3 style="font-size: 14px; font-weight: 900; color: #000000; margin: 0; text-transform: uppercase; letter-spacing: 0.2px;">${emp.name || 'EMPLOYEE NAME'}</h3>
+            <!-- Dynamic Employee Name -->
+            <div style="position: absolute; top: 178px; left: 56px; font-size: 13.5px; font-weight: 900; color: #000000; text-transform: uppercase; letter-spacing: 0.2px;">
+                ${emp.name || 'EMPLOYEE NAME'}
             </div>
 
-            <!-- EMPLOYEE DETAILS TABLE -->
-            <div style="border-bottom: 1px solid #E5E7EB; padding-bottom: 16px; margin-bottom: 24px;">
-                <table style="width: 100%; font-size: 11px; border-collapse: collapse; text-align: left;">
-                    <tr style="color: #6B7280; font-weight: 500;">
-                        <td style="padding: 4px 0; width: 25%;">Employee Number</td>
-                        <td style="padding: 4px 0; width: 25%;">Date Joined</td>
-                        <td style="padding: 4px 0; width: 25%;">Department</td>
-                        <td style="padding: 4px 0; width: 25%;">Designation</td>
-                    </tr>
-                    <tr style="color: #111827; font-weight: 700;">
-                        <td style="padding-bottom: 14px;">${emp.employeeNumber || 'IF-000'}</td>
-                        <td style="padding-bottom: 14px;">${emp.dateJoined || '--'}</td>
-                        <td style="padding-bottom: 14px;">${emp.department || 'General'}</td>
-                        <td style="padding-bottom: 14px;">${emp.designation || 'Employee'}</td>
-                    </tr>
-                    <tr style="color: #6B7280; font-weight: 500;">
-                        <td style="padding: 4px 0;">Payment Mode</td>
-                        <td style="padding: 4px 0;">Bank</td>
-                        <td style="padding: 4px 0;">Bank IFSC</td>
-                        <td style="padding: 4px 0;">Bank Account</td>
-                    </tr>
-                    <tr style="color: #111827; font-weight: 700;">
-                        <td style="padding-bottom: 14px;">${emp.paymentMode || 'Bank Transfer'}</td>
-                        <td style="padding-bottom: 14px;">${emp.bankName || 'HDFC Bank'}</td>
-                        <td style="padding-bottom: 14px;">${emp.bankIfsc || 'HDFC0001234'}</td>
-                        <td style="padding-bottom: 14px;">${emp.bankAccount || 'XXXXXX1234'}</td>
-                    </tr>
-                    <tr style="color: #6B7280; font-weight: 500;">
-                        <td style="padding: 4px 0;" colspan="4">PAN Number</td>
-                    </tr>
-                    <tr style="color: #111827; font-weight: 700;">
-                        <td colspan="4">${emp.panNumber || 'ABCDE1234F'}</td>
-                    </tr>
-                </table>
+            <!-- Employee Details Row 1 -->
+            <div style="position: absolute; top: 232px; left: 56px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.employeeNumber || 'IF-000'}
+            </div>
+            <div style="position: absolute; top: 232px; left: 218px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.dateJoined || '--'}
+            </div>
+            <div style="position: absolute; top: 232px; left: 382px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.department || 'General'}
+            </div>
+            <div style="position: absolute; top: 232px; left: 545px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.designation || 'Employee'}
             </div>
 
-            <!-- SALARY DETAILS SECTION -->
-            <div style="border-top: 2px solid #000000; padding-top: 10px; margin-bottom: 12px;">
-                <h3 style="font-size: 13px; font-weight: 900; color: #000000; margin: 0; text-transform: uppercase; letter-spacing: 0.2px;">SALARY DETAILS</h3>
+            <!-- Employee Details Row 2 -->
+            <div style="position: absolute; top: 292px; left: 56px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.paymentMode || 'Bank Transfer'}
             </div>
-            <div style="border-bottom: 1px solid #E5E7EB; padding-bottom: 16px; margin-bottom: 24px;">
-                <table style="width: 100%; font-size: 11px; border-collapse: collapse; text-align: left;">
-                    <tr style="color: #6B7280; font-weight: 500;">
-                        <td style="padding: 4px 0; width: 25%;">Actual Payable Days</td>
-                        <td style="padding: 4px 0; width: 25%;">Total Working Days</td>
-                        <td style="padding: 4px 0; width: 25%;">Loss Of Pay Days</td>
-                        <td style="padding: 4px 0; width: 25%;">Days Payable</td>
-                    </tr>
-                    <tr style="color: #111827; font-weight: 700;">
-                        <td>${att.actualPayableDays ?? 30}</td>
-                        <td>${att.totalWorkingDays ?? 30}</td>
-                        <td>${att.lossOfPayDays ?? 0}</td>
-                        <td>${att.daysPayable ?? 30}</td>
-                    </tr>
-                </table>
+            <div style="position: absolute; top: 292px; left: 218px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.bankName || 'HDFC Bank'}
+            </div>
+            <div style="position: absolute; top: 292px; left: 382px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.bankIfsc || 'HDFC0001234'}
+            </div>
+            <div style="position: absolute; top: 292px; left: 545px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.bankAccount || 'XXXXXX1234'}
             </div>
 
-            <!-- EARNINGS BREAKDOWN SECTION -->
-            <div style="display: flex; min-height: 170px; border-bottom: 1px solid #E5E7EB; margin-bottom: 24px;">
-                <div style="width: 50%; padding-right: 24px;">
-                    <h3 style="font-size: 13px; font-weight: 900; color: #000000; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.2px;">EARNINGS</h3>
-                    <table style="width: 100%; font-size: 11.5px; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 4px 0; color: #111827; font-weight: 700;">Basic</td>
-                            <td style="padding: 4px 0; text-align: right; color: #111827; font-weight: 700;">${basic.toLocaleString('en-IN')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 0; color: #111827; font-weight: 700;">HRA</td>
-                            <td style="padding: 4px 0; text-align: right; color: #111827; font-weight: 700;">${hra.toLocaleString('en-IN')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 0; color: #111827; font-weight: 700;">Special Allowance</td>
-                            <td style="padding: 4px 0; text-align: right; color: #111827; font-weight: 700;">${special.toLocaleString('en-IN')}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 4px 0; color: #111827; font-weight: 700;">Other Allowances</td>
-                            <td style="padding: 4px 0; text-align: right; color: #111827; font-weight: 700;">${other.toLocaleString('en-IN')}</td>
-                        </tr>
-                        <tr style="border-top: 1px solid #E5E7EB; font-weight: 900;">
-                            <td style="padding: 8px 0 0 0; color: #000000; font-size: 12px;">Total Earnings</td>
-                            <td style="padding: 8px 0 0 0; text-align: right; color: #000000; font-size: 12px;">${totalEarnings.toLocaleString('en-IN')}</td>
-                        </tr>
-                    </table>
-                </div>
-                <div style="width: 50%; border-left: 1px solid #E5E7EB; padding-left: 24px;"></div>
+            <!-- Employee Details Row 3 (PAN) -->
+            <div style="position: absolute; top: 350px; left: 56px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${emp.panNumber || 'ABCDE1234F'}
             </div>
 
-            <!-- NET SALARY PAYABLE BOX -->
-            <div style="background-color: #F8FAFC; border-radius: 8px; padding: 18px 24px; margin-bottom: 24px; border: 1px solid #F1F5F9;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="font-size: 13px; font-weight: 900; color: #000000;">Net Salary Payable</span>
-                    <span style="font-size: 16px; font-weight: 900; color: #000000;">₹${netSalary.toLocaleString('en-IN')}</span>
-                </div>
-                <div style="font-size: 11.5px; font-weight: 600; color: #374151;">
-                    Net Salary in words: <span style="font-weight: 800; color: #111827;">${netWords}</span>
-                </div>
+            <!-- Salary Details Attendance Row -->
+            <div style="position: absolute; top: 442px; left: 56px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${att.actualPayableDays ?? 30}
+            </div>
+            <div style="position: absolute; top: 442px; left: 218px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${att.totalWorkingDays ?? 30}
+            </div>
+            <div style="position: absolute; top: 442px; left: 382px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${att.lossOfPayDays ?? 0}
+            </div>
+            <div style="position: absolute; top: 442px; left: 545px; font-size: 11px; font-weight: 700; color: #111827;">
+                ${att.daysPayable ?? 30}
             </div>
 
-            <!-- FOOTER NOTES -->
-            <div style="font-size: 10px; color: #4B5563; line-height: 1.6; font-weight: 500;">
-                <strong style="color: #111827; font-weight: 700;">*Note:</strong><br/>
-                Other Allowances include transportation, medical, and other miscellaneous allowances.<br/>
-                All amounts displayed in this payslip are in <strong style="color: #111827; font-weight: 700;">INR</strong>.<br/>
-                This is computer generated statement, does not require signature.
+            <!-- Earnings Breakdown Amounts -->
+            <div style="position: absolute; top: 535px; left: 338px; font-size: 11px; font-weight: 700; color: #111827; text-align: right; width: 45px;">
+                ${basic.toLocaleString('en-IN')}
+            </div>
+            <div style="position: absolute; top: 554px; left: 338px; font-size: 11px; font-weight: 700; color: #111827; text-align: right; width: 45px;">
+                ${hra.toLocaleString('en-IN')}
+            </div>
+            <div style="position: absolute; top: 574px; left: 338px; font-size: 11px; font-weight: 700; color: #111827; text-align: right; width: 45px;">
+                ${special.toLocaleString('en-IN')}
+            </div>
+            <div style="position: absolute; top: 593px; left: 338px; font-size: 11px; font-weight: 700; color: #111827; text-align: right; width: 45px;">
+                ${other.toLocaleString('en-IN')}
+            </div>
+            <div style="position: absolute; top: 614px; left: 338px; font-size: 11.5px; font-weight: 900; color: #000000; text-align: right; width: 45px;">
+                ${totalEarnings.toLocaleString('en-IN')}
+            </div>
+
+            <!-- Net Salary Payable Numbers -->
+            <div style="position: absolute; top: 662px; left: 678px; font-size: 15px; font-weight: 900; color: #000000; text-align: right; width: 60px;">
+                ₹${netSalary.toLocaleString('en-IN')}
+            </div>
+
+            <!-- Net Salary in Words -->
+            <div style="position: absolute; top: 686px; left: 184px; font-size: 11px; font-weight: 800; color: #111827;">
+                ${netWords}
             </div>
         </div>
     `;
