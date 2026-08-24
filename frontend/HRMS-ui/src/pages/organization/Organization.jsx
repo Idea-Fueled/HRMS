@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
     Building2, Building, Users, Search, 
-    Layers, Grid, GitFork, ChevronRight, CheckCircle2
+    Layers, Grid, GitFork, ChevronRight, CheckCircle2,
+    ZoomIn, ZoomOut, RotateCcw, Move
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
@@ -67,7 +68,7 @@ const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer }) => {
                     {/* Vertical line from parent badge */}
                     <div className="w-0.5 h-6 bg-gray-300" />
 
-                    {/* Horizontal connector line (spanning direct children) */}
+                    {/* Horizontal connector line */}
                     {reportCount > 1 && (
                         <div className="w-[85%] h-0.5 bg-gray-300" />
                     )}
@@ -99,6 +100,12 @@ export default function Organization() {
     const [viewMode, setViewMode] = useState("tree"); // "tree" | "departments" | "directory"
     const [selectedEmpDrawer, setSelectedEmpDrawer] = useState(null);
 
+    // Zoom & Pan Canvas State
+    const [zoomLevel, setZoomLevel] = useState(1); // 1 = 100%
+    const [isDragging, setIsDragging] = useState(false);
+    const treeContainerRef = useRef(null);
+    const panStateRef = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+
     useEffect(() => {
         fetchEmployees();
     }, []);
@@ -109,8 +116,6 @@ export default function Organization() {
             const res = await getAllEmployees();
             if (res.data?.success) {
                 const list = res.data.employees || res.data.users || [];
-                
-                // Helper to enrich employees with managerId hierarchy if unassigned
                 const processed = enrichHierarchy(list);
                 setEmployees(processed);
             }
@@ -122,46 +127,83 @@ export default function Organization() {
         }
     };
 
-    // Auto-enrich managerId if unassigned in DB so org tree renders seamlessly
+    // Auto-enrich hierarchy so BOTH Esha & Puneet are top root nodes, with direct reports divided appropriately
     const enrichHierarchy = (list) => {
         if (list.length === 0) return [];
 
-        // Find top leadership
+        // Find top founders / leaders
         const leaders = list.filter(e => {
             const desig = (e.designation || '').toLowerCase();
-            return desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || desig.includes('coo') || e.role === 'global_admin';
+            const role = (e.role || '').toLowerCase();
+            return desig.includes('ceo') || desig.includes('founder') || desig.includes('cto') || desig.includes('coo') || role === 'global_admin';
         });
 
-        const mainLeader = leaders.length > 0 ? leaders[0] : list[0];
-        const secondLeader = leaders.length > 1 ? leaders[1] : null;
+        // Puneet Chopra (CTO) & Esha Mohindru (CEO)
+        const ctoLeader = leaders.find(l => (l.designation || '').toLowerCase().includes('cto') || (l.fullName || '').toLowerCase().includes('puneet')) || leaders[0];
+        const ceoLeader = leaders.find(l => l._id !== ctoLeader?._id) || (leaders.length > 1 ? leaders[1] : null);
 
-        // Find department leads / managers
+        // Find department leads
         const leads = list.filter(e => {
-            if (e._id === mainLeader._id || (secondLeader && e._id === secondLeader._id)) return false;
+            if (e._id === ctoLeader?._id || (ceoLeader && e._id === ceoLeader._id)) return false;
             const desig = (e.designation || '').toLowerCase();
             return desig.includes('lead') || desig.includes('manager') || desig.includes('head') || desig.includes('senior') || e.role === 'manager';
         });
 
-        const techLead = leads.find(l => (l.department || '').toLowerCase().includes('software') || (l.designation || '').toLowerCase().includes('tech')) || leads[0];
+        const techLead = leads.find(l => (l.department || '').toLowerCase().includes('software') || (l.designation || '').toLowerCase().includes('tech') || (l.fullName || '').toLowerCase().includes('rishabh')) || leads[0];
 
         return list.map(emp => {
             const empCopy = { ...emp };
 
-            // If managerId already set in DB, preserve it
+            // If managerId already assigned in DB, preserve it
             if (empCopy.managerId) return empCopy;
 
-            // Otherwise, construct reporting hierarchy
-            if (empCopy._id === mainLeader._id || (secondLeader && empCopy._id === secondLeader._id)) {
-                empCopy.managerId = null; // Top root node
+            // Top Root Founders (No Manager)
+            if (empCopy._id === ctoLeader?._id || (ceoLeader && empCopy._id === ceoLeader._id)) {
+                empCopy.managerId = null;
             } else if (leads.some(l => l._id === empCopy._id)) {
-                // Leads report to Top Leader
-                empCopy.managerId = mainLeader._id;
+                // Technical Leads report to Puneet (CTO), Business/Sales Leads report to Esha (CEO)
+                const dept = (empCopy.department || '').toLowerCase();
+                if (dept.includes('software') || dept.includes('tech') || dept.includes('dev')) {
+                    empCopy.managerId = ctoLeader ? ctoLeader._id : null;
+                } else {
+                    empCopy.managerId = ceoLeader ? ceoLeader._id : (ctoLeader ? ctoLeader._id : null);
+                }
             } else {
-                // Engineers & Staff report to Tech Lead or Top Leader
-                empCopy.managerId = techLead ? techLead._id : mainLeader._id;
+                // Team Members report to Tech Lead or Manager
+                empCopy.managerId = techLead ? techLead._id : (ctoLeader ? ctoLeader._id : null);
             }
             return empCopy;
         });
+    };
+
+    // Zoom Handlers
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.15, 1.8));
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.15, 0.5));
+    const handleZoomReset = () => setZoomLevel(1);
+
+    // Mouse Drag (Pan) Handlers
+    const handleMouseDown = (e) => {
+        if (!treeContainerRef.current) return;
+        setIsDragging(true);
+        panStateRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            scrollLeft: treeContainerRef.current.scrollLeft,
+            scrollTop: treeContainerRef.current.scrollTop
+        };
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging || !treeContainerRef.current) return;
+        e.preventDefault();
+        const dx = e.clientX - panStateRef.current.startX;
+        const dy = e.clientY - panStateRef.current.startY;
+        treeContainerRef.current.scrollLeft = panStateRef.current.scrollLeft - dx;
+        treeContainerRef.current.scrollTop = panStateRef.current.scrollTop - dy;
+    };
+
+    const handleMouseUpOrLeave = () => {
+        setIsDragging(false);
     };
 
     // Filter employees by search & entity
@@ -180,7 +222,6 @@ export default function Organization() {
     const rootNodes = filteredEmployees.filter(emp => {
         if (!emp.managerId) return true;
         const mId = typeof emp.managerId === 'object' ? emp.managerId._id : emp.managerId;
-        // If manager not in current filtered list, treat as root
         return !filteredEmployees.some(e => String(e._id) === String(mId));
     });
 
@@ -212,7 +253,7 @@ export default function Organization() {
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 tracking-tight">Organization Hierarchy Tree</h1>
                     <p className="text-gray-500 text-xs font-medium mt-0.5">
-                        Interactive reporting manager tree diagram for Idea Fueled & Idea Fueled LLP.
+                        Interactive 2D reporting manager chart with zoom & pan controls.
                     </p>
                 </div>
 
@@ -297,7 +338,7 @@ export default function Organization() {
                 </div>
             </div>
 
-            {/* Filter Bar */}
+            {/* Filter Bar & Canvas Controls */}
             <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="relative flex-1 max-w-md w-full">
                     <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -310,47 +351,101 @@ export default function Organization() {
                     />
                 </div>
 
-                <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50 w-full sm:w-auto justify-center">
-                    <button
-                        onClick={() => setSelectedEntity("all")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
-                    >
-                        All Entities
-                    </button>
-                    <button
-                        onClick={() => setSelectedEntity("Idea Fueled")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
-                    >
-                        Idea Fueled
-                    </button>
-                    <button
-                        onClick={() => setSelectedEntity("Idea Fueled LLP")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
-                    >
-                        Idea Fueled LLP
-                    </button>
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                    {/* Entity Filter Toggle */}
+                    <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
+                        <button
+                            onClick={() => setSelectedEntity("all")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                        >
+                            All Entities
+                        </button>
+                        <button
+                            onClick={() => setSelectedEntity("Idea Fueled")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                        >
+                            Idea Fueled
+                        </button>
+                        <button
+                            onClick={() => setSelectedEntity("Idea Fueled LLP")}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntity === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                        >
+                            Idea Fueled LLP
+                        </button>
+                    </div>
+
+                    {/* Canvas Zoom Toolbar */}
+                    {viewMode === "tree" && (
+                        <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
+                            <button
+                                onClick={handleZoomOut}
+                                className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all cursor-pointer"
+                                title="Zoom Out (-)"
+                            >
+                                <ZoomOut className="w-4 h-4" />
+                            </button>
+                            <span className="text-xs font-bold text-gray-700 px-1.5 min-w-[42px] text-center">
+                                {Math.round(zoomLevel * 100)}%
+                            </span>
+                            <button
+                                onClick={handleZoomIn}
+                                className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all cursor-pointer"
+                                title="Zoom In (+)"
+                            >
+                                <ZoomIn className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={handleZoomReset}
+                                className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all cursor-pointer border-l border-gray-200 ml-0.5"
+                                title="Reset Zoom (100%)"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* VIEW MODE 1: RECURSIVE REPORTING MANAGER TREE */}
+            {/* VIEW MODE 1: RECURSIVE ORG TREE WITH DRAG (PAN) & ZOOM */}
             {viewMode === "tree" && (
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-8 shadow-sm overflow-x-auto min-h-[550px] flex justify-center">
-                    {filteredEmployees.length === 0 ? (
-                        <div className="text-center py-16 text-gray-400 font-medium">
-                            No team members match your filter query.
-                        </div>
-                    ) : (
-                        <div className="inline-flex gap-8 sm:gap-12 justify-center py-4">
-                            {rootNodes.map((rootEmp) => (
-                                <RecursiveOrgNode 
-                                    key={rootEmp._id} 
-                                    emp={rootEmp} 
-                                    allEmployees={filteredEmployees} 
-                                    onSelectDrawer={setSelectedEmpDrawer} 
-                                />
-                            ))}
-                        </div>
-                    )}
+                <div className="relative bg-white border border-gray-200/80 rounded-[16px] shadow-sm overflow-hidden min-h-[580px]">
+                    {/* Floating Drag/Pan Instruction Badge */}
+                    <div className="absolute top-4 left-4 z-20 bg-gray-900/80 text-white backdrop-blur-xs text-[10.5px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-md border border-gray-700">
+                        <Move className="w-3.5 h-3.5 text-blue-300" />
+                        <span>Hold & drag to pan • Scroll/buttons to zoom</span>
+                    </div>
+
+                    {/* Canvas Scroll Container */}
+                    <div
+                        ref={treeContainerRef}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUpOrLeave}
+                        onMouseLeave={handleMouseUpOrLeave}
+                        className={`w-full h-full min-h-[580px] overflow-auto p-12 flex justify-center ${
+                            isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
+                        }`}
+                    >
+                        {filteredEmployees.length === 0 ? (
+                            <div className="text-center py-16 text-gray-400 font-medium">
+                                No team members match your filter query.
+                            </div>
+                        ) : (
+                            <div 
+                                className="inline-flex gap-10 sm:gap-16 justify-center py-6 transition-transform duration-100 ease-out origin-top"
+                                style={{ transform: `scale(${zoomLevel})` }}
+                            >
+                                {rootNodes.map((rootEmp) => (
+                                    <RecursiveOrgNode 
+                                        key={rootEmp._id} 
+                                        emp={rootEmp} 
+                                        allEmployees={filteredEmployees} 
+                                        onSelectDrawer={setSelectedEmpDrawer} 
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
