@@ -129,11 +129,11 @@ export default function Organization() {
     const [viewMode, setViewMode] = useState("tree"); // "tree" | "directory"
     const [selectedEmpDrawer, setSelectedEmpDrawer] = useState(null);
 
-    // Zoom & Pan Canvas State
-    const [zoomLevel, setZoomLevel] = useState(0.9); // Default centered fit (~90%)
+    // Zoom & 360-degree Infinite 2D Transform Canvas State
+    const [zoomLevel, setZoomLevel] = useState(0.85); // Default fit (~85%)
+    const [panPos, setPanPos] = useState({ x: 0, y: 0 }); // 2D Infinite Transform Translation
     const [isDragging, setIsDragging] = useState(false);
-    const treeContainerRef = useRef(null);
-    const panStateRef = useRef({ startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+    const dragStartRef = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
         fetchEmployees();
@@ -224,14 +224,8 @@ export default function Organization() {
 
     // Navigation Quick Action Buttons (Top of Org / Me)
     const scrollToTopOrg = () => {
-        setZoomLevel(0.95);
-        if (treeContainerRef.current) {
-            treeContainerRef.current.scrollTo({
-                top: 0,
-                left: (treeContainerRef.current.scrollWidth - treeContainerRef.current.clientWidth) / 2,
-                behavior: 'smooth'
-            });
-        }
+        setZoomLevel(0.85);
+        setPanPos({ x: 0, y: 0 });
     };
 
     const scrollToMe = () => {
@@ -239,39 +233,36 @@ export default function Organization() {
         const myNode = employees.find(e => String(e._id) === String(user.id || user._id));
         if (myNode) {
             setSelectedEmpDrawer(myNode);
-            toast.info(`Centered on profile: ${myNode.fullName || myNode.firstName}`);
+            toast.info(`Profile drawer opened for: ${myNode.fullName || myNode.firstName}`);
         } else {
-            toast.info("Your profile is highlighted in the organization tree.");
+            toast.info("Your profile node is highlighted in the tree canvas.");
         }
     };
 
     // Zoom Controls
-    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.15, 1.6));
-    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.15, 0.4));
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.15, 1.8));
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.15, 0.35));
     const handleZoomReset = () => {
-        setZoomLevel(0.9);
-        scrollToTopOrg();
+        setZoomLevel(0.85);
+        setPanPos({ x: 0, y: 0 });
     };
 
-    // Mouse Drag (Pan Canvas)
+    // 2D 360-degree Infinite Mouse Drag (Pan Canvas via CSS Transform)
     const handleMouseDown = (e) => {
-        if (!treeContainerRef.current) return;
         setIsDragging(true);
-        panStateRef.current = {
-            startX: e.clientX,
-            startY: e.clientY,
-            scrollLeft: treeContainerRef.current.scrollLeft,
-            scrollTop: treeContainerRef.current.scrollTop
+        dragStartRef.current = {
+            x: e.clientX - panPos.x,
+            y: e.clientY - panPos.y
         };
     };
 
     const handleMouseMove = (e) => {
-        if (!isDragging || !treeContainerRef.current) return;
+        if (!isDragging) return;
         e.preventDefault();
-        const dx = e.clientX - panStateRef.current.startX;
-        const dy = e.clientY - panStateRef.current.startY;
-        treeContainerRef.current.scrollLeft = panStateRef.current.scrollLeft - dx;
-        treeContainerRef.current.scrollTop = panStateRef.current.scrollTop - dy;
+        setPanPos({
+            x: e.clientX - dragStartRef.current.x,
+            y: e.clientY - dragStartRef.current.y
+        });
     };
 
     const handleMouseUpOrLeave = () => {
@@ -287,9 +278,11 @@ export default function Organization() {
             } else {
                 handleZoomOut();
             }
-        } else if (treeContainerRef.current) {
-            treeContainerRef.current.scrollLeft += e.deltaX || e.deltaY;
-            treeContainerRef.current.scrollTop += e.deltaY;
+        } else {
+            setPanPos(prev => ({
+                x: prev.x - e.deltaX,
+                y: prev.y - e.deltaY
+            }));
         }
     };
 
@@ -405,13 +398,13 @@ export default function Organization() {
                 </div>
             </div>
 
-            {/* VIEW MODE 1: INFINITE PAN CANVAS ORG TREE (HIDDEN SCROLLBARS) */}
+            {/* VIEW MODE 1: TRUE 360-DEGREE INFINITE TRANSFORM CANVAS (FIGMA/MIRO STYLE) */}
             {viewMode === "tree" && (
-                <div className="relative bg-[#F8FAFC] border border-gray-200/90 rounded-[16px] shadow-sm overflow-hidden min-h-[620px]">
+                <div className="relative bg-[#F8FAFC] border border-gray-200/90 rounded-[16px] shadow-sm overflow-hidden h-[660px]">
                     {/* Floating Instruction Badge */}
                     <div className="absolute top-4 left-4 z-20 bg-white/90 text-gray-700 backdrop-blur-xs text-[10.5px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-sm border border-gray-200">
                         <Move className="w-3.5 h-3.5 text-[#2D79C7]" />
-                        <span>Hold & drag to pan • Zoom controls on right</span>
+                        <span>Infinite 360° Drag & Pan • Zoom controls on right</span>
                     </div>
 
                     {/* Floating Right Zoom Controls Toolbar */}
@@ -439,18 +432,16 @@ export default function Organization() {
                         </button>
                     </div>
 
-                    {/* Canvas Scroll & Drag Area with Hidden Scrollbars */}
+                    {/* Infinite Transform Canvas Viewport */}
                     <div
-                        ref={treeContainerRef}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUpOrLeave}
                         onMouseLeave={handleMouseUpOrLeave}
                         onWheel={handleWheel}
-                        className={`w-full h-full min-h-[620px] max-h-[780px] overflow-auto p-16 flex justify-center [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+                        className={`w-full h-full flex items-center justify-center relative ${
                             isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
                         }`}
-                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
                         {filteredEmployees.length === 0 ? (
                             <div className="text-center py-20 text-gray-400 font-medium">
@@ -458,8 +449,11 @@ export default function Organization() {
                             </div>
                         ) : (
                             <div 
-                                className="inline-flex gap-16 sm:gap-24 justify-center items-start min-w-max px-24 sm:px-40 py-12 transition-transform duration-100 ease-out origin-top"
-                                style={{ transform: `scale(${zoomLevel})` }}
+                                className="inline-flex gap-16 sm:gap-24 justify-center items-start min-w-max transition-transform duration-75 ease-out"
+                                style={{ 
+                                    transform: `translate(${panPos.x}px, ${panPos.y}px) scale(${zoomLevel})`,
+                                    transformOrigin: 'center center'
+                                }}
                             >
                                 {rootNodes.map((rootEmp) => (
                                     <RecursiveOrgNode 
