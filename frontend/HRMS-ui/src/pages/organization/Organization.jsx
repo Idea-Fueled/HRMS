@@ -421,12 +421,6 @@ export default function Organization() {
             {/* VIEW MODE 1: TRUE 360-DEGREE INFINITE TRANSFORM CANVAS */}
             {viewMode === "tree" && (
                 <div className="relative bg-[#F8FAFC] border border-gray-200/90 rounded-[16px] shadow-sm overflow-hidden h-[660px]">
-                    {/* Floating Instruction Badge */}
-                    <div className="absolute top-4 left-4 z-20 bg-white/90 text-gray-700 backdrop-blur-xs text-[10.5px] font-bold px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-sm border border-gray-200">
-                        <Move className="w-3.5 h-3.5 text-[#2D79C7]" />
-                        <span>Infinite 360° Drag & Pan • Zoom controls on right</span>
-                    </div>
-
                     {/* Floating Right Zoom Controls Toolbar */}
                     <div className="absolute top-4 right-4 z-20 bg-white/95 backdrop-blur-xs border border-gray-200 rounded-xl shadow-md p-1 flex flex-col gap-1">
                         <button
