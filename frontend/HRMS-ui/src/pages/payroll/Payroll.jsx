@@ -53,21 +53,20 @@ export default function Payroll() {
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const [empRes, payRes] = await Promise.all([
-                getEmployees(),
+            const [empRes, payRes] = await Promise.allSettled([
+                getAllEmployees(),
                 getPayslips()
             ]);
 
-            if (empRes.data?.success) {
-                const list = empRes.data.employees || empRes.data.users || [];
+            if (empRes.status === "fulfilled" && empRes.value?.data?.success) {
+                const list = empRes.value.data.employees || empRes.value.data.users || [];
                 setEmployees(list);
             }
-            if (payRes.data?.success) {
-                setPayslips(payRes.data.payslips || []);
+            if (payRes.status === "fulfilled" && payRes.value?.data?.success) {
+                setPayslips(payRes.value.data.payslips || []);
             }
         } catch (err) {
             console.error("Error loading payroll data:", err);
-            toast.error("Failed to load payroll data.");
         } finally {
             setLoading(false);
         }
@@ -170,47 +169,63 @@ export default function Payroll() {
 
     return (
         <div className="space-y-6 pb-12 animate-fadeIn">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-r from-[#1E293B] via-[#0F172A] to-[#1E293B] rounded-[24px] p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-96 h-96 bg-[#2D79C7]/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 relative z-10">
-                    <div>
-                        <div className="flex items-center gap-2 text-blue-400 font-bold text-xs uppercase tracking-wider mb-2">
-                            <Sparkles className="w-4 h-4" />
-                            Payroll Management System
-                        </div>
-                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Payroll & Payslip Generation</h1>
-                        <p className="text-slate-400 text-sm font-medium mt-1">
-                            Generate pixel-perfect monthly payslips for Idea Fueled & Idea Fueled LLP employees.
-                        </p>
-                    </div>
-
-                    <button
-                        onClick={() => setIsGenerateModalOpen(true)}
-                        className="bg-[#2D79C7] hover:bg-[#2062A7] text-white font-bold text-sm px-5 py-3 rounded-[14px] shadow-lg hover:shadow-blue-500/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer shrink-0"
-                    >
-                        <Plus className="w-4 h-4 stroke-[3]" />
-                        <span>Process New Salary</span>
-                    </button>
+            {/* Clean Header Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 border border-gray-150 rounded-[20px] shadow-xs">
+                <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-[#1E1E1E]">Payroll & Payslips</h1>
+                    <p className="text-gray-500 text-xs sm:text-sm font-medium mt-0.5">
+                        Generate and manage monthly payslips for Idea Fueled & Idea Fueled LLP employees.
+                    </p>
                 </div>
 
-                {/* Summary Metrics */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-slate-800">
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-[16px] p-4">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Total Payslips Issued</span>
-                        <div className="text-2xl font-black text-white mt-1">{payslips.length}</div>
+                <button
+                    onClick={() => setIsGenerateModalOpen(true)}
+                    className="bg-[#2D79C7] hover:bg-[#2062A7] text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-[12px] shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Process New Salary</span>
+                </button>
+            </div>
+
+            {/* Clean Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="premium-3d-card-mini p-4 bg-white border border-gray-150 rounded-[16px] flex items-center justify-between">
+                    <div>
+                        <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Total Payslips Issued</span>
+                        <div className="text-xl font-black text-[#1E1E1E] mt-1">{payslips.length}</div>
                     </div>
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-[16px] p-4">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Total Payroll Processed</span>
-                        <div className="text-2xl font-black text-emerald-400 mt-1">₹{totalOutflow.toLocaleString("en-IN")}</div>
+                    <div className="w-9 h-9 rounded-[10px] bg-blue-50 text-[#2D79C7] flex items-center justify-center border border-blue-100">
+                        <FileText className="w-4 h-4" />
                     </div>
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-[16px] p-4">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Idea Fueled Entity</span>
-                        <div className="text-2xl font-black text-blue-400 mt-1">{ideaFueledCount} <span className="text-xs text-slate-400 font-normal">Records</span></div>
+                </div>
+
+                <div className="premium-3d-card-mini p-4 bg-white border border-gray-150 rounded-[16px] flex items-center justify-between">
+                    <div>
+                        <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Total Payroll Outflow</span>
+                        <div className="text-xl font-black text-emerald-600 mt-1">₹{totalOutflow.toLocaleString("en-IN")}</div>
                     </div>
-                    <div className="bg-slate-800/60 border border-slate-700/60 rounded-[16px] p-4">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Idea Fueled LLP Entity</span>
-                        <div className="text-2xl font-black text-purple-400 mt-1">{ideaFueledLlpCount} <span className="text-xs text-slate-400 font-normal">Records</span></div>
+                    <div className="w-9 h-9 rounded-[10px] bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                        <DollarSign className="w-4 h-4" />
+                    </div>
+                </div>
+
+                <div className="premium-3d-card-mini p-4 bg-white border border-gray-150 rounded-[16px] flex items-center justify-between">
+                    <div>
+                        <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Idea Fueled Entity</span>
+                        <div className="text-xl font-black text-[#1E1E1E] mt-1">{ideaFueledCount} <span className="text-xs text-gray-400 font-medium">Records</span></div>
+                    </div>
+                    <div className="w-9 h-9 rounded-[10px] bg-slate-50 text-slate-600 flex items-center justify-center border border-slate-200">
+                        <Building2 className="w-4 h-4" />
+                    </div>
+                </div>
+
+                <div className="premium-3d-card-mini p-4 bg-white border border-gray-150 rounded-[16px] flex items-center justify-between">
+                    <div>
+                        <span className="text-gray-400 text-[10px] font-extrabold uppercase tracking-wider block">Idea Fueled LLP Entity</span>
+                        <div className="text-xl font-black text-purple-700 mt-1">{ideaFueledLlpCount} <span className="text-xs text-gray-400 font-medium">Records</span></div>
+                    </div>
+                    <div className="w-9 h-9 rounded-[10px] bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
+                        <Building2 className="w-4 h-4" />
                     </div>
                 </div>
             </div>
