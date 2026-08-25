@@ -569,33 +569,33 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     };
 
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs select-none">
+        <div className="premium-3d-card p-6 sm:p-7 select-none">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 
                 {/* Left Side: Analog Clock + User & Shift Info */}
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-6">
                     <AnalogClock />
                     
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                                 {getTimeGreeting()}, {userName}
                             </h2>
-                            <p className="text-xs font-medium text-slate-500 mt-0.5">
-                                Shift: <span className="text-slate-700 font-semibold">10:00 AM – 07:00 PM</span>
+                            <p className="text-xs font-semibold text-slate-500 mt-1">
+                                Shift <span className="text-[#2D79C7] font-mono font-bold ml-1">10:00 AM – 07:00 PM</span>
                             </p>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-500">Status:</span>
+                            <span className="text-xs font-medium text-slate-500">Status</span>
                             {isClockedIn ? (
                                 <div className="flex items-center gap-2">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                         <span>Clocked In</span>
                                     </span>
                                     {punctuality.label && (
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
                                             punctuality.isLate 
                                                 ? "bg-amber-50 text-amber-800 border-amber-200" 
                                                 : "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -605,8 +605,8 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                                     )}
                                 </div>
                             ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                    <span className="w-2 h-2 rounded-full bg-slate-400" />
                                     <span>Clocked Out</span>
                                 </span>
                             )}
@@ -614,12 +614,12 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                     </div>
                 </div>
 
-                {/* Right Side: Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2.5">
+                {/* Right Side: Action Buttons with Theme Blue */}
+                <div className="flex flex-wrap items-center gap-3">
                     <button
                         type="button"
                         onClick={handleClockToggle}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-blue-500/20 active:scale-95 ${
                             isClockedIn
                                 ? "bg-[#2D79C7] hover:bg-[#1F5EA8] text-white"
                                 : "bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -632,7 +632,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                     <button
                         type="button"
                         onClick={onOpenWfhModal}
-                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-all cursor-pointer shadow-2xs"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
                     >
                         <Home className="w-4 h-4 text-[#2D79C7]" />
                         <span>Work From Home</span>
@@ -641,7 +641,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                     <button
                         type="button"
                         onClick={onOpenPartialLeave}
-                        className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-all cursor-pointer shadow-2xs"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
                     >
                         <FileText className="w-4 h-4 text-[#2D79C7]" />
                         <span>Partial Day</span>
@@ -682,17 +682,17 @@ const AttendanceKPIStats = () => {
             {kpis.map((kpi, idx) => (
                 <div
                     key={idx}
-                    className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-2xs transition-all hover:border-slate-300"
+                    className="premium-3d-card-mini p-5"
                 >
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-500">{kpi.title}</span>
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{kpi.title}</span>
                         {kpi.badge && (
-                            <span className="text-[10.5px] font-semibold text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
                                 {kpi.badge}
                             </span>
                         )}
                     </div>
-                    <div className="text-xl font-bold text-slate-800 tracking-tight">
+                    <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
                         {kpi.value}
                     </div>
                 </div>
@@ -2102,6 +2102,130 @@ const PerformanceTab = () => {
     );
 };
 
+const LogAuditPopover = ({ row, todayAttendance }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const popoverRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Build log pairs from todayAttendance logs if available
+    const rawLogs = todayAttendance?.logs || [];
+    const punchPairs = [];
+
+    if (rawLogs.length > 0) {
+        let currentIn = null;
+        for (let i = 0; i < rawLogs.length; i++) {
+            const l = rawLogs[i];
+            const timeStr = new Date(l.timestamp).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            });
+
+            if (l.action === "clock_in") {
+                currentIn = timeStr;
+            } else if (l.action === "clock_out") {
+                punchPairs.push({
+                    in: currentIn || "Missing",
+                    out: timeStr
+                });
+                currentIn = null;
+            }
+        }
+        if (currentIn) {
+            punchPairs.push({
+                in: currentIn,
+                out: "MISSING"
+            });
+        }
+    }
+
+    if (punchPairs.length === 0) {
+        punchPairs.push({
+            in: row.timeStr || "10:00:00 AM",
+            out: "MISSING"
+        });
+    }
+
+    return (
+        <div className="relative inline-block text-left" ref={popoverRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-7 h-7 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs group"
+                title="View Detailed Punch Logs"
+            >
+                {row.isLate ? (
+                    <Info className="w-4 h-4 text-amber-600" />
+                ) : (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                )}
+            </button>
+
+            {isOpen && (
+                <div className="absolute right-0 bottom-full mb-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-4 text-left animate-fadeIn select-none">
+                    <div className="border-b border-slate-100 pb-2.5 mb-2.5">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-800">
+                                Idea Fueled - ({row.date})
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setIsOpen(false)}
+                                className="text-slate-400 hover:text-slate-600 p-0.5 rounded-md hover:bg-slate-100"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                        <p className="text-[10.5px] font-semibold text-slate-500 mt-0.5">
+                            10:00 AM - 7:00 PM
+                        </p>
+                    </div>
+
+                    <div className="space-y-1.5 border-b border-slate-100 pb-2.5 mb-2.5 text-[11.5px] font-bold text-[#2D79C7]">
+                        <button type="button" className="flex items-center gap-1.5 hover:underline cursor-pointer">
+                            <span>✏️</span> <span>Regularize</span>
+                        </button>
+                        <button type="button" className="flex items-center gap-1.5 hover:underline cursor-pointer">
+                            <span>✏️</span> <span>Apply Partial Day</span>
+                        </button>
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                                Punjab - Idea Fueled
+                            </span>
+                        </div>
+
+                        <div className="space-y-1.5 font-mono text-[11px]">
+                            {punchPairs.map((pair, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-slate-700 bg-slate-50/80 px-2.5 py-1.5 rounded-lg border border-slate-150">
+                                    <span className="flex items-center gap-1 text-emerald-700 font-bold">
+                                        <span className="text-emerald-500 text-xs">↙</span> {pair.in}
+                                    </span>
+                                    <span className={`flex items-center gap-1 font-bold ${pair.out === "MISSING" ? "text-rose-600" : "text-slate-600"}`}>
+                                        <span className="text-rose-500 text-xs">↗</span> {pair.out}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 /* ─────────────────────────────────────────────
    ATTENDANCE LOGS AND REQUESTS COMPONENT
 ───────────────────────────────────────────── */
@@ -2143,6 +2267,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
             grossHours,
             arrival: punctuality.tag,
             isLate: punctuality.isLate,
+            timeStr: punctuality.timeStr,
             logType: "success"
         });
     }
@@ -2163,7 +2288,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
     );
 
     return (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-2xs select-none overflow-hidden">
+        <div className="premium-3d-card select-none overflow-hidden">
             {/* Header Tabs Navigation */}
             <div className="border-b border-slate-200/80 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
                 <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit">
@@ -2337,19 +2462,9 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                                         {/* Gross Hours */}
                                         <td className="py-3.5 px-6 font-mono font-bold text-slate-800">{row.grossHours}</td>
 
-                                        {/* Log Audit Icon */}
+                                        {/* Log Audit Icon & Interactive Popover */}
                                         <td className="py-3.5 px-6 text-center">
-                                            <div className="flex justify-center items-center">
-                                                {row.logType === "success" ? (
-                                                    <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center" title="Verified Log">
-                                                        <Check className="w-3 h-3 stroke-[2.5]" />
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xs" title="Missing Punch Warning">
-                                                        !
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <LogAuditPopover row={row} todayAttendance={todayAttendance} />
                                         </td>
                                     </tr>
                                 );
