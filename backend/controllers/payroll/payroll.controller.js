@@ -133,20 +133,11 @@ export const createPayslip = async (req, res) => {
 export const getPayslips = async (req, res) => {
     try {
         const userId = req.user?.id || req.user?.userId;
-        const currentUser = await User.findById(userId).select("role").lean();
-        const role = currentUser?.role?.toLowerCase();
-
         const { employeeId } = req.query;
 
-        let query = {};
-        if (role === "global_admin" || role === "hr" || role === "admin") {
-            if (employeeId) {
-                query = { employeeId };
-            }
-        } else {
-            // Employee sees ONLY their own payslips
-            query = { employeeId: userId };
-        }
+        // If employeeId is explicitly requested in query, use it. Otherwise default to logged-in user's own payslips
+        const targetEmpId = employeeId ? employeeId : userId;
+        const query = { employeeId: targetEmpId };
 
         const payslips = await Payslip.find(query)
             .populate("employeeId", "fullName firstName lastName employeeId department designation companyEntity profilePicture")

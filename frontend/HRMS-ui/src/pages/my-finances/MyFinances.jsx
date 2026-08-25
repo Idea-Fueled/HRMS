@@ -65,13 +65,16 @@ const MyFinances = () => {
     const [payslips, setPayslips] = useState([]);
 
     useEffect(() => {
-        fetchUserPayslips();
-    }, []);
+        if (user) {
+            fetchUserPayslips();
+        }
+    }, [user]);
 
     const fetchUserPayslips = async () => {
         setLoading(true);
         try {
-            const res = await getPayslips();
+            const empId = user?._id || user?.id;
+            const res = await getPayslips(empId ? { employeeId: empId } : {});
             if (res.data?.success) {
                 setPayslips(res.data.payslips || []);
             }
