@@ -267,30 +267,29 @@ const WfhRequestModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                     <form id="wfh-form" onSubmit={handleSubmit} className="p-6 space-y-6 text-left overflow-y-auto">
                         
                         {/* Dates Box */}
-                        <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3">
-                            <div className="grid grid-cols-2 gap-3 items-center relative">
-                                <div>
+                        <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex-1 min-w-0">
                                     <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-1">From</label>
                                     <input
                                         type="date"
                                         value={fromDate}
                                         onChange={(e) => setFromDate(e.target.value)}
-                                        className="w-full text-xs font-bold text-slate-800 bg-transparent outline-none cursor-pointer"
+                                        className="w-full text-[11px] font-bold text-slate-800 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-lg outline-none cursor-pointer"
                                     />
                                 </div>
 
-                                {/* Center Days Badge */}
-                                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-600">
+                                <div className="shrink-0 px-2 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[10.5px] font-extrabold text-slate-600 self-end mb-0.5">
                                     {daysCount} {daysCount === 1 ? "day" : "days"}
                                 </div>
 
-                                <div className="text-right">
+                                <div className="flex-1 min-w-0 text-right">
                                     <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-1">To</label>
                                     <input
                                         type="date"
                                         value={toDate}
                                         onChange={(e) => setToDate(e.target.value)}
-                                        className="w-full text-xs font-bold text-slate-800 bg-transparent text-right outline-none cursor-pointer"
+                                        className="w-full text-[11px] font-bold text-slate-800 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-lg outline-none cursor-pointer"
                                     />
                                 </div>
                             </div>
