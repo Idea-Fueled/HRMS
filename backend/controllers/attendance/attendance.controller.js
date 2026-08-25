@@ -5,7 +5,7 @@ import Attendance from "../../models/attendance/attendance.model.js";
  */
 export const clockIn = async (req, res) => {
     try {
-        const { employeeId, workMode, wfhMessage } = req.body;
+        const { employeeId, workMode, wfhMessage, dailyWorkPlan } = req.body;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -25,6 +25,7 @@ export const clockIn = async (req, res) => {
                 firstClockIn: currentTime,
                 workMode: workMode || "Office",
                 wfhMessage: workMode === "Work From Home" ? (wfhMessage || "") : "",
+                dailyWorkPlan: dailyWorkPlan || "",
                 logs: [
                     {
                         action: "clock_in",
@@ -33,6 +34,14 @@ export const clockIn = async (req, res) => {
                 ],
             });
         } else {
+            // Calculate break time if there was a previous clock_out
+            if (attendance.lastClockOut) {
+                const breakDiff = (currentTime - new Date(attendance.lastClockOut)) / (1000 * 60);
+                if (breakDiff > 0) {
+                    attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + Math.floor(breakDiff);
+                }
+            }
+
             attendance.logs.push({
                 action: "clock_in",
                 timestamp: currentTime,
@@ -44,6 +53,10 @@ export const clockIn = async (req, res) => {
 
             if (workMode === "Work From Home" && wfhMessage) {
                 attendance.wfhMessage = wfhMessage;
+            }
+
+            if (dailyWorkPlan) {
+                attendance.dailyWorkPlan = dailyWorkPlan;
             }
 
             await attendance.save();

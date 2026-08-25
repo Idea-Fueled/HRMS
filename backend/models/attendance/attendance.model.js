@@ -61,6 +61,10 @@ const attendaceSchema = new mongoose.Schema({
         type: String,
         default: "",
     },
+    dailyWorkPlan: {
+        type: String,
+        default: "",
+    },
 }, { timestamps: true })
 
 attendaceSchema.index(

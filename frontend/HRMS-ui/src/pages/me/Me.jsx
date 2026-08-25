@@ -28,10 +28,11 @@ import {
     AlertCircle,
     ArrowUpRight,
     BarChart3,
-    Sparkles
+    Sparkles,
+    X
 } from "lucide-react";
 import { toast } from "sonner";
-import { getLeaveSummary, getLeaveHistory, applyLeave } from "../../services/dashboard.service";
+import { getLeaveSummary, getLeaveHistory, applyLeave, clockIn, clockOut, getTodayAttendanceLogs } from "../../services/dashboard.service";
 import { uploadProfilePicture, updateProfilePicture } from "../../services/auth.service";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../../components/SharedComponents";
@@ -104,10 +105,104 @@ const AnalogClock = () => {
     );
 };
 
-const LiveClockCard = ({ onOpenPartialLeave }) => {
+const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
+    const [workPlan, setWorkPlan] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!workPlan.trim()) {
+            toast.error("Please enter what you will be working on today! (Required for HR)");
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await onSubmit(workPlan.trim());
+            setWorkPlan("");
+            onClose();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 select-none animate-fadeIn">
+            <div className="bg-white border border-slate-200/90 rounded-[22px] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all duration-300">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-[#225FA3] to-[#144277] px-6 py-5 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+                            <Clock className="w-5 h-5 text-[#FFEA00]" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold tracking-wide text-white">Web Clock In</h3>
+                            <p className="text-[11px] font-semibold text-blue-100/80">Daily Work Plan & HR Task Declaration</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 text-left">
+                    <div className="space-y-2">
+                        <label className="text-slate-700 text-xs font-bold uppercase tracking-wider block">
+                            Aap Aaj Kya Kaam Karoge? <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                            rows={4}
+                            value={workPlan}
+                            onChange={(e) => setWorkPlan(e.target.value)}
+                            placeholder="Describe your planned tasks for today (e.g. Working on HRMS Payslips bug fixes, attending client standup at 11 AM, deploying release to staging...)"
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm font-medium p-3.5 rounded-xl focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-2 focus:ring-[#2D79C7]/15 transition-all resize-none shadow-inner"
+                        />
+                        <p className="text-[11px] font-medium text-slate-400">
+                            Note: This work plan message is required by HR for daily tracking & attendance log verification.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-md shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>{submitting ? "Clocking In..." : "Send & Web Clock In"}</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal, onClockOut }) => {
     const { user } = useAuth();
     const userName = user?.firstName || user?.name || "Prashant";
-    const [isClockedIn, setIsClockedIn] = useState(true);
+    
+    // Determine if currently clocked in from logs
+    const isClockedIn = !!(
+        todayAttendance?.logs &&
+        todayAttendance.logs.length > 0 &&
+        todayAttendance.logs[todayAttendance.logs.length - 1].action === "clock_in"
+    );
 
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
@@ -118,11 +213,9 @@ const LiveClockCard = ({ onOpenPartialLeave }) => {
 
     const handleClockToggle = () => {
         if (isClockedIn) {
-            setIsClockedIn(false);
-            toast.success("Web Clocked out successfully");
+            onClockOut();
         } else {
-            setIsClockedIn(true);
-            toast.success("Web Clocked in successfully");
+            onOpenClockInModal();
         }
     };
 
@@ -1707,13 +1800,51 @@ const PerformanceTab = () => {
 /* ─────────────────────────────────────────────
    ATTENDANCE LOGS AND REQUESTS COMPONENT
 ───────────────────────────────────────────── */
-const AttendanceLogsAndRequestsHub = () => {
+const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
     const [subTab, setSubTab] = useState("Log");
     const [is24Hour, setIs24Hour] = useState(false);
     const [activePeriod, setActivePeriod] = useState("30");
     const [searchQuery, setSearchQuery] = useState("");
 
     const logsData = [];
+
+    if (todayAttendance && todayAttendance.firstClockIn) {
+        const todayDateObj = new Date(todayAttendance.date || Date.now());
+        const formattedDate = todayDateObj.toLocaleDateString("en-US", { weekday: "short", day: "2-digit", month: "short" });
+
+        const firstIn = new Date(todayAttendance.firstClockIn);
+        const firstInTimeStr = firstIn.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: !is24Hour });
+
+        const totalWorkMins = todayAttendance.totalWorkMinutes || 0;
+        const workHrs = Math.floor(totalWorkMins / 60);
+        const workMins = totalWorkMins % 60;
+        const effectiveHours = `${workHrs}h ${workMins.toString().padStart(2, "0")}m`;
+
+        const totalBreakMins = todayAttendance.totalBreakMinutes || 0;
+        const breakHrs = Math.floor(totalBreakMins / 60);
+        const breakMins = totalBreakMins % 60;
+        const breakTaken = breakHrs > 0 ? `${breakHrs}h ${breakMins.toString().padStart(2, "0")}m` : `${breakMins}m`;
+
+        const grossTotalMins = totalWorkMins + totalBreakMins;
+        const grossHrs = Math.floor(grossTotalMins / 60);
+        const grossMins = grossTotalMins % 60;
+        const grossHours = `${grossHrs}h ${grossMins.toString().padStart(2, "0")}m`;
+
+        const visualPercent = Math.min(100, Math.round((totalWorkMins / 540) * 100)) || 15;
+
+        logsData.push({
+            date: formattedDate,
+            isWeekend: false,
+            status: todayAttendance.workMode === "Work From Home" ? "wfh" : "present",
+            effectiveHours,
+            breakTaken,
+            grossHours,
+            arrival: `On Time (${firstInTimeStr})`,
+            logType: "success",
+            visualPercent,
+            dailyWorkPlan: todayAttendance.dailyWorkPlan || ""
+        });
+    }
 
     const periods = [
         { key: "30", label: "30 DAYS" },
@@ -1886,6 +2017,11 @@ const AttendanceLogsAndRequestsHub = () => {
                                                     </span>
                                                 )}
                                             </div>
+                                            {row.dailyWorkPlan && (
+                                                <p className="text-[10.5px] font-semibold text-slate-500 mt-1 italic max-w-xs truncate" title={`Work Plan for HR: ${row.dailyWorkPlan}`}>
+                                                    📝 Task: &ldquo;{row.dailyWorkPlan}&rdquo;
+                                                </p>
+                                            )}
                                         </td>
 
                                         {/* Workday Progress Visual */}
@@ -2161,6 +2297,68 @@ const Me = () => {
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [initialLeaveType, setInitialLeaveType] = useState("casual_leave");
 
+    // Web Clock In & Attendance Integration States
+    const [todayAttendance, setTodayAttendance] = useState(null);
+    const [isWebClockInModalOpen, setIsWebClockInModalOpen] = useState(false);
+
+    const fetchTodayAttendance = async () => {
+        if (!employeeId) return;
+        try {
+            const res = await getTodayAttendanceLogs(employeeId);
+            if (res.data?.success && res.data.data) {
+                setTodayAttendance(res.data.data);
+            }
+        } catch (err) {
+            console.error("Error fetching today's attendance logs:", err);
+        }
+    };
+
+    useEffect(() => {
+        if (employeeId) {
+            fetchTodayAttendance();
+        }
+    }, [employeeId]);
+
+    const handleClockInSubmit = async (dailyWorkPlan) => {
+        if (!employeeId) return;
+        try {
+            const res = await clockIn(employeeId, "Office", "", dailyWorkPlan);
+            if (res.data?.success) {
+                toast.success("Web Clocked in successfully!");
+                if (res.data.attendance) {
+                    setTodayAttendance(res.data.attendance);
+                } else {
+                    await fetchTodayAttendance();
+                }
+            } else {
+                toast.error(res.data?.message || "Failed to clock in.");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to Web Clock in.");
+        }
+    };
+
+    const handleClockOutSubmit = async () => {
+        if (!employeeId) return;
+        try {
+            const res = await clockOut(employeeId);
+            if (res.data?.success) {
+                toast.success("Web Clocked out successfully!");
+                if (res.data.attendance) {
+                    setTodayAttendance(res.data.attendance);
+                } else {
+                    await fetchTodayAttendance();
+                }
+            } else {
+                toast.error(res.data?.message || "Failed to clock out.");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to Web Clock out.");
+        }
+    };
+
     const handleOpenPartialLeaveModal = () => {
         setInitialLeaveType("partial_leave");
         setIsApplyModalOpen(true);
@@ -2180,9 +2378,6 @@ const Me = () => {
             setIsApplyModalOpen(true);
         }
     }, [location.state]);
-
-    // Fetch user details
-    const employeeId = user?._id || user?.id;
 
     const fetchLeaveData = async () => {
         if (!employeeId) return;
@@ -2262,10 +2457,15 @@ const Me = () => {
             {/* Tab contents grid containing 3 independent cards side-by-side with custom widths on laptop/desktop */}
             {activeTab === "Attendance" && (
                 <div className="space-y-6">
-                    <LiveClockCard onOpenPartialLeave={handleOpenPartialLeaveModal} />
+                    <LiveClockCard
+                        onOpenPartialLeave={handleOpenPartialLeaveModal}
+                        todayAttendance={todayAttendance}
+                        onOpenClockInModal={() => setIsWebClockInModalOpen(true)}
+                        onClockOut={handleClockOutSubmit}
+                    />
                     <AttendanceKPIStats />
                     <VisualWorkdayTimeline />
-                    <AttendanceLogsAndRequestsHub />
+                    <AttendanceLogsAndRequestsHub todayAttendance={todayAttendance} />
                 </div>
             )}
 
@@ -2289,6 +2489,13 @@ const Me = () => {
                 initialLeaveType={initialLeaveType}
                 onClose={() => setIsApplyModalOpen(false)}
                 onSubmitSuccess={fetchLeaveData}
+            />
+
+            {/* Web Clock In Daily Goal Modal */}
+            <WebClockInModal
+                isOpen={isWebClockInModalOpen}
+                onClose={() => setIsWebClockInModalOpen(false)}
+                onSubmit={handleClockInSubmit}
             />
         </div>
     );
