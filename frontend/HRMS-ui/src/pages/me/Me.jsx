@@ -63,12 +63,29 @@ const AnalogClock = () => {
     const minuteDeg = minutes * 6;
     const hourDeg = hours * 30;
 
-    return (
-        <div className="relative w-40 h-40 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br from-white via-slate-50 to-slate-100 border-[5px] border-slate-200/90 shadow-[0_12px_28px_rgba(15,23,42,0.12),inset_0_3px_6px_rgba(255,255,255,0.9),inset_0_-3px_6px_rgba(0,0,0,0.06)] flex items-center justify-center shrink-0 select-none transform transition-all hover:scale-105 duration-300">
-            {/* Outer Subtle Glass Inner Ring */}
-            <div className="absolute inset-1.5 rounded-full border border-slate-200/60 shadow-inner bg-white/40 pointer-events-none" />
+    const monthStr = time.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+    const dayNum = time.getDate();
 
-            {/* Dial Hour Ticks */}
+    return (
+        <div className="relative w-44 h-44 sm:w-48 sm:h-48 rounded-full bg-gradient-to-br from-white via-slate-50 to-slate-100 border-[6px] border-slate-200/90 shadow-[0_16px_38px_rgba(15,23,42,0.14),0_6px_16px_rgba(45,121,199,0.12),inset_0_3px_6px_rgba(255,255,255,1),inset_0_-4px_8px_rgba(0,0,0,0.08)] flex items-center justify-center shrink-0 select-none transform transition-all hover:scale-105 duration-300">
+            {/* Outer Subtle Glass Inner Ring */}
+            <div className="absolute inset-1.5 rounded-full border border-slate-200/70 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] bg-white/50 pointer-events-none" />
+
+            {/* Minute Track Ticks (60 Ticks) */}
+            {[...Array(60)].map((_, i) => {
+                if (i % 5 === 0) return null; // Hour ticks rendered separately
+                return (
+                    <div
+                        key={i}
+                        className="absolute w-full h-full flex justify-center pt-2"
+                        style={{ transform: `rotate(${i * 6}deg)` }}
+                    >
+                        <div className="w-[1px] h-1.5 bg-slate-300/80" />
+                    </div>
+                );
+            })}
+
+            {/* 3D Hour Markers (12 Hours) */}
             {[...Array(12)].map((_, i) => {
                 const isMajor = i % 3 === 0;
                 return (
@@ -80,48 +97,59 @@ const AnalogClock = () => {
                         <div
                             className={`rounded-full transition-all ${
                                 isMajor
-                                    ? "w-1 h-3.5 bg-[#2D79C7] shadow-xs"
-                                    : "w-0.5 h-2 bg-slate-300"
+                                    ? "w-1.5 h-4 bg-gradient-to-b from-[#2D79C7] to-[#1F5EA8] shadow-xs border border-white/60"
+                                    : "w-1 h-2.5 bg-slate-400/80"
                             }`}
                         />
                     </div>
                 );
             })}
 
-            {/* Brand Logo / Minimal Sub-text */}
-            <div className="absolute top-[28%] text-center pointer-events-none">
-                <span className="text-[9px] font-black text-[#2D79C7]/80 tracking-widest uppercase font-mono">
+            {/* Brand Logo at 12 o'clock position */}
+            <div className="absolute top-[26%] text-center pointer-events-none">
+                <span className="text-[9.5px] font-black text-[#2D79C7] tracking-widest uppercase font-mono drop-shadow-xs">
                     IDEA FUELED
                 </span>
             </div>
 
-            {/* Hour Hand (3D Styled) */}
+            {/* Live Date Window at 6 o'clock position */}
+            <div className="absolute bottom-[24%] text-center pointer-events-none">
+                <span className="inline-block px-2 py-0.5 rounded bg-slate-100 border border-slate-200/90 text-[9.5px] font-extrabold text-slate-700 font-mono shadow-2xs">
+                    {monthStr} {dayNum}
+                </span>
+            </div>
+
+            {/* 3D Hour Hand */}
             <div
                 className="absolute w-full h-full flex justify-center items-center pointer-events-none z-10"
                 style={{ transform: `rotate(${hourDeg}deg)` }}
             >
-                <div className="w-1.5 h-11 bg-gradient-to-t from-[#1F5EA8] to-[#2D79C7] rounded-full origin-bottom -translate-y-5 shadow-[0_4px_8px_rgba(31,94,168,0.3)]" />
+                <div className="w-2 h-12 bg-gradient-to-r from-[#1F5EA8] via-[#2D79C7] to-[#144277] rounded-full origin-bottom -translate-y-6 shadow-[0_4px_12px_rgba(15,23,42,0.3)] border border-white/40" />
             </div>
 
-            {/* Minute Hand (3D Styled) */}
+            {/* 3D Minute Hand */}
             <div
                 className="absolute w-full h-full flex justify-center items-center pointer-events-none z-10"
                 style={{ transform: `rotate(${minuteDeg}deg)` }}
             >
-                <div className="w-1 h-15 bg-gradient-to-t from-[#144277] to-[#2D79C7] rounded-full origin-bottom -translate-y-7 shadow-[0_4px_8px_rgba(20,66,119,0.3)]" />
+                <div className="w-1.5 h-16 bg-gradient-to-r from-[#144277] via-[#2D79C7] to-[#1F5EA8] rounded-full origin-bottom -translate-y-8 shadow-[0_4px_12px_rgba(15,23,42,0.3)] border border-white/40" />
             </div>
 
-            {/* Second Hand (Accent Animated) */}
+            {/* 3D Second Hand with Counterweight Tail */}
             <div
                 className="absolute w-full h-full flex justify-center items-center pointer-events-none z-20"
                 style={{ transform: `rotate(${secondDeg}deg)` }}
             >
-                <div className="w-0.5 h-16 bg-rose-500 rounded-full origin-bottom -translate-y-6 shadow-[0_2px_6px_rgba(244,63,94,0.4)]" />
+                <div className="relative flex flex-col items-center origin-bottom -translate-y-7">
+                    <div className="w-0.5 h-18 bg-rose-500 shadow-[0_2px_8px_rgba(244,63,94,0.5)]" />
+                    {/* Counterweight Tail */}
+                    <div className="w-1.5 h-4 bg-rose-600 rounded-full -mt-1 shadow-xs" />
+                </div>
             </div>
 
-            {/* 3D Metallic Center Pin */}
-            <div className="w-3.5 h-3.5 bg-gradient-to-br from-white to-[#2D79C7] border-2 border-white rounded-full z-30 shadow-md flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#144277]" />
+            {/* 3D Metallic Watch Crown / Center Pin */}
+            <div className="w-4 h-4 bg-gradient-to-br from-white via-slate-100 to-[#2D79C7] border-2 border-white rounded-full z-30 shadow-lg flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#144277] shadow-inner" />
             </div>
         </div>
     );
