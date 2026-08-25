@@ -34,6 +34,7 @@ import {
 import { toast } from "sonner";
 import { getLeaveSummary, getLeaveHistory, applyLeave, clockIn, clockOut, getTodayAttendanceLogs } from "../../services/dashboard.service";
 import { uploadProfilePicture, updateProfilePicture } from "../../services/auth.service";
+import { getAllEmployees } from "../../services/employee.service";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../../components/SharedComponents";
 
@@ -190,12 +191,159 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
     );
 };
 
+const NotifyEmployeeSelector = ({ selectedEmployees, setSelectedEmployees }) => {
+    const [allEmployees, setAllEmployees] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        const fetchEmps = async () => {
+            try {
+                const res = await getAllEmployees();
+                if (res.data?.success && res.data.employees) {
+                    setAllEmployees(res.data.employees);
+                } else if (res.data?.employees) {
+                    setAllEmployees(res.data.employees);
+                } else if (Array.isArray(res.data)) {
+                    setAllEmployees(res.data);
+                }
+            } catch (err) {
+                console.error("Error fetching employees for notify selector:", err);
+            }
+        };
+        fetchEmps();
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const filtered = allEmployees.filter((emp) => {
+        const isSelected = selectedEmployees.some((s) => (s._id || s.id) === (emp._id || emp.id));
+        if (isSelected) return false;
+
+        const name = `${emp.firstName || ""} ${emp.lastName || ""} ${emp.name || ""}`.toLowerCase();
+        const empId = (emp.employeeId || "").toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
+
+        if (!q) return true;
+        return name.includes(q) || empId.includes(q);
+    });
+
+    const handleSelect = (emp) => {
+        setSelectedEmployees([...selectedEmployees, emp]);
+        setSearchQuery("");
+        setIsOpen(false);
+    };
+
+    const handleRemove = (empIdToRemove) => {
+        setSelectedEmployees(selectedEmployees.filter((e) => (e._id || e.id) !== empIdToRemove));
+    };
+
+    return (
+        <div className="space-y-1.5 text-left relative" ref={containerRef}>
+            <label className="text-slate-700 text-xs font-bold block">
+                Notify
+            </label>
+
+            {/* Selected Employee Pills */}
+            {selectedEmployees.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                    {selectedEmployees.map((emp) => {
+                        const empId = emp._id || emp.id;
+                        const empName = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || emp.name || "Employee";
+                        return (
+                            <span
+                                key={empId}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-[#2D79C7] border border-blue-200 shadow-2xs animate-fadeIn"
+                            >
+                                <Avatar src={emp.profilePicture} name={empName} size="w-4 h-4 text-[9px]" />
+                                <span>{empName}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemove(empId)}
+                                    className="hover:bg-blue-100 p-0.5 rounded-full text-[#2D79C7] transition-all cursor-pointer"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </span>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Input Field */}
+            <div className="relative">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onFocus={() => setIsOpen(true)}
+                    onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setIsOpen(true);
+                    }}
+                    placeholder="Search employee"
+                    className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium pl-9 pr-3.5 py-2.5 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all shadow-2xs"
+                />
+
+                {/* Dropdown Overlay */}
+                {isOpen && (
+                    <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                        {filtered.length === 0 ? (
+                            <div className="p-3 text-center text-xs font-semibold text-slate-400">
+                                {searchQuery ? "No matching employees found" : "All employees selected"}
+                            </div>
+                        ) : (
+                            filtered.map((emp) => {
+                                const empId = emp._id || emp.id;
+                                const empName = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || emp.name || "Employee";
+                                const empCode = emp.employeeId ? `(${emp.employeeId})` : "";
+                                const designation = emp.designation || emp.role || "Team Member";
+
+                                return (
+                                    <button
+                                        key={empId}
+                                        type="button"
+                                        onClick={() => handleSelect(emp)}
+                                        className="w-full px-3.5 py-2 flex items-center justify-between hover:bg-blue-50/70 transition-colors text-left cursor-pointer group"
+                                    >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <Avatar src={emp.profilePicture} name={empName} size="w-7 h-7" textSize="text-xs" />
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-slate-800 group-hover:text-[#2D79C7] truncate">
+                                                    {empName} <span className="text-[10.5px] font-mono text-slate-400 font-normal">{empCode}</span>
+                                                </p>
+                                                <p className="text-[10px] font-semibold text-slate-400 truncate">
+                                                    {designation}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Plus className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#2D79C7] shrink-0" />
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const WfhRequestModal = ({ isOpen, onClose, onSubmitSuccess }) => {
     const { user } = useAuth();
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [note, setNote] = useState("");
-    const [notifyQuery, setNotifyQuery] = useState("");
+    const [selectedEmployees, setSelectedEmployees] = useState([]);
     const [submitting, setSubmitting] = useState(false);
 
     // Calculate duration days
@@ -234,7 +382,7 @@ const WfhRequestModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                 setFromDate("");
                 setToDate("");
                 setNote("");
-                setNotifyQuery("");
+                setSelectedEmployees([]);
             } else {
                 toast.error(res.data?.message || "Failed to submit WFH request.");
             }
@@ -312,17 +460,11 @@ const WfhRequestModal = ({ isOpen, onClose, onSubmitSuccess }) => {
                             />
                         </div>
 
-                        {/* Notify */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-slate-700 block">Notify</label>
-                            <input
-                                type="text"
-                                value={notifyQuery}
-                                onChange={(e) => setNotifyQuery(e.target.value)}
-                                placeholder="Search employee"
-                                className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all shadow-2xs"
-                            />
-                        </div>
+                        {/* Notify Multi-Employee Selector */}
+                        <NotifyEmployeeSelector
+                            selectedEmployees={selectedEmployees}
+                            setSelectedEmployees={setSelectedEmployees}
+                        />
                     </form>
                 </div>
 
@@ -1536,6 +1678,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
     
     const [reason, setReason] = useState("");
     const [duration, setDuration] = useState(0);
+    const [selectedEmployees, setSelectedEmployees] = useState([]);
     const [submitting, setSubmitting] = useState(false);
 
     const isPartial = leaveType === "partial_leave";
@@ -1807,6 +1950,12 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                             className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] resize-none"
                         />
                     </div>
+
+                    {/* Notify Multi-Employee Selector */}
+                    <NotifyEmployeeSelector
+                        selectedEmployees={selectedEmployees}
+                        setSelectedEmployees={setSelectedEmployees}
+                    />
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 justify-end pt-3">
