@@ -119,10 +119,10 @@ const LiveClockCard = ({ onOpenPartialLeave }) => {
     const handleClockToggle = () => {
         if (isClockedIn) {
             setIsClockedIn(false);
-            toast.success("Clocked out successfully");
+            toast.success("Web Clocked out successfully");
         } else {
             setIsClockedIn(true);
-            toast.success("Clocked in successfully");
+            toast.success("Web Clocked in successfully");
         }
     };
 
@@ -173,7 +173,7 @@ const LiveClockCard = ({ onOpenPartialLeave }) => {
                         }`}
                     >
                         <Clock className="w-4 h-4" />
-                        <span>{isClockedIn ? "Clock Out" : "Clock In"}</span>
+                        <span>{isClockedIn ? "Web Clock Out" : "Web Clock In"}</span>
                     </button>
 
                     <button
