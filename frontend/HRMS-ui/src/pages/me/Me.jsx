@@ -2289,6 +2289,8 @@ const Me = () => {
     const location = useLocation();
     const [activeTab, setActiveTab] = useState("Attendance");
 
+    const employeeId = user?._id || user?.id;
+
     // Leave Tab Integration States
     const [leaveSummary, setLeaveSummary] = useState(null);
     const [leaveHistory, setLeaveHistory] = useState([]);
