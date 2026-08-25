@@ -2221,7 +2221,7 @@ const LogAuditPopover = ({ row, todayAttendance }) => {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 bottom-full mb-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-4 text-left animate-fadeIn select-none">
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] p-4 text-left animate-fadeIn select-none">
                     <div className="border-b border-slate-100 pb-2.5 mb-2.5">
                         <div className="flex items-center justify-between">
                             <h4 className="text-xs font-bold text-slate-800">
@@ -2337,7 +2337,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
     );
 
     return (
-        <div className="premium-3d-card select-none overflow-hidden">
+        <div className="premium-3d-card select-none relative z-10">
             {/* Header Tabs Navigation */}
             <div className="border-b border-slate-200/80 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
                 <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit">
@@ -2420,7 +2420,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
 
             {/* Attendance Log Table */}
             {subTab === "Log" && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible pb-12">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
