@@ -21,7 +21,6 @@ import Unauthorized from "./pages/unauthorized/Unauthorized";
 import SessionTimeoutManager from "./components/SessionTimeoutModal";
 import Hire from "./pages/hire/Hire";
 import Assets from "./pages/assets/Assets";
-import OffboardingOnboarding from "./pages/offboarding-onboarding/OffboardingOnboarding";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
@@ -155,11 +154,7 @@ const router = createBrowserRouter([
             },
             {
                 path: "offboarding-onboarding",
-                element: (
-                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_HR}>
-                        <OffboardingOnboarding />
-                    </ProtectedRoute>
-                ),
+                element: <Navigate to="/organization" replace />,
             },
             {
                 path: "organization",

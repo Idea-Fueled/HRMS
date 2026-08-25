@@ -146,17 +146,6 @@ export const SEARCH_REGISTRY = [
         iconName: "DollarSign"
     },
     {
-        id: "nav_offboarding_onboarding",
-        title: "Offboarding & Onboarding",
-        description: "New joiner onboarding checklists & employee exit clearance workflows",
-        keywords: ["offboarding", "onboarding", "exit", "joining", "resignation", "clearance", "joiners"],
-        category: "Navigation",
-        route: "/offboarding-onboarding",
-        permissionKey: "offboardingAndOnboarding",
-        roles: ["global_admin", "admin", "hr"],
-        iconName: "UserCheck"
-    },
-    {
         id: "nav_organization",
         title: "Organization Structure",
         description: "Company departments, designations, company policy & roles matrix",
