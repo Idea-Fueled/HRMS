@@ -501,36 +501,43 @@ export const EmployeeProfile = () => {
     const [loadingAssets, setLoadingAssets] = useState(false);
 
     const fetchUserAssets = useCallback(async () => {
-        if (!employee?._id && !employee?.employeeId) return;
+        if (!employee) return;
         setLoadingAssets(true);
         try {
             let assetsList = [];
-            const empIdStr = (employee._id || "").toString();
-            const empCodeStr = (employee.employeeId || "").toString();
-            const empEmailStr = (employee.email || "").toLowerCase().trim();
-            const empNameStr = (employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`).toLowerCase().trim();
+            const empIdStr = String(employee._id || employee.id || "").trim();
+            const empCodeStr = String(employee.employeeId || "").trim();
+            const empEmailStr = String(employee.email || "").toLowerCase().trim();
+            const empNameStr = String(employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`).toLowerCase().trim();
+
+            const isAssetForThisEmp = (asset) => {
+                if (!asset || !asset.assignedTo) return false;
+                const assignedObj = asset.assignedTo;
+
+                if (typeof assignedObj === "object" && assignedObj !== null) {
+                    const aId = String(assignedObj._id || assignedObj.id || "").trim();
+                    const aCode = String(assignedObj.employeeId || "").trim();
+                    const aEmail = String(assignedObj.email || "").toLowerCase().trim();
+                    const aName = String(assignedObj.fullName || `${assignedObj.firstName || ''} ${assignedObj.lastName || ''}`).toLowerCase().trim();
+
+                    if (empIdStr && aId && aId === empIdStr) return true;
+                    if (empCodeStr && aCode && aCode === empCodeStr) return true;
+                    if (empEmailStr && aEmail && aEmail === empEmailStr) return true;
+                    if (empNameStr && aName && (aName === empNameStr || (aName.length > 3 && (aName.includes(empNameStr) || empNameStr.includes(aName))))) return true;
+                }
+
+                const aStr = String(assignedObj).trim();
+                if (empIdStr && aStr === empIdStr) return true;
+                if (empCodeStr && aStr === empCodeStr) return true;
+
+                return false;
+            };
 
             // 1. Fetch from getAllAssets API
             try {
                 const res = await getAllAssets();
                 if (res.data?.success && Array.isArray(res.data.assets)) {
-                    assetsList = res.data.assets.filter(asset => {
-                        if (!asset.assignedTo) return false;
-                        const assignedObj = asset.assignedTo;
-                        const assignedId = typeof assignedObj === "object" ? (assignedObj._id || "").toString() : (assignedObj || "").toString();
-                        const assignedEmpCode = typeof assignedObj === "object" ? (assignedObj.employeeId || "").toString() : "";
-                        const assignedEmail = typeof assignedObj === "object" ? (assignedObj.email || "").toLowerCase().trim() : "";
-                        const assignedName = typeof assignedObj === "object" 
-                            ? (assignedObj.fullName || `${assignedObj.firstName || ''} ${assignedObj.lastName || ''}`).toLowerCase().trim() 
-                            : (typeof assignedObj === "string" ? assignedObj.toLowerCase().trim() : "");
-
-                        return (
-                            (assignedId && assignedId === empIdStr) ||
-                            (assignedEmpCode && empCodeStr && assignedEmpCode === empCodeStr) ||
-                            (assignedEmail && empEmailStr && assignedEmail === empEmailStr) ||
-                            (assignedName && empNameStr && (assignedName === empNameStr || assignedName.includes(empNameStr) || empNameStr.includes(assignedName)))
-                        );
-                    });
+                    assetsList = res.data.assets.filter(asset => isAssetForThisEmp(asset));
                 }
             } catch (err) {
                 console.error("Error fetching all assets:", err);
@@ -540,28 +547,31 @@ export const EmployeeProfile = () => {
             try {
                 const assignedRes = await getAssignedAssets();
                 if (assignedRes.data?.success && Array.isArray(assignedRes.data.assignedGroups)) {
-                    const group = assignedRes.data.assignedGroups.find(g => {
-                        const gId = (g.employee?._id || "").toString();
-                        const gCode = (g.employee?.employeeId || "").toString();
-                        const gEmail = (g.employee?.email || "").toLowerCase().trim();
-                        return (
-                            (gId && gId === empIdStr) ||
-                            (gCode && empCodeStr && gCode === empCodeStr) ||
-                            (gEmail && empEmailStr && gEmail === empEmailStr)
-                        );
-                    });
+                    assignedRes.data.assignedGroups.forEach(g => {
+                        const gEmp = g.employee || {};
+                        const gId = String(gEmp._id || gEmp.id || "").trim();
+                        const gCode = String(gEmp.employeeId || "").trim();
+                        const gEmail = String(gEmp.email || "").toLowerCase().trim();
+                        const gName = String(gEmp.fullName || `${gEmp.firstName || ''} ${gEmp.lastName || ''}`).toLowerCase().trim();
 
-                    if (group && Array.isArray(group.assets)) {
-                        group.assets.forEach(gAsset => {
-                            const exists = assetsList.some(a => 
-                                (a._id && gAsset._id && String(a._id) === String(gAsset._id)) ||
-                                (a.assetId && gAsset.assetId && a.assetId === gAsset.assetId)
-                            );
-                            if (!exists) {
-                                assetsList.push(gAsset);
-                            }
-                        });
-                    }
+                        const isGroupMatch = 
+                            (empIdStr && gId && gId === empIdStr) ||
+                            (empCodeStr && gCode && gCode === empCodeStr) ||
+                            (empEmailStr && gEmail && gEmail === empEmailStr) ||
+                            (empNameStr && gName && (gName === empNameStr || gName.includes(empNameStr) || empNameStr.includes(gName)));
+
+                        if (isGroupMatch && Array.isArray(g.assets)) {
+                            g.assets.forEach(gAsset => {
+                                const exists = assetsList.some(a => 
+                                    (a._id && gAsset._id && String(a._id) === String(gAsset._id)) ||
+                                    (a.assetId && gAsset.assetId && a.assetId === gAsset.assetId)
+                                );
+                                if (!exists) {
+                                    assetsList.push(gAsset);
+                                }
+                            });
+                        }
+                    });
                 }
             } catch (err) {
                 console.error("Error fetching assigned groups:", err);
@@ -592,7 +602,7 @@ export const EmployeeProfile = () => {
         if (employee) {
             fetchUserAssets();
         }
-    }, [employee, fetchUserAssets, activeTab]);
+    }, [employee, fetchUserAssets, activeTab, id]);
 
     const getCategoryIcon = (category, className = "w-5 h-5") => {
         switch (category) {
