@@ -42,35 +42,66 @@ import { Avatar } from "../../components/SharedComponents";
    ATTENDANCE TAB COMPONENTS (ENTERPRISE THEME BLUE UI)
 ───────────────────────────────────────────── */
 
-const MinimalDigitalClock = () => {
+const AnalogClock = () => {
     const [time, setTime] = useState(new Date());
 
     useEffect(() => {
-        const timer = setInterval(() => setTime(new Date()), 1000);
-        return () => clearInterval(timer);
+        let animationFrameId;
+        const updateClock = () => {
+            setTime(new Date());
+            animationFrameId = requestAnimationFrame(updateClock);
+        };
+        animationFrameId = requestAnimationFrame(updateClock);
+        return () => cancelAnimationFrame(animationFrameId);
     }, []);
 
-    const timeString = time.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true
-    });
+    const seconds = time.getSeconds() + time.getMilliseconds() / 1000;
+    const minutes = time.getMinutes() + seconds / 60;
+    const hours = (time.getHours() % 12) + minutes / 60;
 
-    const dateString = time.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric"
-    });
+    const secondDeg = seconds * 6;
+    const minuteDeg = minutes * 6;
+    const hourDeg = hours * 30;
 
     return (
-        <div className="bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-3 text-center shrink-0">
-            <div className="text-xl font-bold text-slate-800 tracking-tight font-mono">
-                {timeString}
+        <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-white border-2 border-[#2D79C7]/25 shadow-sm flex items-center justify-center shrink-0 select-none">
+            {/* Clock Dial Hour Ticks */}
+            {[...Array(12)].map((_, i) => (
+                <div
+                    key={i}
+                    className="absolute w-full h-full flex justify-center pt-1.5"
+                    style={{ transform: `rotate(${i * 30}deg)` }}
+                >
+                    <div className={`w-0.5 ${i % 3 === 0 ? "h-2 bg-[#2D79C7]" : "h-1 bg-slate-300"}`} />
+                </div>
+            ))}
+
+            {/* Hour Hand */}
+            <div
+                className="absolute w-full h-full flex justify-center items-center"
+                style={{ transform: `rotate(${hourDeg}deg)` }}
+            >
+                <div className="w-1 h-7 bg-[#2D79C7] rounded-full origin-bottom -translate-y-3.5 shadow-xs" />
             </div>
-            <div className="text-[11px] font-semibold text-slate-500 mt-0.5">
-                {dateString}
+
+            {/* Minute Hand */}
+            <div
+                className="absolute w-full h-full flex justify-center items-center"
+                style={{ transform: `rotate(${minuteDeg}deg)` }}
+            >
+                <div className="w-0.5 h-10 bg-[#1F5EA8] rounded-full origin-bottom -translate-y-4 shadow-xs" />
             </div>
+
+            {/* Second Hand */}
+            <div
+                className="absolute w-full h-full flex justify-center items-center"
+                style={{ transform: `rotate(${secondDeg}deg)` }}
+            >
+                <div className="w-0.5 h-11 bg-rose-500 rounded-full origin-bottom -translate-y-4" />
+            </div>
+
+            {/* Center Pin */}
+            <div className="w-2 h-2 bg-[#2D79C7] border-2 border-white rounded-full z-10 shadow-xs" />
         </div>
     );
 };
@@ -541,9 +572,9 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs select-none">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 
-                {/* Left Side: Minimal Digital Clock + User & Shift Info */}
+                {/* Left Side: Analog Clock + User & Shift Info */}
                 <div className="flex items-center gap-5">
-                    <MinimalDigitalClock />
+                    <AnalogClock />
                     
                     <div className="space-y-2">
                         <div>
