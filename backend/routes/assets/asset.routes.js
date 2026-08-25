@@ -25,16 +25,16 @@ const isGlobalAdmin = (req, res, next) => {
     }
 };
 
-// All asset routes require authentication and Global Admin role
-router.use(isAuthenticated, isGlobalAdmin);
+// Read-only endpoints for all authenticated users (Employees can view assigned assets on profile)
+router.get("/", isAuthenticated, getAllAssets);
+router.get("/assigned", isAuthenticated, getAssignedAssets);
 
-router.get("/", getAllAssets);
-router.get("/assigned", getAssignedAssets);
-router.post("/", createAsset);
-router.put("/:id", updateAsset);
-router.post("/:id/assign", assignAsset);
-router.post("/:id/unassign", unassignAsset);
-router.patch("/:id/status", updateAssetStatusCondition);
-router.delete("/:id", deleteAsset);
+// Mutation endpoints strictly restricted to Global Admin only
+router.post("/", isAuthenticated, isGlobalAdmin, createAsset);
+router.put("/:id", isAuthenticated, isGlobalAdmin, updateAsset);
+router.post("/:id/assign", isAuthenticated, isGlobalAdmin, assignAsset);
+router.post("/:id/unassign", isAuthenticated, isGlobalAdmin, unassignAsset);
+router.patch("/:id/status", isAuthenticated, isGlobalAdmin, updateAssetStatusCondition);
+router.delete("/:id", isAuthenticated, isGlobalAdmin, deleteAsset);
 
 export default router;
