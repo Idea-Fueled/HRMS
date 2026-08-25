@@ -1713,85 +1713,7 @@ const AttendanceLogsAndRequestsHub = () => {
     const [activePeriod, setActivePeriod] = useState("30");
     const [searchQuery, setSearchQuery] = useState("");
 
-    const logsData = [
-        {
-            date: "Wed, 01 Jul",
-            isWeekend: false,
-            status: "empty",
-            description: "No Time Entries Logged",
-            effectiveHours: "-",
-            breakTaken: "-",
-            grossHours: "-",
-            arrival: "No Log",
-            logType: "empty"
-        },
-        {
-            date: "Tue, 30 Jun",
-            isWeekend: false,
-            status: "present",
-            effectiveHours: "4h 48m",
-            breakTaken: "0h 37m",
-            grossHours: "5h 25m",
-            arrival: "On Time",
-            logType: "warn",
-            visualPercent: 53
-        },
-        {
-            date: "Mon, 29 Jun",
-            isWeekend: false,
-            status: "present",
-            effectiveHours: "8h 35m",
-            breakTaken: "0h 54m",
-            grossHours: "9h 29m",
-            arrival: "On Time",
-            logType: "success",
-            visualPercent: 95
-        },
-        {
-            date: "Sun, 28 Jun",
-            isWeekend: true,
-            status: "week_off",
-            description: "Full day Weekly-off",
-            effectiveHours: "-",
-            breakTaken: "-",
-            grossHours: "-",
-            arrival: "Off",
-            logType: "empty"
-        },
-        {
-            date: "Sat, 27 Jun",
-            isWeekend: true,
-            status: "week_off",
-            description: "Full day Weekly-off",
-            effectiveHours: "-",
-            breakTaken: "-",
-            grossHours: "-",
-            arrival: "Off",
-            logType: "empty"
-        },
-        {
-            date: "Fri, 26 Jun",
-            isWeekend: false,
-            status: "present",
-            effectiveHours: "8h 45m",
-            breakTaken: "0h 42m",
-            grossHours: "9h 27m",
-            arrival: "On Time",
-            logType: "success",
-            visualPercent: 97
-        },
-        {
-            date: "Thu, 25 Jun",
-            isWeekend: false,
-            status: "wfh",
-            effectiveHours: "8h 10m",
-            breakTaken: "0h 50m",
-            grossHours: "9h 00m",
-            arrival: "WFH Approved",
-            logType: "success",
-            visualPercent: 90
-        }
-    ];
+    const logsData = [];
 
     const periods = [
         { key: "30", label: "30 DAYS" },
@@ -1906,7 +1828,18 @@ const AttendanceLogsAndRequestsHub = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                            {filteredLogs.map((row, idx) => {
+                            {filteredLogs.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="py-12 text-center text-slate-400 font-bold select-none">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <Clock className="w-8 h-8 text-slate-300 stroke-[1.5]" />
+                                            <span className="text-xs font-bold text-slate-500">No time entries logged for this period.</span>
+                                            <span className="text-[11px] font-medium text-slate-400">Clock in to start logging your attendance!</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredLogs.map((row, idx) => {
                                 if (row.isWeekend) {
                                     return (
                                         <tr key={idx} className="bg-slate-50/40">
@@ -1995,7 +1928,7 @@ const AttendanceLogsAndRequestsHub = () => {
                                         </td>
                                     </tr>
                                 );
-                            })}
+                            }))}
                         </tbody>
                     </table>
                 </div>
