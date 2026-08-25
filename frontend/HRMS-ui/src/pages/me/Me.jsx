@@ -2726,7 +2726,6 @@ const Me = () => {
                         onOpenWfhModal={() => setIsWfhModalOpen(true)}
                     />
                     <AttendanceKPIStats />
-                    <VisualWorkdayTimeline />
                     <AttendanceLogsAndRequestsHub todayAttendance={todayAttendance} />
                 </div>
             )}
