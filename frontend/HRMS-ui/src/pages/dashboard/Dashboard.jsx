@@ -1692,6 +1692,10 @@ const WelcomeBanner = ({ user }) => {
 
     useEffect(() => {
         const hour = new Date().getHours();
+        const userId = user?._id || user?.id || user?.employeeId || "user";
+        const todayStr = new Date().toISOString().split("T")[0];
+        const afternoonVisitKey = `hrms_afternoon_visit_${todayStr}_${userId}`;
+
         if (hour >= 5 && hour < 12) {
             setGreeting("Good Morning");
             setGreetingIcon("🌤️");
@@ -1699,7 +1703,14 @@ const WelcomeBanner = ({ user }) => {
         } else if (hour >= 12 && hour < 17) {
             setGreeting("Good Afternoon");
             setGreetingIcon("☀️");
-            setPersonalMessage("good to see you!");
+            
+            const hasVisitedAfternoon = localStorage.getItem(afternoonVisitKey);
+            if (!hasVisitedAfternoon) {
+                localStorage.setItem(afternoonVisitKey, "true");
+                setPersonalMessage("good to see you!");
+            } else {
+                setPersonalMessage("good to see you again!");
+            }
         } else {
             setGreeting("Good Evening");
             setGreetingIcon("🌙");
@@ -1707,7 +1718,7 @@ const WelcomeBanner = ({ user }) => {
         }
         const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
         setFormattedDate(new Date().toLocaleDateString("en-US", options));
-    }, []);
+    }, [user]);
 
     const firstName = user?.firstName || user?.fullName?.split(" ")[0] || "";
 
