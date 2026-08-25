@@ -190,7 +190,168 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
     );
 };
 
-const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal, onClockOut }) => {
+const WfhRequestModal = ({ isOpen, onClose, onSubmitSuccess }) => {
+    const { user } = useAuth();
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
+    const [note, setNote] = useState("");
+    const [notifyQuery, setNotifyQuery] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    // Calculate duration days
+    const calculateDays = () => {
+        if (!fromDate || !toDate) return 0;
+        const start = new Date(fromDate);
+        const end = new Date(toDate);
+        const diff = end.getTime() - start.getTime();
+        if (diff < 0) return 0;
+        return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+    };
+
+    const daysCount = calculateDays();
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!fromDate || !toDate) {
+            toast.error("Please select valid From and To dates.");
+            return;
+        }
+        if (daysCount <= 0) {
+            toast.error("To date must be after or equal to From date.");
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const employeeId = user?._id || user?.id;
+            const res = await clockIn(employeeId, "Work From Home", note || "Work From Home Request");
+            if (res.data?.success) {
+                toast.success("Work From Home request submitted successfully!");
+                if (onSubmitSuccess) onSubmitSuccess(res.data.attendance);
+                onClose();
+                setFromDate("");
+                setToDate("");
+                setNote("");
+                setNotifyQuery("");
+            } else {
+                toast.error(res.data?.message || "Failed to submit WFH request.");
+            }
+        } catch (err) {
+            console.error("WFH request error:", err);
+            toast.error("Failed to submit Work From Home request.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-end z-50 select-none animate-fadeIn">
+            <div className="bg-white border-l border-slate-200 shadow-2xl w-full max-w-md h-full flex flex-col justify-between transform transition-all duration-300">
+                
+                {/* Header */}
+                <div>
+                    <div className="px-6 py-5 border-b border-slate-150 flex items-center justify-between bg-white">
+                        <h3 className="text-base font-bold text-slate-800 tracking-tight">Request work from home</h3>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                        >
+                            <X className="w-5 h-5 stroke-[2.2]" />
+                        </button>
+                    </div>
+
+                    {/* Content Form */}
+                    <form id="wfh-form" onSubmit={handleSubmit} className="p-6 space-y-6 text-left overflow-y-auto">
+                        
+                        {/* Dates Box */}
+                        <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-2xs space-y-3">
+                            <div className="grid grid-cols-2 gap-3 items-center relative">
+                                <div>
+                                    <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-1">From</label>
+                                    <input
+                                        type="date"
+                                        value={fromDate}
+                                        onChange={(e) => setFromDate(e.target.value)}
+                                        className="w-full text-xs font-bold text-slate-800 bg-transparent outline-none cursor-pointer"
+                                    />
+                                </div>
+
+                                {/* Center Days Badge */}
+                                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-600">
+                                    {daysCount} {daysCount === 1 ? "day" : "days"}
+                                </div>
+
+                                <div className="text-right">
+                                    <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-1">To</label>
+                                    <input
+                                        type="date"
+                                        value={toDate}
+                                        onChange={(e) => setToDate(e.target.value)}
+                                        className="w-full text-xs font-bold text-slate-800 bg-transparent text-right outline-none cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Notice */}
+                        <p className="text-xs font-semibold text-[#2D79C7] leading-relaxed">
+                            Clock in is necessary on WFH days to avoid being marked absent
+                        </p>
+
+                        {/* Note */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-700 block">Note</label>
+                            <textarea
+                                rows={3}
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder="Type here"
+                                className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium p-3 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all resize-none shadow-2xs"
+                            />
+                        </div>
+
+                        {/* Notify */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-700 block">Notify</label>
+                            <input
+                                type="text"
+                                value={notifyQuery}
+                                onChange={(e) => setNotifyQuery(e.target.value)}
+                                placeholder="Search employee"
+                                className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all shadow-2xs"
+                            />
+                        </div>
+                    </form>
+                </div>
+
+                {/* Footer Fixed Bar */}
+                <div className="p-6 border-t border-slate-150 flex items-center justify-end gap-3 bg-white">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-5 py-2.5 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        form="wfh-form"
+                        disabled={submitting}
+                        className="px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                    >
+                        {submitting ? "Requesting..." : "Request"}
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
+const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal, onClockOut, onOpenWfhModal }) => {
     const { user } = useAuth();
     const userName = user?.firstName || user?.name || "Prashant";
     
@@ -268,7 +429,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
 
                     <button
                         type="button"
-                        onClick={() => toast.info("Work From Home request")}
+                        onClick={onOpenWfhModal}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
                     >
                         <Home className="w-4 h-4 text-[#2D79C7]" />
@@ -2299,6 +2460,7 @@ const Me = () => {
     // Web Clock In & Attendance Integration States
     const [todayAttendance, setTodayAttendance] = useState(null);
     const [isWebClockInModalOpen, setIsWebClockInModalOpen] = useState(false);
+    const [isWfhModalOpen, setIsWfhModalOpen] = useState(false);
 
     const fetchTodayAttendance = async () => {
         if (!employeeId) return;
@@ -2461,6 +2623,7 @@ const Me = () => {
                         todayAttendance={todayAttendance}
                         onOpenClockInModal={() => setIsWebClockInModalOpen(true)}
                         onClockOut={handleClockOutSubmit}
+                        onOpenWfhModal={() => setIsWfhModalOpen(true)}
                     />
                     <AttendanceKPIStats />
                     <VisualWorkdayTimeline />
@@ -2495,6 +2658,13 @@ const Me = () => {
                 isOpen={isWebClockInModalOpen}
                 onClose={() => setIsWebClockInModalOpen(false)}
                 onSubmit={handleClockInSubmit}
+            />
+
+            {/* Request Work From Home Drawer Modal */}
+            <WfhRequestModal
+                isOpen={isWfhModalOpen}
+                onClose={() => setIsWfhModalOpen(false)}
+                onSubmitSuccess={fetchTodayAttendance}
             />
         </div>
     );
