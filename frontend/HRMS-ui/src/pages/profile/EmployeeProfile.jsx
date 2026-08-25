@@ -14,7 +14,7 @@ import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
 import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
-import { getAllAssets } from "../../services/asset.service";
+import { getAllAssets, getAssignedAssets } from "../../services/asset.service";
 
 /* ─────────────────────────────────────────────
    HELPERS & DEFAULT SEEDS
@@ -504,39 +504,95 @@ export const EmployeeProfile = () => {
         if (!employee?._id && !employee?.employeeId) return;
         setLoadingAssets(true);
         try {
-            const res = await getAllAssets();
-            if (res.data?.success && Array.isArray(res.data.assets)) {
-                const empIdStr = (employee._id || "").toString();
-                const empCodeStr = (employee.employeeId || "").toString();
-                const empEmailStr = (employee.email || "").toLowerCase().trim();
+            let assetsList = [];
+            const empIdStr = (employee._id || "").toString();
+            const empCodeStr = (employee.employeeId || "").toString();
+            const empEmailStr = (employee.email || "").toLowerCase().trim();
+            const empNameStr = (employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`).toLowerCase().trim();
 
-                const matched = res.data.assets.filter(asset => {
-                    if (!asset.assignedTo) return false;
-                    const assignedObj = asset.assignedTo;
-                    const assignedId = typeof assignedObj === "object" ? (assignedObj._id || "").toString() : (assignedObj || "").toString();
-                    const assignedEmpCode = typeof assignedObj === "object" ? (assignedObj.employeeId || "").toString() : "";
-                    const assignedEmail = typeof assignedObj === "object" ? (assignedObj.email || "").toLowerCase().trim() : "";
+            // 1. Fetch from getAllAssets API
+            try {
+                const res = await getAllAssets();
+                if (res.data?.success && Array.isArray(res.data.assets)) {
+                    assetsList = res.data.assets.filter(asset => {
+                        if (!asset.assignedTo) return false;
+                        const assignedObj = asset.assignedTo;
+                        const assignedId = typeof assignedObj === "object" ? (assignedObj._id || "").toString() : (assignedObj || "").toString();
+                        const assignedEmpCode = typeof assignedObj === "object" ? (assignedObj.employeeId || "").toString() : "";
+                        const assignedEmail = typeof assignedObj === "object" ? (assignedObj.email || "").toLowerCase().trim() : "";
+                        const assignedName = typeof assignedObj === "object" 
+                            ? (assignedObj.fullName || `${assignedObj.firstName || ''} ${assignedObj.lastName || ''}`).toLowerCase().trim() 
+                            : (typeof assignedObj === "string" ? assignedObj.toLowerCase().trim() : "");
 
-                    return (
-                        (assignedId && assignedId === empIdStr) ||
-                        (assignedEmpCode && assignedEmpCode === empCodeStr) ||
-                        (assignedEmail && empEmailStr && assignedEmail === empEmailStr)
-                    );
-                });
-                setUserAssets(matched);
+                        return (
+                            (assignedId && assignedId === empIdStr) ||
+                            (assignedEmpCode && empCodeStr && assignedEmpCode === empCodeStr) ||
+                            (assignedEmail && empEmailStr && assignedEmail === empEmailStr) ||
+                            (assignedName && empNameStr && (assignedName === empNameStr || assignedName.includes(empNameStr) || empNameStr.includes(assignedName)))
+                        );
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching all assets:", err);
             }
+
+            // 2. Fetch from getAssignedAssets API (grouped by employee)
+            try {
+                const assignedRes = await getAssignedAssets();
+                if (assignedRes.data?.success && Array.isArray(assignedRes.data.assignedGroups)) {
+                    const group = assignedRes.data.assignedGroups.find(g => {
+                        const gId = (g.employee?._id || "").toString();
+                        const gCode = (g.employee?.employeeId || "").toString();
+                        const gEmail = (g.employee?.email || "").toLowerCase().trim();
+                        return (
+                            (gId && gId === empIdStr) ||
+                            (gCode && empCodeStr && gCode === empCodeStr) ||
+                            (gEmail && empEmailStr && gEmail === empEmailStr)
+                        );
+                    });
+
+                    if (group && Array.isArray(group.assets)) {
+                        group.assets.forEach(gAsset => {
+                            const exists = assetsList.some(a => 
+                                (a._id && gAsset._id && String(a._id) === String(gAsset._id)) ||
+                                (a.assetId && gAsset.assetId && a.assetId === gAsset.assetId)
+                            );
+                            if (!exists) {
+                                assetsList.push(gAsset);
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching assigned groups:", err);
+            }
+
+            // 3. Fallback to employee.assets array stored directly on employee document
+            const directAssets = Array.isArray(employee?.assets) ? employee.assets : [];
+            directAssets.forEach(dAsset => {
+                const exists = assetsList.some(a => 
+                    (a._id && dAsset._id && String(a._id) === String(dAsset._id)) ||
+                    (a.assetId && dAsset.assetId && a.assetId === dAsset.assetId) ||
+                    (a.name && dAsset.name && a.name === dAsset.name)
+                );
+                if (!exists) {
+                    assetsList.push(dAsset);
+                }
+            });
+
+            setUserAssets(assetsList);
         } catch (err) {
             console.error("Error loading employee assigned assets:", err);
         } finally {
             setLoadingAssets(false);
         }
-    }, [employee?._id, employee?.employeeId, employee?.email]);
+    }, [employee]);
 
     useEffect(() => {
-        if (activeTab === "Assets") {
+        if (employee) {
             fetchUserAssets();
         }
-    }, [activeTab, fetchUserAssets]);
+    }, [employee, fetchUserAssets, activeTab]);
 
     const getCategoryIcon = (category, className = "w-5 h-5") => {
         switch (category) {
