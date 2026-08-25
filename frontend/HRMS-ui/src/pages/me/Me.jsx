@@ -114,7 +114,7 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!workPlan.trim()) {
-            toast.error("Please enter your planned work tasks for today.");
+            toast.error("Adding comment is made mandatory by your HR Manager.");
             return;
         }
         setSubmitting(true);
@@ -131,63 +131,60 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 select-none animate-fadeIn">
-            <div className="bg-white border border-slate-200/90 rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-200">
-                {/* Clean Header */}
-                <div className="bg-[#1F5EA8] px-6 py-4 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
-                            <Clock className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-bold tracking-wide text-white">Web Clock In</h3>
-                            <p className="text-[10.5px] font-semibold text-blue-100/80">Daily Work Plan & Goal Declaration</p>
-                        </div>
-                    </div>
+            <div className="bg-white border border-slate-200 rounded-[14px] shadow-2xl w-full max-w-lg overflow-hidden text-left transform transition-all duration-200">
+                
+                {/* Header */}
+                <div className="px-6 py-4.5 border-b border-slate-150 flex items-center justify-between bg-white">
+                    <h3 className="text-base font-bold text-slate-800 tracking-tight">Web Clock &quot;In&quot; Request</h3>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
+                        className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="w-5 h-5 stroke-[2.2]" />
                     </button>
                 </div>
 
-                {/* Clean Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 text-left">
-                    <div className="space-y-2">
-                        <label className="text-slate-700 text-xs font-bold uppercase tracking-wider block">
-                            Today&apos;s Planned Work Tasks <span className="text-rose-500">*</span>
-                        </label>
+                {/* Body Form */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <p className="text-xs font-semibold text-slate-600">
+                        Adding comment is made mandatory by your HR Manager.
+                    </p>
+
+                    <div className="space-y-1">
                         <textarea
                             rows={4}
+                            maxLength={1024}
                             value={workPlan}
                             onChange={(e) => setWorkPlan(e.target.value)}
-                            placeholder="Describe your planned tasks for today (e.g. Bug fixes on payroll module, team sync meeting at 11 AM, code review...)"
-                            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium p-3 rounded-xl focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-2 focus:ring-[#2D79C7]/15 transition-all resize-none shadow-xs"
+                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium p-3.5 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all resize-none shadow-2xs"
                         />
-                        <p className="text-[11px] font-medium text-slate-400">
-                            This work plan will be recorded for daily attendance tracking and logs.
-                        </p>
+                        <div className="text-right">
+                            <span className="text-[10.5px] font-bold text-slate-400 font-mono">
+                                {workPlan.length} / 1024
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2.5 pt-1">
+                    {/* Footer buttons */}
+                    <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+                            className="px-5 py-2.5 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                            className="px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-sm transition-all cursor-pointer disabled:opacity-50"
                         >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>{submitting ? "Clocking In..." : "Submit & Clock In"}</span>
+                            {submitting ? "Submitting..." : "Confirm"}
                         </button>
                     </div>
                 </form>
+
             </div>
         </div>
     );
