@@ -64,44 +64,65 @@ const AnalogClock = () => {
     const hourDeg = hours * 30;
 
     return (
-        <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-white border-2 border-[#2D79C7]/25 shadow-sm flex items-center justify-center shrink-0 select-none">
-            {/* Clock Dial Hour Ticks */}
-            {[...Array(12)].map((_, i) => (
-                <div
-                    key={i}
-                    className="absolute w-full h-full flex justify-center pt-1.5"
-                    style={{ transform: `rotate(${i * 30}deg)` }}
-                >
-                    <div className={`w-0.5 ${i % 3 === 0 ? "h-2 bg-[#2D79C7]" : "h-1 bg-slate-300"}`} />
-                </div>
-            ))}
+        <div className="relative w-40 h-40 sm:w-44 sm:h-44 rounded-full bg-gradient-to-br from-white via-slate-50 to-slate-100 border-[5px] border-slate-200/90 shadow-[0_12px_28px_rgba(15,23,42,0.12),inset_0_3px_6px_rgba(255,255,255,0.9),inset_0_-3px_6px_rgba(0,0,0,0.06)] flex items-center justify-center shrink-0 select-none transform transition-all hover:scale-105 duration-300">
+            {/* Outer Subtle Glass Inner Ring */}
+            <div className="absolute inset-1.5 rounded-full border border-slate-200/60 shadow-inner bg-white/40 pointer-events-none" />
 
-            {/* Hour Hand */}
+            {/* Dial Hour Ticks */}
+            {[...Array(12)].map((_, i) => {
+                const isMajor = i % 3 === 0;
+                return (
+                    <div
+                        key={i}
+                        className="absolute w-full h-full flex justify-center pt-2"
+                        style={{ transform: `rotate(${i * 30}deg)` }}
+                    >
+                        <div
+                            className={`rounded-full transition-all ${
+                                isMajor
+                                    ? "w-1 h-3.5 bg-[#2D79C7] shadow-xs"
+                                    : "w-0.5 h-2 bg-slate-300"
+                            }`}
+                        />
+                    </div>
+                );
+            })}
+
+            {/* Brand Logo / Minimal Sub-text */}
+            <div className="absolute top-[28%] text-center pointer-events-none">
+                <span className="text-[9px] font-black text-[#2D79C7]/80 tracking-widest uppercase font-mono">
+                    IDEA FUELED
+                </span>
+            </div>
+
+            {/* Hour Hand (3D Styled) */}
             <div
-                className="absolute w-full h-full flex justify-center items-center"
+                className="absolute w-full h-full flex justify-center items-center pointer-events-none z-10"
                 style={{ transform: `rotate(${hourDeg}deg)` }}
             >
-                <div className="w-1 h-7 bg-[#2D79C7] rounded-full origin-bottom -translate-y-3.5 shadow-xs" />
+                <div className="w-1.5 h-11 bg-gradient-to-t from-[#1F5EA8] to-[#2D79C7] rounded-full origin-bottom -translate-y-5 shadow-[0_4px_8px_rgba(31,94,168,0.3)]" />
             </div>
 
-            {/* Minute Hand */}
+            {/* Minute Hand (3D Styled) */}
             <div
-                className="absolute w-full h-full flex justify-center items-center"
+                className="absolute w-full h-full flex justify-center items-center pointer-events-none z-10"
                 style={{ transform: `rotate(${minuteDeg}deg)` }}
             >
-                <div className="w-0.5 h-10 bg-[#1F5EA8] rounded-full origin-bottom -translate-y-4 shadow-xs" />
+                <div className="w-1 h-15 bg-gradient-to-t from-[#144277] to-[#2D79C7] rounded-full origin-bottom -translate-y-7 shadow-[0_4px_8px_rgba(20,66,119,0.3)]" />
             </div>
 
-            {/* Second Hand */}
+            {/* Second Hand (Accent Animated) */}
             <div
-                className="absolute w-full h-full flex justify-center items-center"
+                className="absolute w-full h-full flex justify-center items-center pointer-events-none z-20"
                 style={{ transform: `rotate(${secondDeg}deg)` }}
             >
-                <div className="w-0.5 h-11 bg-rose-500 rounded-full origin-bottom -translate-y-4" />
+                <div className="w-0.5 h-16 bg-rose-500 rounded-full origin-bottom -translate-y-6 shadow-[0_2px_6px_rgba(244,63,94,0.4)]" />
             </div>
 
-            {/* Center Pin */}
-            <div className="w-2 h-2 bg-[#2D79C7] border-2 border-white rounded-full z-10 shadow-xs" />
+            {/* 3D Metallic Center Pin */}
+            <div className="w-3.5 h-3.5 bg-gradient-to-br from-white to-[#2D79C7] border-2 border-white rounded-full z-30 shadow-md flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#144277]" />
+            </div>
         </div>
     );
 };
