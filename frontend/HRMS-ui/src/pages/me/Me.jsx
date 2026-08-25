@@ -114,7 +114,7 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!workPlan.trim()) {
-            toast.error("Please enter what you will be working on today! (Required for HR)");
+            toast.error("Please enter your planned work tasks for today.");
             return;
         }
         setSubmitting(true);
@@ -131,16 +131,16 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 select-none animate-fadeIn">
-            <div className="bg-white border border-slate-200/90 rounded-[22px] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all duration-300">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-[#225FA3] to-[#144277] px-6 py-5 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-                            <Clock className="w-5 h-5 text-[#FFEA00]" />
+            <div className="bg-white border border-slate-200/90 rounded-[20px] shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-200">
+                {/* Clean Header */}
+                <div className="bg-[#1F5EA8] px-6 py-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
+                            <Clock className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                            <h3 className="text-base font-bold tracking-wide text-white">Web Clock In</h3>
-                            <p className="text-[11px] font-semibold text-blue-100/80">Daily Work Plan & HR Task Declaration</p>
+                            <h3 className="text-sm font-bold tracking-wide text-white">Web Clock In</h3>
+                            <p className="text-[10.5px] font-semibold text-blue-100/80">Daily Work Plan & Goal Declaration</p>
                         </div>
                     </div>
                     <button
@@ -148,43 +148,43 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
                         onClick={onClose}
                         className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                {/* Form */}
+                {/* Clean Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 text-left">
                     <div className="space-y-2">
                         <label className="text-slate-700 text-xs font-bold uppercase tracking-wider block">
-                            Aap Aaj Kya Kaam Karoge? <span className="text-rose-500">*</span>
+                            Today&apos;s Planned Work Tasks <span className="text-rose-500">*</span>
                         </label>
                         <textarea
                             rows={4}
                             value={workPlan}
                             onChange={(e) => setWorkPlan(e.target.value)}
-                            placeholder="Describe your planned tasks for today (e.g. Working on HRMS Payslips bug fixes, attending client standup at 11 AM, deploying release to staging...)"
-                            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm font-medium p-3.5 rounded-xl focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-2 focus:ring-[#2D79C7]/15 transition-all resize-none shadow-inner"
+                            placeholder="Describe your planned tasks for today (e.g. Bug fixes on payroll module, team sync meeting at 11 AM, code review...)"
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-medium p-3 rounded-xl focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-2 focus:ring-[#2D79C7]/15 transition-all resize-none shadow-xs"
                         />
                         <p className="text-[11px] font-medium text-slate-400">
-                            Note: This work plan message is required by HR for daily tracking & attendance log verification.
+                            This work plan will be recorded for daily attendance tracking and logs.
                         </p>
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 pt-2">
+                    <div className="flex items-center justify-end gap-2.5 pt-1">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-md shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-sm transition-all cursor-pointer disabled:opacity-50"
                         >
                             <Send className="w-3.5 h-3.5" />
-                            <span>{submitting ? "Clocking In..." : "Send & Web Clock In"}</span>
+                            <span>{submitting ? "Clocking In..." : "Submit & Clock In"}</span>
                         </button>
                     </div>
                 </form>
