@@ -43,6 +43,11 @@ const documentSchema = new mongoose.Schema(
         fileType: {
             type: String,
             default: ""
+        },
+        companyEntity: {
+            type: String,
+            enum: ["Idea Fueled", "Idea Fueled LLP"],
+            default: "Idea Fueled"
         }
     },
     { timestamps: true }

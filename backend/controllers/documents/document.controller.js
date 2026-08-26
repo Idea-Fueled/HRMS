@@ -17,7 +17,7 @@ const formatBytes = (bytes, decimals = 2) => {
    ───────────────────────────────────────────── */
 export const getAllDocuments = async (req, res) => {
     try {
-        const { type, category, employeeId, search } = req.query;
+        const { type, category, employeeId, companyEntity, search } = req.query;
         const userRole = req.user?.role;
         const userId = req.user?.id || req.user?.userId;
 
@@ -42,6 +42,10 @@ export const getAllDocuments = async (req, res) => {
         // 2. Extra filter criteria
         if (category) {
             query.category = category;
+        }
+
+        if (companyEntity) {
+            query.companyEntity = companyEntity;
         }
 
         if (search) {
@@ -83,7 +87,7 @@ export const getAllDocuments = async (req, res) => {
    ───────────────────────────────────────────── */
 export const createDocument = async (req, res) => {
     try {
-        const { title, description, type, category, employeeId, url } = req.body;
+        const { title, description, type, category, employeeId, url, companyEntity } = req.body;
         const userId = req.user?.id || req.user?.userId;
 
         // Validation
@@ -139,6 +143,7 @@ export const createDocument = async (req, res) => {
             type,
             category,
             url: documentUrl,
+            companyEntity: companyEntity || "Idea Fueled",
             employeeId: type === "employee" ? employeeId : null,
             uploadedBy: userId,
             fileSize: fileSizeStr,
@@ -167,7 +172,7 @@ export const createDocument = async (req, res) => {
 export const updateDocument = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, category, type, employeeId, url } = req.body;
+        const { title, description, category, type, employeeId, url, companyEntity } = req.body;
 
         const document = await Document.findById(id);
         if (!document) {
@@ -177,6 +182,7 @@ export const updateDocument = async (req, res) => {
         if (title) document.title = title;
         if (description !== undefined) document.description = description;
         if (category) document.category = category;
+        if (companyEntity) document.companyEntity = companyEntity;
 
         if (type) {
             document.type = type;

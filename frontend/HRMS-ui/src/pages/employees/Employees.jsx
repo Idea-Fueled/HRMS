@@ -333,6 +333,14 @@ const FilterBar = ({ filters, onChange, employees, departments }) => {
                 placeholder="Search by name, email, ID..."
             />
             <div className="relative">
+                <select value={filters.companyEntity || ""} onChange={sel("companyEntity")} className="pl-3 pr-8 h-[38px] bg-white border border-gray-200 rounded-[12px] text-xs font-bold text-[#2D79C7] focus:outline-none focus:border-[#2D79C7] appearance-none cursor-pointer shadow-inner">
+                    <option value="">All Entities</option>
+                    <option value="Idea Fueled">Idea Fueled</option>
+                    <option value="Idea Fueled LLP">Idea Fueled LLP</option>
+                </select>
+                <ChevronDown className="w-3 h-3 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+            <div className="relative">
                 <select value={filters.department} onChange={sel("department")} className="pl-3 pr-8 h-[38px] bg-white border border-gray-200 rounded-[12px] text-xs text-[#1E1E1E] focus:outline-none focus:border-[#2D79C7] appearance-none cursor-pointer shadow-inner">
                     <option value="">All Departments</option>
                     {departments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -388,6 +396,7 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
                         {[
                             { label: "Emp ID", field: "employeeId" },
                             { label: "Name", field: "fullName" },
+                            { label: "Company Entity", field: "companyEntity" },
                             { label: "Email", field: "email" },
                             { label: "Department", field: "department" },
                             { label: "Designation", field: "designation" },
@@ -423,6 +432,15 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
                                         <p className="text-xs text-gray-400 mt-0.5">{roleLabel(emp.role)}</p>
                                     </div>
                                 </div>
+                            </td>
+                            <td className="px-4 py-3">
+                                <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-[6px] border ${
+                                    (emp.companyEntity || "Idea Fueled") === "Idea Fueled LLP"
+                                        ? "bg-purple-50 text-purple-700 border-purple-100"
+                                        : "bg-blue-50 text-blue-700 border-blue-100"
+                                }`}>
+                                    {emp.companyEntity || "Idea Fueled"}
+                                </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600">{emp.email}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{emp.department || "—"}</td>
@@ -2078,6 +2096,7 @@ const Employees = () => {
         const name = emp.fullName || `${emp.firstName} ${emp.lastName}`;
         const q = filters.search.toLowerCase();
         if (q && !name.toLowerCase().includes(q) && !emp.email.toLowerCase().includes(q) && !emp.employeeId.toLowerCase().includes(q)) return false;
+        if (filters.companyEntity && (emp.companyEntity || "Idea Fueled") !== filters.companyEntity) return false;
         if (filters.department && emp.department !== filters.department) return false;
         if (filters.designation && emp.designation !== filters.designation) return false;
         if (filters.employementType && emp.employementType !== filters.employementType) return false;

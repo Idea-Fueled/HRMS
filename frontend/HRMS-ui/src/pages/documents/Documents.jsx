@@ -61,6 +61,7 @@ export const Documents = () => {
     }, [location.state]);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
+    const [selectedCompanyEntity, setSelectedCompanyEntity] = useState(""); // filter by entity
     const [selectedEmployeeId, setSelectedEmployeeId] = useState(""); // filter employee docs by specific employee
     
     // Core Data States
@@ -85,6 +86,7 @@ export const Documents = () => {
     const [formDescription, setFormDescription] = useState("");
     const [formType, setFormType] = useState("company"); // "company" or "employee"
     const [formCategory, setFormCategory] = useState("");
+    const [formCompanyEntity, setFormCompanyEntity] = useState("Idea Fueled");
     const [isCustomCategory, setIsCustomCategory] = useState(false);
     const [formEmployeeId, setFormEmployeeId] = useState("");
     const [formFile, setFormFile] = useState(null);
@@ -101,6 +103,7 @@ export const Documents = () => {
             const params = {
                 type: activeTab,
                 category: selectedCategory || undefined,
+                companyEntity: selectedCompanyEntity || undefined,
                 employeeId: activeTab === "employee" && selectedEmployeeId ? selectedEmployeeId : undefined,
                 search: searchQuery || undefined
             };
@@ -116,7 +119,7 @@ export const Documents = () => {
         } finally {
             setLoading(false);
         }
-    }, [activeTab, selectedCategory, selectedEmployeeId, searchQuery]);
+    }, [activeTab, selectedCategory, selectedCompanyEntity, selectedEmployeeId, searchQuery]);
 
     // Initial load
     useEffect(() => {
@@ -157,6 +160,7 @@ export const Documents = () => {
             setFormDescription(doc.description || "");
             setFormType(doc.type);
             setFormCategory(doc.category);
+            setFormCompanyEntity(doc.companyEntity || "Idea Fueled");
             setFormEmployeeId(doc.employeeId?._id || doc.employeeId || "");
             setFormUrl(doc.url || "");
             setFormFile(null);
@@ -174,6 +178,7 @@ export const Documents = () => {
             setFormDescription("");
             setFormType(activeTab); // default to current tab
             setFormCategory(activeTab === "company" ? COMPANY_CATEGORIES[0] : EMPLOYEE_CATEGORIES[0]);
+            setFormCompanyEntity("Idea Fueled");
             setFormEmployeeId("");
             setFormUrl("");
             setFormFile(null);
@@ -215,6 +220,7 @@ export const Documents = () => {
             formData.append("description", formDescription.trim());
             formData.append("type", formType);
             formData.append("category", formCategory);
+            formData.append("companyEntity", formCompanyEntity);
             
             if (formType === "employee") {
                 formData.append("employeeId", formEmployeeId);
@@ -382,6 +388,20 @@ export const Documents = () => {
                         placeholder="Search document title..."
                     />
 
+                    {/* Company Entity Filter */}
+                    <div className="relative">
+                        <select
+                            value={selectedCompanyEntity}
+                            onChange={(e) => setSelectedCompanyEntity(e.target.value)}
+                            className="w-full sm:w-48 pl-3 pr-8 h-[38px] bg-white border border-gray-200 rounded-[12px] text-xs font-bold text-[#2D79C7] focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all cursor-pointer appearance-none shadow-2xs"
+                        >
+                            <option value="">All Entities</option>
+                            <option value="Idea Fueled">Idea Fueled</option>
+                            <option value="Idea Fueled LLP">Idea Fueled LLP</option>
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+
                     {/* Category Filter */}
                     <div className="relative">
                         <select
@@ -430,7 +450,7 @@ export const Documents = () => {
             ) : documents.length === 0 ? (
                 <EmptyState
                     message="No documents found"
-                    description={searchQuery || selectedCategory || selectedEmployeeId
+                    description={searchQuery || selectedCategory || selectedCompanyEntity || selectedEmployeeId
                         ? "Try resetting your search query or filters to discover matching documents."
                         : "There are no files uploaded in this folder yet."}
                 />
@@ -440,6 +460,7 @@ export const Documents = () => {
                         const { icon: FileIcon, color: iconColor, label: fileLabel } = getFileVisuals(doc.fileType, doc.title);
                         const employeeName = doc.employeeId?.fullName || "—";
                         const employeePic = doc.employeeId?.profilePicture || "";
+                        const entityName = doc.companyEntity || "Idea Fueled";
                         
                         return (
                             <div
@@ -448,10 +469,19 @@ export const Documents = () => {
                             >
                                 <div className="space-y-4">
                                     {/* Badge & Category */}
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-black text-[#2D79C7] bg-blue-50 border border-blue-100/50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                                            {doc.category}
-                                        </span>
+                                    <div className="flex justify-between items-center gap-2 flex-wrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-black text-[#2D79C7] bg-blue-50 border border-blue-100/50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                                {doc.category}
+                                            </span>
+                                            <span className={`text-[9.5px] font-black px-2 py-0.5 rounded-full border ${
+                                                entityName === "Idea Fueled LLP"
+                                                    ? "bg-purple-50 text-purple-700 border-purple-100"
+                                                    : "bg-slate-50 text-slate-700 border-slate-200"
+                                            }`}>
+                                                {entityName}
+                                            </span>
+                                        </div>
                                         <span className="text-[9px] text-slate-400 font-bold">
                                             {doc.fileSize || "Link"}
                                         </span>
@@ -609,6 +639,22 @@ export const Documents = () => {
                                     >
                                         Employee Specific
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* Company / Legal Entity Selector */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company Entity *</label>
+                                <div className="relative">
+                                    <select
+                                        value={formCompanyEntity}
+                                        onChange={(e) => setFormCompanyEntity(e.target.value)}
+                                        className="w-full pl-3 pr-8 py-2 bg-white border border-gray-200 rounded-[12px] text-xs font-bold text-[#1E1E1E] focus:outline-none focus:border-[#2D79C7] transition-all cursor-pointer appearance-none shadow-2xs"
+                                    >
+                                        <option value="Idea Fueled">Idea Fueled</option>
+                                        <option value="Idea Fueled LLP">Idea Fueled LLP</option>
+                                    </select>
+                                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 </div>
                             </div>
 
