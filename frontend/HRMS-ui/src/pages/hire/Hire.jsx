@@ -22,6 +22,7 @@ import {
     deleteCandidateApi
 } from "../../services/hire.service";
 import { useAuth } from "../../context/AuthContext";
+import { downloadCandidateDocument, fileToDataUrl } from "../../utils/candidateDocumentUtils";
 
 /* ─────────────────────────────────────────────
    CONSTANTS & PIPELINE STAGES
@@ -1580,9 +1581,14 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                                                 </div>
                                             </div>
 
-                                            <a href={doc.url} download className="p-1.5 text-[#2D79C7] hover:bg-blue-50 rounded-[8px] cursor-pointer">
+                                            <button
+                                                type="button"
+                                                onClick={() => downloadCandidateDocument(doc, candidate)}
+                                                title={`Download ${doc.name}`}
+                                                className="p-2 text-[#2D79C7] hover:text-[#1F5EA8] hover:bg-blue-100/70 bg-blue-50/70 border border-blue-200/80 rounded-[10px] cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-2xs flex items-center gap-1.5 font-bold"
+                                            >
                                                 <Download className="w-4 h-4" />
-                                            </a>
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -1617,6 +1623,7 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
 ───────────────────────────────────────────── */
 const AddCandidateModal = ({ onClose, onSave }) => {
     const [cvFile, setCvFile] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [form, setForm] = useState({
         name: "",
         email: "",
@@ -1633,19 +1640,30 @@ const AddCandidateModal = ({ onClose, onSave }) => {
         stage: "New Application"
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.name.trim() || !form.email.trim()) {
             toast.error("Name and email are required");
             return;
         }
+        setIsSaving(true);
+        let cvDataUrl = null;
+        if (cvFile) {
+            try {
+                cvDataUrl = await fileToDataUrl(cvFile);
+            } catch {
+                cvDataUrl = null;
+            }
+        }
         const formattedExp = form.experience !== "" ? (String(form.experience).toLowerCase().includes("yr") ? form.experience : `${form.experience} Yrs`) : "0 Yrs";
-        onSave({
+        await onSave({
             ...form,
             experience: formattedExp,
             cvFile,
+            cvDataUrl,
             cvName: cvFile ? cvFile.name : ""
         });
+        setIsSaving(false);
     };
 
     return (
@@ -2008,14 +2026,44 @@ const AddFeedbackModal = ({ interview, onClose, onSave }) => {
 const UploadDocumentModal = ({ candidate, onClose, onSave }) => {
     const [name, setName] = useState("");
     const [type, setType] = useState("Resume");
+    const [docFile, setDocFile] = useState(null);
+    const [fileSize, setFileSize] = useState("60 KB");
+    const [isUploading, setIsUploading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setDocFile(file);
+            if (!name) {
+                setName(file.name);
+            }
+            const kb = file.size / 1024;
+            setFileSize(kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`);
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!name.trim()) {
             toast.error("Document name required");
             return;
         }
-        onSave({ name, type, size: "1.2 MB" });
+        setIsUploading(true);
+        let docDataUrl = null;
+        if (docFile) {
+            try {
+                docDataUrl = await fileToDataUrl(docFile);
+            } catch {
+                docDataUrl = null;
+            }
+        }
+        await onSave({
+            name: name.trim(),
+            type,
+            size: fileSize,
+            url: docDataUrl || "#"
+        });
+        setIsUploading(false);
     };
 
     return (
@@ -2023,7 +2071,7 @@ const UploadDocumentModal = ({ candidate, onClose, onSave }) => {
             <div className="bg-white rounded-[20px] shadow-2xl border border-gray-200 max-w-sm w-full p-6 space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                     <h3 className="text-sm font-bold text-[#1E1E1E]">Upload Document</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-3 text-xs">
@@ -2032,27 +2080,43 @@ const UploadDocumentModal = ({ candidate, onClose, onSave }) => {
                         <select
                             value={type}
                             onChange={e => setType(e.target.value)}
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                         >
                             {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
 
                     <div>
-                        <label className="block text-gray-500 font-bold mb-1">Document Title / File Name</label>
+                        <label className="block text-gray-500 font-bold mb-1">Select File (Optional)</label>
+                        <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            onChange={handleFileChange}
+                            className="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-[#2D79C7]/10 file:text-[#2D79C7] hover:file:bg-[#2D79C7]/20 cursor-pointer p-1.5 bg-gray-50 border border-gray-200 rounded-[10px]"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-gray-500 font-bold mb-1">Document Title / File Name *</label>
                         <input
                             type="text"
                             required
                             placeholder="e.g. Experience_Certificate.pdf"
                             value={name}
                             onChange={e => setName(e.target.value)}
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                         />
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">
                         <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Upload</button>
+                        <button
+                            type="submit"
+                            disabled={isUploading}
+                            className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer disabled:opacity-50"
+                        >
+                            {isUploading ? "Uploading..." : "Upload"}
+                        </button>
                     </div>
                 </form>
             </div>

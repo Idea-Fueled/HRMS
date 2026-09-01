@@ -51,18 +51,17 @@ export const addCandidateApi = async (candidateData) => {
     
     // Process candidate CV/Resume upload if present
     const docName = candidateData.cvName || candidateData.resume || (candidateData.cvFile ? candidateData.cvFile.name : null);
-    let docUrl = "#";
-    let docSize = "1.2 MB";
+    let docUrl = candidateData.cvDataUrl || "#";
+    let docSize = "60 KB";
 
     if (candidateData.cvFile) {
         try {
-            docUrl = URL.createObjectURL(candidateData.cvFile);
             if (candidateData.cvFile.size) {
                 const kb = candidateData.cvFile.size / 1024;
                 docSize = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
             }
         } catch {
-            docUrl = "#";
+            // Keep default
         }
     }
 
