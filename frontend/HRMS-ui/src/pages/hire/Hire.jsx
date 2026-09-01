@@ -1672,16 +1672,59 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
 /* ─────────────────────────────────────────────
    MODALS IMPLEMENTATION
 ───────────────────────────────────────────── */
+// Experience formatting helpers
+const formatExperience = (years, months) => {
+    const y = parseInt(years, 10) || 0;
+    const m = parseInt(months, 10) || 0;
+    if (y > 0 && m > 0) {
+        return `${y} ${y === 1 ? "Yr" : "Yrs"} ${m} ${m === 1 ? "Mo" : "Mos"}`;
+    }
+    if (y > 0) {
+        return `${y} ${y === 1 ? "Yr" : "Yrs"}`;
+    }
+    if (m > 0) {
+        return `${m} ${m === 1 ? "Mo" : "Mos"}`;
+    }
+    return "0 Yrs";
+};
+
+const parseExperience = (expStr = "") => {
+    if (!expStr) return { years: "0", months: "0" };
+    let years = 0;
+    let months = 0;
+    const str = String(expStr);
+    const yrMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:yr|year|yrs|years)/i);
+    const moMatch = str.match(/(\d+)\s*(?:mo|month|mos|months)/i);
+    if (yrMatch) {
+        const floatYrs = parseFloat(yrMatch[1]);
+        years = Math.floor(floatYrs);
+        const remMonths = Math.round((floatYrs - years) * 12);
+        if (remMonths > 0) months = remMonths;
+    }
+    if (moMatch) {
+        months = parseInt(moMatch[1], 10);
+    }
+    if (!yrMatch && !moMatch) {
+        const num = parseFloat(str);
+        if (!isNaN(num)) {
+            years = Math.floor(num);
+            months = Math.round((num - years) * 12);
+        }
+    }
+    return { years: String(years || 0), months: String(months || 0) };
+};
+
 const AddCandidateModal = ({ onClose, onSave }) => {
     const [cvFile, setCvFile] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [expYears, setExpYears] = useState("0");
+    const [expMonths, setExpMonths] = useState("0");
     const [form, setForm] = useState({
         name: "",
         email: "",
         phone: "",
         address: "",
         position: "",
-        experience: "",
         currentCompany: "",
         currentCtc: "",
         expectedCtc: "",
@@ -1706,7 +1749,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                 cvDataUrl = null;
             }
         }
-        const formattedExp = form.experience !== "" ? (String(form.experience).toLowerCase().includes("yr") ? form.experience : `${form.experience} Yrs`) : "0 Yrs";
+        const formattedExp = formatExperience(expYears, expMonths);
         await onSave({
             ...form,
             experience: formattedExp,
@@ -1731,6 +1774,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                         <input
                             type="text"
                             required
+                            placeholder="e.g. Rahul Sharma"
                             value={form.name}
                             onChange={e => setForm({ ...form, name: e.target.value })}
                             className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
@@ -1743,6 +1787,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                             <input
                                 type="email"
                                 required
+                                placeholder="e.g. rahul@example.com"
                                 value={form.email}
                                 onChange={e => setForm({ ...form, email: e.target.value })}
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
@@ -1752,6 +1797,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                             <label className="block text-gray-500 font-bold mb-1">Phone</label>
                             <input
                                 type="text"
+                                placeholder="+91 98765 43210"
                                 value={form.phone}
                                 onChange={e => setForm({ ...form, phone: e.target.value })}
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
@@ -1759,26 +1805,48 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-gray-500 font-bold mb-1">Position Applied</label>
                             <input
                                 type="text"
+                                placeholder="e.g. Software Engineer"
                                 value={form.position}
                                 onChange={e => setForm({ ...form, position: e.target.value })}
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                             />
                         </div>
                         <div>
-                            <label className="block text-gray-500 font-bold mb-1">Experience (Years)</label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={form.experience}
-                                onChange={e => setForm({ ...form, experience: e.target.value })}
-                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
-                            />
+                            <label className="block text-gray-500 font-bold mb-1">Experience (Years & Months)</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="50"
+                                        placeholder="0"
+                                        value={expYears}
+                                        onChange={e => setExpYears(e.target.value)}
+                                        className="w-full p-2 pr-10 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                        Years
+                                    </span>
+                                </div>
+                                <div>
+                                    <select
+                                        value={expMonths}
+                                        onChange={e => setExpMonths(e.target.value)}
+                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                                    >
+                                        {[...Array(12).keys()].map(m => (
+                                            <option key={m} value={m}>
+                                                {m} {m === 1 ? "Month" : "Months"}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1786,6 +1854,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                         <label className="block text-gray-500 font-bold mb-1">Current Company</label>
                         <input
                             type="text"
+                            placeholder="e.g. Infosys / TCS / Freelance"
                             value={form.currentCompany}
                             onChange={e => setForm({ ...form, currentCompany: e.target.value })}
                             className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
@@ -1796,6 +1865,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                         <label className="block text-gray-500 font-bold mb-1">Skills (comma separated)</label>
                         <input
                             type="text"
+                            placeholder="React, Node.js, TypeScript, SQL..."
                             value={form.skills}
                             onChange={e => setForm({ ...form, skills: e.target.value })}
                             className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
@@ -1826,7 +1896,9 @@ const AddCandidateModal = ({ onClose, onSave }) => {
 
                     <div className="pt-4 flex justify-end gap-2">
                         <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Save Candidate</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer disabled:opacity-50">
+                            {isSaving ? "Saving..." : "Save Candidate"}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -1835,11 +1907,15 @@ const AddCandidateModal = ({ onClose, onSave }) => {
 };
 
 const EditCandidateModal = ({ candidate, onClose, onSave }) => {
+    const initialExp = parseExperience(candidate?.experience);
+    const [expYears, setExpYears] = useState(initialExp.years);
+    const [expMonths, setExpMonths] = useState(initialExp.months);
     const [form, setForm] = useState({ ...candidate });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSave(form);
+        const formattedExp = formatExperience(expYears, expMonths);
+        onSave({ ...form, experience: formattedExp });
     };
 
     return (
@@ -1861,15 +1937,48 @@ const EditCandidateModal = ({ candidate, onClose, onSave }) => {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-gray-500 font-bold mb-1">Position</label>
-                        <select
-                            value={form.position}
-                            onChange={e => setForm({ ...form, position: e.target.value })}
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
-                        >
-                            {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-gray-500 font-bold mb-1">Position</label>
+                            <select
+                                value={form.position}
+                                onChange={e => setForm({ ...form, position: e.target.value })}
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                            >
+                                {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-gray-500 font-bold mb-1">Experience (Years & Months)</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="50"
+                                        value={expYears}
+                                        onChange={e => setExpYears(e.target.value)}
+                                        className="w-full p-2 pr-10 bg-gray-50 border border-gray-200 rounded-[10px]"
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                        Years
+                                    </span>
+                                </div>
+                                <div>
+                                    <select
+                                        value={expMonths}
+                                        onChange={e => setExpMonths(e.target.value)}
+                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                                    >
+                                        {[...Array(12).keys()].map(m => (
+                                            <option key={m} value={m}>
+                                                {m} {m === 1 ? "Month" : "Months"}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
