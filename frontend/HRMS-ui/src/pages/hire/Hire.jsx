@@ -173,15 +173,15 @@ export const Hire = () => {
        FILTERED CANDIDATES
     ───────────────────────────────────────────── */
     const activeCandidates = useMemo(() => {
-        return candidates.filter(c => c.stage !== "Rejected" && c.status !== "Rejected");
+        return candidates.filter(c => c.stage !== "Rejected" && c.status !== "Rejected" && !c.archiveReason);
     }, [candidates]);
 
     const archivedCandidatesList = useMemo(() => {
-        return candidates.filter(c => c.stage === "Rejected" || c.status === "Rejected" || c.archiveReason);
+        return candidates.filter(c => c.stage === "Rejected" || c.status === "Rejected" || Boolean(c.archiveReason));
     }, [candidates]);
 
     const filteredCandidates = useMemo(() => {
-        const baseList = activeTab === "archive" ? archivedCandidatesList : candidates;
+        const baseList = activeTab === "archive" ? archivedCandidatesList : activeCandidates;
 
         return baseList.filter(cand => {
             if (searchTerm.trim()) {
@@ -207,7 +207,7 @@ export const Hire = () => {
 
             return true;
         });
-    }, [candidates, archivedCandidatesList, activeTab, searchTerm, filterStage, filterPosition, filterHr, filterStatus, filterInterviewer]);
+    }, [activeCandidates, archivedCandidatesList, activeTab, searchTerm, filterStage, filterPosition, filterHr, filterStatus, filterInterviewer]);
 
     /* ─────────────────────────────────────────────
        ALL SCHEDULED INTERVIEWS LIST
@@ -328,7 +328,7 @@ export const Hire = () => {
     ───────────────────────────────────────────── */
     const navTabs = [
         { id: "dashboard", label: "Dashboard", icon: Layers },
-        { id: "candidates", label: "Candidates", icon: Users, count: candidates.length },
+        { id: "candidates", label: "Candidates", icon: Users, count: activeCandidates.length },
         { id: "kanban", label: "Kanban Pipeline", icon: Briefcase },
         { id: "interviews", label: "Interviews", icon: Calendar, count: stats.scheduledInterviewsCount },
         { id: "offers", label: "Offers", icon: IndianRupee, count: stats.offersSent },
@@ -748,7 +748,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
         { label: "Rejected", value: stats.rejected, icon: XCircle, color: "text-rose-600", bg: "bg-rose-50" },
     ];
 
-    const recentCandidates = candidates.slice(0, 5);
+    const recentCandidates = candidates.filter(c => c.stage !== "Rejected" && c.status !== "Rejected" && !c.archiveReason).slice(0, 5);
 
     return (
         <div className="space-y-6">
