@@ -1819,7 +1819,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                         <div>
                             <label className="block text-gray-500 font-bold mb-1">Experience (Years & Months)</label>
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="relative">
+                                <div className="relative w-full">
                                     <input
                                         type="number"
                                         min="0"
@@ -1827,24 +1827,25 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                                         placeholder="0"
                                         value={expYears}
                                         onChange={e => setExpYears(e.target.value)}
-                                        className="w-full p-2 pr-10 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                                        className="w-full p-2 pr-11 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
                                     />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
                                         Years
                                     </span>
                                 </div>
-                                <div>
-                                    <select
+                                <div className="relative w-full">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="11"
+                                        placeholder="0"
                                         value={expMonths}
                                         onChange={e => setExpMonths(e.target.value)}
-                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
-                                    >
-                                        {[...Array(12).keys()].map(m => (
-                                            <option key={m} value={m}>
-                                                {m} {m === 1 ? "Month" : "Months"}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        className="w-full p-2 pr-12 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
+                                    />
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                        Months
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -1951,31 +1952,33 @@ const EditCandidateModal = ({ candidate, onClose, onSave }) => {
                         <div>
                             <label className="block text-gray-500 font-bold mb-1">Experience (Years & Months)</label>
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="relative">
+                                <div className="relative w-full">
                                     <input
                                         type="number"
                                         min="0"
                                         max="50"
+                                        placeholder="0"
                                         value={expYears}
                                         onChange={e => setExpYears(e.target.value)}
-                                        className="w-full p-2 pr-10 bg-gray-50 border border-gray-200 rounded-[10px]"
+                                        className="w-full p-2 pr-11 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
                                     />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
                                         Years
                                     </span>
                                 </div>
-                                <div>
-                                    <select
+                                <div className="relative w-full">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="11"
+                                        placeholder="0"
                                         value={expMonths}
                                         onChange={e => setExpMonths(e.target.value)}
-                                        className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
-                                    >
-                                        {[...Array(12).keys()].map(m => (
-                                            <option key={m} value={m}>
-                                                {m} {m === 1 ? "Month" : "Months"}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        className="w-full p-2 pr-12 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
+                                    />
+                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                        Months
+                                    </span>
                                 </div>
                             </div>
                         </div>
