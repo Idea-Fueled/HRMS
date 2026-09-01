@@ -281,6 +281,34 @@ export const addCandidateDocumentApi = async (candidateId, docData) => {
     return updated.find(c => c.id === candidateId);
 };
 
+export const deleteCandidateDocumentApi = async (candidateId, docId) => {
+    const current = getCandidatesFromStorage();
+    let candidateToUpdate = null;
+
+    const updated = current.map(c => {
+        if (c.id === candidateId) {
+            candidateToUpdate = {
+                ...c,
+                documents: (c.documents || []).filter(d => d.id !== docId)
+            };
+            return candidateToUpdate;
+        }
+        return c;
+    });
+
+    saveCandidatesToStorage(updated);
+
+    if (candidateToUpdate) {
+        try {
+            await API.put(`/hire/candidates/${candidateId}`, candidateToUpdate);
+        } catch (err) {
+            console.error("Failed to sync document deletion to backend", err);
+        }
+    }
+
+    return updated.find(c => c.id === candidateId);
+};
+
 export const updateOfferDetailsApi = async (candidateId, offerData) => {
     const current = getCandidatesFromStorage();
     let candidateToUpdate = null;

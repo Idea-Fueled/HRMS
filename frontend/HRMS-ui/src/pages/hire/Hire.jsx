@@ -17,6 +17,7 @@ import {
     scheduleInterviewApi,
     addInterviewFeedbackApi,
     addCandidateDocumentApi,
+    deleteCandidateDocumentApi,
     updateOfferDetailsApi,
     archiveCandidateApi,
     deleteCandidateApi
@@ -582,6 +583,16 @@ export const Hire = () => {
                         setIsFeedbackModalOpen(true);
                     }}
                     onUploadDoc={() => setIsDocModalOpen(true)}
+                    onDeleteDoc={async (candId, docId) => {
+                        try {
+                            const updated = await deleteCandidateDocumentApi(candId, docId);
+                            setCandidates(prev => prev.map(c => c.id === candId ? updated : c));
+                            setSelectedCandidate(updated);
+                            toast.success("Document removed");
+                        } catch {
+                            toast.error("Failed to remove document");
+                        }
+                    }}
                 />
             )}
 
@@ -1351,7 +1362,7 @@ const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
 /* ─────────────────────────────────────────────
    CANDIDATE DETAIL DRAWER
 ───────────────────────────────────────────── */
-const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview, onMoveStage, onReject, onAddFeedback, onUploadDoc }) => {
+const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview, onMoveStage, onReject, onAddFeedback, onUploadDoc, onDeleteDoc }) => {
     const [drawerTab, setDrawerTab] = useState("basic");
 
     return (
@@ -1557,10 +1568,13 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                     {drawerTab === "documents" && (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h4 className="text-xs font-black text-[#1E1E1E] uppercase tracking-wider">Uploaded Documents</h4>
+                                <div>
+                                    <h4 className="text-xs font-black text-[#1E1E1E] uppercase tracking-wider">Uploaded Documents</h4>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">Click download to get the original uploaded file.</p>
+                                </div>
                                 <button
                                     onClick={onUploadDoc}
-                                    className="flex items-center gap-1 bg-[#2D79C7] text-white px-3 py-1 rounded-[8px] text-xs font-bold hover:bg-[#1F5EA8] cursor-pointer"
+                                    className="flex items-center gap-1.5 bg-[#2D79C7] text-white px-3.5 py-1.5 rounded-[10px] text-xs font-bold hover:bg-[#1F5EA8] cursor-pointer shadow-xs"
                                 >
                                     <Upload className="w-3.5 h-3.5" />
                                     <span>Upload Doc</span>
@@ -1568,29 +1582,66 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                             </div>
 
                             {(candidate.documents || []).length === 0 ? (
-                                <p className="text-xs text-gray-400 italic py-4">No documents uploaded yet.</p>
+                                <div className="text-center py-8 border border-dashed border-gray-200 rounded-[14px] bg-gray-50/50 space-y-2">
+                                    <FileText className="w-8 h-8 text-gray-300 mx-auto" />
+                                    <p className="text-xs text-gray-400 font-medium">No documents uploaded yet for this candidate.</p>
+                                    <button
+                                        onClick={onUploadDoc}
+                                        className="text-xs font-bold text-[#2D79C7] hover:underline cursor-pointer"
+                                    >
+                                        + Upload First Document
+                                    </button>
+                                </div>
                             ) : (
-                                <div className="space-y-2">
-                                    {candidate.documents.map(doc => (
-                                        <div key={doc.id} className="p-3 bg-gray-50 border border-gray-200 rounded-[12px] flex items-center justify-between text-xs">
-                                            <div className="flex items-center gap-3">
-                                                <FileText className="w-5 h-5 text-[#2D79C7]" />
-                                                <div>
-                                                    <div className="font-bold text-gray-800">{doc.name}</div>
-                                                    <div className="text-[10px] text-gray-400">{doc.type} • {doc.size}</div>
+                                <div className="space-y-2.5">
+                                    {candidate.documents.map(doc => {
+                                        const hasFileContent = doc.url && doc.url !== "#" && doc.url !== "null";
+                                        return (
+                                            <div key={doc.id} className="p-3.5 bg-gray-50/80 border border-gray-200 rounded-[14px] flex items-center justify-between text-xs hover:bg-gray-100/70 transition-all">
+                                                <div className="flex items-center gap-3 min-w-0 flex-1 pr-3">
+                                                    <div className="p-2 bg-blue-100/60 text-[#2D79C7] rounded-[10px] shrink-0">
+                                                        <FileText className="w-5 h-5" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="font-bold text-gray-900 truncate" title={doc.name}>
+                                                            {doc.name}
+                                                        </div>
+                                                        <div className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
+                                                            <span>{doc.type}</span>
+                                                            <span>•</span>
+                                                            <span>{doc.size || "Original"}</span>
+                                                            {!hasFileContent && (
+                                                                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded-md">
+                                                                    No file attached
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => downloadCandidateDocument(doc, candidate)}
+                                                        title={`Download exact original file: ${doc.name}`}
+                                                        className="p-2 text-[#2D79C7] hover:text-white hover:bg-[#2D79C7] bg-white border border-blue-200 rounded-[10px] cursor-pointer transition-all shadow-2xs hover:shadow-xs"
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                    </button>
+                                                    {onDeleteDoc && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onDeleteDoc(candidate.id, doc.id)}
+                                                            title="Delete document"
+                                                            className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 bg-white border border-gray-200 rounded-[10px] cursor-pointer transition-all"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => downloadCandidateDocument(doc, candidate)}
-                                                title={`Download ${doc.name}`}
-                                                className="p-2 text-[#2D79C7] hover:text-[#1F5EA8] hover:bg-blue-100/70 bg-blue-50/70 border border-blue-200/80 rounded-[10px] cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-2xs flex items-center gap-1.5 font-bold"
-                                            >
-                                                <Download className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -2044,18 +2095,20 @@ const UploadDocumentModal = ({ candidate, onClose, onSave }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!docFile) {
+            toast.error("Please select a file to upload");
+            return;
+        }
         if (!name.trim()) {
             toast.error("Document name required");
             return;
         }
         setIsUploading(true);
         let docDataUrl = null;
-        if (docFile) {
-            try {
-                docDataUrl = await fileToDataUrl(docFile);
-            } catch {
-                docDataUrl = null;
-            }
+        try {
+            docDataUrl = await fileToDataUrl(docFile);
+        } catch {
+            docDataUrl = null;
         }
         await onSave({
             name: name.trim(),
