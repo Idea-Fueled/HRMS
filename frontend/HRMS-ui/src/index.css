@@ -1,13 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+@theme {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --text-2xs: 0.75rem; /* 12px */
+    --text-xs: 0.84375rem; /* 13.5px */
+    --text-xs--line-height: 1.25rem;
+    --text-sm: 0.9375rem; /* 15px */
+    --text-sm--line-height: 1.4rem;
+    --text-base: 1.0625rem; /* 17px */
+    --text-base--line-height: 1.625rem;
+    --text-lg: 1.1875rem; /* 19px */
+    --text-xl: 1.375rem; /* 22px */
+    --text-2xl: 1.625rem; /* 26px */
+    --text-3xl: 2rem; /* 32px */
+}
+
+/* ─────────────────────────────────────────────
+   GLOBAL TYPOGRAPHY & ROOT FONT SIZING
+───────────────────────────────────────────── */
 html {
-    font-size: 16px;
+    font-size: 16.5px;
+    scroll-behavior: smooth;
 }
 
 @media (min-width: 768px) {
     html {
-        font-size: 17px;
+        font-size: 17.5px;
     }
 }
 
@@ -17,12 +36,18 @@ html {
     }
 }
 
+@media (min-width: 1536px) {
+    html {
+        font-size: 18.5px;
+    }
+}
+
 body,
 button,
 input,
 select,
 textarea {
-    font-family: "Inter", sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-weight: 500;
     line-height: 1.6;
 
@@ -45,34 +70,33 @@ textarea {
     font-feature-settings: "zero" 0 !important;
 }
 
-/* Better heading readability */
-
+/* ─────────────────────────────────────────────
+   READABLE HEADINGS & TEXT HIERARCHY
+───────────────────────────────────────────── */
 h1 {
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: -0.03em;
-    line-height: 1.2;
+    line-height: 1.25;
 }
 
 h2 {
     font-weight: 700;
     letter-spacing: -0.025em;
-    line-height: 1.25;
+    line-height: 1.3;
 }
 
 h3 {
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.02em;
-    line-height: 1.3;
+    line-height: 1.35;
 }
 
 h4,
 h5,
 h6 {
     font-weight: 600;
-    line-height: 1.35;
+    line-height: 1.4;
 }
-
-/* Better paragraph readability */
 
 p,
 span,
@@ -83,45 +107,76 @@ li {
     line-height: 1.55;
 }
 
-/* Forms */
-
+/* ─────────────────────────────────────────────
+   GLOBAL FORMS & INPUT READABILITY
+───────────────────────────────────────────── */
 input,
 select,
 textarea {
-    font-size: 0.95rem;
+    font-size: 0.925rem !important;
     font-weight: 500;
 }
 
 input::placeholder,
 textarea::placeholder {
     font-weight: 400;
+    color: #9CA3AF;
 }
 
-/* Tables */
+label {
+    font-size: 0.825rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em;
+}
 
+/* ─────────────────────────────────────────────
+   TABLES & DATA GRIDS
+───────────────────────────────────────────── */
 table {
-    font-size: 0.95rem;
+    font-size: 0.925rem;
 }
 
 th {
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-weight: 700 !important;
+    letter-spacing: 0.03em !important;
+    font-size: 0.825rem !important;
 }
 
 td {
     font-weight: 500;
+    font-size: 0.9rem !important;
 }
 
-/* Buttons - Premium Card-Matching 3D Hover & Click Animation */
+/* ─────────────────────────────────────────────
+   TINY TEXT AUTOMATIC PROMOTION (ACCESSIBILITY)
+   Ensures hardcoded 9px, 10px, 11px classes scale
+   to comfortable, legible 12.5px - 13.5px.
+───────────────────────────────────────────── */
+.text-\[9px\], 
+.text-\[9\.5px\], 
+.text-\[10px\], 
+.text-\[10\.5px\], 
+.text-\[11px\] {
+    font-size: 0.8125rem !important; /* ~13px */
+    line-height: 1.25rem !important;
+}
 
+.text-\[12px\],
+.text-xs {
+    font-size: 0.875rem !important; /* ~14px */
+    line-height: 1.35rem !important;
+}
+
+/* Buttons - Premium 3D Hover & Click Animation */
 button {
     font-weight: 600;
+    font-size: 0.875rem;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
 }
 
 button:hover:not(:disabled) {
-    transform: translateY(-2.5px);
+    transform: translateY(-2px);
     box-shadow: 0 6px 18px rgba(45, 121, 199, 0.18), 0 3px 8px rgba(15, 23, 42, 0.08);
 }
 
@@ -138,18 +193,9 @@ button:disabled {
 }
 
 /* Images */
-
 img {
     max-width: 100%;
     height: auto;
-}
-
-/* Better box model */
-
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
 }
 
 /* Premium Enterprise SaaS Card styles */
