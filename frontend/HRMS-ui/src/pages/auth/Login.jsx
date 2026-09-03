@@ -94,11 +94,14 @@ const Login = () => {
                     />
                 </div>
 
-                {/* Heading */}
+                {/* Heading & Tagline */}
                 <div className="text-center mb-8">
                     <h2 className="text-[#1E1E1E] text-2xl sm:text-[26px] font-bold tracking-tight">
                         Access your workspace
                     </h2>
+                    <p className="text-slate-500 text-[13px] font-medium mt-1.5 leading-normal">
+                        Sign in to manage your workday, attendance, and team.
+                    </p>
                 </div>
 
                 {/* Login Form */}
