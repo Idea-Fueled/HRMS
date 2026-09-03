@@ -83,21 +83,21 @@ const Login = () => {
             <div className="absolute top-[-10%] left-[-10%] w-[45%] h-[45%] bg-[#2D79C7]/8 rounded-full blur-[140px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#1F5EA8]/8 rounded-full blur-[160px] pointer-events-none" />
 
-            <div className="w-full max-w-[480px] bg-white border border-slate-200/90 rounded-[24px] shadow-[0_12px_44px_rgba(15,23,42,0.06),0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_52px_rgba(45,121,199,0.09)] transition-all duration-300 p-8 sm:p-10 relative z-10">
+            <div className="w-full max-w-[440px] sm:max-w-[460px] relative z-10">
 
                 {/* Logo and Brand Section */}
                 <div className="flex flex-col items-center text-center mb-6">
                     <img
                         src={ideaFueledLogo}
                         alt="Idea Fueled logo"
-                        className="h-11 sm:h-12 object-contain transition-transform duration-300 hover:scale-105"
+                        className="h-11 sm:h-12 object-contain"
                     />
                 </div>
 
-                {/* Heading (No tagline as requested) */}
+                {/* Heading */}
                 <div className="text-center mb-8">
-                    <h2 className="text-[#1E1E1E] text-2xl font-bold tracking-tight">
-                        Sign In
+                    <h2 className="text-[#1E1E1E] text-2xl sm:text-[26px] font-bold tracking-tight">
+                        Access your workspace
                     </h2>
                 </div>
 
@@ -119,7 +119,7 @@ const Login = () => {
                                 }}
                                 placeholder="Enter your email"
                                 disabled={loading}
-                                className={`w-full pl-11 pr-4 py-3.5 bg-slate-50/70 hover:bg-slate-50 focus:bg-white border ${errors.email ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                                className={`w-full pl-11 pr-4 py-3.5 bg-white border ${errors.email ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
                             />
                         </div>
                         {errors.email && (
@@ -151,7 +151,7 @@ const Login = () => {
                                 }}
                                 placeholder="••••••••"
                                 disabled={loading}
-                                className={`w-full pl-11 pr-11 py-3.5 bg-slate-50/70 hover:bg-slate-50 focus:bg-white border ${errors.password ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                                className={`w-full pl-11 pr-11 py-3.5 bg-white border ${errors.password ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
                             />
                             <button
                                 type="button"
