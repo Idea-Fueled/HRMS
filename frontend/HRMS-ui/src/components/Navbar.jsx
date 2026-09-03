@@ -608,8 +608,8 @@ const Navbar = ({ onToggleSidebar }) => {
             {/* Right — role badge, notifications, profile */}
             <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
 
-                {/* Role badge */}
-                {user?.role && (
+                {/* Role badge (Hidden for standard employees) */}
+                {user?.role && user.role.toLowerCase() !== "employee" && (
                     <div className={`h-9 px-3 rounded-[12px] border text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs ${
                         ROLE_CONFIG[user.role?.toLowerCase()]?.badgeCls || "bg-slate-100 text-slate-700 border-slate-200"
                     }`}>
