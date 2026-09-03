@@ -78,41 +78,38 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-4 select-none relative overflow-hidden">
-            {/* Decorative background gradients (matching dashboard design language) */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#2D79C7]/5 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-[#1F5EA8]/5 rounded-full blur-[140px] pointer-events-none" />
+        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-4 sm:p-6 select-none relative overflow-hidden">
+            {/* Decorative ambient background glows */}
+            <div className="absolute top-[-10%] left-[-10%] w-[45%] h-[45%] bg-[#2D79C7]/8 rounded-full blur-[140px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#1F5EA8]/8 rounded-full blur-[160px] pointer-events-none" />
 
-            <div className="w-full max-w-[440px] bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_4px_24px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_32px_rgba(45,121,199,0.06)] transition-all duration-300 p-8 relative z-10">
+            <div className="w-full max-w-[480px] bg-white border border-slate-200/90 rounded-[24px] shadow-[0_12px_44px_rgba(15,23,42,0.06),0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_52px_rgba(45,121,199,0.09)] transition-all duration-300 p-8 sm:p-10 relative z-10">
 
                 {/* Logo and Brand Section */}
                 <div className="flex flex-col items-center text-center mb-6">
                     <img
                         src={ideaFueledLogo}
                         alt="Idea Fueled logo"
-                        className="h-10 object-contain"
+                        className="h-11 sm:h-12 object-contain transition-transform duration-300 hover:scale-105"
                     />
                 </div>
 
-                {/* Heading & Description */}
-                <div className="text-center mb-6">
-                    <h2 className="text-[#1E1E1E] text-[18px] font-extrabold tracking-tight">
-                        Access Your Portal
+                {/* Heading (No tagline as requested) */}
+                <div className="text-center mb-8">
+                    <h2 className="text-[#1E1E1E] text-2xl font-bold tracking-tight">
+                        Sign In
                     </h2>
-                    <p className="text-gray-500 text-[12px] font-medium leading-relaxed mt-2 max-w-sm mx-auto">
-                        Sign in to manage your workday, track attendance, and stay updated with organizational activities.
-                    </p>
                 </div>
 
                 {/* Login Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Email Address */}
-                    <div className="space-y-1.5">
-                        <label className="text-gray-500 text-[11px] font-bold uppercase tracking-wider block">
+                    <div className="space-y-2">
+                        <label className="text-slate-600 text-[11.5px] font-bold uppercase tracking-wider block">
                             Email Address
                         </label>
                         <div className="relative flex items-center group">
-                            <Mail className="w-4 h-4 text-gray-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors" />
+                            <Mail className="w-4.5 h-4.5 text-slate-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
                             <input
                                 type="email"
                                 value={email}
@@ -122,7 +119,7 @@ const Login = () => {
                                 }}
                                 placeholder="Enter your email"
                                 disabled={loading}
-                                className={`w-full pl-11 pr-4 py-3 bg-[#F8FAFC] border ${errors.email ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/10" : "border-[#E5E7EB] focus:border-[#2D79C7] focus:ring-[#2D79C7]/10"} rounded-[12px] text-[13px] text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200`}
+                                className={`w-full pl-11 pr-4 py-3.5 bg-slate-50/70 hover:bg-slate-50 focus:bg-white border ${errors.email ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                             />
                         </div>
                         {errors.email && (
@@ -134,17 +131,17 @@ const Login = () => {
                     </div>
 
                     {/* Password */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                            <label className="text-gray-500 text-[11px] font-bold uppercase tracking-wider">
+                            <label className="text-slate-600 text-[11.5px] font-bold uppercase tracking-wider">
                                 Password
                             </label>
-                            <a href="#forgot" className="text-[#2D79C7] hover:underline text-[11px] font-bold transition-all">
+                            <a href="#forgot" className="text-[#2D79C7] hover:text-[#1F5EA8] hover:underline text-[12px] font-bold transition-all">
                                 Forgot password?
                             </a>
                         </div>
                         <div className="relative flex items-center group">
-                            <Lock className="w-4 h-4 text-gray-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors" />
+                            <Lock className="w-4.5 h-4.5 text-slate-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
                             <input
                                 type={showPassword ? "text" : "password"}
                                 value={password}
@@ -154,14 +151,14 @@ const Login = () => {
                                 }}
                                 placeholder="••••••••"
                                 disabled={loading}
-                                className={`w-full pl-11 pr-11 py-3 bg-[#F8FAFC] border ${errors.password ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/10" : "border-[#E5E7EB] focus:border-[#2D79C7] focus:ring-[#2D79C7]/10"} rounded-[12px] text-[13px] text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200`}
+                                className={`w-full pl-11 pr-11 py-3.5 bg-slate-50/70 hover:bg-slate-50 focus:bg-white border ${errors.password ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none cursor-pointer"
+                                className="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
                             >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                             </button>
                         </div>
                         {errors.password && (
@@ -173,20 +170,22 @@ const Login = () => {
                     </div>
 
                     {/* Sign In Button */}
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] active:scale-[0.99] disabled:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed text-white font-bold text-[13px] py-3.5 rounded-[12px] flex items-center justify-center gap-2 shadow-sm shadow-[#2D79C7]/10 hover:shadow-md transition-all duration-200 cursor-pointer"
-                    >
-                        {loading ? (
-                            <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                <span>Sign In</span>
-                                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                            </>
-                        )}
-                    </button>
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] active:scale-[0.99] disabled:bg-slate-100 disabled:text-slate-300 disabled:cursor-not-allowed text-white font-bold text-[14px] py-3.5 rounded-[14px] flex items-center justify-center gap-2.5 shadow-[0_4px_14px_rgba(45,121,199,0.25)] hover:shadow-[0_6px_20px_rgba(45,121,199,0.35)] transition-all duration-200 cursor-pointer"
+                        >
+                            {loading ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <span>Sign In</span>
+                                    <ArrowRight className="w-4.5 h-4.5 stroke-[2.5]" />
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
