@@ -132,17 +132,17 @@ label {
 /* ─────────────────────────────────────────────
    TABLES & DATA GRIDS
 ───────────────────────────────────────────── */
-table {
+table:not(#payslip-pdf-container table) {
     font-size: 0.925rem;
 }
 
-th {
+table:not(#payslip-pdf-container table) th {
     font-weight: 700 !important;
     letter-spacing: 0.03em !important;
     font-size: 0.825rem !important;
 }
 
-td {
+table:not(#payslip-pdf-container table) td {
     font-weight: 500;
     font-size: 0.9rem !important;
 }
