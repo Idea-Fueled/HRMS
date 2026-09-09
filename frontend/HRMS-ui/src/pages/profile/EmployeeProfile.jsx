@@ -1492,25 +1492,20 @@ export const EmployeeProfile = () => {
 
                     {/* Today's Presence Status Card */}
                     <div className="premium-3d-card p-5 bg-gradient-to-r from-blue-50/50 via-slate-50/40 to-white border border-blue-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5">
-                            <div className="w-11 h-11 rounded-xl bg-white shadow-xs border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0">
-                                <Sparkles className="w-5 h-5" />
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">Today&apos;s Presence Status</h4>
+                                <span className="text-[10px] font-bold bg-white text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full font-mono">
+                                    {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
+                                </span>
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h4 className="text-[#1E1E1E] text-xs font-extrabold">Today&apos;s Presence Status</h4>
-                                    <span className="text-[10px] font-bold bg-white text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full font-mono">
-                                        {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
-                                    </span>
-                                </div>
-                                <p className="text-gray-500 text-[11px] font-medium mt-0.5">
-                                    {todayAttendanceRec?.firstClockIn ? (
-                                        <>First Clocked In at <span className="font-bold text-[#1E1E1E]">{new Date(todayAttendanceRec.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}</span> • Mode: <span className="font-bold text-[#2D79C7]">{todayAttendanceRec.workMode || "Office"}</span></>
-                                    ) : (
-                                        "No clock-in activity recorded for today yet."
-                                    )}
-                                </p>
-                            </div>
+                            <p className="text-gray-500 text-[11px] font-medium mt-0.5">
+                                {todayAttendanceRec?.firstClockIn ? (
+                                    <>First Clocked In at <span className="font-bold text-[#1E1E1E]">{new Date(todayAttendanceRec.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}</span> • Mode: <span className="font-bold text-[#2D79C7]">{todayAttendanceRec.workMode || "Office"}</span></>
+                                ) : (
+                                    "No clock-in activity recorded for today yet."
+                                )}
+                            </p>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -1519,7 +1514,7 @@ export const EmployeeProfile = () => {
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : "bg-gray-100 text-gray-500 border-gray-200"
                             }`}>
-                                {todayAttendanceRec?.firstClockIn ? "● Checked In" : "○ Not Checked In"}
+                                {todayAttendanceRec?.firstClockIn ? "● Clocked In" : "○ Not Clocked In"}
                             </span>
                         </div>
                     </div>
@@ -1671,7 +1666,7 @@ export const EmployeeProfile = () => {
                         )}
                     </div>
 
-                    {/* 4 Leave Quotas Grid */}
+                    {/* 4 Leave Quotas Grid (Circular Pie Charts) */}
                     {(() => {
                         const bal = leaveSummaryData?.leaveBalance || {};
                         const casualTotal = bal.casual?.total ?? 6;
@@ -1691,38 +1686,83 @@ export const EmployeeProfile = () => {
                         const partialAvail = Math.max(0, partialTotal - partialUsed);
 
                         const quotas = [
-                            { label: "Casual Leave", avail: casualAvail, used: casualUsed, total: casualTotal, color: "text-sky-600", bg: "bg-sky-500", border: "border-sky-200" },
-                            { label: "Sick Leave", avail: sickAvail, used: sickUsed, total: sickTotal, color: "text-amber-600", bg: "bg-amber-500", border: "border-amber-200" },
-                            { label: "Earned Leave", avail: earnedAvail, used: earnedUsed, total: earnedTotal, color: "text-emerald-600", bg: "bg-emerald-500", border: "border-emerald-200" },
-                            { label: "Partial Leave", avail: partialAvail, used: partialUsed, total: partialTotal, color: "text-purple-600", bg: "bg-purple-500", border: "border-purple-200" }
+                            { label: "Casual Leave", avail: casualAvail, used: casualUsed, total: casualTotal, color: "#38BDF8", textColor: "text-sky-600" },
+                            { label: "Sick Leave", avail: sickAvail, used: sickUsed, total: sickTotal, color: "#F59E0B", textColor: "text-amber-600" },
+                            { label: "Earned Leave", avail: earnedAvail, used: earnedUsed, total: earnedTotal, color: "#10B981", textColor: "text-emerald-600" },
+                            { label: "Partial Leave", avail: partialAvail, used: partialUsed, total: partialTotal, color: "#A855F7", textColor: "text-purple-600" }
                         ];
+
+                        const radius = 54;
+                        const strokeWidth = 11;
+                        const circumference = 2 * Math.PI * radius;
 
                         return (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {quotas.map((q, idx) => {
                                     const pct = q.total > 0 ? Math.min(100, Math.round((q.avail / q.total) * 100)) : 0;
+                                    const strokeDashoffset = circumference - (pct / 100) * circumference;
+
                                     return (
-                                                <div key={idx} className="premium-3d-card p-5 space-y-3 relative overflow-hidden">
+                                        <div key={idx} className="premium-3d-card p-5 flex flex-col justify-between min-h-[310px] space-y-3 relative">
+                                            {/* Header */}
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs font-extrabold text-[#1E1E1E]">{q.label}</span>
-                                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${q.color} bg-gray-50 border border-gray-150`}>
+                                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">{q.label}</h4>
+                                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${q.textColor} bg-gray-50 border border-gray-150`}>
                                                     {pct}% Left
                                                 </span>
                                             </div>
 
-                                            <div className="space-y-1">
-                                                <div className="flex items-baseline justify-between">
-                                                    <span className="text-2xl font-black text-[#1E1E1E]">{q.avail}</span>
-                                                    <span className="text-xs font-bold text-gray-400 font-mono">/ {q.total} Total</span>
-                                                </div>
-                                                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                                                    <div className={`h-full ${q.bg} transition-all duration-500 rounded-full`} style={{ width: `${pct}%` }} />
+                                            {/* Circular Progress Donut / Pie */}
+                                            <div className="flex justify-center items-center py-2 relative">
+                                                <div className="relative w-32 h-32 flex items-center justify-center shrink-0">
+                                                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 130 130">
+                                                        {/* Background track */}
+                                                        <circle
+                                                            cx="65"
+                                                            cy="65"
+                                                            r={radius}
+                                                            className="stroke-gray-100 fill-none"
+                                                            strokeWidth={strokeWidth}
+                                                        />
+                                                        {/* Active progress stroke */}
+                                                        <circle
+                                                            cx="65"
+                                                            cy="65"
+                                                            r={radius}
+                                                            fill="none"
+                                                            stroke={q.color}
+                                                            strokeWidth={strokeWidth}
+                                                            strokeDasharray={circumference}
+                                                            strokeDashoffset={strokeDashoffset}
+                                                            strokeLinecap="round"
+                                                            className="transition-all duration-700 ease-out"
+                                                        />
+                                                    </svg>
+                                                    <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none select-none">
+                                                        <span className="text-[#1E1E1E] text-base font-black leading-none">
+                                                            {q.avail} <span className="text-[11px] font-extrabold text-gray-500">Days</span>
+                                                        </span>
+                                                        <span className="text-gray-400 text-[8.5px] font-bold mt-1 uppercase tracking-wider">
+                                                            Available
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-semibold pt-2 border-t border-gray-100">
-                                                <span>Consumed: <strong className="text-gray-800">{q.used}</strong></span>
-                                                <span>Accrued: <strong className="text-gray-800">{q.total}</strong></span>
+                                            {/* Bottom Metrics Grid */}
+                                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100 text-center select-none">
+                                                <div>
+                                                    <span className="text-[9.5px] text-gray-400 font-extrabold uppercase block">Consumed</span>
+                                                    <span className="text-xs font-extrabold text-gray-800 font-mono mt-0.5 block">{q.used}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[9.5px] text-gray-400 font-extrabold uppercase block">Total</span>
+                                                    <span className="text-xs font-extrabold text-[#2D79C7] font-mono mt-0.5 block">{q.total}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[9.5px] text-gray-400 font-extrabold uppercase block">Accrued</span>
+                                                    <span className="text-xs font-extrabold text-emerald-600 font-mono mt-0.5 block">{q.total}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     );
