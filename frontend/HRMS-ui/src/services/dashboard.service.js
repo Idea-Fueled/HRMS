@@ -60,9 +60,14 @@ export const getLeaveHistory = async (employeeId) => {
     return API.get(`/leaves/history/${employeeId}`)
 }
 
+export const updateEmployeeLeaveBalance = async (employeeId, balanceData) => {
+    return API.put(`/leaves/balance/${employeeId}`, balanceData)
+}
+
 export const getAwayToday = async () => {
     return API.get("/users/away-today")
 }
+
 
 export const getPeopleEvents = async () => {
     return API.get("/users/people-events")

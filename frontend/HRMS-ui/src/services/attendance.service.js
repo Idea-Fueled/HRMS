@@ -23,3 +23,16 @@ export const clockOutAttendance = async (employeeId) => {
 export const getTodayAttendanceStatus = async (employeeId) => {
     return API.get(`/attendance/today/${employeeId}`);
 };
+
+export const getEmployeeAttendanceHistory = async (employeeId, month = "", year = "") => {
+    try {
+        const response = await API.get(`/attendance/history/${employeeId}`, {
+            params: { month, year }
+        });
+        return response;
+    } catch (error) {
+        console.warn("Backend attendance history API unavailable:", error);
+        return { data: { success: false, attendances: [] } };
+    }
+};
+

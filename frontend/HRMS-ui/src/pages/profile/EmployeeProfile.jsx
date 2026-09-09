@@ -6,7 +6,9 @@ import {
     Laptop, Mouse, ShieldCheck, Award, FileText,
     Heart, GraduationCap, PhoneCall, History, Loader2, Camera,
     Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight,
-    Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap
+    Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap,
+    Umbrella, CheckCircle2, AlertCircle, SlidersHorizontal, Sparkles, Hourglass, RotateCcw, FileSpreadsheet,
+    ChevronLeft, ChevronRight, CheckCircle, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
@@ -15,6 +17,9 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
 import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
 import { getAllAssets, getAssignedAssets } from "../../services/asset.service";
+import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
+import { getEmployeeAttendanceHistory, getTodayAttendanceStatus } from "../../services/attendance.service";
+
 
 /* ─────────────────────────────────────────────
    HELPERS & DEFAULT SEEDS
@@ -114,6 +119,26 @@ export const EmployeeProfile = () => {
     // Confirm dialog state for deletions
     const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, title: "", message: "", action: null });
 
+    // Attendance State for this specific employee
+    const [attendanceLogs, setAttendanceLogs] = useState([]);
+    const [loadingAttendance, setLoadingAttendance] = useState(false);
+    const [attendanceMonth, setAttendanceMonth] = useState(new Date().getMonth());
+    const [attendanceYear, setAttendanceYear] = useState(new Date().getFullYear());
+    const [todayAttendanceRec, setTodayAttendanceRec] = useState(null);
+
+    // Leaves State for this specific employee
+    const [leaveSummaryData, setLeaveSummaryData] = useState(null);
+    const [leaveHistoryList, setLeaveHistoryList] = useState([]);
+    const [loadingLeaves, setLoadingLeaves] = useState(false);
+    const [showEditLeaveModal, setShowEditLeaveModal] = useState(false);
+    const [savingLeaveBalance, setSavingLeaveBalance] = useState(false);
+    const [editLeaveForm, setEditLeaveForm] = useState({
+        casual: 6,
+        sick: 6,
+        earned: 12,
+        partial: 1
+    });
+
     // Edit form fields
     const [editForm, setEditForm] = useState({
         phoneNumber: "",
@@ -172,6 +197,9 @@ export const EmployeeProfile = () => {
     const canEdit = isOwnProfile || ((userRole === "global_admin" || userRole === "admin" || userRole === "hr") && isAssigned);
     const canDelete = (userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned));
     const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
+    const canViewAttendanceAndLeaves = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
+    const canEditLeaves = userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
+
 
     // Fetch employee data from MongoDB
     const fetchProfile = useCallback(async () => {
@@ -205,6 +233,107 @@ export const EmployeeProfile = () => {
     useEffect(() => {
         fetchProfile();
     }, [fetchProfile]);
+
+    // Attendance Data Fetching for this specific employee
+    const fetchEmployeeAttendance = useCallback(async () => {
+        const empId = employee?._id || id;
+        if (!empId) return;
+        setLoadingAttendance(true);
+        try {
+            const res = await getEmployeeAttendanceHistory(empId, attendanceMonth, attendanceYear);
+            if (res.data?.success && Array.isArray(res.data.attendances)) {
+                setAttendanceLogs(res.data.attendances);
+            } else {
+                setAttendanceLogs([]);
+            }
+        } catch (err) {
+            console.error("Fetch employee attendance history error:", err);
+            setAttendanceLogs([]);
+        } finally {
+            setLoadingAttendance(false);
+        }
+    }, [employee, id, attendanceMonth, attendanceYear]);
+
+    const fetchTodayAttendance = useCallback(async () => {
+        const empId = employee?._id || id;
+        if (!empId) return;
+        try {
+            const res = await getTodayAttendanceStatus(empId);
+            if (res.data?.success && res.data.attendance) {
+                setTodayAttendanceRec(res.data.attendance);
+            } else {
+                setTodayAttendanceRec(null);
+            }
+        } catch (err) {
+            console.error("Fetch today attendance error:", err);
+        }
+    }, [employee, id]);
+
+    // Leaves Data Fetching for this specific employee
+    const fetchEmployeeLeaves = useCallback(async () => {
+        const empId = employee?._id || id;
+        if (!empId) return;
+        setLoadingLeaves(true);
+        try {
+            const [summaryRes, historyRes] = await Promise.all([
+                getLeaveSummary(empId).catch(() => ({ data: { success: false } })),
+                getLeaveHistory(empId).catch(() => ({ data: { success: false } }))
+            ]);
+
+            if (summaryRes.data?.success && summaryRes.data.leaveSummary) {
+                setLeaveSummaryData(summaryRes.data.leaveSummary);
+                const bal = summaryRes.data.leaveSummary.leaveBalance || {};
+                setEditLeaveForm({
+                    casual: bal.casual?.total ?? 6,
+                    sick: bal.sick?.total ?? 6,
+                    earned: bal.earned?.total ?? 12,
+                    partial: bal.partial?.total ?? 1
+                });
+            }
+            if (historyRes.data?.success && Array.isArray(historyRes.data.leaves)) {
+                setLeaveHistoryList(historyRes.data.leaves);
+            } else {
+                setLeaveHistoryList([]);
+            }
+        } catch (err) {
+            console.error("Fetch employee leaves error:", err);
+        } finally {
+            setLoadingLeaves(false);
+        }
+    }, [employee, id]);
+
+    useEffect(() => {
+        if (activeTab === "Attendance" && employee) {
+            fetchEmployeeAttendance();
+            fetchTodayAttendance();
+        } else if (activeTab === "Leaves" && employee) {
+            fetchEmployeeLeaves();
+        }
+    }, [activeTab, employee, fetchEmployeeAttendance, fetchTodayAttendance, fetchEmployeeLeaves]);
+
+    // Save Leave Balance adjustment (Admin / Assigned HR)
+    const handleSaveLeaveBalance = async (e) => {
+        e.preventDefault();
+        const empId = employee?._id || id;
+        if (!empId) return;
+        setSavingLeaveBalance(true);
+        try {
+            const res = await updateEmployeeLeaveBalance(empId, editLeaveForm);
+            if (res.data?.success) {
+                toast.success("Leave balance updated successfully!");
+                setShowEditLeaveModal(false);
+                fetchEmployeeLeaves();
+            } else {
+                toast.error(res.data?.message || "Failed to update leave balance.");
+            }
+        } catch (err) {
+            console.error("Update leave balance error:", err);
+            toast.error("Error updating leave balance.");
+        } finally {
+            setSavingLeaveBalance(false);
+        }
+    };
+
 
     // Populate edit drawer form
     const openEditDrawer = () => {
@@ -685,13 +814,28 @@ export const EmployeeProfile = () => {
     const aboutMeText = employee?.aboutMe || "Dedicated team member at Idea Fueled HRMS, focused on delivering strategic project milestones, fostering cross-departmental collaboration, and driving continuous process improvements.";
 
     // Tabs definition
-    const allProfileTabs = useMemo(() => [
-        { key: "Personal", label: "Personal", icon: User },
-        { key: "Employment", label: "Employment", icon: Briefcase },
-        { key: "Documents", label: "Documents", icon: FileText },
-        { key: "Assets", label: "Assets", icon: Laptop },
-        { key: "Activity", label: "Activity", icon: History },
-    ], []);
+    const allProfileTabs = useMemo(() => {
+        const base = [
+            { key: "Personal", label: "Personal", icon: User },
+            { key: "Employment", label: "Employment", icon: Briefcase },
+        ];
+
+        if (canViewAttendanceAndLeaves) {
+            base.push(
+                { key: "Attendance", label: "Attendance", icon: Clock },
+                { key: "Leaves", label: "Leaves", icon: Umbrella }
+            );
+        }
+
+        base.push(
+            { key: "Documents", label: "Documents", icon: FileText },
+            { key: "Assets", label: "Assets", icon: Laptop },
+            { key: "Activity", label: "Activity", icon: History }
+        );
+
+        return base;
+    }, [canViewAttendanceAndLeaves]);
+
 
     const profileTabs = useMemo(() => {
         if (canViewConfidential) return allProfileTabs;
@@ -1212,7 +1356,478 @@ export const EmployeeProfile = () => {
             )}
 
             {/* ─────────────────────────────────────────────
-               TAB 4: DOCUMENTS
+               TAB 3: ATTENDANCE
+            ───────────────────────────────────────────── */}
+            {activeTab === "Attendance" && (
+                <div className="space-y-6">
+                    {/* Attendance Controls & Month Selector */}
+                    <div className="premium-3d-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0">
+                                <Clock className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <span>Monthly Attendance Log</span>
+                                    <span className="text-[11px] font-bold text-[#2D79C7] bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md font-mono">
+                                        {new Date(attendanceYear, attendanceMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                                    </span>
+                                </h3>
+                                <p className="text-gray-400 text-xs font-medium mt-0.5">
+                                    Punch logs, shift tracking, and work hours for {empName}.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (attendanceMonth === 0) {
+                                        setAttendanceMonth(11);
+                                        setAttendanceYear(prev => prev - 1);
+                                    } else {
+                                        setAttendanceMonth(prev => prev - 1);
+                                    }
+                                }}
+                                className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
+                                title="Previous Month"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+
+                            <select
+                                value={attendanceMonth}
+                                onChange={(e) => setAttendanceMonth(Number(e.target.value))}
+                                className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                            >
+                                {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, idx) => (
+                                    <option key={idx} value={idx}>{m}</option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={attendanceYear}
+                                onChange={(e) => setAttendanceYear(Number(e.target.value))}
+                                className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                            >
+                                {[2024, 2025, 2026, 2027].map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (attendanceMonth === 11) {
+                                        setAttendanceMonth(0);
+                                        setAttendanceYear(prev => prev + 1);
+                                    } else {
+                                        setAttendanceMonth(prev => prev + 1);
+                                    }
+                                }}
+                                className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
+                                title="Next Month"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Attendance KPI Cards */}
+                    {(() => {
+                        const totalLogs = attendanceLogs.length;
+                        const presentCount = attendanceLogs.filter(l => l.status === "present" || l.firstClockIn).length;
+                        const wfhCount = attendanceLogs.filter(l => l.workMode === "Work From Home").length;
+                        const totalMins = attendanceLogs.reduce((acc, l) => acc + (l.totalWorkMinutes || 0), 0);
+                        const avgHrsPerDay = presentCount > 0 ? (totalMins / (presentCount * 60)).toFixed(1) : "0.0";
+                        const onTimeCount = attendanceLogs.filter(l => {
+                            if (!l.firstClockIn) return false;
+                            const d = new Date(l.firstClockIn);
+                            const mins = d.getHours() * 60 + d.getMinutes();
+                            return mins <= 10 * 60;
+                        }).length;
+                        const onTimeRate = presentCount > 0 ? Math.round((onTimeCount / presentCount) * 100) : 100;
+
+                        return (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="premium-3d-card p-4.5 space-y-1">
+                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">Avg Hours / Day</span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl font-black text-[#1E1E1E]">{avgHrsPerDay}</span>
+                                        <span className="text-xs font-bold text-gray-500">hrs/day</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-medium">Standard 8.0h Target</p>
+                                </div>
+
+                                <div className="premium-3d-card p-4.5 space-y-1">
+                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">On-Time Rate</span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl font-black text-[#1E1E1E]">{onTimeRate}%</span>
+                                        <span className="text-xs font-bold text-emerald-600">Punctuality</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-medium">{onTimeCount} of {presentCount} arrivals on time</p>
+                                </div>
+
+                                <div className="premium-3d-card p-4.5 space-y-1">
+                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">Present Days</span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl font-black text-[#2D79C7]">{presentCount}</span>
+                                        <span className="text-xs font-bold text-gray-500">Days</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-medium">In selected month</p>
+                                </div>
+
+                                <div className="premium-3d-card p-4.5 space-y-1">
+                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">WFH / Remote</span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl font-black text-amber-600">{wfhCount}</span>
+                                        <span className="text-xs font-bold text-gray-500">Days</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-medium">Approved Remote work</p>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* Today's Presence Status Card */}
+                    <div className="premium-3d-card p-5 bg-gradient-to-r from-blue-50/50 via-slate-50/40 to-white border border-blue-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-11 h-11 rounded-xl bg-white shadow-xs border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0">
+                                <Sparkles className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h4 className="text-[#1E1E1E] text-xs font-extrabold">Today&apos;s Presence Status</h4>
+                                    <span className="text-[10px] font-bold bg-white text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full font-mono">
+                                        {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
+                                    </span>
+                                </div>
+                                <p className="text-gray-500 text-[11px] font-medium mt-0.5">
+                                    {todayAttendanceRec?.firstClockIn ? (
+                                        <>First Clocked In at <span className="font-bold text-[#1E1E1E]">{new Date(todayAttendanceRec.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}</span> • Mode: <span className="font-bold text-[#2D79C7]">{todayAttendanceRec.workMode || "Office"}</span></>
+                                    ) : (
+                                        "No clock-in activity recorded for today yet."
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border ${
+                                todayAttendanceRec?.firstClockIn
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : "bg-gray-100 text-gray-500 border-gray-200"
+                            }`}>
+                                {todayAttendanceRec?.firstClockIn ? "● Checked In" : "○ Not Checked In"}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Monthly Attendance Table */}
+                    <div className="premium-3d-card p-5 space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h4 className="text-[#1E1E1E] text-xs font-extrabold flex items-center gap-2">
+                                <FileSpreadsheet className="w-4 h-4 text-[#2D79C7]" />
+                                <span>Attendance Logs & Work Hours</span>
+                            </h4>
+                            <span className="text-gray-400 text-xs font-bold">
+                                {attendanceLogs.length} Record{attendanceLogs.length !== 1 ? "s" : ""}
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto w-full">
+                            <table className="w-full border-collapse text-left min-w-[760px] whitespace-nowrap">
+                                <thead>
+                                    <tr className="border-b border-gray-200 bg-[#F8FAFC] text-gray-500 text-[10px] uppercase font-extrabold tracking-wider select-none">
+                                        <th className="py-3 px-4 font-extrabold">Date</th>
+                                        <th className="py-3 px-4 font-extrabold">Shift</th>
+                                        <th className="py-3 px-4 font-extrabold">Clock In</th>
+                                        <th className="py-3 px-4 font-extrabold">Clock Out</th>
+                                        <th className="py-3 px-4 font-extrabold">Work Hours</th>
+                                        <th className="py-3 px-4 font-extrabold">Break Time</th>
+                                        <th className="py-3 px-4 font-extrabold">Work Mode</th>
+                                        <th className="py-3 px-4 font-extrabold text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-xs font-semibold text-gray-700">
+                                    {loadingAttendance ? (
+                                        <tr>
+                                            <td colSpan="8" className="py-10 text-center text-gray-400 font-bold">
+                                                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#2D79C7]" />
+                                                <span>Loading attendance records...</span>
+                                            </td>
+                                        </tr>
+                                    ) : attendanceLogs.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="8" className="py-10 text-center text-gray-400 font-bold select-none">
+                                                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto mb-2">
+                                                    <Clock className="w-5 h-5" />
+                                                </div>
+                                                <p>No attendance logs recorded for this month.</p>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        attendanceLogs.map((log, idx) => {
+                                            const logDate = new Date(log.date || log.createdAt);
+                                            const formattedDate = logDate.toLocaleDateString("en-IN", {
+                                                weekday: "short",
+                                                day: "2-digit",
+                                                month: "short"
+                                            });
+                                            const clockInStr = log.firstClockIn
+                                                ? new Date(log.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+                                                : "--";
+                                            const clockOutStr = log.lastClockOut
+                                                ? new Date(log.lastClockOut).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+                                                : "--";
+                                            const workMins = log.totalWorkMinutes || 0;
+                                            const workHrs = Math.floor(workMins / 60);
+                                            const remMins = workMins % 60;
+                                            const workHoursStr = `${workHrs}h ${remMins.toString().padStart(2, "0")}m`;
+                                            const breakMins = log.totalBreakMinutes || 0;
+                                            const breakHrs = Math.floor(breakMins / 60);
+                                            const remBreakMins = breakMins % 60;
+                                            const breakStr = breakHrs > 0 ? `${breakHrs}h ${remBreakMins}m` : `${remBreakMins}m`;
+
+                                            return (
+                                                <tr key={log._id || idx} className="hover:bg-[#F8FAFC]/70 transition-colors">
+                                                    <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
+                                                        {formattedDate}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-gray-500 font-medium">
+                                                        Standard (10:00 - 19:00)
+                                                    </td>
+                                                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+                                                        {clockInStr}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 font-mono font-bold text-gray-700">
+                                                        {clockOutStr}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 font-mono font-bold text-[#2D79C7]">
+                                                        {workHoursStr}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 font-mono text-gray-500">
+                                                        {breakStr}
+                                                    </td>
+                                                    <td className="py-3.5 px-4">
+                                                        <span className="text-[11px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                                            {log.workMode || "Office"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-center">
+                                                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                                                            log.workMode === "Work From Home"
+                                                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        }`}>
+                                                            {log.workMode === "Work From Home" ? "WFH" : "Present"}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               TAB 4: LEAVES & QUOTA MANAGEMENT
+            ───────────────────────────────────────────── */}
+            {activeTab === "Leaves" && (
+                <div className="space-y-6">
+                    {/* Leave Allocation Header with Edit Quota Button */}
+                    <div className="premium-3d-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0">
+                                <Umbrella className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <span>Leave Allocation & Balances</span>
+                                    <span className="text-[10px] font-extrabold bg-blue-50 text-[#2D79C7] border border-blue-100 px-2 py-0.5 rounded">
+                                        FY 2026 - 2027
+                                    </span>
+                                </h3>
+                                <p className="text-gray-400 text-xs font-medium mt-0.5">
+                                    Track quotas, taken days, and leave requests for {empName}.
+                                </p>
+                            </div>
+                        </div>
+
+                        {canEditLeaves && (
+                            <button
+                                type="button"
+                                onClick={() => setShowEditLeaveModal(true)}
+                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0"
+                            >
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                                <span>Adjust Leave Quotas</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* 4 Leave Quotas Grid */}
+                    {(() => {
+                        const bal = leaveSummaryData?.leaveBalance || {};
+                        const casualTotal = bal.casual?.total ?? 6;
+                        const casualUsed = bal.casual?.used ?? 0;
+                        const casualAvail = Math.max(0, casualTotal - casualUsed);
+
+                        const sickTotal = bal.sick?.total ?? 6;
+                        const sickUsed = bal.sick?.used ?? 0;
+                        const sickAvail = Math.max(0, sickTotal - sickUsed);
+
+                        const earnedTotal = bal.earned?.total ?? 12;
+                        const earnedUsed = bal.earned?.used ?? 0;
+                        const earnedAvail = Math.max(0, earnedTotal - earnedUsed);
+
+                        const partialTotal = bal.partial?.total ?? 1;
+                        const partialUsed = bal.partial?.used ?? 0;
+                        const partialAvail = Math.max(0, partialTotal - partialUsed);
+
+                        const quotas = [
+                            { label: "Casual Leave", avail: casualAvail, used: casualUsed, total: casualTotal, color: "text-sky-600", bg: "bg-sky-500", border: "border-sky-200" },
+                            { label: "Sick Leave", avail: sickAvail, used: sickUsed, total: sickTotal, color: "text-amber-600", bg: "bg-amber-500", border: "border-amber-200" },
+                            { label: "Earned Leave", avail: earnedAvail, used: earnedUsed, total: earnedTotal, color: "text-emerald-600", bg: "bg-emerald-500", border: "border-emerald-200" },
+                            { label: "Partial Leave", avail: partialAvail, used: partialUsed, total: partialTotal, color: "text-purple-600", bg: "bg-purple-500", border: "border-purple-200" }
+                        ];
+
+                        return (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {quotas.map((q, idx) => {
+                                    const pct = q.total > 0 ? Math.min(100, Math.round((q.avail / q.total) * 100)) : 0;
+                                    return (
+                                                <div key={idx} className="premium-3d-card p-5 space-y-3 relative overflow-hidden">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-extrabold text-[#1E1E1E]">{q.label}</span>
+                                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${q.color} bg-gray-50 border border-gray-150`}>
+                                                    {pct}% Left
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <div className="flex items-baseline justify-between">
+                                                    <span className="text-2xl font-black text-[#1E1E1E]">{q.avail}</span>
+                                                    <span className="text-xs font-bold text-gray-400 font-mono">/ {q.total} Total</span>
+                                                </div>
+                                                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                                    <div className={`h-full ${q.bg} transition-all duration-500 rounded-full`} style={{ width: `${pct}%` }} />
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-semibold pt-2 border-t border-gray-100">
+                                                <span>Consumed: <strong className="text-gray-800">{q.used}</strong></span>
+                                                <span>Accrued: <strong className="text-gray-800">{q.total}</strong></span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
+
+                    {/* Leave Requests & History Table */}
+                    <div className="premium-3d-card p-5 space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h4 className="text-[#1E1E1E] text-xs font-extrabold flex items-center gap-2">
+                                <History className="w-4 h-4 text-[#2D79C7]" />
+                                <span>Leave Requests & Application History</span>
+                            </h4>
+                            <span className="text-gray-400 text-xs font-bold">
+                                {leaveHistoryList.length} Application{leaveHistoryList.length !== 1 ? "s" : ""}
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto w-full">
+                            <table className="w-full border-collapse text-left min-w-[700px] whitespace-nowrap">
+                                <thead>
+                                    <tr className="border-b border-gray-200 bg-[#F8FAFC] text-gray-500 text-[10px] uppercase font-extrabold tracking-wider select-none">
+                                        <th className="py-3 px-4 font-extrabold">Leave Dates</th>
+                                        <th className="py-3 px-4 font-extrabold">Leave Type</th>
+                                        <th className="py-3 px-4 font-extrabold">Days</th>
+                                        <th className="py-3 px-4 font-extrabold">Reason / Note</th>
+                                        <th className="py-3 px-4 font-extrabold">Requested On</th>
+                                        <th className="py-3 px-4 font-extrabold text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-xs font-semibold text-gray-700">
+                                    {loadingLeaves ? (
+                                        <tr>
+                                            <td colSpan="6" className="py-10 text-center text-gray-400 font-bold">
+                                                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#2D79C7]" />
+                                                <span>Loading leave history...</span>
+                                            </td>
+                                        </tr>
+                                    ) : leaveHistoryList.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" className="py-10 text-center text-gray-400 font-bold select-none">
+                                                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto mb-2">
+                                                    <Umbrella className="w-5 h-5" />
+                                                </div>
+                                                <p>No leave requests or applications submitted yet.</p>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        leaveHistoryList.map((req, idx) => {
+                                            const startStr = req.startDate ? new Date(req.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "--";
+                                            const endStr = req.endDate ? new Date(req.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "--";
+                                            const dateRange = startStr === endStr ? startStr : `${startStr} - ${endStr}`;
+                                            const reqDate = req.createdAt ? new Date(req.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "--";
+                                            const formatType = (t) => {
+                                                if (t === "casual_leave") return "Casual Leave";
+                                                if (t === "sick_leave") return "Sick Leave";
+                                                if (t === "earned_leave") return "Earned Leave";
+                                                if (t === "partial_leave") return "Partial Leave";
+                                                if (t === "unpaid_leave") return "Unpaid Leave";
+                                                return t || "Leave";
+                                            };
+
+                                            return (
+                                                <tr key={req._id || idx} className="hover:bg-[#F8FAFC]/70 transition-colors">
+                                                    <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
+                                                        {dateRange}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 font-bold text-[#2D79C7]">
+                                                        {formatType(req.leaveType)}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 font-mono text-gray-700">
+                                                        {req.totalDays || 1} Day{(req.totalDays || 1) > 1 ? "s" : ""}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 max-w-[200px] truncate text-gray-600 font-medium" title={req.reason}>
+                                                        {req.reason || "--"}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 font-mono text-gray-400">
+                                                        {reqDate}
+                                                    </td>
+                                                    <td className="py-3.5 px-4 text-center">
+                                                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                                                            req.status?.toLowerCase() === "approved"
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                                : req.status?.toLowerCase() === "pending"
+                                                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                                : "bg-rose-50 text-rose-700 border-rose-200"
+                                                        }`}>
+                                                            {req.status ? req.status.charAt(0).toUpperCase() + req.status.slice(1) : "Pending"}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               TAB 5: DOCUMENTS
             ───────────────────────────────────────────── */}
             {activeTab === "Documents" && (
                 <div className="space-y-6">
@@ -1990,6 +2605,130 @@ export const EmployeeProfile = () => {
                                 <span>Open / Download</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               ADJUST LEAVE QUOTAS MODAL (ADMIN & ASSIGNED HR)
+            ───────────────────────────────────────────── */}
+            {showEditLeaveModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowEditLeaveModal(false)} />
+                    <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-md p-6 space-y-4 select-none animate-fadeIn">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <div>
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <SlidersHorizontal className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>Adjust Leave Quotas</span>
+                                </h3>
+                                <p className="text-gray-400 text-xs font-medium mt-0.5">
+                                    Set total annual quota allocations for {empName}.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowEditLeaveModal(false)}
+                                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg transition-colors cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveLeaveBalance} className="space-y-4 text-xs">
+                            <div className="grid grid-cols-2 gap-3.5">
+                                <div className="space-y-1.5">
+                                    <label className="text-gray-700 font-bold block flex items-center justify-between">
+                                        <span>Casual Leave</span>
+                                        <span className="text-[10px] text-sky-600 font-mono">Days</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={editLeaveForm.casual}
+                                        onChange={(e) => setEditLeaveForm({ ...editLeaveForm, casual: Number(e.target.value) })}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-bold text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-gray-700 font-bold block flex items-center justify-between">
+                                        <span>Sick Leave</span>
+                                        <span className="text-[10px] text-amber-600 font-mono">Days</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={editLeaveForm.sick}
+                                        onChange={(e) => setEditLeaveForm({ ...editLeaveForm, sick: Number(e.target.value) })}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-bold text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-gray-700 font-bold block flex items-center justify-between">
+                                        <span>Earned Leave</span>
+                                        <span className="text-[10px] text-emerald-600 font-mono">Days</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={editLeaveForm.earned}
+                                        onChange={(e) => setEditLeaveForm({ ...editLeaveForm, earned: Number(e.target.value) })}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-bold text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-gray-700 font-bold block flex items-center justify-between">
+                                        <span>Partial Leave</span>
+                                        <span className="text-[10px] text-purple-600 font-mono">Days</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={editLeaveForm.partial}
+                                        onChange={(e) => setEditLeaveForm({ ...editLeaveForm, partial: Number(e.target.value) })}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-bold text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-[11px] text-[#2D79C7] font-medium flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>Adjusted total quotas will reflect immediately across the employee&apos;s portal & leave ledger.</span>
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditLeaveModal(false)}
+                                    className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingLeaveBalance}
+                                    className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer flex items-center gap-2 transition-all"
+                                >
+                                    {savingLeaveBalance && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                                    <span>{savingLeaveBalance ? "Saving..." : "Save Quotas"}</span>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

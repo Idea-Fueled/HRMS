@@ -457,3 +457,37 @@ export const getAttendanceDashboardSummary = async (req, res) => {
         });
     }
 };
+
+/**
+ * Get Specific Employee Attendance History (by month/year or all)
+ */
+export const getEmployeeAttendanceHistory = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { month, year } = req.query;
+
+        let dateFilter = { employeeId };
+
+        if (month !== undefined && year !== undefined && month !== "" && year !== "") {
+            const m = parseInt(month);
+            const y = parseInt(year);
+            const startOfMonth = new Date(y, m, 1);
+            const endOfMonth = new Date(y, m + 1, 0, 23, 59, 59, 999);
+            dateFilter.date = { $gte: startOfMonth, $lte: endOfMonth };
+        }
+
+        const attendances = await Attendance.find(dateFilter)
+            .sort({ date: -1 });
+
+        return res.status(200).json({
+            success: true,
+            attendances
+        });
+    } catch (error) {
+        console.error("Get Employee Attendance History Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};

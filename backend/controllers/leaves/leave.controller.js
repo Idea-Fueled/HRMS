@@ -282,3 +282,48 @@ export const getLeaveHistory = async (req, res) => {
         });
     }
 };
+
+export const updateLeaveBalance = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { casual, sick, earned, partial } = req.body;
+
+        const user = await User.findById(employeeId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found."
+            });
+        }
+
+        if (!user.leaveBalance) user.leaveBalance = {};
+        if (casual !== undefined) {
+            user.leaveBalance.casual = { ...user.leaveBalance.casual, total: Number(casual) };
+        }
+        if (sick !== undefined) {
+            user.leaveBalance.sick = { ...user.leaveBalance.sick, total: Number(sick) };
+        }
+        if (earned !== undefined) {
+            user.leaveBalance.earned = { ...user.leaveBalance.earned, total: Number(earned) };
+        }
+        if (partial !== undefined) {
+            user.leaveBalance.partial = { ...user.leaveBalance.partial, total: Number(partial) };
+        }
+
+        user.markModified("leaveBalance");
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Leave balance updated successfully.",
+            leaveBalance: user.leaveBalance
+        });
+    } catch (error) {
+        console.error("Update Leave Balance Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
