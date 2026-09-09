@@ -74,13 +74,6 @@ const DEFAULT_ASSETS = [
     { name: "Idea Fueled Smart Access Pass", assetTag: "IF-SEC-01", category: "Security Badge", issuedDate: "2023-01-15", condition: "Active", status: "Active" }
 ];
 
-const DEFAULT_ACTIVITIES = [
-    { title: "Profile Details Updated", description: "Updated contact info and skills list.", timestamp: new Date(), type: "update" },
-    { title: "Attendance Regularized", description: "Clock-in time regularized for 15th July.", timestamp: new Date(Date.now() - 86400000 * 4), type: "attendance" },
-    { title: "Casual Leave Approved", description: "2 Days Casual Leave approved from 12 Jul to 13 Jul.", timestamp: new Date(Date.now() - 86400000 * 10), type: "leave" },
-    { title: "Joined Idea Fueled HRMS", description: "Onboarded into active enterprise workspace.", timestamp: new Date("2023-01-15"), type: "onboarding" }
-];
-
 export const EmployeeProfile = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -396,13 +389,27 @@ export const EmployeeProfile = () => {
         try {
             setSaving(true);
             const empIdToUpdate = employee._id || currentUser._id;
-            const res = await updateEmployee(empIdToUpdate, payload);
+            
+            // Dynamically record real activity log if not already explicitly provided
+            const existingActivities = Array.isArray(employee?.activities) ? employee.activities : [];
+            const newActivityItem = {
+                title: successMsg.replace("!", ""),
+                description: `Activity recorded on ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}.`,
+                timestamp: new Date(),
+                type: "update"
+            };
+            const updatedPayload = {
+                ...payload,
+                activities: payload.activities || [newActivityItem, ...existingActivities].slice(0, 50)
+            };
+
+            const res = await updateEmployee(empIdToUpdate, updatedPayload);
             
             if (res.data?.success) {
                 toast.success(successMsg);
-                setEmployee(res.data.employee || { ...employee, ...payload });
+                setEmployee(res.data.employee || { ...employee, ...updatedPayload });
                 if (isOwnProfile && updateUser) {
-                    updateUser(res.data.employee || { ...employee, ...payload });
+                    updateUser(res.data.employee || { ...employee, ...updatedPayload });
                 }
                 return true;
             } else {
@@ -785,10 +792,10 @@ export const EmployeeProfile = () => {
         });
     };
 
-    // 7. Activity Timeline
+    // 7. Activity Timeline (Dynamic & strictly based on actual records)
     const currentActivities = useMemo(() => {
         if (Array.isArray(employee?.activities) && employee.activities.length > 0) return employee.activities;
-        return DEFAULT_ACTIVITIES;
+        return [];
     }, [employee]);
 
     // Extract core employee details
@@ -2028,22 +2035,32 @@ export const EmployeeProfile = () => {
                         <span>Recent Employee Activity & Audit Log</span>
                     </h3>
 
-                    <div className="relative pl-6 space-y-6 border-l-2 border-blue-100 ml-3 pt-2">
-                        {currentActivities.map((act, idx) => (
-                            <div key={idx} className="relative">
-                                <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#2D79C7] border-4 border-white shadow-sm flex items-center justify-center" />
-                                <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-[#1E1E1E] text-xs font-bold">{act.title}</h4>
-                                        <span className="text-[10.5px] font-mono text-gray-400">{formatDateStr(act.timestamp)}</span>
-                                    </div>
-                                    <p className="text-gray-600 text-xs font-medium">
-                                        {act.description}
-                                    </p>
-                                </div>
+                    {currentActivities.length === 0 ? (
+                        <div className="py-12 text-center select-none bg-slate-50/50 rounded-[20px] border border-dashed border-slate-200 animate-fadeIn">
+                            <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] mx-auto mb-3">
+                                <History className="w-5 h-5" />
                             </div>
-                        ))}
-                    </div>
+                            <h4 className="text-slate-850 text-xs font-bold">No activity recorded yet</h4>
+                            <p className="text-slate-400 text-[11px] mt-1">Real-time profile updates, attendance logs, and leave actions for {empName} will appear here as they occur.</p>
+                        </div>
+                    ) : (
+                        <div className="relative pl-6 space-y-6 border-l-2 border-blue-100 ml-3 pt-2">
+                            {currentActivities.map((act, idx) => (
+                                <div key={idx} className="relative">
+                                    <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-[#2D79C7] border-4 border-white shadow-sm flex items-center justify-center" />
+                                    <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-[#1E1E1E] text-xs font-bold">{act.title}</h4>
+                                            <span className="text-[10.5px] font-mono text-gray-400">{formatDateStr(act.timestamp)}</span>
+                                        </div>
+                                        <p className="text-gray-600 text-xs font-medium">
+                                            {act.description}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
