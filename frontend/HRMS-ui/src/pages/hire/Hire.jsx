@@ -322,7 +322,7 @@ export const Hire = () => {
         if (!candId) return;
 
         const candidateObj = candidates.find(c => c.id === candId);
-        if (candidateObj && candidateObj.stage !== targetStage) {
+        if (candidateObj && (candidateObj.stage !== targetStage || candidateObj.status !== targetStage)) {
             await handleMoveStage(candId, targetStage);
         }
         setDraggedCandidateId(null);
@@ -1013,7 +1013,15 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
     return (
         <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-thin select-none min-h-[580px] items-start">
             {stages.map(stg => {
-                const stageCandidates = candidates.filter(c => c.stage === stg);
+                const stageCandidates = candidates.filter(c => {
+                    if (stg === "Joined") {
+                        return c.stage === "Joined" || c.status === "Joined";
+                    }
+                    if (stg === "Rejected") {
+                        return c.stage === "Rejected" || c.status === "Rejected" || Boolean(c.archiveReason);
+                    }
+                    return c.stage === stg;
+                });
                 const cfg = STAGE_CONFIG[stg] || { border: "border-t-gray-400", dot: "bg-gray-400", badge: "bg-gray-100 text-gray-700" };
 
                 return (

@@ -334,9 +334,21 @@ export const updateOfferDetailsApi = async (candidateId, offerData) => {
                 status: offerData.status || "Offer Sent",
                 notes: offerData.notes || ""
             };
+
+            let newStage = c.stage;
+            if (offerData.status === "Joined") {
+                newStage = "Joined";
+            } else if (offerData.status === "Offer Accepted") {
+                newStage = "Offer Accepted";
+            } else if (offerData.status === "Offer Sent" || offerData.status === "Offer Pending") {
+                newStage = "Offer Sent";
+            } else if (offerData.status === "Offer Declined") {
+                newStage = "Rejected";
+            }
+
             candidateToUpdate = {
                 ...c,
-                stage: offerData.status === "Joined" ? "Joined" : "Offer Sent",
+                stage: newStage,
                 status: offerData.status || "Offer Sent",
                 offerDetails: offerObj
             };
