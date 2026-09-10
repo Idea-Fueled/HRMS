@@ -181,7 +181,12 @@ export const Hire = () => {
     }, [candidates]);
 
     const filteredCandidates = useMemo(() => {
-        const baseList = activeTab === "archive" ? archivedCandidatesList : activeCandidates;
+        let baseList = activeCandidates;
+        if (activeTab === "archive") {
+            baseList = archivedCandidatesList;
+        } else if (activeTab === "kanban") {
+            baseList = candidates;
+        }
 
         return baseList.filter(cand => {
             if (searchTerm.trim()) {
@@ -207,7 +212,7 @@ export const Hire = () => {
 
             return true;
         });
-    }, [activeCandidates, archivedCandidatesList, activeTab, searchTerm, filterStage, filterPosition, filterHr, filterStatus, filterInterviewer]);
+    }, [candidates, activeCandidates, archivedCandidatesList, activeTab, searchTerm, filterStage, filterPosition, filterHr, filterStatus, filterInterviewer]);
 
     /* ─────────────────────────────────────────────
        ALL SCHEDULED INTERVIEWS LIST

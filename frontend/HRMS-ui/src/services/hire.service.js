@@ -19,12 +19,24 @@ export const getCandidatesFromStorage = () => {
     return [];
 };
 
-// Helper to save candidates to localStorage
+// Helper to save candidates to localStorage with fallback for quota limits
 export const saveCandidatesToStorage = (candidates) => {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(candidates));
     } catch (e) {
-        console.error("Error saving candidate storage", e);
+        console.warn("Storage quota exceeded or error saving candidates, saving trimmed copy without heavy base64 data:", e);
+        try {
+            const sanitized = (candidates || []).map(c => ({
+                ...c,
+                documents: (c.documents || []).map(d => ({
+                    ...d,
+                    url: d.url && d.url.startsWith("data:") ? "#" : d.url
+                }))
+            }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+        } catch (innerErr) {
+            console.error("Critical error saving candidate storage", innerErr);
+        }
     }
 };
 
