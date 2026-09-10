@@ -1015,10 +1015,10 @@ const KanbanView = ({ candidates, stages, onOpenDrawer, onMoveStage, onDragStart
             {stages.map(stg => {
                 const stageCandidates = candidates.filter(c => {
                     if (stg === "Joined") {
-                        return c.stage === "Joined" || c.status === "Joined";
+                        return c.stage === "Joined" || c.status === "Joined" || c.offerDetails?.status === "Joined";
                     }
                     if (stg === "Rejected") {
-                        return c.stage === "Rejected" || c.status === "Rejected" || Boolean(c.archiveReason);
+                        return c.stage === "Rejected" || c.status === "Rejected" || Boolean(c.archiveReason) || c.offerDetails?.status === "Offer Declined";
                     }
                     return c.stage === stg;
                 });

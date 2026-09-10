@@ -46,11 +46,26 @@ export const saveCandidatesToStorage = (candidates) => {
 
 export const getHireCandidates = async () => {
     try {
-        // Attempt backend fetch if route exists
+        const localCandidates = getCandidatesFromStorage();
         const res = await API.get("/hire/candidates");
         if (res.data?.success && Array.isArray(res.data.candidates)) {
-            saveCandidatesToStorage(res.data.candidates);
-            return res.data.candidates;
+            const backendCandidates = res.data.candidates;
+            const backendIdSet = new Set(backendCandidates.map(c => c.id));
+            const backendEmailSet = new Set(backendCandidates.map(c => c.email?.toLowerCase().trim()).filter(Boolean));
+
+            // Merge local previous candidates that might not be in the backend response
+            const merged = [...backendCandidates];
+            (localCandidates || []).forEach(loc => {
+                const email = loc.email?.toLowerCase().trim();
+                if (!backendIdSet.has(loc.id) && (!email || !backendEmailSet.has(email))) {
+                    merged.push(loc);
+                    // Proactively sync missing local candidate to backend
+                    API.post("/hire/candidates", loc).catch(() => {});
+                }
+            });
+
+            saveCandidatesToStorage(merged);
+            return merged;
         }
     } catch {
         // Fallback to localStorage data
