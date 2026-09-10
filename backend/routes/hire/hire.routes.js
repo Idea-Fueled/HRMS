@@ -1,5 +1,6 @@
 import express from "express";
 import Candidate from "../../models/candidates/candidate.model.js";
+import User from "../../models/users/user.model.js";
 
 const router = express.Router();
 
@@ -7,9 +8,57 @@ const router = express.Router();
 router.get("/candidates", async (req, res) => {
     try {
         const candidates = await Candidate.find().sort({ createdAt: -1 });
+        const existingEmails = new Set(candidates.map(c => c.email?.toLowerCase().trim()).filter(Boolean));
+
+        // Fetch company employees from User collection
+        const users = await User.find({
+            status: { $ne: "terminated" }
+        }).select("firstName lastName fullName email phoneNumber designation department profilePicture joiningDate createdAt salaryStructure presentAddress skills").lean();
+
+        const joinedEmployeesFromUsers = (users || [])
+            .filter(u => u.email && !existingEmails.has(u.email.toLowerCase().trim()))
+            .map(u => {
+                const name = u.fullName || `${u.firstName || ""} ${u.lastName || ""}`.trim() || "Employee";
+                const joining = u.joiningDate ? new Date(u.joiningDate).toISOString().split("T")[0] : (u.createdAt ? new Date(u.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+                const ctcFormatted = u.salaryStructure?.ctc ? (u.salaryStructure.ctc >= 100000 ? `₹${(u.salaryStructure.ctc / 100000).toFixed(1)} LPA` : `₹${u.salaryStructure.ctc}`) : "Standard";
+
+                return {
+                    id: `cand_emp_${u._id}`,
+                    name,
+                    email: u.email,
+                    phone: u.phoneNumber || "",
+                    address: u.presentAddress || "",
+                    photo: u.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2D79C7&color=fff`,
+                    position: u.designation || "Software Engineer",
+                    experience: "Joined Employee",
+                    currentCompany: "Idea Fueled",
+                    currentCtc: ctcFormatted,
+                    expectedCtc: ctcFormatted,
+                    noticePeriod: "Completed",
+                    skills: u.skills && u.skills.length > 0 ? u.skills : ["General"],
+                    appliedDate: joining,
+                    stage: "Joined",
+                    status: "Joined",
+                    assignedHr: "HR Team",
+                    resume: "Employee_Profile.pdf",
+                    interviews: [],
+                    documents: [],
+                    offerDetails: {
+                        offeredCtc: ctcFormatted,
+                        joiningDate: joining,
+                        offerDate: joining,
+                        status: "Joined",
+                        notes: "Existing employee in organization"
+                    },
+                    archiveReason: null
+                };
+            });
+
+        const allCandidates = [...candidates, ...joinedEmployeesFromUsers];
+
         return res.status(200).json({
             success: true,
-            candidates
+            candidates: allCandidates
         });
     } catch (err) {
         console.error("Error fetching candidates:", err);
@@ -61,7 +110,7 @@ router.put("/candidates/:id", async (req, res) => {
         const candidate = await Candidate.findOneAndUpdate(
             { id: id },
             { $set: updateData },
-            { new: true }
+            { new: true, upsert: true, setDefaultsOnInsert: true }
         );
 
         if (!candidate) {
@@ -107,7 +156,7 @@ router.put("/candidates/:id/stage", async (req, res) => {
         const candidate = await Candidate.findOneAndUpdate(
             { id: id },
             { $set: { stage, status, archiveReason } },
-            { new: true }
+            { new: true, upsert: true, setDefaultsOnInsert: true }
         );
 
         if (!candidate) {
