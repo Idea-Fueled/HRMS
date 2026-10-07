@@ -69,6 +69,7 @@ const ROLES = [
     { value: "hr", label: "HR" },
     { value: "manager", label: "Manager" },
     { value: "employee", label: "Employee" },
+    { value: "intern", label: "Intern" },
 ];
 const STATUSES = [
     { value: "active", label: "Active" },
@@ -126,6 +127,14 @@ const statusBadge = (s) => ({
 const statusLabel = (s) => ({ active: "Active", inactive: "Inactive", on_notice: "On Notice", terminated: "Terminated" }[s] || s);
 const empTypeLabel = (t) => EMPLOYMENT_TYPES.find(x => x.value === t)?.label || t;
 const roleLabel = (r) => ROLES.find(x => x.value === r)?.label || r;
+const roleBadge = (r) => ({
+    global_admin: "bg-blue-50 text-[#1F5EA8] border-blue-200/80",
+    admin: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
+    hr: "bg-purple-50 text-purple-700 border-purple-200/80",
+    manager: "bg-amber-50 text-amber-700 border-amber-200/80",
+    employee: "bg-blue-50 text-[#2D79C7] border-blue-100",
+    intern: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+}[r] || "bg-blue-50 text-[#2D79C7] border-blue-100");
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 /* ─────────────────────────────────────────────
@@ -688,7 +697,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-xs font-black px-3 py-1 rounded-full border shadow-xs ${statusBadge(employee.status)}`}>{statusLabel(employee.status)}</span>
                         <span className="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-2xs">{empTypeLabel(employee.employementType)}</span>
-                        <span className="text-xs font-bold text-[#2D79C7] bg-blue-50 border border-blue-100 px-3 py-1 rounded-full shadow-2xs">{roleLabel(employee.role)}</span>
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${roleBadge(employee.role)}`}>{roleLabel(employee.role)}</span>
                     </div>
 
                     {/* Basic Info Container */}

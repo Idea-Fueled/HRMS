@@ -56,6 +56,15 @@ const ROLE_PERMISSIONS = {
         "access:own-documents", "view:own-finances",
         "create:post", "create:announcement", "create:poll",
     ],
+    intern: [
+        "view:dashboard", "view:me",
+        "view:my-finances", "view:documents", "view:time-attendance",
+        "view:own-profile", "apply:leave", "view:own-attendance",
+        "clock:in-out", "submit:wfh",
+        "view:announcements", "participate:poll",
+        "access:own-documents", "view:own-finances",
+        "create:post", "create:announcement", "create:poll",
+    ],
 };
 
 /* Routes each role is allowed to visit */
@@ -65,6 +74,7 @@ export const ROLE_ALLOWED_ROUTES = {
     hr:           ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
     manager:      ["/dashboard", "/me", "/my-team", "/my-finances", "/documents", "/time-attendance"],
     employee:     ["/dashboard", "/me", "/my-finances", "/documents", "/time-attendance"],
+    intern:       ["/dashboard", "/me", "/my-finances", "/documents", "/time-attendance"],
 };
 
 /* ─────────────────────────────────────────────

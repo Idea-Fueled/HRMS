@@ -75,7 +75,7 @@ export const getAllEmployees = async (req, res) => {
         const newJoiners = allUsers.filter(e => e.joiningDate && new Date(e.joiningDate) >= thirtyDaysAgo).length;
 
         const fullTime = allUsers.filter(e => e.employementType === "full_time").length;
-        const intern = allUsers.filter(e => e.employementType === "intern").length;
+        const intern = allUsers.filter(e => e.employementType === "intern" || e.role === "intern").length;
 
         return res.status(200).json({
             success: true,

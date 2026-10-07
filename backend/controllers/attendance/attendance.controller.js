@@ -238,7 +238,7 @@ export const getAttendanceDashboardSummary = async (req, res) => {
 
         let userFilter = { status: "active" };
 
-        if (role === "employee" && employeeId) {
+        if ((role === "employee" || role === "intern") && employeeId) {
             userFilter = { status: "active", $or: [{ _id: employeeId }, { employeeId: employeeId }] };
         } else if (role === "manager" && employeeId) {
             const mgr = await User.findById(employeeId).catch(() => null);
@@ -255,7 +255,7 @@ export const getAttendanceDashboardSummary = async (req, res) => {
 
         // Fallback if specific employee query returns 0 (e.g. dummy ID passed)
         if (users.length === 0) {
-            users = await User.find({ status: "active" }).limit(role === "employee" ? 1 : 10).select("firstName lastName fullName employeeId department designation profilePicture role managerId workLocation");
+            users = await User.find({ status: "active" }).limit((role === "employee" || role === "intern") ? 1 : 10).select("firstName lastName fullName employeeId department designation profilePicture role managerId workLocation");
         }
 
         const attendances = await Attendance.find({

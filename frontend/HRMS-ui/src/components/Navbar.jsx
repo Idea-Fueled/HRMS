@@ -545,6 +545,7 @@ const ROLE_CONFIG = {
     hr:           { label: "HR",           badgeCls: "bg-purple-50/90 text-purple-700 border-purple-200/80" },
     manager:      { label: "Manager",      badgeCls: "bg-amber-50/90 text-amber-700 border-amber-200/80" },
     employee:     { label: "Employee",     badgeCls: "bg-slate-100/90 text-slate-700 border-slate-200/80" },
+    intern:       { label: "Intern",       badgeCls: "bg-emerald-50/90 text-emerald-700 border-emerald-200/80" },
 };
 
 /* ─────────────────────────────────────────────

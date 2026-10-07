@@ -25,7 +25,7 @@ import Assets from "./pages/assets/Assets";
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
 ───────────────────────────────────────────── */
-const ALL_ROLES        = ["global_admin", "admin", "hr", "manager", "employee"];
+const ALL_ROLES        = ["global_admin", "admin", "hr", "manager", "employee", "intern"];
 const ADMIN_HR         = ["global_admin", "admin", "hr"];
 const GLOBAL_ADMIN_HR  = ["global_admin", "hr"];
 const ADMIN_HR_MANAGER = ["global_admin", "admin", "hr", "manager"];

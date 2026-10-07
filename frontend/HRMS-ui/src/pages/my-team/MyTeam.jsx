@@ -365,7 +365,7 @@ const TeamMembersTab = () => {
 
     const isGlobalAdminOrHr = userRole === "global_admin" || userRole === "hr";
     const isManagerRole = userRole === "manager";
-    const isEmployeeRole = userRole === "employee";
+    const isEmployeeRole = userRole === "employee" || userRole === "intern";
 
     const currentUserId = user?._id || user?.id;
     const currentUserName = (user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`).trim().toLowerCase();
