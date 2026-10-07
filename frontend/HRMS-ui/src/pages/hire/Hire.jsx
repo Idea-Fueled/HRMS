@@ -889,8 +889,8 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-[#2D79C7] border border-blue-100">
+                                <div className="flex items-center gap-2.5 shrink-0">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 ${STAGE_CONFIG[cand.stage]?.badge || "bg-blue-50 text-[#2D79C7] border border-blue-100"}`}>
                                         {cand.stage}
                                     </span>
                                     <button
@@ -968,8 +968,8 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                         </div>
 
                         {/* Card Bottom / Stage Pill & Actions */}
-                        <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${cand.stage === "On Hold" ? "bg-amber-50 text-amber-800 border border-amber-300" : "bg-blue-50 text-[#2D79C7] border border-blue-100"}`}>
+                        <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold whitespace-nowrap shrink-0 ${STAGE_CONFIG[cand.stage]?.badge || "bg-blue-50 text-[#2D79C7] border border-blue-100"}`}>
                                 {cand.stage}
                             </span>
 
@@ -1019,13 +1019,13 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
             <table className="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-3.5 px-4">Candidate</th>
-                        <th className="py-3.5 px-4">Position</th>
-                        <th className="py-3.5 px-4">Experience</th>
-                        <th className="py-3.5 px-4">Company</th>
-                        <th className="py-3.5 px-4">Stage</th>
-                        <th className="py-3.5 px-4">Applied Date</th>
-                        <th className="py-3.5 px-4 text-right">Actions</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Candidate</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Position</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Experience</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Company</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Stage</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Applied Date</th>
+                        <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
@@ -1038,24 +1038,24 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                                         alt={cand.name}
                                         className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
                                     />
-                                    <div>
-                                        <div className="font-bold text-[#1E1E1E] hover:text-[#2D79C7] cursor-pointer" onClick={() => onOpenDrawer(cand)}>
+                                    <div className="min-w-0">
+                                        <div className="font-bold text-[#1E1E1E] hover:text-[#2D79C7] cursor-pointer truncate max-w-[180px]" onClick={() => onOpenDrawer(cand)}>
                                             {cand.name}
                                         </div>
-                                        <div className="text-[11px] text-gray-400">{cand.email}</div>
+                                        <div className="text-[11px] text-gray-400 truncate max-w-[180px]">{cand.email}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td className="py-3 px-4 font-semibold text-gray-800">{cand.position}</td>
-                            <td className="py-3 px-4 text-gray-600">{cand.experience}</td>
-                            <td className="py-3 px-4 text-gray-600">{cand.currentCompany}</td>
-                            <td className="py-3 px-4">
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${cand.stage === "On Hold" ? "bg-amber-50 text-amber-800 border border-amber-300" : "bg-blue-50 text-[#2D79C7] border border-blue-100"}`}>
+                            <td className="py-3 px-4 font-semibold text-gray-800 whitespace-nowrap">{cand.position}</td>
+                            <td className="py-3 px-4 text-gray-600 whitespace-nowrap">{cand.experience}</td>
+                            <td className="py-3 px-4 text-gray-600 whitespace-nowrap">{cand.currentCompany}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold whitespace-nowrap shrink-0 ${STAGE_CONFIG[cand.stage]?.badge || "bg-blue-50 text-[#2D79C7] border border-blue-100"}`}>
                                     {cand.stage}
                                 </span>
                             </td>
-                            <td className="py-3 px-4 text-gray-400">{cand.appliedDate}</td>
-                            <td className="py-3 px-4 text-right">
+                            <td className="py-3 px-4 text-gray-400 whitespace-nowrap">{cand.appliedDate}</td>
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1">
                                     {cand.stage === "On Hold" ? (
                                         <button
@@ -1253,12 +1253,12 @@ const InterviewsView = ({ interviews, candidates, onAddFeedback, onScheduleNew }
                     <table className="w-full text-left border-collapse text-xs">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
-                                <th className="py-3.5 px-4">Candidate</th>
-                                <th className="py-3.5 px-4">Interview Round</th>
-                                <th className="py-3.5 px-4">Date & Time</th>
-                                <th className="py-3.5 px-4">Meeting Link</th>
-                                <th className="py-3.5 px-4">Rating & Status</th>
-                                <th className="py-3.5 px-4 text-right">Actions</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Candidate</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Interview Round</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Date & Time</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Meeting Link</th>
+                                <th className="py-3.5 px-4 whitespace-nowrap">Rating & Status</th>
+                                <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 font-medium">
@@ -1272,17 +1272,17 @@ const InterviewsView = ({ interviews, candidates, onAddFeedback, onScheduleNew }
                                                 className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
                                             />
                                             <div>
-                                                <div className="font-bold text-[#1E1E1E]">{int.candidateName}</div>
-                                                <div className="text-[10px] text-gray-400">{int.candidatePosition}</div>
+                                                <div className="font-bold text-[#1E1E1E] truncate max-w-[170px]">{int.candidateName}</div>
+                                                <div className="text-[10px] text-gray-400 truncate max-w-[170px]">{int.candidatePosition}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 font-bold text-[#2D79C7]">{int.roundName}</td>
-                                    <td className="py-3 px-4 text-gray-600">
+                                    <td className="py-3 px-4 font-bold text-[#2D79C7] whitespace-nowrap">{int.roundName}</td>
+                                    <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
                                         <div>{int.date}</div>
                                         <div className="text-[10px] text-gray-400">{int.time}</div>
                                     </td>
-                                    <td className="py-3 px-4">
+                                    <td className="py-3 px-4 whitespace-nowrap">
                                         {int.meetingLink && int.meetingLink !== "#" ? (
                                             <a
                                                 href={int.meetingLink}
@@ -1297,7 +1297,7 @@ const InterviewsView = ({ interviews, candidates, onAddFeedback, onScheduleNew }
                                             <span className="text-gray-400">N/A</span>
                                         )}
                                     </td>
-                                    <td className="py-3 px-4">
+                                    <td className="py-3 px-4 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             {int.rating > 0 ? (
                                                 <span className="flex items-center text-amber-500 font-bold text-xs">
@@ -1307,7 +1307,7 @@ const InterviewsView = ({ interviews, candidates, onAddFeedback, onScheduleNew }
                                             ) : (
                                                 <span className="text-gray-400 text-[10px]">No Rating</span>
                                             )}
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${int.status === "Passed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 ${int.status === "Passed" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
                                                 int.status === "Failed" ? "bg-rose-50 text-rose-700 border border-rose-200" :
                                                     "bg-blue-50 text-blue-700 border border-blue-200"
                                                 }`}>
@@ -1315,7 +1315,7 @@ const InterviewsView = ({ interviews, candidates, onAddFeedback, onScheduleNew }
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="py-3 px-4 text-right">
+                                    <td className="py-3 px-4 text-right whitespace-nowrap">
                                         <button
                                             onClick={() => {
                                                 const candObj = candidates.find(c => c.id === int.candidateId);
@@ -1349,13 +1349,13 @@ const OffersView = ({ offers, onOpenDrawer, onUpdateOffer }) => {
             <table className="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-3.5 px-4">Candidate</th>
-                        <th className="py-3.5 px-4">Position</th>
-                        <th className="py-3.5 px-4">Offered CTC</th>
-                        <th className="py-3.5 px-4">Offer Date</th>
-                        <th className="py-3.5 px-4">Expected Joining</th>
-                        <th className="py-3.5 px-4">Status</th>
-                        <th className="py-3.5 px-4 text-right">Actions</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Candidate</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Position</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Offered CTC</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Offer Date</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Expected Joining</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                        <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
@@ -1371,32 +1371,34 @@ const OffersView = ({ offers, onOpenDrawer, onUpdateOffer }) => {
                                             className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
                                         />
                                         <div>
-                                            <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7]" onClick={() => onOpenDrawer(cand)}>
+                                            <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7] truncate max-w-[170px]" onClick={() => onOpenDrawer(cand)}>
                                                 {cand.name}
                                             </div>
-                                            <div className="text-[10px] text-gray-400">{cand.email}</div>
+                                            <div className="text-[10px] text-gray-400 truncate max-w-[170px]">{cand.email}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="py-3 px-4 font-semibold text-gray-800">{cand.position}</td>
-                                <td className="py-3 px-4 font-black text-emerald-600 flex items-center gap-0.5 mt-2">
-                                    <IndianRupee className="w-3.5 h-3.5" />
-                                    <span>{(offer.offeredCtc || cand.expectedCtc || "").replace(/^₹/, '')}</span>
+                                <td className="py-3 px-4 font-semibold text-gray-800 whitespace-nowrap">{cand.position}</td>
+                                <td className="py-3 px-4 font-black text-emerald-600 whitespace-nowrap">
+                                    <span className="flex items-center gap-0.5">
+                                        <IndianRupee className="w-3.5 h-3.5" />
+                                        <span>{(offer.offeredCtc || cand.expectedCtc || "").replace(/^₹/, '')}</span>
+                                    </span>
                                 </td>
-                                <td className="py-3 px-4 text-gray-600">{offer.offerDate || cand.appliedDate}</td>
-                                <td className="py-3 px-4 text-gray-600">{offer.joiningDate || "TBD"}</td>
-                                <td className="py-3 px-4">
-                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${cand.status === "Joined" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
+                                <td className="py-3 px-4 text-gray-600 whitespace-nowrap">{offer.offerDate || cand.appliedDate}</td>
+                                <td className="py-3 px-4 text-gray-600 whitespace-nowrap">{offer.joiningDate || "TBD"}</td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold whitespace-nowrap shrink-0 ${cand.status === "Joined" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
                                         cand.status === "Offer Accepted" ? "bg-cyan-100 text-cyan-800 border border-cyan-300" :
                                             "bg-purple-100 text-purple-800 border border-purple-300"
                                         }`}>
                                         {cand.status}
                                     </span>
                                 </td>
-                                <td className="py-3 px-4 text-right">
+                                <td className="py-3 px-4 text-right whitespace-nowrap">
                                     <button
                                         onClick={() => onUpdateOffer(cand)}
-                                        className="px-2.5 py-1 bg-gray-100 hover:bg-[#2D79C7] hover:text-white rounded-[8px] text-[11px] font-bold text-gray-700 transition-all cursor-pointer"
+                                        className="px-2.5 py-1 bg-gray-100 hover:bg-[#2D79C7] hover:text-white rounded-[8px] text-[11px] font-bold text-gray-700 transition-all cursor-pointer whitespace-nowrap"
                                     >
                                         Manage Offer
                                     </button>
@@ -1428,11 +1430,11 @@ const OnHoldView = ({ candidates, onOpenDrawer, onUnhold, onReject, onDelete }) 
             <table className="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-3.5 px-4">Candidate</th>
-                        <th className="py-3.5 px-4">Position</th>
-                        <th className="py-3.5 px-4">Hold Reason / Note</th>
-                        <th className="py-3.5 px-4">Applied Date</th>
-                        <th className="py-3.5 px-4 text-right">Actions</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Candidate</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Position</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Hold Reason / Note</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Applied Date</th>
+                        <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
@@ -1446,26 +1448,26 @@ const OnHoldView = ({ candidates, onOpenDrawer, onUnhold, onReject, onDelete }) 
                                         className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
                                     />
                                     <div>
-                                        <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7]" onClick={() => onOpenDrawer(cand)}>
+                                        <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7] truncate max-w-[170px]" onClick={() => onOpenDrawer(cand)}>
                                             {cand.name}
                                         </div>
-                                        <div className="text-[10px] text-gray-400">{cand.email}</div>
+                                        <div className="text-[10px] text-gray-400 truncate max-w-[170px]">{cand.email}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td className="py-3 px-4 text-gray-700">{cand.position}</td>
-                            <td className="py-3 px-4">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                            <td className="py-3 px-4 text-gray-700 whitespace-nowrap">{cand.position}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold whitespace-nowrap shrink-0 bg-amber-50 text-amber-800 border border-amber-300">
                                     <PauseCircle className="w-3 h-3 text-amber-600" />
                                     <span>{cand.holdReason || "Placed on hold"}</span>
                                 </span>
                             </td>
-                            <td className="py-3 px-4 text-gray-400">{cand.appliedDate}</td>
-                            <td className="py-3 px-4 text-right">
+                            <td className="py-3 px-4 text-gray-400 whitespace-nowrap">{cand.appliedDate}</td>
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-1.5">
                                     <button
                                         onClick={() => onUnhold(cand.id)}
-                                        className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-[8px] text-[11px] font-bold transition-all cursor-pointer border border-emerald-200/80"
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-[8px] text-[11px] font-bold transition-all cursor-pointer border border-emerald-200/80 whitespace-nowrap"
                                         title="Resume Candidate to Active Pipeline"
                                     >
                                         <PlayCircle className="w-3.5 h-3.5" />
@@ -1508,11 +1510,11 @@ const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
             <table className="w-full text-left border-collapse text-xs">
                 <thead>
                     <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-3.5 px-4">Candidate</th>
-                        <th className="py-3.5 px-4">Position</th>
-                        <th className="py-3.5 px-4">Archive Reason</th>
-                        <th className="py-3.5 px-4">Applied Date</th>
-                        <th className="py-3.5 px-4 text-right">Actions</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Candidate</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Position</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Archive Reason</th>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Applied Date</th>
+                        <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium">
@@ -1526,25 +1528,25 @@ const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
                                         className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
                                     />
                                     <div>
-                                        <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7]" onClick={() => onOpenDrawer(cand)}>
+                                        <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7] truncate max-w-[170px]" onClick={() => onOpenDrawer(cand)}>
                                             {cand.name}
                                         </div>
-                                        <div className="text-[10px] text-gray-400">{cand.email}</div>
+                                        <div className="text-[10px] text-gray-400 truncate max-w-[170px]">{cand.email}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td className="py-3 px-4 text-gray-700">{cand.position}</td>
-                            <td className="py-3 px-4">
-                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <td className="py-3 px-4 text-gray-700 whitespace-nowrap">{cand.position}</td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10.5px] font-bold whitespace-nowrap shrink-0 bg-rose-50 text-rose-700 border border-rose-200">
                                     {cand.archiveReason || "Rejected"}
                                 </span>
                             </td>
-                            <td className="py-3 px-4 text-gray-400">{cand.appliedDate}</td>
-                            <td className="py-3 px-4 text-right">
+                            <td className="py-3 px-4 text-gray-400 whitespace-nowrap">{cand.appliedDate}</td>
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
                                 <div className="flex items-center justify-end gap-2">
                                     <button
                                         onClick={() => onRestore(cand.id)}
-                                        className="px-2.5 py-1 bg-blue-50 text-[#2D79C7] hover:bg-[#2D79C7] hover:text-white rounded-[8px] text-[11px] font-bold transition-all cursor-pointer"
+                                        className="px-2.5 py-1 bg-blue-50 text-[#2D79C7] hover:bg-[#2D79C7] hover:text-white rounded-[8px] text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap"
                                     >
                                         Restore to Pipeline
                                     </button>
