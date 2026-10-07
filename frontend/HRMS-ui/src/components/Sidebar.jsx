@@ -202,7 +202,21 @@ const Sidebar = ({ onClose }) => {
         };
         checkUnread();
         const timer = setInterval(checkUnread, 30000);
-        return () => clearInterval(timer);
+
+        // Real-time Socket.IO event listener
+        const handleNewEmail = (e) => {
+            if (e.detail?.unreadInbox !== undefined) {
+                setUnreadCount(e.detail.unreadInbox);
+            } else {
+                setUnreadCount((prev) => prev + 1);
+            }
+        };
+        window.addEventListener("hrms:new_email", handleNewEmail);
+
+        return () => {
+            clearInterval(timer);
+            window.removeEventListener("hrms:new_email", handleNewEmail);
+        };
     }, [user, currentPath]);
 
     const hasItemPermission = (item) => {

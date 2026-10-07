@@ -202,6 +202,26 @@ const Inbox = () => {
         setSelectedIds(new Set());
     }, [loadEmails]);
 
+    // Live Socket.IO incoming email listener
+    useEffect(() => {
+        const handleLiveEmail = (e) => {
+            const newEmailData = e.detail?.email;
+            if (newEmailData) {
+                if (currentFolder === "inbox") {
+                    setEmails((prev) => [newEmailData, ...prev.filter((em) => em._id !== newEmailData._id)]);
+                }
+                setStats((prev) => ({
+                    ...prev,
+                    unreadInbox: e.detail?.unreadInbox !== undefined ? e.detail.unreadInbox : prev.unreadInbox + 1,
+                    totalInbox: prev.totalInbox + 1,
+                }));
+            }
+        };
+
+        window.addEventListener("hrms:new_email", handleLiveEmail);
+        return () => window.removeEventListener("hrms:new_email", handleLiveEmail);
+    }, [currentFolder]);
+
     // Fetch active email details when selected
     const handleSelectEmail = async (emailItem) => {
         setSelectedEmailId(emailItem._id);

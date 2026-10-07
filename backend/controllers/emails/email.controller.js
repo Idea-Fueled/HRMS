@@ -2,6 +2,7 @@ import Email from "../../models/emails/email.model.js";
 import User from "../../models/users/user.model.js";
 import { uploadToCloudinary } from "../../services/cloudinary.service.js";
 import { dispatchExternalEmail } from "../../services/email.service.js";
+import { emitToUser } from "../../socket/socket.js";
 import mongoose from "mongoose";
 
 /**
@@ -541,6 +542,49 @@ export const sendEmail = async (req, res) => {
         }
 
         await newEmail.save();
+
+        // Emit real-time Socket.IO notification to all recipients
+        allRecipients.forEach(async (recEmail) => {
+            if (recEmail !== senderEmail) {
+                const recUserId = userMap.get(recEmail);
+                try {
+                    const unreadInbox = await Email.countDocuments({
+                        userStates: {
+                            $elemMatch: {
+                                email: recEmail,
+                                folder: "inbox",
+                                isRead: false,
+                                isDeleted: false,
+                            },
+                        },
+                    });
+
+                    emitToUser(
+                        { userId: recUserId, email: recEmail },
+                        "new_email",
+                        {
+                            email: {
+                                _id: newEmail._id,
+                                senderName: newEmail.senderName,
+                                senderEmail: newEmail.senderEmail,
+                                senderAvatar: newEmail.senderAvatar,
+                                subject: newEmail.subject,
+                                snippet: newEmail.snippet,
+                                priority: newEmail.priority,
+                                createdAt: newEmail.createdAt,
+                                attachments: newEmail.attachments,
+                                isRead: false,
+                                isStarred: false,
+                                folder: "inbox",
+                            },
+                            unreadInbox,
+                        }
+                    );
+                } catch (socketErr) {
+                    console.warn("Socket emission error:", socketErr.message);
+                }
+            }
+        });
 
         // Optional dispatch via SMTP to external emails
         dispatchExternalEmail({
