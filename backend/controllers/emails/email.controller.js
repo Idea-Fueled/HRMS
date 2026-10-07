@@ -14,20 +14,31 @@ const createSnippet = (htmlString) => {
 };
 
 /**
- * Normalizes email list input (array or comma/semicolon delimited string)
+ * Normalizes email list input (JSON stringified array, raw array, or delimited string)
  */
 const parseEmailList = (input) => {
     if (!input) return [];
+
+    let list = [];
     if (Array.isArray(input)) {
-        return input.map((e) => e.trim().toLowerCase()).filter(Boolean);
+        list = input;
+    } else if (typeof input === "string") {
+        const trimmed = input.trim();
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+                list = parsed;
+            } else if (typeof parsed === "string") {
+                list = parsed.split(/[,;]+/);
+            }
+        } catch (_) {
+            list = trimmed.split(/[,;]+/);
+        }
     }
-    if (typeof input === "string") {
-        return input
-            .split(/[,;]+/)
-            .map((e) => e.trim().toLowerCase())
-            .filter((e) => e.length > 0 && e.includes("@"));
-    }
-    return [];
+
+    return list
+        .map((e) => String(e).replace(/[\[\]"']/g, "").trim().toLowerCase())
+        .filter((e) => e.length > 0 && e.includes("@"));
 };
 
 /**
