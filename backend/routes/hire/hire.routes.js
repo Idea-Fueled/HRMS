@@ -88,14 +88,19 @@ router.put("/candidates/:id", async (req, res) => {
 router.put("/candidates/:id/stage", async (req, res) => {
     try {
         const { id } = req.params;
-        const { stage } = req.body;
+        const { stage, holdReason } = req.body;
 
         let status = "In Progress";
         let archiveReason = null;
+        let updateHoldReason = null;
 
         if (stage === "Rejected") {
             status = "Rejected";
             archiveReason = "Rejected";
+        } else if (stage === "On Hold" || stage === "Hold") {
+            status = "On Hold";
+            archiveReason = null;
+            updateHoldReason = holdReason || "Candidate placed on hold";
         } else if (stage === "Joined") {
             status = "Joined";
             archiveReason = null;
@@ -104,9 +109,16 @@ router.put("/candidates/:id/stage", async (req, res) => {
             archiveReason = null;
         }
 
+        const setFields = { stage, status, archiveReason };
+        if (stage === "On Hold" || stage === "Hold") {
+            setFields.holdReason = updateHoldReason;
+        } else {
+            setFields.holdReason = null;
+        }
+
         const candidate = await Candidate.findOneAndUpdate(
             { id: id },
-            { $set: { stage, status, archiveReason } },
+            { $set: setFields },
             { new: true }
         );
 
@@ -123,6 +135,85 @@ router.put("/candidates/:id/stage", async (req, res) => {
         });
     } catch (err) {
         console.error("Error updating stage:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+// 5. PUT /hire/candidates/:id/hold
+router.put("/candidates/:id/hold", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { holdReason } = req.body;
+
+        const candidate = await Candidate.findOneAndUpdate(
+            { id: id },
+            {
+                $set: {
+                    stage: "On Hold",
+                    status: "On Hold",
+                    holdReason: holdReason || "Candidate placed on hold",
+                    archiveReason: null
+                }
+            },
+            { new: true }
+        );
+
+        if (!candidate) {
+            return res.status(404).json({
+                success: false,
+                message: "Candidate not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            candidate
+        });
+    } catch (err) {
+        console.error("Error placing candidate on hold:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+// 6. PUT /hire/candidates/:id/unhold
+router.put("/candidates/:id/unhold", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { targetStage } = req.body;
+        const nextStage = targetStage || "Resume Screening";
+
+        const candidate = await Candidate.findOneAndUpdate(
+            { id: id },
+            {
+                $set: {
+                    stage: nextStage,
+                    status: "In Progress",
+                    holdReason: null,
+                    archiveReason: null
+                }
+            },
+            { new: true }
+        );
+
+        if (!candidate) {
+            return res.status(404).json({
+                success: false,
+                message: "Candidate not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            candidate
+        });
+    } catch (err) {
+        console.error("Error unholding candidate:", err);
         return res.status(500).json({
             success: false,
             message: "Internal server error"

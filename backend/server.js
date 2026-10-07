@@ -29,7 +29,9 @@ app.use(cookieParser());
 // Dynamic CORS — supports local dev and production via FRONTEND_URL env var
 const allowedOrigins = [
     "http://localhost:5173",
-    "http://localhost:5174"
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176"
 ];
 if (process.env.FRONTEND_URL) {
     const url = process.env.FRONTEND_URL.replace(/\/+$/, ""); // strip trailing slash

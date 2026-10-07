@@ -5,7 +5,7 @@ import {
     XCircle, ArrowRight, ChevronRight, Star, ExternalLink,
     Upload, RefreshCw, AlertCircle, ShieldAlert, Award, UserCheck,
     IndianRupee, ArrowUpRight, ChevronDown, Check, Layers, MoveRight,
-    Building, Phone, Mail, MapPin, Download, Lock
+    Building, Phone, Mail, MapPin, Download, Lock, PauseCircle, PlayCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { ViewToggle, SkeletonLoader, EmptyState } from "../../components/SharedComponents";
@@ -14,6 +14,8 @@ import {
     addCandidateApi,
     updateCandidateApi,
     updateCandidateStageApi,
+    holdCandidateApi,
+    unholdCandidateApi,
     scheduleInterviewApi,
     addInterviewFeedbackApi,
     addCandidateDocumentApi,
@@ -39,6 +41,7 @@ const PIPELINE_STAGES = [
     "Offer Sent",
     "Offer Accepted",
     "Joined",
+    "On Hold",
     "Rejected"
 ];
 
@@ -53,8 +56,19 @@ const STAGE_CONFIG = {
     "Offer Sent": { border: "border-t-emerald-500", dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
     "Offer Accepted": { border: "border-t-green-600", dot: "bg-green-600", badge: "bg-green-50 text-green-700 border border-green-200" },
     "Joined": { border: "border-t-[#2D79C7]", dot: "bg-[#2D79C7]", badge: "bg-blue-100 text-[#2D79C7] border border-blue-200" },
+    "On Hold": { border: "border-t-amber-500", dot: "bg-amber-500", badge: "bg-amber-50 text-amber-800 border border-amber-300" },
     "Rejected": { border: "border-t-rose-500", dot: "bg-rose-500", badge: "bg-rose-50 text-rose-700 border border-rose-200" }
 };
+
+const HOLD_REASONS = [
+    "Candidate Requested Time",
+    "Budget / Hiring Freeze",
+    "Position On Hold",
+    "Waiting for Team / HM Review",
+    "Future Consideration",
+    "Salary Negotiation On Hold",
+    "Other"
+];
 
 const POSITIONS = [
     "Senior Full Stack Engineer",
@@ -112,6 +126,9 @@ export const Hire = () => {
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
     const [candidateToReject, setCandidateToReject] = useState(null);
 
+    const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
+    const [candidateToHold, setCandidateToHold] = useState(null);
+
     // Dragged candidate ID for Kanban board
     const [draggedCandidateId, setDraggedCandidateId] = useState(null);
 
@@ -164,9 +181,10 @@ export const Hire = () => {
 
         const offersSent = candidates.filter(c => c.stage === "Offer Sent" || c.status === "Offer Sent").length;
         const joined = candidates.filter(c => c.stage === "Joined" || c.status === "Joined").length;
+        const onHold = candidates.filter(c => (c.stage === "On Hold" || c.status === "On Hold") && c.stage !== "Rejected" && !c.archiveReason).length;
         const rejected = candidates.filter(c => c.stage === "Rejected" || c.status === "Rejected").length;
 
-        return { total, newApps, screening, scheduledInterviewsCount, offersSent, joined, rejected };
+        return { total, newApps, screening, scheduledInterviewsCount, offersSent, joined, onHold, rejected };
     }, [candidates]);
 
     /* ─────────────────────────────────────────────
@@ -174,6 +192,10 @@ export const Hire = () => {
     ───────────────────────────────────────────── */
     const activeCandidates = useMemo(() => {
         return candidates.filter(c => c.stage !== "Rejected" && c.status !== "Rejected" && !c.archiveReason);
+    }, [candidates]);
+
+    const onHoldCandidatesList = useMemo(() => {
+        return candidates.filter(c => (c.stage === "On Hold" || c.status === "On Hold") && c.stage !== "Rejected" && !c.archiveReason);
     }, [candidates]);
 
     const archivedCandidatesList = useMemo(() => {
@@ -184,6 +206,8 @@ export const Hire = () => {
         let baseList = activeCandidates;
         if (activeTab === "archive") {
             baseList = archivedCandidatesList;
+        } else if (activeTab === "hold") {
+            baseList = onHoldCandidatesList;
         } else if (activeTab === "kanban") {
             baseList = candidates;
         }
@@ -275,6 +299,41 @@ export const Hire = () => {
         }
     };
 
+    const handleOpenHold = (cand) => {
+        setCandidateToHold(cand);
+        setIsHoldModalOpen(true);
+    };
+
+    const handleConfirmHold = async (reason, customNote) => {
+        if (!candidateToHold) return;
+        try {
+            const finalReason = customNote ? `${reason}: ${customNote}` : reason;
+            const updated = await holdCandidateApi(candidateToHold.id, finalReason);
+            setCandidates(prev => prev.map(c => c.id === candidateToHold.id ? updated : c));
+            if (selectedCandidate && selectedCandidate.id === candidateToHold.id) {
+                setSelectedCandidate(updated);
+            }
+            setIsHoldModalOpen(false);
+            setCandidateToHold(null);
+            toast.success(`${candidateToHold.name} placed on hold`);
+        } catch {
+            toast.error("Failed to place candidate on hold");
+        }
+    };
+
+    const handleUnhold = async (candidateId, targetStage = "Resume Screening") => {
+        try {
+            const updated = await unholdCandidateApi(candidateId, targetStage);
+            setCandidates(prev => prev.map(c => c.id === candidateId ? updated : c));
+            if (selectedCandidate && selectedCandidate.id === candidateId) {
+                setSelectedCandidate(updated);
+            }
+            toast.success("Candidate restored to active pipeline");
+        } catch {
+            toast.error("Failed to restore candidate");
+        }
+    };
+
     const handleConfirmReject = async (reason) => {
         if (!candidateToReject) return;
         try {
@@ -335,8 +394,8 @@ export const Hire = () => {
         { id: "dashboard", label: "Dashboard", icon: Layers },
         { id: "candidates", label: "Candidates", icon: Users, count: activeCandidates.length },
         { id: "kanban", label: "Kanban Pipeline", icon: Briefcase },
-        { id: "interviews", label: "Interviews", icon: Calendar, count: stats.scheduledInterviewsCount },
-        { id: "offers", label: "Offers", icon: IndianRupee, count: stats.offersSent },
+        { id: "hold", label: "On Hold", icon: PauseCircle, count: onHoldCandidatesList.length },
+        { id: "offers", label: "Offers", icon: IndianRupee, count: offerCandidatesList.length },
         { id: "archive", label: "Archive", icon: FileText, count: archivedCandidatesList.length }
     ];
 
@@ -443,6 +502,7 @@ export const Hire = () => {
                         >
                             <option value="">All Statuses</option>
                             <option value="In Progress">In Progress</option>
+                            <option value="On Hold">On Hold</option>
                             <option value="Passed">Passed</option>
                             <option value="Offer Sent">Offer Sent</option>
                             <option value="Joined">Joined</option>
@@ -505,6 +565,8 @@ export const Hire = () => {
                                 setIsScheduleModalOpen(true);
                             }}
                             onMoveStage={handleMoveStage}
+                            onHold={handleOpenHold}
+                            onUnhold={handleUnhold}
                             onReject={(cand) => {
                                 setCandidateToReject(cand);
                                 setIsRejectModalOpen(true);
@@ -525,19 +587,17 @@ export const Hire = () => {
                         />
                     )}
 
-                    {/* TAB 4: INTERVIEWS */}
-                    {activeTab === "interviews" && (
-                        <InterviewsView
-                            interviews={allInterviewsList}
-                            candidates={candidates}
-                            onAddFeedback={(intObj, candObj) => {
-                                setInterviewForFeedback({ ...intObj, candidate: candObj });
-                                setIsFeedbackModalOpen(true);
+                    {/* TAB 4: ON HOLD */}
+                    {activeTab === "hold" && (
+                        <OnHoldView
+                            candidates={filteredCandidates}
+                            onOpenDrawer={handleOpenDrawer}
+                            onUnhold={handleUnhold}
+                            onReject={(cand) => {
+                                setCandidateToReject(cand);
+                                setIsRejectModalOpen(true);
                             }}
-                            onScheduleNew={() => {
-                                setCandidateForInterview(candidates[0] || null);
-                                setIsScheduleModalOpen(true);
-                            }}
+                            onDelete={handleDeleteCandidate}
                         />
                     )}
 
@@ -579,6 +639,8 @@ export const Hire = () => {
                         setIsScheduleModalOpen(true);
                     }}
                     onMoveStage={handleMoveStage}
+                    onHold={handleOpenHold}
+                    onUnhold={handleUnhold}
                     onReject={() => {
                         setCandidateToReject(selectedCandidate);
                         setIsRejectModalOpen(true);
@@ -725,6 +787,17 @@ export const Hire = () => {
                 />
             )}
 
+            {isHoldModalOpen && candidateToHold && (
+                <HoldCandidateModal
+                    candidate={candidateToHold}
+                    onClose={() => {
+                        setIsHoldModalOpen(false);
+                        setCandidateToHold(null);
+                    }}
+                    onConfirm={handleConfirmHold}
+                />
+            )}
+
             {isRejectModalOpen && candidateToReject && (
                 <RejectCandidateModal
                     candidate={candidateToReject}
@@ -750,6 +823,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
         { label: "Interviews Scheduled", value: stats.scheduledInterviewsCount, icon: Calendar, color: "text-cyan-600", bg: "bg-cyan-50" },
         { label: "Offers Sent", value: stats.offersSent, icon: IndianRupee, color: "text-purple-600", bg: "bg-purple-50" },
         { label: "Joined", value: stats.joined, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+        { label: "On Hold", value: stats.onHold, icon: PauseCircle, color: "text-amber-600", bg: "bg-amber-50" },
         { label: "Rejected", value: stats.rejected, icon: XCircle, color: "text-rose-600", bg: "bg-rose-50" },
     ];
 
@@ -758,7 +832,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
     return (
         <div className="space-y-6">
             {/* Stat Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3.5">
                 {summaryCards.map((card, idx) => {
                     const Icon = card.icon;
                     return (
@@ -838,7 +912,7 @@ const DashboardView = ({ stats, candidates, onOpenDrawer, onAddCandidate, onSche
 /* ─────────────────────────────────────────────
    COMPONENT: CANDIDATES VIEW (List & Card)
 ───────────────────────────────────────────── */
-const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInterview, onMoveStage, onReject }) => {
+const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInterview, onMoveStage, onHold, onUnhold, onReject }) => {
     if (candidates.length === 0) {
         return <EmptyState message="No candidates found" description="Try adjusting your filters or search terms." />;
     }
@@ -895,11 +969,28 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
 
                         {/* Card Bottom / Stage Pill & Actions */}
                         <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-[#2D79C7] border border-blue-100">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${cand.stage === "On Hold" ? "bg-amber-50 text-amber-800 border border-amber-300" : "bg-blue-50 text-[#2D79C7] border border-blue-100"}`}>
                                 {cand.stage}
                             </span>
 
                             <div className="flex items-center gap-1">
+                                {cand.stage === "On Hold" ? (
+                                    <button
+                                        onClick={() => onUnhold(cand.id)}
+                                        title="Resume Candidate"
+                                        className="p-1.5 text-amber-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-[8px] transition-all cursor-pointer"
+                                    >
+                                        <PlayCircle className="w-3.5 h-3.5" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => onHold(cand)}
+                                        title="Put on Hold"
+                                        className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-[8px] transition-all cursor-pointer"
+                                    >
+                                        <PauseCircle className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => onOpenDrawer(cand)}
                                     title="View Candidate Profile"
@@ -959,13 +1050,30 @@ const CandidatesView = ({ candidates, view, onOpenDrawer, onEdit, onScheduleInte
                             <td className="py-3 px-4 text-gray-600">{cand.experience}</td>
                             <td className="py-3 px-4 text-gray-600">{cand.currentCompany}</td>
                             <td className="py-3 px-4">
-                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-[#2D79C7] border border-blue-100">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${cand.stage === "On Hold" ? "bg-amber-50 text-amber-800 border border-amber-300" : "bg-blue-50 text-[#2D79C7] border border-blue-100"}`}>
                                     {cand.stage}
                                 </span>
                             </td>
                             <td className="py-3 px-4 text-gray-400">{cand.appliedDate}</td>
                             <td className="py-3 px-4 text-right">
                                 <div className="flex items-center justify-end gap-1">
+                                    {cand.stage === "On Hold" ? (
+                                        <button
+                                            onClick={() => onUnhold(cand.id)}
+                                            className="p-1.5 text-amber-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-[8px] transition-all cursor-pointer"
+                                            title="Resume Candidate"
+                                        >
+                                            <PlayCircle className="w-4 h-4" />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => onHold(cand)}
+                                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-[8px] transition-all cursor-pointer"
+                                            title="Put on Hold"
+                                        >
+                                            <PauseCircle className="w-4 h-4" />
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => onOpenDrawer(cand)}
                                         className="p-1.5 text-gray-500 hover:text-[#2D79C7] hover:bg-gray-100 rounded-[8px] transition-all cursor-pointer"
@@ -1303,6 +1411,91 @@ const OffersView = ({ offers, onOpenDrawer, onUpdateOffer }) => {
 };
 
 /* ─────────────────────────────────────────────
+   COMPONENT: ON HOLD VIEW
+───────────────────────────────────────────── */
+const OnHoldView = ({ candidates, onOpenDrawer, onUnhold, onReject, onDelete }) => {
+    if (candidates.length === 0) {
+        return (
+            <EmptyState
+                message="No candidates on hold"
+                description="Candidates placed on hold will appear here. You can put candidates on hold from the Candidates list, Kanban board, or profile drawer."
+            />
+        );
+    }
+
+    return (
+        <div className="bg-white border border-[#E5E7EB] rounded-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-3.5 px-4">Candidate</th>
+                        <th className="py-3.5 px-4">Position</th>
+                        <th className="py-3.5 px-4">Hold Reason / Note</th>
+                        <th className="py-3.5 px-4">Applied Date</th>
+                        <th className="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-medium">
+                    {candidates.map(cand => (
+                        <tr key={cand.id} className="hover:bg-gray-50/80 transition-all">
+                            <td className="py-3 px-4">
+                                <div className="flex items-center gap-2.5">
+                                    <img
+                                        src={cand.photo}
+                                        alt={cand.name}
+                                        className="w-9 h-9 min-w-9 min-h-9 aspect-square rounded-full object-cover shrink-0 border border-gray-200 shadow-xs"
+                                    />
+                                    <div>
+                                        <div className="font-bold text-[#1E1E1E] cursor-pointer hover:text-[#2D79C7]" onClick={() => onOpenDrawer(cand)}>
+                                            {cand.name}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400">{cand.email}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="py-3 px-4 text-gray-700">{cand.position}</td>
+                            <td className="py-3 px-4">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                    <PauseCircle className="w-3 h-3 text-amber-600" />
+                                    <span>{cand.holdReason || "Placed on hold"}</span>
+                                </span>
+                            </td>
+                            <td className="py-3 px-4 text-gray-400">{cand.appliedDate}</td>
+                            <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                        onClick={() => onUnhold(cand.id)}
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-[8px] text-[11px] font-bold transition-all cursor-pointer border border-emerald-200/80"
+                                        title="Resume Candidate to Active Pipeline"
+                                    >
+                                        <PlayCircle className="w-3.5 h-3.5" />
+                                        <span>Resume</span>
+                                    </button>
+                                    <button
+                                        onClick={() => onOpenDrawer(cand)}
+                                        className="p-1.5 text-gray-500 hover:text-[#2D79C7] hover:bg-gray-100 rounded-[8px] transition-all cursor-pointer"
+                                        title="View Profile"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => onReject(cand)}
+                                        className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-[8px] transition-all cursor-pointer"
+                                        title="Reject Candidate"
+                                    >
+                                        <XCircle className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
    COMPONENT: ARCHIVE VIEW
 ───────────────────────────────────────────── */
 const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
@@ -1375,7 +1568,7 @@ const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
 /* ─────────────────────────────────────────────
    CANDIDATE DETAIL DRAWER
 ───────────────────────────────────────────── */
-const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview, onMoveStage, onReject, onAddFeedback, onUploadDoc, onDeleteDoc }) => {
+const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview, onMoveStage, onHold, onUnhold, onReject, onAddFeedback, onUploadDoc, onDeleteDoc }) => {
     const [drawerTab, setDrawerTab] = useState("basic");
 
     return (
@@ -1406,10 +1599,15 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                 </div>
 
                 {/* Stage Banner */}
-                <div className="px-5 py-3 bg-blue-50/70 border-b border-blue-100 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
+                <div className={`px-5 py-3 ${candidate.stage === "On Hold" ? "bg-amber-50/90 border-b border-amber-200" : "bg-blue-50/70 border-b border-blue-100"} flex items-center justify-between text-xs`}>
+                    <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-gray-500 font-bold">Current Stage:</span>
-                        <span className="font-black text-[#2D79C7]">{candidate.stage}</span>
+                        <span className={`font-black ${candidate.stage === "On Hold" ? "text-amber-800" : "text-[#2D79C7]"}`}>{candidate.stage}</span>
+                        {candidate.holdReason && (
+                            <span className="text-[11px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md font-medium">
+                                Note: {candidate.holdReason}
+                            </span>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1662,13 +1860,32 @@ const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview
                 </div>
 
                 {/* Drawer Footer Actions */}
-                <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-                    <button
-                        onClick={onReject}
-                        className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-[10px] text-xs font-bold cursor-pointer"
-                    >
-                        Reject Candidate
-                    </button>
+                <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={onReject}
+                            className="px-3.5 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-[10px] text-xs font-bold cursor-pointer"
+                        >
+                            Reject Candidate
+                        </button>
+                        {candidate.stage === "On Hold" ? (
+                            <button
+                                onClick={() => onUnhold(candidate.id)}
+                                className="px-3.5 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-[10px] text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                            >
+                                <PlayCircle className="w-3.5 h-3.5" />
+                                <span>Resume</span>
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => onHold(candidate)}
+                                className="px-3.5 py-2 bg-amber-50 text-amber-800 hover:bg-amber-100 rounded-[10px] text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                            >
+                                <PauseCircle className="w-3.5 h-3.5" />
+                                <span>Put on Hold</span>
+                            </button>
+                        )}
+                    </div>
                     <button
                         onClick={() => onMoveStage(candidate.id, PIPELINE_STAGES[Math.min(PIPELINE_STAGES.indexOf(candidate.stage) + 1, PIPELINE_STAGES.length - 1)])}
                         className="px-4 py-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white rounded-[10px] text-xs font-bold cursor-pointer flex items-center gap-1.5"
@@ -2372,6 +2589,72 @@ const UpdateOfferModal = ({ candidate, onClose, onSave }) => {
                     <div className="pt-4 flex justify-end gap-2">
                         <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Save Offer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const HoldCandidateModal = ({ candidate, onClose, onConfirm }) => {
+    const [reason, setReason] = useState(HOLD_REASONS[0]);
+    const [customNote, setCustomNote] = useState("");
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onConfirm(reason, customNote);
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn select-none">
+            <div className="bg-white rounded-[20px] shadow-2xl border border-gray-200 max-w-sm w-full p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-amber-50 text-amber-600 rounded-full">
+                            <PauseCircle className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-sm font-bold text-[#1E1E1E]">Put on Hold</h3>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-3 text-xs">
+                    <p className="text-gray-600">
+                        Put application for <strong>{candidate.name}</strong> on hold?
+                    </p>
+
+                    <div>
+                        <label className="block text-gray-500 font-bold mb-1">Reason for Hold</label>
+                        <select
+                            value={reason}
+                            onChange={e => setReason(e.target.value)}
+                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] text-xs font-medium text-gray-800"
+                        >
+                            {HOLD_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-gray-500 font-bold mb-1">Optional Notes / Details</label>
+                        <textarea
+                            rows={2}
+                            value={customNote}
+                            onChange={e => setCustomNote(e.target.value)}
+                            placeholder="e.g. Waiting for feedback, requested 2 weeks..."
+                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] text-xs"
+                        />
+                    </div>
+
+                    <div className="pt-3 flex justify-end gap-2">
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-[10px] font-bold cursor-pointer shadow-xs"
+                        >
+                            Confirm Hold
+                        </button>
                     </div>
                 </form>
             </div>

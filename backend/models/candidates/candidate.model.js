@@ -102,6 +102,10 @@ const candidateSchema = new mongoose.Schema({
     archiveReason: {
         type: String,
         default: null
+    },
+    holdReason: {
+        type: String,
+        default: null
     }
 }, { timestamps: true });
 

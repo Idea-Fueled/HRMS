@@ -159,35 +159,94 @@ export const updateCandidateApi = async (id, updateData) => {
     return updated.find(c => c.id === id);
 };
 
-export const updateCandidateStageApi = async (id, newStage) => {
+export const updateCandidateStageApi = async (id, newStage, holdReason = null) => {
     const current = getCandidatesFromStorage();
     const updated = current.map(c => {
         if (c.id === id) {
             let newStatus = c.status;
             let archiveReason = c.archiveReason;
+            let newHoldReason = c.holdReason || null;
 
             if (newStage === "Rejected") {
                 newStatus = "Rejected";
                 archiveReason = "Rejected";
+                newHoldReason = null;
+            } else if (newStage === "On Hold" || newStage === "Hold") {
+                newStatus = "On Hold";
+                archiveReason = null;
+                newHoldReason = holdReason || c.holdReason || "Candidate placed on hold";
             } else if (newStage === "Joined") {
                 newStatus = "Joined";
                 archiveReason = null;
+                newHoldReason = null;
             } else if (newStage === "Offer Sent" || newStage === "Offer Accepted") {
                 newStatus = newStage;
                 archiveReason = null;
+                newHoldReason = null;
             } else {
                 newStatus = "In Progress";
                 archiveReason = null;
+                newHoldReason = null;
             }
 
-            return { ...c, stage: newStage, status: newStatus, archiveReason };
+            return { ...c, stage: newStage, status: newStatus, archiveReason, holdReason: newHoldReason };
         }
         return c;
     });
     saveCandidatesToStorage(updated);
 
     try {
-        await API.put(`/hire/candidates/${id}/stage`, { stage: newStage });
+        await API.put(`/hire/candidates/${id}/stage`, { stage: newStage, holdReason });
+    } catch {
+        // Handled
+    }
+
+    return updated.find(c => c.id === id);
+};
+
+export const holdCandidateApi = async (id, holdReason = "Candidate placed on hold") => {
+    const current = getCandidatesFromStorage();
+    const updated = current.map(c => {
+        if (c.id === id) {
+            return {
+                ...c,
+                stage: "On Hold",
+                status: "On Hold",
+                holdReason: holdReason,
+                archiveReason: null
+            };
+        }
+        return c;
+    });
+    saveCandidatesToStorage(updated);
+
+    try {
+        await API.put(`/hire/candidates/${id}/hold`, { holdReason });
+    } catch {
+        // Handled
+    }
+
+    return updated.find(c => c.id === id);
+};
+
+export const unholdCandidateApi = async (id, targetStage = "Resume Screening") => {
+    const current = getCandidatesFromStorage();
+    const updated = current.map(c => {
+        if (c.id === id) {
+            return {
+                ...c,
+                stage: targetStage,
+                status: "In Progress",
+                holdReason: null,
+                archiveReason: null
+            };
+        }
+        return c;
+    });
+    saveCandidatesToStorage(updated);
+
+    try {
+        await API.put(`/hire/candidates/${id}/unhold`, { targetStage });
     } catch {
         // Handled
     }
