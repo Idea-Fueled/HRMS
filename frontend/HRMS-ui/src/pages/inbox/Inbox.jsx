@@ -43,6 +43,7 @@ import {
     batchEmailAction,
     fetchCompanyContacts,
 } from "../../services/email.service";
+import RichTextEditor from "../../components/RichTextEditor";
 
 /* ─────────────────────────────────────────────
    HELPERS & FORMATTERS
@@ -494,10 +495,10 @@ const Inbox = () => {
             formData.append("cc", JSON.stringify(composeForm.cc));
             formData.append("bcc", JSON.stringify(composeForm.bcc));
             formData.append("subject", composeForm.subject.trim() || "(No Subject)");
-            formData.append(
-                "body",
-                `<div style="font-family: inherit; line-height: 1.6;">${composeForm.body.replace(/\n/g, "<br/>")}</div>`
-            );
+            const formattedBody = composeForm.body.trim().startsWith("<")
+                ? `<div style="font-family: inherit; line-height: 1.6;">${composeForm.body}</div>`
+                : `<div style="font-family: inherit; line-height: 1.6;">${composeForm.body.replace(/\n/g, "<br/>")}</div>`;
+            formData.append("body", formattedBody);
             formData.append("priority", composeForm.priority);
             formData.append("labels", composeForm.labels.join(","));
             if (composeForm.replyTo) formData.append("replyTo", composeForm.replyTo);
@@ -1325,26 +1326,30 @@ const Inbox = () => {
                                 : "w-full max-w-2xl max-h-[85vh]"
                         }`}
                     >
-                        {/* Compose Header */}
-                        <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+                        {/* Compose Header - Clean White Background */}
+                        <div className="flex items-center justify-between px-5 py-3.5 bg-white border-b border-slate-200 text-slate-800">
                             <div className="flex items-center gap-2">
-                                <PenSquare className="w-4 h-4 text-[#2D79C7]" />
-                                <span className="text-xs font-bold">New Message</span>
+                                <div className="p-1.5 rounded-lg bg-blue-50 text-[#2D79C7]">
+                                    <PenSquare className="w-4 h-4" />
+                                </div>
+                                <span className="text-sm font-bold text-slate-900 tracking-tight">New Message</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                                 <button
                                     onClick={() => setComposeMaximized(!composeMaximized)}
-                                    className="p-1 hover:bg-white/10 rounded cursor-pointer text-slate-300"
+                                    title={composeMaximized ? "Restore window" : "Maximize window"}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg cursor-pointer text-slate-400 hover:text-slate-700 transition-colors"
                                 >
                                     {composeMaximized ? (
-                                        <Minimize2 className="w-3.5 h-3.5" />
+                                        <Minimize2 className="w-4 h-4" />
                                     ) : (
-                                        <Maximize2 className="w-3.5 h-3.5" />
+                                        <Maximize2 className="w-4 h-4" />
                                     )}
                                 </button>
                                 <button
                                     onClick={() => setIsComposeOpen(false)}
-                                    className="p-1 hover:bg-white/10 rounded cursor-pointer text-slate-300"
+                                    title="Close"
+                                    className="p-1.5 hover:bg-rose-50 rounded-lg cursor-pointer text-slate-400 hover:text-rose-600 transition-colors"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -1546,17 +1551,20 @@ const Inbox = () => {
                                 </div>
                             </div>
 
-                            {/* Email Body Message */}
-                            <div className="space-y-1">
-                                <label className="text-[11px] font-bold text-slate-600">Message Content</label>
-                                <textarea
-                                    rows={composeMaximized ? 14 : 7}
-                                    placeholder="Write your email here..."
+                            {/* Email Body Message - Rich Text Editor */}
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-bold text-slate-600">Message Content</label>
+                                    <span className="text-[10px] text-slate-400 font-medium">Rich Text (Bold, Italic, Links, Lists)</span>
+                                </div>
+                                <RichTextEditor
                                     value={composeForm.body}
-                                    onChange={(e) =>
-                                        setComposeForm((prev) => ({ ...prev, body: e.target.value }))
+                                    onChange={(content) =>
+                                        setComposeForm((prev) => ({ ...prev, body: content }))
                                     }
-                                    className="w-full p-3.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2D79C7]/20 focus:border-[#2D79C7] transition-all leading-relaxed font-sans"
+                                    placeholder="Write your email here... Format text using toolbar above or use Ctrl+B, Ctrl+I, Ctrl+K"
+                                    minHeight={composeMaximized ? "340px" : "180px"}
+                                    maxHeight={composeMaximized ? "520px" : "320px"}
                                 />
                             </div>
 
