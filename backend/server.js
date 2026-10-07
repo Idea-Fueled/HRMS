@@ -44,7 +44,8 @@ if (process.env.FRONTEND_URL) {
 
 app.use(cors({
     origin: allowedOrigins,
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
 
 app.use("/api/users", userRoutes)

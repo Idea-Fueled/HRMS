@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import ideaFueledLogo from "../../assets/IF-black.png";
 import { Mail, Lock, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { unlockAudio } from "../../utils/audioChime";
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -49,18 +50,41 @@ const Login = () => {
             const response = await loginUser(email.trim(), password);
 
             if (response.data && response.data.success) {
-                // Fetch the full user profile (cookie is now set by the login response)
-                const profileRes = await getCurrentUser();
+                // Unlock browser audio context on this user click
+                unlockAudio();
 
-                if (profileRes.data && profileRes.data.success) {
-                    const loggedInUser = profileRes.data.user;
-                    // Sync into localStorage AND into AuthContext state in one shot
-                    localStorage.setItem("user", JSON.stringify(loggedInUser));
+                const token = response.data.token;
+                if (token) {
+                    try {
+                        localStorage.setItem("token", token);
+                    } catch (e) {
+                        console.warn("Could not save token:", e);
+                    }
+                }
+
+                // If user object returned by loginUser, sync immediately without extra roundtrip
+                const loggedInUser = response.data.user;
+                if (loggedInUser) {
+                    try {
+                        localStorage.setItem("user", JSON.stringify(loggedInUser));
+                    } catch (e) {
+                        console.warn("Could not save user:", e);
+                    }
                     setUser(loggedInUser);
                     toast.success("Login successful. Redirecting...");
                     navigate("/dashboard", { replace: true });
                 } else {
-                    toast.error("Failed to retrieve user profile after login.");
+                    // Fallback to fetch profile
+                    const profileRes = await getCurrentUser();
+                    if (profileRes.data && profileRes.data.success) {
+                        const fetchedUser = profileRes.data.user;
+                        localStorage.setItem("user", JSON.stringify(fetchedUser));
+                        setUser(fetchedUser);
+                        toast.success("Login successful. Redirecting...");
+                        navigate("/dashboard", { replace: true });
+                    } else {
+                        toast.error("Failed to retrieve user profile after login.");
+                    }
                 }
             } else {
                 toast.error(response.data?.message || "Invalid email or password.");

@@ -5,6 +5,10 @@ export const loginUser = async (email, password) => {
 };
 
 export const logoutUser = async () => {
+    try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+    } catch (e) {}
     return API.post("/users/logout");
 };
 

@@ -103,6 +103,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(res.data.user);
             } else {
                 localStorage.removeItem("user");
+                localStorage.removeItem("token");
                 setUser(null);
             }
         } catch {
@@ -175,7 +176,10 @@ export const AuthProvider = ({ children }) => {
     }, [user]);
 
     const logout = useCallback(() => {
-        localStorage.removeItem("user");
+        try {
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
+        } catch (e) {}
         setUser(null);
     }, []);
 

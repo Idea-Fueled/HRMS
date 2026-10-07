@@ -15,6 +15,23 @@ const API = axios.create({
     withCredentials: true,
 });
 
+// Automatically attach Bearer token from localStorage to support Incognito mode and cross-domain cookies
+API.interceptors.request.use(
+    (config) => {
+        try {
+            const token = localStorage.getItem("token");
+            if (token) {
+                config.headers = config.headers || {};
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (e) {
+            // localStorage access might throw in strict sandboxes
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
 API.interceptors.response.use(
     (response) => response,
     (error) => {
