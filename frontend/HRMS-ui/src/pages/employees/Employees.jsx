@@ -126,6 +126,18 @@ const statusBadge = (s) => ({
 
 const statusLabel = (s) => ({ active: "Active", inactive: "Inactive", on_notice: "On Notice", terminated: "Terminated" }[s] || s);
 const empTypeLabel = (t) => EMPLOYMENT_TYPES.find(x => x.value === t)?.label || t;
+const effectiveType = (emp) => {
+    if (!emp) return "full_time";
+    if (emp.role === "intern" || emp.employementType === "intern") return "intern";
+    return emp.employementType || "full_time";
+};
+const empTypeBadge = (t) => ({
+    full_time: "bg-blue-50/80 text-[#2D79C7] border-blue-100",
+    part_time: "bg-purple-50 text-purple-700 border-purple-100",
+    contract: "bg-amber-50 text-amber-700 border-amber-100",
+    intern: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    consultant: "bg-indigo-50 text-indigo-700 border-indigo-100",
+}[t] || "bg-gray-100 text-gray-600 border-gray-200");
 const roleLabel = (r) => ROLES.find(x => x.value === r)?.label || r;
 const roleBadge = (r) => ({
     global_admin: "bg-blue-50 text-[#1F5EA8] border-blue-200/80",
@@ -455,8 +467,10 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
                             <td className="px-4 py-3 text-sm text-gray-600">{emp.department || "—"}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{emp.designation || "—"}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{emp.managerId?.fullName || "—"}</td>
-                            <td className="px-4 py-3">
-                                <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-[6px]">{empTypeLabel(emp.employementType)}</span>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-[6px] border ${empTypeBadge(effectiveType(emp))}`}>
+                                    {empTypeLabel(effectiveType(emp))}
+                                </span>
                             </td>
                             <td className="px-4 py-3">
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(emp.status)}`}>{statusLabel(emp.status)}</span>
@@ -695,8 +709,8 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/10">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-black px-3 py-1 rounded-full border shadow-xs ${statusBadge(employee.status)}`}>{statusLabel(employee.status)}</span>
-                        <span className="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-2xs">{empTypeLabel(employee.employementType)}</span>
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${statusBadge(employee.status)}`}>{statusLabel(employee.status)}</span>
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${empTypeBadge(effectiveType(employee))}`}>{empTypeLabel(effectiveType(employee))}</span>
                         <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${roleBadge(employee.role)}`}>{roleLabel(employee.role)}</span>
                     </div>
 
@@ -721,7 +735,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                             <InfoRow label="Role" value={roleLabel(employee.role)} />
                             <InfoRow label="Reporting Manager" value={employee.managerId?.fullName} />
                             <InfoRow label="Dotted Line Manager" value={employee.dottedManagerId?.fullName} />
-                            <InfoRow label="Employment Type" value={empTypeLabel(employee.employementType)} />
+                            <InfoRow label="Employment Type" value={empTypeLabel(effectiveType(employee))} />
                             <InfoRow label="Work Location" value={employee.workLocation} />
                             <InfoRow icon={Calendar} label="Joining Date" value={formatDate(employee.joiningDate)} />
                         </div>
@@ -974,6 +988,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
             setForm(prev => ({ 
                 ...prev, 
                 role: val,
+                ...(val === "intern" ? { employementType: "intern" } : (prev.employementType === "intern" ? { employementType: "full_time" } : {})),
                 permissions: {
                     dashboard: true,
                     me: true,
@@ -991,6 +1006,16 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     offboardingAndOnboarding: isHrOrAdmin,
                     organization: isHrOrAdmin
                 }
+            }));
+            if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }));
+            return;
+        }
+        if (field === "employementType") {
+            setForm(prev => ({
+                ...prev,
+                employementType: val,
+                ...(val === "intern" && (!prev.role || prev.role === "employee") ? { role: "intern" } : {}),
+                ...(val !== "intern" && prev.role === "intern" ? { role: "employee" } : {})
             }));
             if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }));
             return;
@@ -1045,6 +1070,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
         try {
             const payload = {
                 ...form,
+                ...(form.role === "intern" ? { employementType: "intern" } : {}),
+                ...(form.employementType === "intern" && (!form.role || form.role === "employee") ? { role: "intern" } : {}),
                 salaryStructure: {
                     ctc: Number(form.ctc) || 0,
                     basic: Number(form.basic) || 0,
@@ -2108,7 +2135,7 @@ const Employees = () => {
         if (filters.companyEntity && (emp.companyEntity || "Idea Fueled") !== filters.companyEntity) return false;
         if (filters.department && emp.department !== filters.department) return false;
         if (filters.designation && emp.designation !== filters.designation) return false;
-        if (filters.employementType && emp.employementType !== filters.employementType) return false;
+        if (filters.employementType && effectiveType(emp) !== filters.employementType) return false;
         if (filters.status && emp.status !== filters.status) return false;
         if (filters.role && emp.role !== filters.role) return false;
         return true;

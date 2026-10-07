@@ -213,6 +213,14 @@ export const createEmployee = async (req, res) => {
             ? (typeof permissions === "string" ? JSON.parse(permissions) : permissions)
             : defaultPermissions;
 
+        let finalRole = role === "admin" ? "global_admin" : role;
+        let finalEmpType = employementType;
+        if (finalRole === "intern") {
+            finalEmpType = "intern";
+        } else if (finalEmpType === "intern" && (!finalRole || finalRole === "employee")) {
+            finalRole = "intern";
+        }
+
         const employee = await User.create({
             employeeId,
             firstName,
@@ -223,12 +231,12 @@ export const createEmployee = async (req, res) => {
             phoneNumber: phoneNumber || "",
             profilePicture: profilePicture || "",
             companyEntity: companyEntity || "Idea Fueled",
-            role: role === "admin" ? "global_admin" : role,
+            role: finalRole,
             department,
             designation,
             managerId: managerId || null,
             dottedManagerId: dottedManagerId || null,
-            employementType,
+            employementType: finalEmpType,
             workLocation,
             joiningDate,
             dateOfBirth: dateOfBirth || null,
@@ -361,6 +369,11 @@ export const updateEmployee = async (req, res) => {
         if (dottedManagerId !== undefined) employee.dottedManagerId = dottedManagerId || null;
         
         if (employementType) employee.employementType = employementType;
+        if (employee.role === "intern") {
+            employee.employementType = "intern";
+        } else if (employee.employementType === "intern" && employee.role === "employee") {
+            employee.role = "intern";
+        }
         if (workLocation) employee.workLocation = workLocation;
         if (joiningDate) employee.joiningDate = joiningDate;
         if (dateOfBirth !== undefined) employee.dateOfBirth = dateOfBirth || null;

@@ -1282,7 +1282,7 @@ export const EmployeeProfile = () => {
                             <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
                                 <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Employment Type</span>
                                 <span className="text-[#1E1E1E] text-sm font-bold block capitalize">
-                                    {(employee?.employementType || "full_time").replace("_", " ")}
+                                    {(employee?.role === "intern" || employee?.employementType === "intern") ? "Intern" : (employee?.employementType || "full_time").replace("_", " ")}
                                 </span>
                             </div>
 
