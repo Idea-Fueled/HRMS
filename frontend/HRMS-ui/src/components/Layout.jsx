@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-import { Outlet } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 
 const Layout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const location = useLocation();
+    const isInbox = location.pathname.startsWith("/inbox");
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
@@ -25,11 +27,17 @@ const Layout = () => {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
 
-                <main className="flex-1 overflow-y-auto min-w-0 bg-[#F8FAFC]">
-                    <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-7 space-y-6">
+                {isInbox ? (
+                    <main className="flex-1 min-w-0 overflow-hidden bg-white flex flex-col">
                         <Outlet />
-                    </div>
-                </main>
+                    </main>
+                ) : (
+                    <main className="flex-1 overflow-y-auto min-w-0 bg-[#F8FAFC]">
+                        <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-7 space-y-6">
+                            <Outlet />
+                        </div>
+                    </main>
+                )}
             </div>
         </div>
     );

@@ -21,6 +21,7 @@ import Unauthorized from "./pages/unauthorized/Unauthorized";
 import SessionTimeoutManager from "./components/SessionTimeoutModal";
 import Hire from "./pages/hire/Hire";
 import Assets from "./pages/assets/Assets";
+import Inbox from "./pages/inbox/Inbox";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
@@ -61,6 +62,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={ALL_ROLES}>
                         <Me />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "inbox",
+                element: (
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
+                        <Inbox />
                     </ProtectedRoute>
                 ),
             },

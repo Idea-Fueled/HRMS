@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import ideaFueledLogo from "../assets/idea_fueled_logo.png";
 import { useAuth } from "../context/AuthContext";
+import { fetchUnreadEmailCount } from "../services/email.service";
 
 /* ─────────────────────────────────────────────
    NAV DEFINITION
@@ -25,6 +26,17 @@ const menuCategories = [
                         <rect x="14" y="3" width="7" height="5" rx="1" />
                         <rect x="14" y="12" width="7" height="9" rx="1" />
                         <rect x="3" y="16" width="7" height="5" rx="1" />
+                    </svg>
+                ),
+            },
+            {
+                name: "Inbox",
+                to: "/inbox",
+                permissionKey: "inbox",
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                        <rect width="20" height="16" x="2" y="4" rx="2" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                     </svg>
                 ),
             },
@@ -174,12 +186,30 @@ const Sidebar = ({ onClose }) => {
     const { user } = useAuth();
     const location = useLocation();
     const currentPath = location.pathname;
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (!user) return;
+        const checkUnread = async () => {
+            try {
+                const res = await fetchUnreadEmailCount();
+                if (res.data?.success) {
+                    setUnreadCount(res.data.unreadCount || 0);
+                }
+            } catch (err) {
+                // Silently fail if not logged in
+            }
+        };
+        checkUnread();
+        const timer = setInterval(checkUnread, 30000);
+        return () => clearInterval(timer);
+    }, [user, currentPath]);
 
     const hasItemPermission = (item) => {
         if (!user) return false;
 
-        // Workspace categories (Dashboard, Me, My Team, My Finances) are visible to everyone
-        const alwaysVisibleKeys = ["dashboard", "me", "myTeam", "myFinances"];
+        // Workspace categories (Dashboard, Me, My Team, My Finances, Inbox) are visible to everyone
+        const alwaysVisibleKeys = ["dashboard", "me", "myTeam", "myFinances", "inbox"];
         if (alwaysVisibleKeys.includes(item.permissionKey)) {
             return true;
         }
@@ -282,6 +312,22 @@ const Sidebar = ({ onClose }) => {
                                             >
                                                 {item.icon}
                                                 <span className="text-sm font-bold flex-1">{item.name}</span>
+                                                {item.permissionKey === "inbox" && unreadCount > 0 && (
+                                                    <span
+                                                        style={
+                                                            unreadCount > 9
+                                                                ? { minWidth: "22px", height: "22px", borderRadius: "9999px", padding: "0 6px" }
+                                                                : { width: "22px", height: "22px", minWidth: "22px", maxWidth: "22px", minHeight: "22px", maxHeight: "22px", borderRadius: "9999px", padding: 0 }
+                                                        }
+                                                        className={`flex items-center justify-center text-[11px] font-bold tabular-nums leading-none shrink-0 select-none shadow-xs ${
+                                                            isActive
+                                                                ? "bg-[#1F5EA8] text-white"
+                                                                : "bg-white/20 text-white"
+                                                        }`}
+                                                    >
+                                                        {unreadCount}
+                                                    </span>
+                                                )}
                                                 {hasSubItems && (
                                                     <svg 
                                                         xmlns="http://www.w3.org/2000/svg" 

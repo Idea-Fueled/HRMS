@@ -18,6 +18,7 @@ import hireRoutes from "./routes/hire/hire.routes.js"
 import assetRoutes from "./routes/assets/asset.routes.js"
 import offboardingOnboardingRoutes from "./routes/offboarding-onboarding/offboarding-onboarding.routes.js"
 import payrollRoutes from "./routes/payroll/payroll.route.js"
+import emailRoutes from "./routes/emails/email.routes.js"
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -58,6 +59,7 @@ app.use("/api/hire", hireRoutes)
 app.use("/api/assets", assetRoutes)
 app.use("/api/offboarding-onboarding", offboardingOnboardingRoutes)
 app.use("/api/payroll", payrollRoutes)
+app.use("/api/emails", emailRoutes)
 
 connectDB()
 

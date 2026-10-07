@@ -19,6 +19,16 @@ export const SEARCH_REGISTRY = [
         iconName: "LayoutDashboard"
     },
     {
+        id: "nav_inbox",
+        title: "Mailbox / Inbox",
+        description: "Company email box, conversations, communications & messages",
+        keywords: ["inbox", "email", "mail", "mailbox", "messages", "compose", "thread", "sent"],
+        category: "Navigation",
+        route: "/inbox",
+        permissionKey: "inbox",
+        iconName: "Inbox"
+    },
+    {
         id: "nav_me",
         title: "Me (Personal Profile)",
         description: "Personal employee profile, contact details, skills & settings",

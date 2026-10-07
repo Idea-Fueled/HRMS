@@ -16,6 +16,7 @@ const ROLE_PERMISSIONS = {
         "approve:leave", "reject:leave",
         "view:org-data", "access:payroll", "access:recruitment",
         "access:hire", "access:onboarding",
+        "view:inbox", "create:email",
     ],
     admin: [
         "view:dashboard", "view:me", "view:my-team", "view:employees",
@@ -27,6 +28,7 @@ const ROLE_PERMISSIONS = {
         "approve:leave", "reject:leave",
         "view:org-data", "access:payroll", "access:recruitment",
         "access:hire", "access:onboarding",
+        "view:inbox", "create:email",
     ],
     hr: [
         "view:dashboard", "view:me", "view:my-team", "view:employees",
@@ -38,6 +40,7 @@ const ROLE_PERMISSIONS = {
         "approve:leave", "reject:leave",
         "view:org-data", "access:payroll", "access:recruitment",
         "access:hire", "access:onboarding",
+        "view:inbox", "create:email",
     ],
     manager: [
         "view:dashboard", "view:me", "view:my-team",
@@ -46,6 +49,7 @@ const ROLE_PERMISSIONS = {
         "view:team-performance", "approve:leave", "reject:leave",
         "view:team-wfh",
         "create:post", "create:announcement", "create:poll",
+        "view:inbox", "create:email",
     ],
     employee: [
         "view:dashboard", "view:me",
@@ -55,6 +59,7 @@ const ROLE_PERMISSIONS = {
         "view:announcements", "participate:poll",
         "access:own-documents", "view:own-finances",
         "create:post", "create:announcement", "create:poll",
+        "view:inbox", "create:email",
     ],
     intern: [
         "view:dashboard", "view:me",
@@ -64,17 +69,18 @@ const ROLE_PERMISSIONS = {
         "view:announcements", "participate:poll",
         "access:own-documents", "view:own-finances",
         "create:post", "create:announcement", "create:poll",
+        "view:inbox", "create:email",
     ],
 };
 
 /* Routes each role is allowed to visit */
 export const ROLE_ALLOWED_ROUTES = {
-    global_admin: ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding", "/assets"],
-    admin:        ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/offboarding-onboarding"],
-    hr:           ["/dashboard", "/me", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
-    manager:      ["/dashboard", "/me", "/my-team", "/my-finances", "/documents", "/time-attendance"],
-    employee:     ["/dashboard", "/me", "/my-finances", "/documents", "/time-attendance"],
-    intern:       ["/dashboard", "/me", "/my-finances", "/documents", "/time-attendance"],
+    global_admin: ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding", "/assets"],
+    admin:        ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/offboarding-onboarding"],
+    hr:           ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
+    manager:      ["/dashboard", "/me", "/inbox", "/my-team", "/my-finances", "/documents", "/time-attendance"],
+    employee:     ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance"],
+    intern:       ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance"],
 };
 
 /* ─────────────────────────────────────────────
