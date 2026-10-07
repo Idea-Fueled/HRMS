@@ -6,9 +6,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
-import { generatePayslip, getPayslips, deletePayslip } from "../../services/payroll.service";
+import { generatePayslip, getPayslips, deletePayslip, notifyPayslipDownload } from "../../services/payroll.service";
 import { downloadPayslipPdf } from "../../utils/payslipPdfGenerator";
 import { Avatar } from "../../components/SharedComponents";
+import { useAuth } from "../../context/AuthContext";
 
 const MONTHS = [
     "JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
@@ -18,6 +19,7 @@ const MONTHS = [
 const YEARS = [2025, 2026, 2027, 2028];
 
 export default function Payroll() {
+    const { user } = useAuth();
     const [employees, setEmployees] = useState([]);
     const [payslips, setPayslips] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -149,6 +151,16 @@ export default function Payroll() {
             toast.loading("Generating PDF...", { id: "pdf-gen" });
             await downloadPayslipPdf(payslip);
             toast.success("Payslip downloaded successfully!", { id: "pdf-gen" });
+
+            // Notify Global Admins if current user is not a global_admin
+            if (user?.role !== "global_admin") {
+                notifyPayslipDownload({
+                    payslipId: payslip._id,
+                    periodString: payslip.periodString || `${payslip.month || ""} ${payslip.year || ""}`.trim(),
+                    month: payslip.month,
+                    year: payslip.year,
+                }).catch((err) => console.warn("Failed to notify global admins of payslip download:", err));
+            }
         } catch (err) {
             console.error(err);
             toast.error("Failed to download PDF.", { id: "pdf-gen" });

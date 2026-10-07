@@ -12,7 +12,7 @@ import {
     Building
 } from "lucide-react";
 import { toast } from "sonner";
-import { getPayslips } from "../../services/payroll.service";
+import { getPayslips, notifyPayslipDownload } from "../../services/payroll.service";
 import { useAuth } from "../../context/AuthContext";
 import { downloadPayslipPdf } from "../../utils/payslipPdfGenerator";
 import { SkeletonLoader } from "../../components/SharedComponents";
@@ -91,6 +91,16 @@ const MyFinances = () => {
             toast.loading("Generating PDF...", { id: "pdf-down" });
             await downloadPayslipPdf(payslip);
             toast.success("Payslip PDF downloaded!", { id: "pdf-down" });
+
+            // Notify Global Admins if current user is not a global_admin
+            if (user?.role !== "global_admin") {
+                notifyPayslipDownload({
+                    payslipId: payslip._id,
+                    periodString: payslip.periodString || `${payslip.month || ""} ${payslip.year || ""}`.trim(),
+                    month: payslip.month,
+                    year: payslip.year,
+                }).catch((err) => console.warn("Failed to notify global admins of payslip download:", err));
+            }
         } catch (err) {
             console.error(err);
             toast.error("Failed to generate PDF download.", { id: "pdf-down" });

@@ -5,13 +5,17 @@ import {
     getPayslips,
     getPayslipById,
     deletePayslip,
-    updateEmployeeFinancials
+    updateEmployeeFinancials,
+    notifyPayslipDownload
 } from "../../controllers/payroll/payroll.controller.js";
 
 const router = express.Router();
 
 // Apply Auth Middleware to all payroll endpoints
 router.use(isAuthenticated);
+
+// Notify Global Admins on Payslip Download
+router.post("/notify-download", notifyPayslipDownload);
 
 // Create / Process Payslip (Global Admin / HR)
 router.post("/generate", createPayslip);

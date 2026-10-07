@@ -24,3 +24,8 @@ export const deletePayslip = (id) => {
 export const updateEmployeeFinancials = (employeeId, data) => {
     return API.put(`/payroll/employee-financials/${employeeId}`, data);
 };
+
+// Notify Global Admins when a non-global_admin user downloads a payslip
+export const notifyPayslipDownload = (data) => {
+    return API.post("/payroll/notify-download", data);
+};
