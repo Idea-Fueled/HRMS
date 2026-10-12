@@ -178,6 +178,30 @@ const menuCategories = [
                     </svg>
                 ),
             },
+            {
+                name: "Reports",
+                to: "/reports",
+                permissionKey: "reports",
+                roles: ["global_admin"],
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                        <line x1="18" y1="20" x2="18" y2="10" />
+                        <line x1="12" y1="20" x2="12" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg>
+                ),
+            },
+            {
+                name: "Logs",
+                to: "/logs",
+                permissionKey: "logs",
+                roles: ["global_admin"],
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg>
+                ),
+            },
         ],
     },
 ];
@@ -235,8 +259,16 @@ const Sidebar = ({ onClose }) => {
             if (!item.roles.includes(role)) return false;
         }
 
-        // Assets module is strictly accessible to Global Admin only
+        // Assets & Reports modules are strictly accessible to Global Admin only
         if (item.permissionKey === "assets" || item.to === "/assets") {
+            return role === "global_admin";
+        }
+
+        if (item.permissionKey === "reports" || item.to === "/reports") {
+            return role === "global_admin";
+        }
+
+        if (item.permissionKey === "logs" || item.to === "/logs") {
             return role === "global_admin";
         }
 

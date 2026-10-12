@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import ActivityTracker from "./ActivityTracker";
 import { SocketProvider } from "../context/SocketContext";
 
 const Layout = () => {
@@ -11,6 +12,7 @@ const Layout = () => {
 
     return (
         <SocketProvider>
+            <ActivityTracker />
             <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
                 {/* Sidebar with mobile toggle classes */}
                 <div className={`fixed inset-y-0 left-0 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static transition-transform duration-300 ease-in-out z-50 shrink-0`}>

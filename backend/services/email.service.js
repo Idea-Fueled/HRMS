@@ -39,10 +39,19 @@ export const dispatchExternalEmail = async ({ to, cc, bcc, subject, body, attach
             bcc: Array.isArray(bcc) ? bcc.join(", ") : bcc,
             subject,
             html: body,
-            attachments: attachments?.map((att) => ({
-                filename: att.name,
-                path: att.url,
-            })),
+            attachments: attachments?.map((att) => {
+                if (att.content !== undefined) {
+                    return {
+                        filename: att.filename || att.name,
+                        content: att.content,
+                        contentType: att.type || "text/csv"
+                    };
+                }
+                return {
+                    filename: att.name || att.filename,
+                    path: att.url || att.path,
+                };
+            }),
         };
 
         const info = await transporter.sendMail(mailOptions);

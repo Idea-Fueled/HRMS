@@ -1334,6 +1334,7 @@ const Inbox = () => {
                                                     <a
                                                         key={i}
                                                         href={att.url}
+                                                        download={att.name || "attachment"}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-blue-50/50 hover:border-[#2D79C7]/40 transition-all group"

@@ -20,9 +20,12 @@ import assetRoutes from "./routes/assets/asset.routes.js";
 import offboardingOnboardingRoutes from "./routes/offboarding-onboarding/offboarding-onboarding.routes.js";
 import payrollRoutes from "./routes/payroll/payroll.route.js";
 import emailRoutes from "./routes/emails/email.routes.js";
+import reportRoutes from "./routes/reports/report.routes.js";
+import logRoutes from "./routes/logs/log.routes.js";
 import { initSocket } from "./socket/socket.js";
 import { initDsrScheduler } from "./cron/dsrCron.js";
 import { initProbationScheduler } from "./cron/probationCron.js";
+import { initAttendanceReportsScheduler } from "./cron/attendanceReportsCron.js";
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -66,11 +69,14 @@ app.use("/api/assets", assetRoutes)
 app.use("/api/offboarding-onboarding", offboardingOnboardingRoutes)
 app.use("/api/payroll", payrollRoutes)
 app.use("/api/emails", emailRoutes)
+app.use("/api/reports", reportRoutes)
+app.use("/api/logs", logRoutes)
 
 connectDB();
 initSocket(httpServer, allowedOrigins);
 initDsrScheduler();
 initProbationScheduler();
+initAttendanceReportsScheduler();
 
 app.get("/", (req, res) => {
     res.status(200).json({

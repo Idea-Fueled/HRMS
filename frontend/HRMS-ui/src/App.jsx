@@ -22,6 +22,8 @@ import SessionTimeoutManager from "./components/SessionTimeoutModal";
 import Hire from "./pages/hire/Hire";
 import Assets from "./pages/assets/Assets";
 import Inbox from "./pages/inbox/Inbox";
+import Reports from "./pages/reports/Reports";
+import ActivityLogs from "./pages/activity-logs/ActivityLogs";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
@@ -158,6 +160,22 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>
                         <Assets />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "reports",
+                element: (
+                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>
+                        <Reports />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "logs",
+                element: (
+                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>
+                        <ActivityLogs />
                     </ProtectedRoute>
                 ),
             },
