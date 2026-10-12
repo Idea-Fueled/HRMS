@@ -55,18 +55,35 @@ const ActivityTracker = () => {
     useEffect(() => {
         if (!user || isManagementUser(user)) return;
 
-        const currentPath = location.pathname;
+        let currentPath = location.pathname;
         if (currentPath === lastPageRef.current) return;
         lastPageRef.current = currentPath;
 
-        const pageTitle = getPageTitle(currentPath);
+        let pageTitle = getPageTitle(currentPath);
+        let action = `Navigated to ${pageTitle}`;
+
+        // If visiting own profile /profile/:id, send human-readable slug immediately
+        if (currentPath.startsWith("/profile/") && user) {
+            const parts = currentPath.split("/");
+            const profileId = parts[2];
+            if (profileId === String(user._id) || profileId === String(user.employeeId)) {
+                const userSlug = (user.fullName || `${user.firstName || ""} ${user.lastName || ""}`)
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-|-$/g, "");
+                currentPath = `/profile/${userSlug || user.employeeId.toLowerCase()}`;
+                pageTitle = `Profile (${user.fullName || user.employeeId})`;
+                action = `Navigated to Profile (${user.fullName || user.employeeId})`;
+            }
+        }
 
         // Send page navigation log
         trackActivity({
             actionType: "PAGE_VIEW",
             page: currentPath,
             pageTitle,
-            action: `Navigated to ${pageTitle}`
+            action
         }).catch(() => {
             // Silently ignore network hiccups so user experience is uninterrupted
         });

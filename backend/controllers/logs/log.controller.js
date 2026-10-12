@@ -59,6 +59,32 @@ export const trackActivity = async (req, res) => {
             return res.status(400).json({ success: false, message: "Action description is required." });
         }
 
+        let resolvedPage = page;
+        let resolvedPageTitle = pageTitle;
+        let resolvedAction = action;
+
+        // Convert any raw 24-char Mongo ObjectIds in the URL to a clean human-readable slug
+        const objectIdMatch = resolvedPage.match(/[a-f0-9]{24}/i);
+        if (objectIdMatch) {
+            try {
+                const targetUser = await User.findById(objectIdMatch[0])
+                    .select("fullName firstName lastName employeeId")
+                    .lean();
+
+                if (targetUser) {
+                    const name = targetUser.fullName || `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || targetUser.employeeId;
+                    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                    resolvedPage = resolvedPage.replace(objectIdMatch[0], slug || targetUser.employeeId.toLowerCase());
+                    resolvedPageTitle = `Profile (${name})`;
+                    if (resolvedAction.toLowerCase().includes("profile")) {
+                        resolvedAction = `Navigated to Profile (${name})`;
+                    }
+                }
+            } catch {
+                // Ignore resolution error and proceed
+            }
+        }
+
         const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
         const userAgent = req.headers["user-agent"] || "";
 
@@ -70,9 +96,9 @@ export const trackActivity = async (req, res) => {
             userRole: user.role,
             userDepartment: user.department,
             actionType,
-            page,
-            pageTitle,
-            action,
+            page: resolvedPage,
+            pageTitle: resolvedPageTitle,
+            action: resolvedAction,
             details,
             ipAddress: typeof ipAddress === "string" ? ipAddress.split(",")[0].trim() : "",
             userAgent,
@@ -169,6 +195,42 @@ export const getActivityLogs = async (req, res) => {
 
         // Filter out any lingering management users
         const trackableEmployees = rawEmployees.filter(e => !isManagementUser(e));
+
+        // Dynamically resolve any raw Mongo ObjectIds in existing logs to clean human-readable URLs
+        const objectIdRegex = /[a-f0-9]{24}/i;
+        const idsToLookup = new Set();
+        logs.forEach(l => {
+            const m = (l.page || "").match(objectIdRegex);
+            if (m) idsToLookup.add(m[0]);
+        });
+
+        if (idsToLookup.size > 0) {
+            try {
+                const users = await User.find({ _id: { $in: Array.from(idsToLookup) } })
+                    .select("_id fullName firstName lastName employeeId")
+                    .lean();
+
+                const userMap = new Map();
+                users.forEach(u => {
+                    const name = u.fullName || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.employeeId;
+                    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                    userMap.set(u._id.toString(), { name, slug: slug || u.employeeId.toLowerCase() });
+                });
+
+                logs.forEach(l => {
+                    const m = (l.page || "").match(objectIdRegex);
+                    if (m && userMap.has(m[0])) {
+                        const target = userMap.get(m[0]);
+                        l.page = l.page.replace(m[0], target.slug);
+                        if (l.action && l.action.toLowerCase() === "navigated to employee profile") {
+                            l.action = `Navigated to Profile (${target.name})`;
+                        }
+                    }
+                });
+            } catch {
+                // Ignore resolution error
+            }
+        }
 
         return res.status(200).json({
             success: true,

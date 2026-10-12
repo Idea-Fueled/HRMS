@@ -84,6 +84,21 @@ const getActionBadge = (type) => {
     }
 };
 
+const formatPageUrl = (pageStr, employees = []) => {
+    if (!pageStr) return "/";
+    const objectIdRegex = /[a-f0-9]{24}/i;
+    const match = pageStr.match(objectIdRegex);
+    if (!match) return pageStr;
+
+    const found = employees.find(e => e._id === match[0] || String(e._id) === match[0]);
+    if (found) {
+        const name = found.fullName || `${found.firstName || ""} ${found.lastName || ""}`.trim() || found.employeeId;
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        return pageStr.replace(match[0], slug || found.employeeId.toLowerCase());
+    }
+    return pageStr.replace(match[0], "profile");
+};
+
 const ActivityLogs = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -419,7 +434,7 @@ const ActivityLogs = () => {
                                             <td className="py-3 px-4 whitespace-nowrap">
                                                 <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 text-slate-700 font-mono text-[11px] border border-slate-200/60">
                                                     <Compass className="w-3 h-3 text-slate-400" />
-                                                    <span>{log.page || "/"}</span>
+                                                    <span>{formatPageUrl(log.page, employees)}</span>
                                                 </div>
                                             </td>
                                         </tr>
