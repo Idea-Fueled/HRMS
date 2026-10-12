@@ -410,19 +410,9 @@ const ActivityLogs = () => {
 
                                             {/* Action / Event Description */}
                                             <td className="py-3 px-4">
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="font-bold text-slate-800 text-xs">
-                                                        {log.action}
-                                                    </span>
-                                                    {log.details && (
-                                                        <span className="text-[10.5px] text-gray-500 font-mono">
-                                                            {typeof log.details === "object" 
-                                                                ? JSON.stringify(log.details)
-                                                                : log.details
-                                                            }
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <span className="font-bold text-slate-800 text-xs">
+                                                    {log.action}
+                                                </span>
                                             </td>
 
                                             {/* Location / Page */}

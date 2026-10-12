@@ -119,11 +119,7 @@ const ActivityTracker = () => {
                     actionType: "BUTTON_CLICK",
                     page: currentPath,
                     pageTitle,
-                    action: `Clicked "${text}"`,
-                    details: {
-                        elementTag: target.tagName.toLowerCase(),
-                        href: target.getAttribute("href") || null
-                    }
+                    action: `Clicked "${text}"`
                 }).catch(() => {});
             } catch {
                 // Ignore any DOM read error
