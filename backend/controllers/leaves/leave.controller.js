@@ -1,5 +1,7 @@
 import Leave from "../../models/leaves/leave.model.js";
 import User from "../../models/users/user.model.js";
+import Email from "../../models/emails/email.model.js";
+import { emitToUser } from "../../socket/socket.js";
 
 /**
  * Calculates accrued leave quota for a financial year (1st April to 31st March)
@@ -62,6 +64,7 @@ export const applyLeave = async (req, res) => {
             partialMinutes,
             partialTiming,
             reason,
+            notifyEmployees,
         } = req.body;
 
         const isPartial = leaveType === "partial_leave";
@@ -87,12 +90,29 @@ export const applyLeave = async (req, res) => {
             });
         }
 
-        // Validate monthly quota for Partial Leave
-        if (isPartial) {
-            const user = await User.findById(employeeId);
-            const monthlyQuota = user?.leaveBalance?.partial?.total ?? 1;
+        // Restrict Earned Leave for Interns & Employees in Probation (< 6 months)
+        if (leaveType === "earned_leave") {
+            const applicantUser = await User.findById(employeeId);
+            const isIntern = applicantUser?.role === "intern" || applicantUser?.employementType === "intern";
+            let isProbation = false;
+            if (applicantUser?.joiningDate) {
+                const joinDate = new Date(applicantUser.joiningDate);
+                let probationDays = (applicantUser.probationPeriod !== undefined && applicantUser.probationPeriod !== null) ? Number(applicantUser.probationPeriod) : 180;
+                if (probationDays <= 12) probationDays = probationDays * 30;
+                const now = new Date();
+                const diffDays = (now - joinDate) / (1000 * 60 * 60 * 24);
+                if (diffDays < probationDays) isProbation = true;
+            }
+            if (isIntern || isProbation) {
+                return res.status(400).json({
+                    success: false,
+                    message: "You are not eligible for earned leaves while on probation or internship.",
+                });
+            }
+        }
 
-            // Start & End of current calendar month
+        // Validate monthly quota for Partial Leave (Only 1 allowed per calendar month)
+        if (isPartial) {
             const reqStart = new Date(startDate);
             const monthStart = new Date(reqStart.getFullYear(), reqStart.getMonth(), 1);
             const monthEnd = new Date(reqStart.getFullYear(), reqStart.getMonth() + 1, 0, 23, 59, 59);
@@ -104,10 +124,10 @@ export const applyLeave = async (req, res) => {
                 startDate: { $gte: monthStart, $lte: monthEnd }
             });
 
-            if (existingMonthPartials >= monthlyQuota) {
+            if (existingMonthPartials >= 1) {
                 return res.status(400).json({
                     success: false,
-                    message: `Monthly Partial Leave quota reached (${monthlyQuota} allowed per month). You can apply again next month.`,
+                    message: "You have already consumed your monthly quota.",
                 });
             }
         }
@@ -140,6 +160,69 @@ export const applyLeave = async (req, res) => {
         await User.findByIdAndUpdate(employeeId, {
             $inc: updateObj,
         });
+
+        // Dispatch notification emails to Notify list, Reporting Manager, and Global Admins
+        try {
+            const applicant = await User.findById(employeeId).populate("managerId");
+            const applicantName = applicant?.fullName || `${applicant?.firstName || ''} ${applicant?.lastName || ''}`.trim() || "Employee";
+
+            const recipientUserIds = new Set();
+            if (Array.isArray(notifyEmployees)) {
+                notifyEmployees.forEach(id => { if (id) recipientUserIds.add(id.toString()); });
+            }
+            if (applicant?.managerId?._id) {
+                recipientUserIds.add(applicant.managerId._id.toString());
+            }
+            const globalAdmins = await User.find({ role: "global_admin" }).select("_id email fullName");
+            globalAdmins.forEach(ga => recipientUserIds.add(ga._id.toString()));
+
+            recipientUserIds.delete(employeeId.toString());
+
+            const recipients = await User.find({ _id: { $in: Array.from(recipientUserIds) } });
+            const formattedLeaveType = isPartial ? "Partial Leave (2 Hours)" : leaveType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            const subject = `Leave Application: ${applicantName} - ${formattedLeaveType}`;
+            const snippet = `${applicantName} has applied for ${formattedLeaveType} on ${new Date(startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}.`;
+
+            for (const rec of recipients) {
+                const recEmail = rec.email.toLowerCase();
+                const isManager = applicant?.managerId?._id && applicant.managerId._id.toString() === rec._id.toString();
+                const isAdmin = rec.role === "global_admin";
+
+                const emailDoc = new Email({
+                    sender: applicant._id,
+                    senderEmail: applicant.email,
+                    senderName: applicantName,
+                    senderAvatar: applicant.profilePicture || "",
+                    senderRole: applicant.role,
+                    to: [recEmail],
+                    subject,
+                    body: `<p>Hi <strong>${rec.fullName || 'Colleague'}</strong>,</p>
+                           <p><strong>${applicantName}</strong> has applied for <strong>${formattedLeaveType}</strong>.</p>
+                           <p><strong>Date:</strong> ${startDate}${!isPartial && endDate ? ` to ${endDate}` : ''}<br/>
+                           <strong>Duration:</strong> ${days} Day(s)${isPartial ? ' (2 Hours Fixed)' : ''}<br/>
+                           <strong>Reason:</strong> ${reason}</p>
+                           ${(isManager || isAdmin) ? `<p style="margin-top: 14px;"><a href="/me" style="display: inline-block; padding: 6px 14px; background: #2D79C7; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12px;">Review &amp; Approve in Leave Dashboard</a></p>` : ''}`,
+                    snippet,
+                    priority: "high",
+                    labels: ["Leave", "Notification"],
+                    userStates: [{
+                        user: rec._id,
+                        email: recEmail,
+                        folder: "inbox",
+                        isRead: false
+                    }]
+                });
+                emailDoc.threadId = emailDoc._id;
+                await emailDoc.save();
+
+                emitToUser({ userId: rec._id, email: recEmail }, "new_email", {
+                    email: emailDoc,
+                    unreadCount: 1
+                });
+            }
+        } catch (emailErr) {
+            console.error("Failed to notify leave recipients:", emailErr);
+        }
 
         return res.status(201).json({
             success: true,
@@ -185,10 +268,15 @@ export const getLeaveSummary = async (req, res) => {
 
         const leaves = await Leave.find({ employeeId });
 
+        const compOffTotal = user.leaveBalance?.compOff?.total ?? 0;
+        const compOffUsed = user.leaveBalance?.compOff?.used ?? 0;
+        const compOffPending = user.leaveBalance?.compOff?.pending ?? 0;
+
         const balance = {
             sick: { total: sickTotal, accrued: sickTotal, annualQuota: accruedData.sick.annualQuota, used: 0, pending: 0 },
             casual: { total: casualTotal, accrued: casualTotal, annualQuota: accruedData.casual.annualQuota, used: 0, pending: 0 },
             earned: { total: earnedTotal, accrued: earnedTotal, annualQuota: accruedData.earned.annualQuota, used: 0, pending: 0 },
+            compOff: { total: compOffTotal, accrued: compOffTotal, annualQuota: compOffTotal, used: compOffUsed, pending: compOffPending, available: Math.max(0, compOffTotal - compOffUsed - compOffPending) },
             partial: { total: partialMonthlyQuota, accrued: 1, annualQuota: 12, used: 0, pending: 0, available: partialMonthlyQuota, usedMinutes: 0 }
         };
 
@@ -208,6 +296,7 @@ export const getLeaveSummary = async (req, res) => {
                 if (leave.leaveType === "sick_leave") key = "sick";
                 else if (leave.leaveType === "casual_leave") key = "casual";
                 else if (leave.leaveType === "earned_leave") key = "earned";
+                else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
 
                 if (key) {
                     let days = Number(leave.totalDays);
@@ -286,7 +375,7 @@ export const getLeaveHistory = async (req, res) => {
 export const updateLeaveBalance = async (req, res) => {
     try {
         const { employeeId } = req.params;
-        const { casual, sick, earned, partial } = req.body;
+        const { casual, sick, earned, partial, compOff } = req.body;
 
         const user = await User.findById(employeeId);
         if (!user) {
@@ -305,6 +394,9 @@ export const updateLeaveBalance = async (req, res) => {
         }
         if (earned !== undefined) {
             user.leaveBalance.earned = { ...user.leaveBalance.earned, total: Number(earned) };
+        }
+        if (compOff !== undefined) {
+            user.leaveBalance.compOff = { ...user.leaveBalance.compOff, total: Number(compOff) };
         }
         if (partial !== undefined) {
             user.leaveBalance.partial = { ...user.leaveBalance.partial, total: Number(partial) };

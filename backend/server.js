@@ -21,6 +21,8 @@ import offboardingOnboardingRoutes from "./routes/offboarding-onboarding/offboar
 import payrollRoutes from "./routes/payroll/payroll.route.js";
 import emailRoutes from "./routes/emails/email.routes.js";
 import { initSocket } from "./socket/socket.js";
+import { initDsrScheduler } from "./cron/dsrCron.js";
+import { initProbationScheduler } from "./cron/probationCron.js";
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -67,6 +69,8 @@ app.use("/api/emails", emailRoutes)
 
 connectDB();
 initSocket(httpServer, allowedOrigins);
+initDsrScheduler();
+initProbationScheduler();
 
 app.get("/", (req, res) => {
     res.status(200).json({

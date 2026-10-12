@@ -3,6 +3,7 @@ import User from "../../models/users/user.model.js";
 import { uploadToCloudinary } from "../../services/cloudinary.service.js";
 import { dispatchExternalEmail } from "../../services/email.service.js";
 import { emitToUser } from "../../socket/socket.js";
+import { executeDsrReminder } from "../../cron/dsrCron.js";
 import mongoose from "mongoose";
 
 /**
@@ -877,5 +878,23 @@ export const getCompanyContacts = async (req, res) => {
     } catch (error) {
         console.error("Error in getCompanyContacts:", error);
         return res.status(500).json({ success: false, message: "Failed to retrieve contacts." });
+    }
+};
+
+/**
+ * POST /api/emails/trigger-dsr
+ * Manually trigger or test 5:30 PM DSR reminder dispatch
+ */
+export const triggerDsrReminderManual = async (req, res) => {
+    try {
+        const result = await executeDsrReminder();
+        return res.status(200).json({
+            success: true,
+            message: "DSR reminders triggered successfully.",
+            result,
+        });
+    } catch (err) {
+        console.error("Manual DSR trigger error:", err);
+        return res.status(500).json({ success: false, message: err.message });
     }
 };

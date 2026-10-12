@@ -215,6 +215,8 @@ const userScehma = new mongoose.Schema({
         ctc: { type: Number, default: 0 },
         basic: { type: Number, default: 0 },
         hra: { type: Number, default: 0 },
+        medicalAllowance: { type: Number, default: 0 },
+        conveyanceAllowance: { type: Number, default: 0 },
         specialAllowance: { type: Number, default: 0 },
         otherAllowances: { type: Number, default: 0 }
     },
@@ -248,6 +250,11 @@ const userScehma = new mongoose.Schema({
             used: { type: Number, default: 0 },
             pending: { type: Number, default: 0 }
         },
+        compOff: {
+            total: { type: Number, default: 0 },
+            used: { type: Number, default: 0 },
+            pending: { type: Number, default: 0 }
+        },
         partial: {
             total: { type: Number, default: 1 },
             used: { type: Number, default: 0 },
@@ -278,6 +285,10 @@ const userScehma = new mongoose.Schema({
     joiningDate: {
         type: Date,
         default: null
+    },
+    probationPeriod: {
+        type: Number,
+        default: 180 // duration in days
     },
     permissions: {
         type: {

@@ -58,6 +58,18 @@ textarea {
     font-feature-settings: "zero" 0;
 }
 
+/* Remove number input spin buttons / arrows globally */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+}
+
 *, *::before, *::after {
     box-sizing: border-box;
     font-variant-numeric: normal !important;

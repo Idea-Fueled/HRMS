@@ -32,6 +32,7 @@ import {
     RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
     fetchEmails,
@@ -102,6 +103,7 @@ const getPriorityBadge = (priority) => {
 ───────────────────────────────────────────── */
 const Inbox = () => {
     const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Navigation / folder state
     const [currentFolder, setCurrentFolder] = useState("inbox"); // inbox, starred, sent, drafts, trash, all
@@ -222,6 +224,97 @@ const Inbox = () => {
         window.addEventListener("hrms:new_email", handleLiveEmail);
         return () => window.removeEventListener("hrms:new_email", handleLiveEmail);
     }, [currentFolder]);
+
+    // Prefill & open Compose Modal for Daily Status Report (DSR)
+    const openDsrCompose = useCallback(
+        (dsrInfo = null) => {
+            const todayStr =
+                dsrInfo?.date ||
+                new Date().toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                });
+
+            const empName =
+                user?.fullName ||
+                `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
+                "Employee";
+
+            // Resolve reporting manager's email from directory contacts
+            let managerRecipients = [];
+            if (user?.managerId && contacts.length > 0) {
+                const mgr = contacts.find((c) => String(c._id) === String(user.managerId));
+                if (mgr?.email) managerRecipients.push(mgr.email);
+            } else if (user?.reportingManager && contacts.length > 0) {
+                const mgr = contacts.find(
+                    (c) =>
+                        String(c._id) === String(user.reportingManager) ||
+                        c.email?.toLowerCase() === String(user.reportingManager).toLowerCase()
+                );
+                if (mgr?.email) managerRecipients.push(mgr.email);
+            }
+
+            const defaultDsrBody = `
+<p><strong>Hi Team / Manager,</strong></p>
+<p>Please find below my Daily Status Report (DSR) for <strong>${todayStr}</strong>:</p>
+<br/>
+<p><strong>1. Tasks Completed Today:</strong></p>
+<ul>
+    <li>Task 1: </li>
+    <li>Task 2: </li>
+</ul>
+<br/>
+<p><strong>2. Work In Progress:</strong></p>
+<ul>
+    <li>In-progress task: </li>
+</ul>
+<br/>
+<p><strong>3. Blockers / Impediments (if any):</strong></p>
+<p>None</p>
+<br/>
+<p><strong>4. Plan for Tomorrow:</strong></p>
+<ul>
+    <li>Planned item: </li>
+</ul>
+<br/>
+<p>Warm regards,<br/><strong>${empName}</strong></p>
+`.trim();
+
+            setComposeForm({
+                to: managerRecipients,
+                cc: [],
+                bcc: [],
+                subject: `DSR - ${empName} - ${todayStr}`,
+                body: defaultDsrBody,
+                priority: "normal",
+                labels: ["Work", "DSR"],
+                replyTo: null,
+                attachments: [],
+            });
+            setIsComposeOpen(true);
+        },
+        [user, contacts]
+    );
+
+    // Listen for custom event to trigger DSR Compose modal
+    useEffect(() => {
+        const handleOpenDsr = (e) => {
+            openDsrCompose(e.detail);
+        };
+        window.addEventListener("hrms:open_dsr_compose", handleOpenDsr);
+        return () => window.removeEventListener("hrms:open_dsr_compose", handleOpenDsr);
+    }, [openDsrCompose]);
+
+    // Check if query param requests opening DSR Compose (?compose=dsr)
+    useEffect(() => {
+        if (searchParams.get("compose") === "dsr") {
+            openDsrCompose();
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete("compose");
+            setSearchParams(newParams, { replace: true });
+        }
+    }, [searchParams, openDsrCompose, setSearchParams]);
 
     // Fetch active email details when selected
     const handleSelectEmail = async (emailItem) => {
@@ -1153,6 +1246,33 @@ const Inbox = () => {
                                         {getPriorityBadge(activeEmail.priority)}
                                     </div>
                                 </div>
+
+                                {/* Quick Action Banner for DSR Reminder Emails */}
+                                {(activeEmail.labels?.includes("DSR-Reminder") ||
+                                    activeEmail.subject?.toLowerCase().includes("dsr")) && (
+                                    <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/80 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-2xs">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-10 h-10 rounded-xl bg-[#2D79C7] text-white flex items-center justify-center shrink-0 shadow-xs">
+                                                <Clock className="w-5 h-5" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                                                    Daily Status Report (DSR) Due
+                                                </h4>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                                    Click to open prefilled DSR compose template with tasks, blockers, and tomorrow's plan.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => openDsrCompose()}
+                                            className="flex items-center gap-1.5 px-4 py-2 bg-[#2D79C7] text-white rounded-xl text-xs font-semibold shadow-xs hover:bg-[#256bb3] transition-all cursor-pointer shrink-0"
+                                        >
+                                            <PenSquare className="w-3.5 h-3.5" />
+                                            <span>Write DSR Now</span>
+                                        </button>
+                                    </div>
+                                )}
 
                                 {/* Main Email Message Card */}
                                 <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">

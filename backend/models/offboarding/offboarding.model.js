@@ -14,6 +14,36 @@ const offboardingSchema = new mongoose.Schema(
             ref: "User",
             required: true
         },
+        exitType: {
+            type: String,
+            enum: ["resignation", "termination"],
+            default: "resignation"
+        },
+        initiatedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        },
+        initiatedRole: {
+            type: String,
+            enum: ["employee", "global_admin", "admin", "hr"],
+            default: "employee"
+        },
+        hadDiscussionWithManager: {
+            type: Boolean,
+            default: false
+        },
+        hadDiscussionWithEmployee: {
+            type: Boolean,
+            default: false
+        },
+        discussionSummary: {
+            type: String,
+            default: ""
+        },
+        reasonForLeaving: {
+            type: String,
+            default: "Better Opportunity"
+        },
         resignationDate: {
             type: Date,
             required: true
@@ -22,13 +52,29 @@ const offboardingSchema = new mongoose.Schema(
             type: Date,
             required: true
         },
-        reasonForLeaving: {
-            type: String,
-            default: "Better Opportunity"
+        preferenceEarlyLwd: {
+            type: Boolean,
+            default: false
         },
         noticePeriod: {
             type: String,
             default: "30 Days"
+        },
+        noticePeriodDays: {
+            type: Number,
+            default: 30
+        },
+        recommendedLwdType: {
+            type: String,
+            default: "original"
+        },
+        eligibleForRehire: {
+            type: Boolean,
+            default: true
+        },
+        additionalComments: {
+            type: String,
+            default: ""
         },
         status: {
             type: String,

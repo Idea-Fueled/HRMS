@@ -55,6 +55,8 @@ const payslipSchema = new mongoose.Schema({
     earnings: {
         basic: { type: Number, default: 0 },
         hra: { type: Number, default: 0 },
+        medicalAllowance: { type: Number, default: 0 },
+        conveyanceAllowance: { type: Number, default: 0 },
         specialAllowance: { type: Number, default: 0 },
         otherAllowances: { type: Number, default: 0 },
         totalEarnings: { type: Number, default: 0 }

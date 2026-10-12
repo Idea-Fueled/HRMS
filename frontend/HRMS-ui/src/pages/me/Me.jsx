@@ -1598,11 +1598,11 @@ const LeaveTab = ({
     const earnedPending = balance.earned?.pending ?? 0;
     const earnedAvailable = Math.max(0, earnedTotal - earnedUsed - earnedPending);
 
-    // Partial Leave (Monthly 1 quota)
-    const partialTotal = balance.partial?.total ?? 1;
-    const partialUsed = balance.partial?.used ?? 0;
-    const partialPending = balance.partial?.pending ?? 0;
-    const partialAvailable = balance.partial?.available ?? Math.max(0, partialTotal - partialUsed - partialPending);
+    // Comp Offs (Managed by Global Admin)
+    const compOffTotal = balance.compOff?.total ?? 0;
+    const compOffUsed = balance.compOff?.used ?? 0;
+    const compOffPending = balance.compOff?.pending ?? 0;
+    const compOffAvailable = balance.compOff?.available ?? Math.max(0, compOffTotal - compOffUsed - compOffPending);
 
     // Setup active type and status filters in history
     const [selectedType, setSelectedType] = useState("All Leave Types");
@@ -1663,12 +1663,12 @@ const LeaveTab = ({
                             color="#F59E0B"
                         />
                         <LeaveBalanceCard
-                            label="Partial Leave"
-                            available={partialAvailable}
-                            consumed={partialUsed}
-                            accrued="1 / mo"
-                            annualQuota="1 / mo"
-                            totalQuotaNum={partialTotal || 1}
+                            label="Comp Offs"
+                            available={compOffAvailable}
+                            consumed={compOffUsed}
+                            accrued={compOffTotal}
+                            annualQuota={compOffTotal}
+                            totalQuotaNum={compOffTotal}
                             color="#8B5CF6"
                         />
                         <LeaveBalanceCard
@@ -1681,11 +1681,6 @@ const LeaveTab = ({
                         />
                     </div>
                 )}
-
-                {/* Other Leave Types status line */}
-                <div className="text-[11px] font-bold text-gray-500 text-left mt-6 pl-1 select-none">
-                    Other Leave Types Available : <span className="text-[#2D79C7] hover:underline cursor-pointer">Paternity Leave</span>
-                </div>
             </div>
 
             {/* Leave History Table Section */}
@@ -1706,7 +1701,7 @@ const LeaveTab = ({
 /* ─────────────────────────────────────────────
    APPLY LEAVE MODAL COMPONENT
 ───────────────────────────────────────────── */
-const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = "casual_leave" }) => {
+const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = "casual_leave", leaveSummary }) => {
     const [leaveType, setLeaveType] = useState("casual_leave");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -1719,11 +1714,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
     }, [isOpen, initialLeaveType]);
     
     // Partial leave state
-    const [partialCategory, setPartialCategory] = useState("leaving_early"); // "leaving_early" | "late_arrival" | "mid_day_absence"
-    const [partialMinutes, setPartialMinutes] = useState(120);
-    const [fromTime, setFromTime] = useState("13:00");
-    const [toTime, setToTime] = useState("15:00");
-    
+    const [partialCategory, setPartialCategory] = useState("leaving_early"); // "leaving_early" | "late_arrival" | "between_intervals"
     const [reason, setReason] = useState("");
     const [duration, setDuration] = useState(0);
     const [selectedEmployees, setSelectedEmployees] = useState([]);
@@ -1731,24 +1722,38 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
     const isPartial = leaveType === "partial_leave";
 
-    // Auto-calculate minutes for Mid-day Absence from time inputs
-    useEffect(() => {
-        if (isPartial && partialCategory === "mid_day_absence" && fromTime && toTime) {
-            const [h1, m1] = fromTime.split(":").map(Number);
-            const [h2, m2] = toTime.split(":").map(Number);
-            const startMins = h1 * 60 + (m1 || 0);
-            const endMins = h2 * 60 + (m2 || 0);
-            if (endMins > startMins) {
-                setPartialMinutes(endMins - startMins);
-            }
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const isProbationOrIntern = () => {
+        if (!user) return false;
+        const role = (user.role || "").toLowerCase();
+        const empType = (user.employementType || "").toLowerCase();
+        const designation = (user.designation || "").toLowerCase();
+        if (role === "intern" || empType === "intern" || designation.includes("intern")) {
+            return true;
         }
-    }, [isPartial, partialCategory, fromTime, toTime]);
+        if (user.joiningDate) {
+            const join = new Date(user.joiningDate);
+            let probationDays = (user.probationPeriod !== undefined && user.probationPeriod !== null) ? Number(user.probationPeriod) : 180;
+            if (probationDays <= 12) probationDays = probationDays * 30;
+            const diffDays = (new Date() - join) / (1000 * 60 * 60 * 24);
+            if (diffDays < probationDays) return true;
+        }
+        return false;
+    };
+
+    const handleLeaveTypeChange = (val) => {
+        if (val === "earned_leave" && isProbationOrIntern()) {
+            toast.error("You are not eligible for earned leaves while on probation or internship.");
+            return;
+        }
+        setLeaveType(val);
+    };
 
     useEffect(() => {
         if (startDate) {
             if (isPartial) {
                 setEndDate(startDate);
-                setDuration(parseFloat((partialMinutes / 480).toFixed(2)) || 0.25);
+                setDuration(0.25);
             } else if (isHalfDay) {
                 setEndDate(startDate);
                 setDuration(0.5);
@@ -1768,32 +1773,47 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
         } else {
             setDuration(0);
         }
-    }, [startDate, endDate, isHalfDay, isPartial, partialMinutes]);
+    }, [startDate, endDate, isHalfDay, isPartial]);
 
     if (!isOpen) return null;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (leaveType === "earned_leave" && isProbationOrIntern()) {
+            toast.error("You are not eligible for earned leaves while on probation or internship.");
+            return;
+        }
+
+        if (isPartial && (leaveSummary?.leaveBalance?.partial?.used > 0)) {
+            toast.error("You have already consumed your monthly quota.");
+            return;
+        }
+
         const activeEndDate = (isHalfDay || isPartial) ? startDate : endDate;
-        if (!startDate || (!isHalfDay && !isPartial && !activeEndDate) || !reason || duration <= 0) {
-            toast.error("Please fill in all fields with valid dates.");
+        if (!startDate || (!isHalfDay && !isPartial && !activeEndDate) || duration <= 0) {
+            toast.error("Please fill in valid date(s).");
+            return;
+        }
+
+        if (!reason.trim()) {
+            toast.error("Reason for leave is required.");
+            return;
+        }
+
+        if (isPartial && (!selectedEmployees || selectedEmployees.length === 0)) {
+            toast.error("Please select at least one employee in notify.");
             return;
         }
 
         setSubmitting(true);
         try {
-            const user = JSON.parse(localStorage.getItem("user") || "null");
             const employeeId = user?._id || user?.id;
 
             let partialTimingText = "";
             if (isPartial) {
-                if (partialCategory === "mid_day_absence") {
-                    partialTimingText = `Mid-day Absence (${fromTime} - ${toTime}, ${partialMinutes} mins)`;
-                } else if (partialCategory === "late_arrival") {
-                    partialTimingText = `Late Arrival (${partialMinutes} mins)`;
-                } else {
-                    partialTimingText = `Leaving Early (${partialMinutes} mins)`;
-                }
+                const catLabel = partialCategory === "leaving_early" ? "Leaving Early" : partialCategory === "late_arrival" ? "Late Arrival" : "Between intervals";
+                partialTimingText = `${catLabel} (2 Hours)`;
             }
 
             const res = await applyLeave({
@@ -1801,10 +1821,11 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                 leaveType,
                 startDate,
                 endDate: activeEndDate,
-                totalDays: duration,
-                partialMinutes: isPartial ? partialMinutes : 0,
+                totalDays: isPartial ? 0.25 : duration,
+                partialMinutes: isPartial ? 120 : 0,
                 partialTiming: partialTimingText,
-                reason: reason.trim()
+                reason: reason.trim(),
+                notifyEmployees: selectedEmployees.map(emp => emp._id || emp.id)
             });
 
             if (res.data?.success) {
@@ -1815,9 +1836,9 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                 setStartDate("");
                 setEndDate("");
                 setIsHalfDay(false);
-                setPartialMinutes(120);
                 setPartialCategory("leaving_early");
                 setReason("");
+                setSelectedEmployees([]);
             } else {
                 toast.error(res.data?.message || "Failed to apply for leave.");
             }
@@ -1834,7 +1855,9 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
             <div className="bg-white border border-[#E5E7EB] rounded-[16px] shadow-xl w-full max-w-md overflow-hidden transform scale-100 transition-all duration-300">
                 {/* Modal Header */}
                 <div className="bg-white px-6 py-4.5 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-[#1E1E1E] text-[15px] font-extrabold">Apply for Leave</h3>
+                    <h3 className="text-[#1E1E1E] text-[15px] font-extrabold">
+                        {isPartial ? "Apply for Partial Leave" : "Apply for Leave"}
+                    </h3>
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-extrabold text-[16px] cursor-pointer">
                         ✕
                     </button>
@@ -1848,8 +1871,9 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                         <div className="relative">
                             <select
                                 value={leaveType}
-                                onChange={(e) => setLeaveType(e.target.value)}
-                                className="w-full appearance-none bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12.5px] font-bold py-2 pl-3 pr-8 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                disabled={initialLeaveType === "partial_leave" || isPartial}
+                                onChange={(e) => handleLeaveTypeChange(e.target.value)}
+                                className="w-full appearance-none bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12.5px] font-bold py-2 pl-3 pr-8 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
                             >
                                 <option value="casual_leave">Casual Leave</option>
                                 <option value="sick_leave">Sick Leave</option>
@@ -1874,122 +1898,96 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                                     >
                                         <option value="leaving_early">Leaving Early</option>
                                         <option value="late_arrival">Late Arrival</option>
-                                        <option value="mid_day_absence">Mid-day Absence</option>
+                                        <option value="between_intervals">Between intervals</option>
                                     </select>
                                     <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
                                 </div>
                             </div>
 
-                            {/* Show Time Picker ONLY for Mid-day Absence */}
-                            {partialCategory === "mid_day_absence" ? (
-                                <div className="space-y-1.5">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">From Time</label>
-                                            <input
-                                                type="time"
-                                                value={fromTime}
-                                                onChange={(e) => setFromTime(e.target.value)}
-                                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">To Time</label>
-                                            <input
-                                                type="time"
-                                                value={toTime}
-                                                onChange={(e) => setToTime(e.target.value)}
-                                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="text-[11px] font-medium text-gray-500 pt-1">
-                                        Duration: <span className="font-bold text-[#2D79C7]">{partialMinutes} mins ({(partialMinutes / 60).toFixed(1)} hrs)</span>
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Duration (Mins)</label>
-                                        <input
-                                            type="number"
-                                            min={15}
-                                            max={480}
-                                            step={15}
-                                            value={partialMinutes}
-                                            onChange={(e) => setPartialMinutes(Number(e.target.value))}
-                                            className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7]"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Duration in Hours</label>
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={`${(partialMinutes / 60).toFixed(1)} Hours`}
-                                            className="w-full bg-[#F3F4F6] border border-gray-200 text-gray-700 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
-                                        />
-                                    </div>
-                                </div>
-                            )}
+                            {/* Single Date Input */}
+                            <div className="space-y-1.5">
+                                <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Date</label>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                />
+                            </div>
 
-                            <p className="text-[10.5px] font-medium text-gray-400">
-                                Quota: 1 partial leave allowed per calendar month.
+                            {/* Duration: 2 Hours (Fixed) */}
+                            <div className="space-y-1.5">
+                                <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Duration</label>
+                                <input
+                                    type="text"
+                                    disabled
+                                    readOnly
+                                    value="2 Hours (Fixed)"
+                                    className="w-full bg-[#F3F4F6] border border-gray-200 text-gray-700 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none cursor-not-allowed"
+                                />
+                            </div>
+
+                            <p className="text-[11px] font-medium text-gray-500">
+                                Quota: 1 partial off allowed per calendar month.
                             </p>
                         </div>
                     ) : (
-                        /* Half Day Option Toggle */
-                        <div className="flex items-center justify-between p-2.5 bg-blue-50/50 border border-blue-100 rounded-[10px]">
-                            <div>
-                                <span className="text-xs font-extrabold text-slate-800 block">Apply as Half Day (0.5 Days)</span>
-                                <span className="text-[10px] font-medium text-slate-500">Applies 0.5 days leave for single date</span>
+                        <>
+                            {/* Half Day Option Toggle */}
+                            <div className="flex items-center justify-between p-2.5 bg-blue-50/50 border border-blue-100 rounded-[10px]">
+                                <div>
+                                    <span className="text-xs font-extrabold text-slate-800 block">Apply as Half Day (0.5 Days)</span>
+                                    <span className="text-[10px] font-medium text-slate-500">Applies 0.5 days leave for single date</span>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={isHalfDay}
+                                    onChange={(e) => setIsHalfDay(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-[#2D79C7] focus:ring-0 accent-[#2D79C7] cursor-pointer"
+                                />
                             </div>
-                            <input
-                                type="checkbox"
-                                checked={isHalfDay}
-                                onChange={(e) => setIsHalfDay(e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 text-[#2D79C7] focus:ring-0 accent-[#2D79C7] cursor-pointer"
-                            />
-                        </div>
+
+                            {/* Date Inputs Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">End Date</label>
+                                    <input
+                                        type="date"
+                                        value={isHalfDay ? startDate : endDate}
+                                        disabled={isHalfDay}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Duration Display */}
+                            <div className="space-y-1.5">
+                                <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Duration (Days)</label>
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={duration > 0 ? `${duration} Day${duration !== 1 ? 's' : ''}` : "Select valid dates"}
+                                    className="w-full bg-[#F3F4F6] border border-gray-200 text-gray-700 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
+                                />
+                            </div>
+                        </>
                     )}
-
-                    {/* Date Inputs Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Start Date</label>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">End Date</label>
-                            <input
-                                type="date"
-                                value={(isHalfDay || isPartial) ? startDate : endDate}
-                                disabled={isHalfDay || isPartial}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Duration Display */}
-                    <div className="space-y-1.5">
-                        <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Duration (Days)</label>
-                        <input
-                            type="text"
-                            readOnly
-                            value={duration > 0 ? `${duration} Day${duration !== 1 ? 's' : ''}` : "Select valid dates"}
-                            className="w-full bg-[#F3F4F6] border border-gray-200 text-gray-700 text-[12px] font-extrabold py-2 px-3 rounded-[8px] outline-none"
-                        />
-                    </div>
 
                     {/* Reason */}
                     <div className="space-y-1.5">
-                        <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Reason for Leave</label>
+                        <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">
+                            Reason for Leave <span className="text-red-500">*</span>
+                        </label>
                         <textarea
                             rows="3"
                             value={reason}
@@ -2848,11 +2846,13 @@ const Me = () => {
     };
 
     const handleOpenPartialLeaveModal = () => {
+        fetchLeaveData();
         setInitialLeaveType("partial_leave");
         setIsApplyModalOpen(true);
     };
 
     const handleOpenGeneralLeaveModal = (type = "casual_leave") => {
+        fetchLeaveData();
         setInitialLeaveType(type);
         setIsApplyModalOpen(true);
     };
@@ -2977,6 +2977,7 @@ const Me = () => {
                 initialLeaveType={initialLeaveType}
                 onClose={() => setIsApplyModalOpen(false)}
                 onSubmitSuccess={fetchLeaveData}
+                leaveSummary={leaveSummary}
             />
 
             {/* Web Clock In Daily Goal Modal */}

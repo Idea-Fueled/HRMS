@@ -11,6 +11,7 @@ import {
     batchAction,
     getUnreadCount,
     getCompanyContacts,
+    triggerDsrReminderManual,
 } from "../../controllers/emails/email.controller.js";
 
 const router = express.Router();
@@ -20,6 +21,8 @@ router.use(isAuthenticated);
 router.get("/", getEmails);
 router.get("/unread-count", getUnreadCount);
 router.get("/contacts", getCompanyContacts);
+
+router.post("/trigger-dsr", triggerDsrReminderManual);
 router.get("/:id", getEmailById);
 
 router.post("/send", uploadDoc.array("attachments", 5), sendEmail);

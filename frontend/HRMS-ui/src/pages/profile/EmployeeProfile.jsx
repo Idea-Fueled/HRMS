@@ -8,12 +8,13 @@ import {
     Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight,
     Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap,
     Umbrella, CheckCircle2, AlertCircle, SlidersHorizontal, Sparkles, Hourglass, RotateCcw, FileSpreadsheet,
-    ChevronLeft, ChevronRight, CheckCircle, XCircle
+    ChevronLeft, ChevronRight, CheckCircle, XCircle, LogOut
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { ResignJobModal, AdminInitiateExitModal } from "../../components/ExitModals";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
 import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
 import { getAllAssets, getAssignedAssets } from "../../services/asset.service";
@@ -129,7 +130,7 @@ export const EmployeeProfile = () => {
         casual: 6,
         sick: 6,
         earned: 12,
-        partial: 1
+        compOff: 0
     });
 
     // Edit form fields
@@ -150,11 +151,25 @@ export const EmployeeProfile = () => {
         profilePicture: ""
     });
 
+    // Resign and Exit Modal States
+    const [isResignModalOpen, setIsResignModalOpen] = useState(false);
+    const [isAdminExitModalOpen, setIsAdminExitModalOpen] = useState(false);
+
     // Check if logged-in user is viewing their OWN profile
     const isOwnProfile = useMemo(() => {
         if (!id || id === "me") return true;
-        if (currentUser && (id === currentUser._id || id === currentUser.employeeId)) return true;
-        if (employee && currentUser && employee._id === currentUser._id) return true;
+        const currentUserId = (currentUser?._id || currentUser?.id || "").toString();
+        const currentEmpCode = (currentUser?.employeeId || "").toString().toLowerCase();
+        const currentUserEmail = (currentUser?.email || "").toString().toLowerCase();
+
+        const targetId = (id || "").toString();
+        const empMongoId = (employee?._id || employee?.id || "").toString();
+        const empCode = (employee?.employeeId || "").toString().toLowerCase();
+        const empEmail = (employee?.email || "").toString().toLowerCase();
+
+        if (currentUserId && (targetId === currentUserId || empMongoId === currentUserId)) return true;
+        if (currentEmpCode && (targetId.toLowerCase() === currentEmpCode || empCode === currentEmpCode)) return true;
+        if (currentUserEmail && empEmail && currentUserEmail === empEmail) return true;
         return false;
     }, [id, currentUser, employee]);
 
@@ -280,7 +295,7 @@ export const EmployeeProfile = () => {
                     casual: bal.casual?.total ?? 6,
                     sick: bal.sick?.total ?? 6,
                     earned: bal.earned?.total ?? 12,
-                    partial: bal.partial?.total ?? 1
+                    compOff: bal.compOff?.total ?? 0
                 });
             }
             if (historyRes.data?.success && Array.isArray(historyRes.data.leaves)) {
@@ -931,18 +946,20 @@ export const EmployeeProfile = () => {
                         </div>
                     </div>
 
-                    {/* Right: Contact & Conditional Edit Action */}
+                    {/* Right: Contact & Actions */}
                     <div className="flex flex-col items-start lg:items-end justify-between gap-4 w-full lg:w-auto border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100">
-                        {canEdit && (
-                            <button
-                                type="button"
-                                onClick={openEditDrawer}
-                                className="flex items-center gap-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer shrink-0"
-                            >
-                                <Edit3 className="w-4 h-4" />
-                                <span>Edit Profile</span>
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {canEdit && (
+                                <button
+                                    type="button"
+                                    onClick={openEditDrawer}
+                                    className="flex items-center gap-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer shrink-0"
+                                >
+                                    <Edit3 className="w-4 h-4" />
+                                    <span>Edit Profile</span>
+                                </button>
+                            )}
+                        </div>
 
                         <div className="space-y-2 text-xs text-gray-600 font-medium text-left lg:text-right w-full">
                             <div className="flex items-center lg:justify-end gap-2">
@@ -959,6 +976,33 @@ export const EmployeeProfile = () => {
                                 <User className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
                                 <span>Reports to: <strong className="text-[#1E1E1E]">{managerName}</strong></span>
                             </div>
+
+                            {/* Resignation / Exit action directly below Reports to */}
+                            {isOwnProfile && (
+                                <div className="flex items-center lg:justify-end pt-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsResignModalOpen(true)}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer hover:shadow-xs active:scale-95"
+                                    >
+                                        <LogOut className="w-3.5 h-3.5" />
+                                        <span>Resign from my job</span>
+                                    </button>
+                                </div>
+                            )}
+
+                            {!isOwnProfile && userRole === "global_admin" && (
+                                <div className="flex items-center lg:justify-end pt-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAdminExitModalOpen(true)}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer hover:shadow-xs active:scale-95"
+                                    >
+                                        <LogOut className="w-3.5 h-3.5" />
+                                        <span>Initiate exit</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1688,15 +1732,15 @@ export const EmployeeProfile = () => {
                         const earnedUsed = bal.earned?.used ?? 0;
                         const earnedAvail = Math.max(0, earnedTotal - earnedUsed);
 
-                        const partialTotal = bal.partial?.total ?? 1;
-                        const partialUsed = bal.partial?.used ?? 0;
-                        const partialAvail = Math.max(0, partialTotal - partialUsed);
+                        const compOffTotal = bal.compOff?.total ?? 0;
+                        const compOffUsed = bal.compOff?.used ?? 0;
+                        const compOffAvail = Math.max(0, compOffTotal - compOffUsed);
 
                         const quotas = [
                             { label: "Casual Leave", avail: casualAvail, used: casualUsed, total: casualTotal, color: "#38BDF8", textColor: "text-sky-600" },
                             { label: "Sick Leave", avail: sickAvail, used: sickUsed, total: sickTotal, color: "#F59E0B", textColor: "text-amber-600" },
                             { label: "Earned Leave", avail: earnedAvail, used: earnedUsed, total: earnedTotal, color: "#10B981", textColor: "text-emerald-600" },
-                            { label: "Partial Leave", avail: partialAvail, used: partialUsed, total: partialTotal, color: "#A855F7", textColor: "text-purple-600" }
+                            { label: "Comp Offs", avail: compOffAvail, used: compOffUsed, total: compOffTotal, color: "#A855F7", textColor: "text-purple-600" }
                         ];
 
                         const radius = 54;
@@ -2747,7 +2791,7 @@ export const EmployeeProfile = () => {
 
                                 <div className="space-y-1.5">
                                     <label className="text-gray-700 font-bold block flex items-center justify-between">
-                                        <span>Partial Leave</span>
+                                        <span>Comp Offs</span>
                                         <span className="text-[10px] text-purple-600 font-mono">Days</span>
                                     </label>
                                     <input
@@ -2755,8 +2799,8 @@ export const EmployeeProfile = () => {
                                         min="0"
                                         max="100"
                                         step="0.5"
-                                        value={editLeaveForm.partial}
-                                        onChange={(e) => setEditLeaveForm({ ...editLeaveForm, partial: Number(e.target.value) })}
+                                        value={editLeaveForm.compOff}
+                                        onChange={(e) => setEditLeaveForm({ ...editLeaveForm, compOff: Number(e.target.value) })}
                                         className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-bold text-gray-800 focus:outline-none focus:border-[#2D79C7]"
                                         required
                                     />
@@ -2805,6 +2849,23 @@ export const EmployeeProfile = () => {
                 confirmText="Yes, Delete"
                 cancelText="Cancel"
                 type="danger"
+            />
+
+            {/* ─────────────────────────────────────────────
+               RESIGN & ADMIN EXIT MODALS
+            ───────────────────────────────────────────── */}
+            <ResignJobModal
+                isOpen={isResignModalOpen}
+                onClose={() => setIsResignModalOpen(false)}
+                onSuccess={() => fetchProfile()}
+                employee={employee}
+            />
+
+            <AdminInitiateExitModal
+                isOpen={isAdminExitModalOpen}
+                onClose={() => setIsAdminExitModalOpen(false)}
+                onSuccess={() => fetchProfile()}
+                employee={employee}
             />
 
         </div>

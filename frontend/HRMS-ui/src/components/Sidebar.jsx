@@ -30,7 +30,7 @@ const menuCategories = [
                 ),
             },
             {
-                name: "Inbox",
+                name: "Mailbox",
                 to: "/inbox",
                 permissionKey: "inbox",
                 icon: (

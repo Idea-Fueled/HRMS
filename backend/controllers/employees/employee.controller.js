@@ -139,6 +139,7 @@ export const createEmployee = async (req, res) => {
             employementType,
             workLocation,
             joiningDate,
+            probationPeriod,
             dateOfBirth,
             gender,
             bloodGroup,
@@ -155,6 +156,8 @@ export const createEmployee = async (req, res) => {
             casualLeave,
             sickLeave,
             earnedLeave,
+            compOffLeave,
+            compOff,
             password,
             status,
             permissions
@@ -239,6 +242,7 @@ export const createEmployee = async (req, res) => {
             employementType: finalEmpType,
             workLocation,
             joiningDate,
+            probationPeriod: probationPeriod !== undefined && probationPeriod !== "" ? Number(probationPeriod) : 180,
             dateOfBirth: dateOfBirth || null,
             gender: gender || undefined,
             bloodGroup: bloodGroup || undefined,
@@ -251,11 +255,12 @@ export const createEmployee = async (req, res) => {
             accountNumber: accountNumber || "",
             ifscCode: ifscCode || "",
             panNumber: panNumber || "",
-            salaryStructure: salaryStructure || { ctc: 0, basic: 0, hra: 0, specialAllowance: 0, otherAllowances: 0 },
+            salaryStructure: salaryStructure || { ctc: 0, basic: 0, hra: 0, medicalAllowance: 0, conveyanceAllowance: 0, specialAllowance: 0, otherAllowances: 0 },
             leaveBalance: {
                 casual: { total: casualLeave !== undefined ? Number(casualLeave) : 8, used: 0, pending: 0 },
                 sick: { total: sickLeave !== undefined ? Number(sickLeave) : 6, used: 0, pending: 0 },
-                earned: { total: earnedLeave !== undefined ? Number(earnedLeave) : 20, used: 0, pending: 0 }
+                earned: { total: earnedLeave !== undefined ? Number(earnedLeave) : 20, used: 0, pending: 0 },
+                compOff: { total: (compOffLeave !== undefined ? compOffLeave : compOff) !== undefined ? Number(compOffLeave || compOff) : 0, used: 0, pending: 0 }
             },
             status: status || "active",
             permissions: resolvedPermissions
@@ -296,6 +301,7 @@ export const updateEmployee = async (req, res) => {
             employementType,
             workLocation,
             joiningDate,
+            probationPeriod,
             dateOfBirth,
             gender,
             bloodGroup,
@@ -312,6 +318,8 @@ export const updateEmployee = async (req, res) => {
             casualLeave,
             sickLeave,
             earnedLeave,
+            compOffLeave,
+            compOff,
             status,
             password,
             permissions
@@ -376,6 +384,7 @@ export const updateEmployee = async (req, res) => {
         }
         if (workLocation) employee.workLocation = workLocation;
         if (joiningDate) employee.joiningDate = joiningDate;
+        if (probationPeriod !== undefined && probationPeriod !== "") employee.probationPeriod = Number(probationPeriod);
         if (dateOfBirth !== undefined) employee.dateOfBirth = dateOfBirth || null;
         if (gender) employee.gender = gender;
         if (bloodGroup !== undefined) employee.bloodGroup = bloodGroup;
@@ -404,6 +413,13 @@ export const updateEmployee = async (req, res) => {
         if (casualLeave !== undefined) employee.leaveBalance.casual.total = Number(casualLeave);
         if (sickLeave !== undefined) employee.leaveBalance.sick.total = Number(sickLeave);
         if (earnedLeave !== undefined) employee.leaveBalance.earned.total = Number(earnedLeave);
+        const resolvedCompOff = compOffLeave !== undefined ? compOffLeave : compOff;
+        if (resolvedCompOff !== undefined) {
+            if (!employee.leaveBalance.compOff) {
+                employee.leaveBalance.compOff = { total: 0, used: 0, pending: 0 };
+            }
+            employee.leaveBalance.compOff.total = Number(resolvedCompOff);
+        }
 
         // Update password if provided
         if (password && password.length >= 8) {

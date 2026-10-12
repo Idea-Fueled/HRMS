@@ -113,9 +113,19 @@ const MyFinances = () => {
     const salaryStructure = user?.salaryStructure || {};
     const basic = Number(salaryStructure.basic) || 0;
     const hra = Number(salaryStructure.hra) || 0;
+    const medicalAllowance = Number(salaryStructure.medicalAllowance) || 0;
+    const conveyanceAllowance = Number(salaryStructure.conveyanceAllowance || salaryStructure.conveyance) || 0;
     const specialAllowance = Number(salaryStructure.specialAllowance) || 0;
     const otherAllowances = Number(salaryStructure.otherAllowances) || 0;
-    const totalEarnings = basic + hra + specialAllowance + otherAllowances;
+
+    // Default 50% Basic, 20% HRA, 10% Medical, 10% Conveyance, 10% Special
+    const baseGross = Number(salaryStructure.grossMonthly || salaryStructure.monthlySalary) || (basic + hra + specialAllowance + otherAllowances + medicalAllowance + conveyanceAllowance);
+    const displayBasic = basic || (baseGross > 0 ? Math.round(baseGross * 0.50) : 0);
+    const displayHra = hra || (baseGross > 0 ? Math.round(baseGross * 0.20) : 0);
+    const displayMedical = medicalAllowance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 0);
+    const displayConveyance = conveyanceAllowance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 0);
+    const displaySpecial = specialAllowance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 0);
+    const totalEarnings = displayBasic + displayHra + displayMedical + displayConveyance + displaySpecial;
     const annualCtc = Number(salaryStructure.ctc) || (totalEarnings > 0 ? totalEarnings * 12 : 0);
 
     const lastPayslip = payslips.length > 0 ? payslips[0] : null;
@@ -258,25 +268,29 @@ const MyFinances = () => {
                                 <div className="p-6">
                                     <div className="divide-y divide-gray-100 text-xs font-medium">
                                         <div className="py-3 flex justify-between items-center">
-                                            <span className="text-gray-600">Basic Pay</span>
-                                            <span className="text-gray-900 font-bold text-sm">₹{basic.toLocaleString("en-IN")}</span>
+                                            <span className="text-gray-600">Basic Pay (50%)</span>
+                                            <span className="text-gray-900 font-bold text-sm">₹{displayBasic.toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="py-3 flex justify-between items-center">
-                                            <span className="text-gray-600">House Rent Allowance (HRA)</span>
-                                            <span className="text-gray-900 font-bold text-sm">₹{hra.toLocaleString("en-IN")}</span>
+                                            <span className="text-gray-600">House Rent Allowance (HRA - 20%)</span>
+                                            <span className="text-gray-900 font-bold text-sm">₹{displayHra.toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="py-3 flex justify-between items-center">
-                                            <span className="text-gray-600">Special Allowance</span>
-                                            <span className="text-gray-900 font-bold text-sm">₹{specialAllowance.toLocaleString("en-IN")}</span>
+                                            <span className="text-gray-600">Medical Allowance (10%)</span>
+                                            <span className="text-gray-900 font-bold text-sm">₹{displayMedical.toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="py-3 flex justify-between items-center">
-                                            <span className="text-gray-600">Other Allowances</span>
-                                            <span className="text-gray-900 font-bold text-sm">₹{otherAllowances.toLocaleString("en-IN")}</span>
+                                            <span className="text-gray-600">Conveyance (10%)</span>
+                                            <span className="text-gray-900 font-bold text-sm">₹{displayConveyance.toLocaleString("en-IN")}</span>
+                                        </div>
+                                        <div className="py-3 flex justify-between items-center">
+                                            <span className="text-gray-600">Special Allowances (10%)</span>
+                                            <span className="text-gray-900 font-bold text-sm">₹{displaySpecial.toLocaleString("en-IN")}</span>
                                         </div>
                                     </div>
 
                                     <p className="mt-3 text-[10.5px] text-gray-500 font-medium leading-relaxed italic bg-gray-50/80 p-2.5 rounded-lg border border-gray-100">
-                                        <strong className="text-gray-700 not-italic font-bold">*Note:</strong> Other Allowances include transportation, medical, and other miscellaneous allowances.
+                                        <strong className="text-gray-700 not-italic font-bold">*Note:</strong> Special allowances include telephone bill, &amp; other miscellaneous allowances.
                                     </p>
 
                                     <div className="mt-4 pt-4 border-t border-gray-200/80 flex justify-between items-center bg-blue-50/50 p-4 rounded-xl border border-blue-100/60">

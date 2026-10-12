@@ -34,4 +34,12 @@ export const deleteOffboardingRecord = async (id) => {
     return API.delete(`/offboarding-onboarding/offboarding/${id}`);
 };
 
+export const submitResignation = async (data) => {
+    return API.post("/offboarding-onboarding/offboarding/resign", data);
+};
+
+export const adminInitiateExit = async (data) => {
+    return API.post("/offboarding-onboarding/offboarding/admin-initiate", data);
+};
+
 export default API;

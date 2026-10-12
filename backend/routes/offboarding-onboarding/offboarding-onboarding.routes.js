@@ -8,10 +8,15 @@ import {
     getOffboardingRecords,
     initiateOffboarding,
     updateOffboardingRecord,
-    deleteOffboardingRecord
+    deleteOffboardingRecord,
+    submitEmployeeResignation,
+    adminInitiateExit
 } from "../../controllers/offboarding-onboarding/offboarding-onboarding.controller.js";
 
 const router = express.Router();
+
+// Employee Resignation route (any authenticated employee for their own account)
+router.post("/offboarding/resign", isAuthenticated, submitEmployeeResignation);
 
 // Middleware to restrict access strictly to Global Admin and HR roles
 const isGlobalAdminOrHR = (req, res, next) => {
@@ -36,6 +41,7 @@ router.delete("/onboarding/:id", deleteOnboardingRecord);
 // Offboarding Routes
 router.get("/offboarding", getOffboardingRecords);
 router.post("/offboarding", initiateOffboarding);
+router.post("/offboarding/admin-initiate", adminInitiateExit);
 router.put("/offboarding/:id", updateOffboardingRecord);
 router.delete("/offboarding/:id", deleteOffboardingRecord);
 

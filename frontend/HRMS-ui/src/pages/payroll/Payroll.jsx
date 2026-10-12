@@ -42,8 +42,9 @@ export default function Payroll() {
     const [earnings, setEarnings] = useState({
         basic: 0,
         hra: 0,
-        specialAllowance: 0,
-        otherAllowances: 0
+        medicalAllowance: 0,
+        conveyanceAllowance: 0,
+        specialAllowance: 0
     });
 
     const [saving, setSaving] = useState(false);
@@ -80,20 +81,37 @@ export default function Payroll() {
         const emp = employees.find(e => e._id === empId);
         if (emp) {
             const str = emp.salaryStructure || {};
+            const baseGross = Number(str.grossMonthly || str.monthlySalary) || (Number(str.basic || 0) + Number(str.hra || 0) + Number(str.specialAllowance || 0) + Number(str.otherAllowances || 0) + Number(str.medicalAllowance || 0) + Number(str.conveyanceAllowance || 0));
+            const basicVal = str.basic || (baseGross > 0 ? Math.round(baseGross * 0.50) : 50000);
+            const hraVal = str.hra || (baseGross > 0 ? Math.round(baseGross * 0.20) : 20000);
+            const medVal = str.medicalAllowance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 10000);
+            const convVal = str.conveyanceAllowance || str.conveyance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 10000);
+            const specVal = str.specialAllowance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 10000);
+
             setEarnings({
-                basic: str.basic || 50000,
-                hra: str.hra || 20000,
-                specialAllowance: str.specialAllowance || 15000,
-                otherAllowances: str.otherAllowances || 5000
+                basic: basicVal,
+                hra: hraVal,
+                medicalAllowance: medVal,
+                conveyanceAllowance: convVal,
+                specialAllowance: specVal
             });
         }
     };
 
     const numBasic = Number(earnings.basic) || 0;
     const numHra = Number(earnings.hra) || 0;
+    const numMedical = Number(earnings.medicalAllowance) || 0;
+    const numConveyance = Number(earnings.conveyanceAllowance) || 0;
     const numSpecial = Number(earnings.specialAllowance) || 0;
-    const numOther = Number(earnings.otherAllowances) || 0;
-    const totalEarnings = numBasic + numHra + numSpecial + numOther;
+    const grossEarnings = numBasic + numHra + numMedical + numConveyance + numSpecial;
+
+    // Loss of Pay Days & Auto Deduction
+    const totalWorkingDays = Number(attendance.totalWorkingDays) || 30;
+    const lossOfPayDays = parseFloat(attendance.lossOfPayDays) || 0;
+    const daysPayable = Math.max(0, +(totalWorkingDays - lossOfPayDays).toFixed(2));
+    const perDaySalary = totalWorkingDays > 0 ? (grossEarnings / totalWorkingDays) : 0;
+    const lopDeduction = Math.round(perDaySalary * lossOfPayDays);
+    const totalEarnings = Math.max(0, Math.round(grossEarnings - lopDeduction));
 
     const handleGenerateSubmit = async (e) => {
         e.preventDefault();
@@ -108,14 +126,16 @@ export default function Payroll() {
                 employeeId: selectedEmpId,
                 month: selectedMonth,
                 year: Number(selectedYear),
-                actualPayableDays: Number(attendance.actualPayableDays) || 30,
-                totalWorkingDays: Number(attendance.totalWorkingDays) || 30,
-                lossOfPayDays: Number(attendance.lossOfPayDays) || 0,
-                daysPayable: Number(attendance.daysPayable) || 30,
+                actualPayableDays: Number(attendance.actualPayableDays) || totalWorkingDays,
+                totalWorkingDays: totalWorkingDays,
+                lossOfPayDays: lossOfPayDays,
+                daysPayable: daysPayable,
                 basic: numBasic,
                 hra: numHra,
+                medicalAllowance: numMedical,
+                conveyanceAllowance: numConveyance,
                 specialAllowance: numSpecial,
-                otherAllowances: numOther
+                otherAllowances: 0
             };
 
             const res = await generatePayslip(payload);
@@ -457,7 +477,7 @@ export default function Payroll() {
                                             type="number"
                                             value={attendance.actualPayableDays}
                                             onChange={(e) => setAttendance(prev => ({ ...prev, actualPayableDays: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                     <div>
@@ -466,78 +486,94 @@ export default function Payroll() {
                                             type="number"
                                             value={attendance.totalWorkingDays}
                                             onChange={(e) => setAttendance(prev => ({ ...prev, totalWorkingDays: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Loss Of Pay Days</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Loss Of Pay Days (e.g. 1.5)</label>
                                         <input
                                             type="number"
+                                            step="any"
                                             value={attendance.lossOfPayDays}
                                             onChange={(e) => setAttendance(prev => ({ ...prev, lossOfPayDays: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-rose-600"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-rose-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            placeholder="0"
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Days Payable</label>
                                         <input
                                             type="number"
-                                            value={attendance.daysPayable}
-                                            onChange={(e) => setAttendance(prev => ({ ...prev, daysPayable: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-emerald-600"
+                                            step="any"
+                                            readOnly
+                                            value={daysPayable}
+                                            className="w-full p-2 bg-gray-100 border border-gray-200 rounded-lg text-xs font-bold text-emerald-600 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Earnings Breakdown */}
+                            {/* Earnings Breakdown (5 inputs) */}
                             <div className="bg-gray-50/80 p-4 border border-gray-200/80 rounded-xl space-y-3">
                                 <h4 className="text-[11px] font-bold text-gray-800 uppercase tracking-wider">Earnings Breakdown (Monthly ₹)</h4>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Basic Pay (₹)</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Basic Pay (50%)</label>
                                         <input
                                             type="number"
                                             value={earnings.basic}
                                             onChange={(e) => setEarnings(prev => ({ ...prev, basic: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">HRA (₹)</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">HRA (20%)</label>
                                         <input
                                             type="number"
                                             value={earnings.hra}
                                             onChange={(e) => setEarnings(prev => ({ ...prev, hra: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Special Allowance (₹)</label>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Medical Allowance (10%)</label>
+                                        <input
+                                            type="number"
+                                            value={earnings.medicalAllowance}
+                                            onChange={(e) => setEarnings(prev => ({ ...prev, medicalAllowance: e.target.value }))}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Conveyance Allowance (10%)</label>
+                                        <input
+                                            type="number"
+                                            value={earnings.conveyanceAllowance}
+                                            onChange={(e) => setEarnings(prev => ({ ...prev, conveyanceAllowance: e.target.value }))}
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Special Allowances (10%)</label>
                                         <input
                                             type="number"
                                             value={earnings.specialAllowance}
                                             onChange={(e) => setEarnings(prev => ({ ...prev, specialAllowance: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Other Allowances (₹)</label>
-                                        <input
-                                            type="number"
-                                            value={earnings.otherAllowances}
-                                            onChange={(e) => setEarnings(prev => ({ ...prev, otherAllowances: e.target.value }))}
-                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
+                                            className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                 </div>
+                                <p className="text-[10px] text-gray-400 italic">Special allowances include telephone bill, &amp; other miscellaneous allowances.</p>
                             </div>
 
                             {/* Net Pay Box Summary */}
-                            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-4 flex items-center justify-between">
+                            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                     <span className="text-xs font-bold text-emerald-900 uppercase block">Calculated Net Salary Payable</span>
-                                    <span className="text-xs text-emerald-600 font-medium">Auto-computed from total monthly earnings</span>
+                                    <span className="text-xs text-emerald-700 font-medium">
+                                        Gross: ₹{grossEarnings.toLocaleString("en-IN")}
+                                        {lossOfPayDays > 0 && ` • LOP Deduction (${lossOfPayDays} days): -₹${lopDeduction.toLocaleString("en-IN")}`}
+                                    </span>
                                 </div>
                                 <div className="text-right">
                                     <span className="text-xl font-bold text-emerald-700">₹{totalEarnings.toLocaleString("en-IN")}</span>

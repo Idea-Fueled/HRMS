@@ -4,10 +4,11 @@ import {
     Users, UserCheck, UserX, UserPlus, Briefcase, FileText,
     Plus, Eye, EyeOff, Edit3, X, ChevronDown, Trash2,
     Phone, Mail, Calendar, Building2, Shield, Upload,
-    Check, Loader2, Lock, User as UserIcon, Search
+    Check, Loader2, Lock, User as UserIcon, Search, LogOut
 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { AdminInitiateExitModal } from "../../components/ExitModals";
 import {
     ViewToggle, SkeletonLoader, EmptyState, SearchBar,
     Pagination, SortHeader, Avatar
@@ -105,12 +106,13 @@ const EMPTY_FORM = {
     companyEntity: "Idea Fueled",
     role: "employee", department: "", designation: "", managerId: "", dottedManagerId: "",
     employementType: "full_time", workLocation: "Office", joiningDate: "",
+    probationPeriod: 180,
     dateOfBirth: "", gender: "", bloodGroup: "",
     fatherName: "", emergencyContactNumber: "",
     presentAddress: "", permanentAddress: "",
     paymentMode: "Bank Transfer", bankName: "HDFC Bank", accountNumber: "", ifscCode: "", panNumber: "",
-    ctc: 0, basic: 0, hra: 0, specialAllowance: 0, otherAllowances: 0,
-    casualLeave: 2.5, sickLeave: 6, earnedLeave: 5, partialLeave: 1,
+    ctc: 0, basic: 0, hra: 0, medicalAllowance: 0, conveyanceAllowance: 0, specialAllowance: 0, otherAllowances: 0,
+    casualLeave: 2.5, sickLeave: 6, earnedLeave: 5, compOffLeave: 0,
     password: "", confirmPassword: "", status: "active",
     permissions: { ...DEFAULT_PERMISSIONS }
 };
@@ -578,7 +580,7 @@ const EmployeeCardView = ({ employees, onView, onEdit }) => {
 /* ─────────────────────────────────────────────
    VIEW EMPLOYEE DRAWER
 ───────────────────────────────────────────── */
-export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
+export const ViewEmployeeDrawer = ({ employee, onClose, onEdit, onInitiateExit }) => {
     const navigate = useNavigate();
     if (!employee) return null;
     const name = employee.fullName || `${employee.firstName} ${employee.lastName}`;
@@ -608,8 +610,8 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
     const earnedTotal = balance.earned?.total ?? 5;
     const earnedUsed = balance.earned?.used ?? 0;
 
-    const partialTotal = balance.partial?.total ?? 1;
-    const partialUsed = balance.partial?.used ?? 0;
+    const compOffTotal = balance.compOff?.total ?? 0;
+    const compOffUsed = balance.compOff?.used ?? 0;
 
     const InfoRow = ({ icon: Icon, label, value, className = "" }) => (
         <div className={`flex flex-col gap-1 ${className}`}>
@@ -645,7 +647,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                 bar: "bg-gradient-to-r from-emerald-500 to-teal-500",
                 text: "text-emerald-900"
             };
-        } else if (label.toLowerCase() === "partial") {
+        } else if (label.toLowerCase().includes("comp")) {
             theme = {
                 bg: "bg-purple-50/30 border-purple-100/50 hover:bg-purple-50/50",
                 badge: "bg-purple-100 text-purple-700",
@@ -701,6 +703,11 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                                 <Edit3 className="w-3.5 h-3.5" /> Edit
                             </button>
                         )}
+                        {onInitiateExit && (
+                            <button onClick={() => { onClose(); onInitiateExit(employee); }} className="bg-rose-500/80 hover:bg-rose-600 text-white text-xs font-bold px-3.5 py-2 rounded-[10px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+                                <LogOut className="w-3.5 h-3.5" /> Initiate Exit
+                            </button>
+                        )}
                         <button onClick={onClose} className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-[10px] transition-colors cursor-pointer">
                             <X className="w-4.5 h-4.5" />
                         </button>
@@ -738,6 +745,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                             <InfoRow label="Employment Type" value={empTypeLabel(effectiveType(employee))} />
                             <InfoRow label="Work Location" value={employee.workLocation} />
                             <InfoRow icon={Calendar} label="Joining Date" value={formatDate(employee.joiningDate)} />
+                            <InfoRow label="Probation Period" value={`${employee.probationPeriod ? (Number(employee.probationPeriod) <= 12 ? Number(employee.probationPeriod) * 30 : Number(employee.probationPeriod)) : 180} Days`} />
                         </div>
                     </div>
 
@@ -775,10 +783,10 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit }) => {
                                 used={earnedUsed} 
                             />
                             <LeaveCard 
-                                label="Partial" 
-                                total={partialTotal} 
-                                used={partialUsed} 
-                                unit="Day/mo"
+                                label="Comp Offs" 
+                                total={compOffTotal} 
+                                used={compOffUsed} 
+                                unit="Days"
                             />
                         </div>
                     </div>
@@ -812,6 +820,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 employementType: employee.employementType || "full_time",
                 workLocation: employee.workLocation || "Office",
                 joiningDate: employee.joiningDate ? employee.joiningDate.split("T")[0] : "",
+                probationPeriod: employee.probationPeriod !== undefined && employee.probationPeriod !== null ? (Number(employee.probationPeriod) <= 12 ? Number(employee.probationPeriod) * 30 : Number(employee.probationPeriod)) : 180,
                 dateOfBirth: employee.dateOfBirth ? employee.dateOfBirth.split("T")[0] : "",
                 gender: employee.gender || "",
                 bloodGroup: employee.bloodGroup || "",
@@ -827,12 +836,14 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 ctc: employee.salaryStructure?.ctc ?? 0,
                 basic: employee.salaryStructure?.basic ?? 0,
                 hra: employee.salaryStructure?.hra ?? 0,
+                medicalAllowance: employee.salaryStructure?.medicalAllowance ?? 0,
+                conveyanceAllowance: employee.salaryStructure?.conveyanceAllowance ?? 0,
                 specialAllowance: employee.salaryStructure?.specialAllowance ?? 0,
                 otherAllowances: employee.salaryStructure?.otherAllowances ?? 0,
                 casualLeave: employee.leaveBalance?.casual?.total ?? 2.5,
                 sickLeave: employee.leaveBalance?.sick?.total ?? 6,
                 earnedLeave: employee.leaveBalance?.earned?.total ?? 5,
-                partialLeave: employee.leaveBalance?.partial?.total ?? 1,
+                compOffLeave: employee.leaveBalance?.compOff?.total ?? 0,
                 password: "",
                 confirmPassword: "",
                 status: employee.status || "active",
@@ -1076,9 +1087,12 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     ctc: Number(form.ctc) || 0,
                     basic: Number(form.basic) || 0,
                     hra: Number(form.hra) || 0,
+                    medicalAllowance: Number(form.medicalAllowance) || 0,
+                    conveyanceAllowance: Number(form.conveyanceAllowance) || 0,
                     specialAllowance: Number(form.specialAllowance) || 0,
                     otherAllowances: Number(form.otherAllowances) || 0
-                }
+                },
+                probationPeriod: form.probationPeriod !== undefined && form.probationPeriod !== "" ? Number(form.probationPeriod) : 180
             };
             if (!payload.managerId) payload.managerId = null;
             if (!payload.dottedManagerId) payload.dottedManagerId = null;
@@ -1270,11 +1284,12 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                 {WORK_LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
                             </SelectField>
                         </FormField>
-                        <div className="col-span-2">
-                            <FormField label="Joining Date" required error={errors.joiningDate}>
-                                <input type="date" value={form.joiningDate} onChange={set("joiningDate")} className={`${inputCls} ${errors.joiningDate ? "border-rose-300" : ""}`} />
-                            </FormField>
-                        </div>
+                        <FormField label="Joining Date" required error={errors.joiningDate}>
+                            <input type="date" value={form.joiningDate} onChange={set("joiningDate")} className={`${inputCls} ${errors.joiningDate ? "border-rose-300" : ""}`} />
+                        </FormField>
+                        <FormField label="Probation Period (Days)">
+                            <input type="number" min="0" step="1" value={form.probationPeriod} onChange={set("probationPeriod")} placeholder="180" className={inputCls} />
+                        </FormField>
                     </div>
 
                     {/* Financial & Salary Details */}
@@ -1312,12 +1327,17 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         <FormField label="HRA (₹)">
                             <input type="number" value={form.hra} onChange={set("hra")} placeholder="0" className={inputCls} />
                         </FormField>
-                        <FormField label="Special Allowance (₹)">
-                            <input type="number" value={form.specialAllowance} onChange={set("specialAllowance")} placeholder="0" className={inputCls} />
+                        <FormField label="Medical Allowance (₹)">
+                            <input type="number" value={form.medicalAllowance} onChange={set("medicalAllowance")} placeholder="0" className={inputCls} />
                         </FormField>
-                        <FormField label="Other Allowances (₹)">
-                            <input type="number" value={form.otherAllowances} onChange={set("otherAllowances")} placeholder="0" className={inputCls} />
+                        <FormField label="Conveyance Allowance (₹)">
+                            <input type="number" value={form.conveyanceAllowance} onChange={set("conveyanceAllowance")} placeholder="0" className={inputCls} />
                         </FormField>
+                        <div className="col-span-2">
+                            <FormField label="Special Allowance (₹)">
+                                <input type="number" value={form.specialAllowance} onChange={set("specialAllowance")} placeholder="0" className={inputCls} />
+                            </FormField>
+                        </div>
                     </div>
 
                     {/* Personal Information */}
@@ -1370,8 +1390,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         <FormField label="Earned Leave">
                             <input type="number" min={0} step="0.5" value={form.earnedLeave} onChange={set("earnedLeave")} className={inputCls} />
                         </FormField>
-                        <FormField label="Partial Leave (Monthly)">
-                            <input type="number" min={0} step="1" value={form.partialLeave} onChange={set("partialLeave")} className={inputCls} />
+                        <FormField label="Comp Offs">
+                            <input type="number" min={0} step="0.5" value={form.compOffLeave} onChange={set("compOffLeave")} className={inputCls} />
                         </FormField>
                     </div>
 
@@ -2058,6 +2078,7 @@ const Employees = () => {
     const [drawer, setDrawer] = useState(null);
     const [deactivateTarget, setDeactivateTarget] = useState(null);
     const [deactivating, setDeactivating] = useState(false);
+    const [exitModalEmployee, setExitModalEmployee] = useState(null);
 
     const [departments, setDepartments] = useState([]);
     const [managersList, setManagersList] = useState([]);
@@ -2216,6 +2237,7 @@ const Employees = () => {
                     employee={drawer.employee}
                     onClose={() => setDrawer(null)}
                     onEdit={(emp) => setDrawer({ mode: "edit", employee: emp })}
+                    onInitiateExit={userRole === "global_admin" ? (emp) => setExitModalEmployee(emp) : null}
                 />
             )}
 
@@ -2230,6 +2252,17 @@ const Employees = () => {
                     refreshDepartments={loadDynamicData}
                 />
             )}
+
+            {/* Admin Initiate Exit Modal */}
+            <AdminInitiateExitModal
+                isOpen={Boolean(exitModalEmployee)}
+                onClose={() => setExitModalEmployee(null)}
+                onSuccess={() => {
+                    fetchEmployees();
+                    setExitModalEmployee(null);
+                }}
+                employee={exitModalEmployee}
+            />
         </div>
     );
 };

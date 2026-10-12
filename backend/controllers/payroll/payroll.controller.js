@@ -43,6 +43,8 @@ export const createPayslip = async (req, res) => {
             daysPayable,
             basic,
             hra,
+            medicalAllowance,
+            conveyanceAllowance,
             specialAllowance,
             otherAllowances
         } = req.body;
@@ -62,11 +64,19 @@ export const createPayslip = async (req, res) => {
         // Compute Earnings & Net Payable
         const numBasic = Number(basic) || 0;
         const numHra = Number(hra) || 0;
+        const numMedical = Number(medicalAllowance) || 0;
+        const numConveyance = Number(conveyanceAllowance) || 0;
         const numSpecial = Number(specialAllowance) || 0;
         const numOther = Number(otherAllowances) || 0;
-        const totalEarnings = numBasic + numHra + numSpecial + numOther;
+        const totalEarnings = numBasic + numHra + numMedical + numConveyance + numSpecial + numOther;
 
-        const netSalaryPayable = totalEarnings;
+        // Attendance & LOP Deduction Calculation
+        const numTotalDays = Number(totalWorkingDays) || 30;
+        const numLopDays = parseFloat(lossOfPayDays) || 0;
+        const numDaysPayable = Math.max(0, numTotalDays - numLopDays);
+        const perDaySalary = numTotalDays > 0 ? (totalEarnings / numTotalDays) : 0;
+        const lopDeduction = Math.round(perDaySalary * numLopDays);
+        const netSalaryPayable = Math.max(0, Math.round(totalEarnings - lopDeduction));
         const netSalaryInWords = numberToWordsINR(netSalaryPayable);
 
         // Employee Snapshot
@@ -94,14 +104,16 @@ export const createPayslip = async (req, res) => {
                 panNumber: employee.panNumber || "ABCDE1234F"
             },
             attendanceDetails: {
-                actualPayableDays: Number(actualPayableDays) || 30,
-                totalWorkingDays: Number(totalWorkingDays) || 30,
-                lossOfPayDays: Number(lossOfPayDays) || 0,
-                daysPayable: Number(daysPayable) || 30
+                actualPayableDays: Number(actualPayableDays) || numTotalDays,
+                totalWorkingDays: numTotalDays,
+                lossOfPayDays: numLopDays,
+                daysPayable: numDaysPayable
             },
             earnings: {
                 basic: numBasic,
                 hra: numHra,
+                medicalAllowance: numMedical,
+                conveyanceAllowance: numConveyance,
                 specialAllowance: numSpecial,
                 otherAllowances: numOther,
                 totalEarnings

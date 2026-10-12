@@ -3,8 +3,8 @@ import { io } from "socket.io-client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
-import { playEmailChime } from "../utils/audioChime";
-import { Mail } from "lucide-react";
+import { playEmailChime, playDsrChime } from "../utils/audioChime";
+import { Mail, Clock } from "lucide-react";
 
 const SocketContext = createContext(null);
 
@@ -73,6 +73,32 @@ export const SocketProvider = ({ children }) => {
                     label: "Open Inbox",
                     onClick: () => {
                         navigate("/inbox");
+                    },
+                },
+            });
+        });
+
+        // Handle incoming 5:30 PM DSR Reminder event
+        socket.on("dsr_reminder", (data) => {
+            // 1. Play distinct, longer 2-second DSR chime
+            playDsrChime();
+
+            // 2. Dispatch events for UI updates
+            window.dispatchEvent(new CustomEvent("hrms:dsr_reminder", { detail: data }));
+            window.dispatchEvent(new CustomEvent("hrms:new_email", { detail: data }));
+
+            // 3. Show high-priority Toast alert with immediate action
+            toast("Daily Status Report (DSR) Due", {
+                description: data?.message || "Please submit your DSR report for today before wrapping up your day.",
+                icon: <Clock className="w-4 h-4 text-amber-500" />,
+                duration: 15000,
+                action: {
+                    label: "Write DSR Now",
+                    onClick: () => {
+                        window.dispatchEvent(
+                            new CustomEvent("hrms:open_dsr_compose", { detail: data })
+                        );
+                        navigate("/inbox?compose=dsr");
                     },
                 },
             });

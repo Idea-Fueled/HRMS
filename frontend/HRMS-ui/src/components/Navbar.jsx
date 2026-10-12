@@ -28,7 +28,7 @@ const pageMetadata = {
     "/":          { title: "Dashboard", subtitle: "Welcome back! Here is your workspace summary." },
     "/profile":   { title: "Employee Profile", subtitle: "View and manage complete employee profile records and parameters." },
     "/me":        { title: "Me", subtitle: "Manage your personal profile, attendance, and details." },
-    "/inbox":     { title: "Inbox", subtitle: "Manage your emails, conversations, and communications." },
+    "/inbox":     { title: "Mailbox", subtitle: "Manage your emails, conversations, and communications." },
     "/my-team":   { title: "My Team", subtitle: "View team details, directories, and schedules." },
     "/employees": { title: "Employees", subtitle: "Manage employee records, profiles, and organizational data." },
     "/my-finances":           { title: "My Finances", subtitle: "Manage payslips, claims, and benefits." },
