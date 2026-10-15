@@ -1,4 +1,8 @@
 import Attendance from "../../models/attendance/attendance.model.js";
+import Leave from "../../models/leaves/leave.model.js";
+import User from "../../models/users/user.model.js";
+import mongoose from "mongoose";
+import XLSX from "xlsx";
 
 /**
  * Clock In
@@ -211,9 +215,6 @@ export const getTodayLogs = async (req, res) => {
         });
     }
 };
-
-import Leave from "../../models/leaves/leave.model.js";
-import User from "../../models/users/user.model.js";
 
 /**
  * Get Attendance Dashboard Summary & Analytics (100% Dynamic MongoDB Engine)
@@ -488,6 +489,275 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: error.message
+        });
+    }
+};
+
+// Helper to parse date from string, number (Excel serial), or Date object
+const parseExcelDate = (val) => {
+    if (!val && val !== 0) return null;
+    if (val instanceof Date) {
+        if (isNaN(val.getTime())) return null;
+        return new Date(val.getFullYear(), val.getMonth(), val.getDate());
+    }
+    if (typeof val === "number") {
+        const utc_days = Math.floor(val - 25569);
+        const utc_value = utc_days * 86400;
+        const d = new Date(utc_value * 1000);
+        return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    }
+    if (typeof val === "string") {
+        const clean = val.trim();
+        if (!clean) return null;
+
+        // Try DD/MM/YYYY or DD-MM-YYYY
+        const dmyMatch = clean.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+        if (dmyMatch) {
+            const day = parseInt(dmyMatch[1], 10);
+            const month = parseInt(dmyMatch[2], 10) - 1;
+            const year = parseInt(dmyMatch[3], 10);
+            return new Date(year, month, day);
+        }
+
+        // Try YYYY-MM-DD
+        const ymdMatch = clean.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+        if (ymdMatch) {
+            const year = parseInt(ymdMatch[1], 10);
+            const month = parseInt(ymdMatch[2], 10) - 1;
+            const day = parseInt(ymdMatch[3], 10);
+            return new Date(year, month, day);
+        }
+
+        const parsed = new Date(clean);
+        if (!isNaN(parsed.getTime())) {
+            return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+        }
+    }
+    return null;
+};
+
+// Helper to parse time string or decimal to a Date on the base date
+const parseTimeToDate = (timeVal, baseDate) => {
+    if (!timeVal && timeVal !== 0) return null;
+    if (!baseDate || isNaN(baseDate.getTime())) return null;
+
+    const result = new Date(baseDate);
+
+    if (timeVal instanceof Date) {
+        result.setHours(timeVal.getHours(), timeVal.getMinutes(), timeVal.getSeconds(), 0);
+        return result;
+    }
+
+    if (typeof timeVal === "number") {
+        let fraction = timeVal;
+        if (fraction > 1) {
+            fraction = fraction - Math.floor(fraction);
+        }
+        const totalMinutes = Math.round(fraction * 24 * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        result.setHours(hours, minutes, 0, 0);
+        return result;
+    }
+
+    if (typeof timeVal === "string") {
+        const clean = timeVal.trim();
+        if (!clean || clean === "--" || clean.toLowerCase() === "null") return null;
+
+        const timeMatch = clean.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+        if (timeMatch) {
+            let hours = parseInt(timeMatch[1], 10);
+            const minutes = parseInt(timeMatch[2], 10);
+            const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+            const ampm = timeMatch[4]?.toUpperCase();
+
+            if (ampm === "PM" && hours < 12) hours += 12;
+            if (ampm === "AM" && hours === 12) hours = 0;
+
+            result.setHours(hours, minutes, seconds, 0);
+            return result;
+        }
+
+        const parsed = new Date(clean);
+        if (!isNaN(parsed.getTime())) {
+            result.setHours(parsed.getHours(), parsed.getMinutes(), parsed.getSeconds(), 0);
+            return result;
+        }
+    }
+
+    return null;
+};
+
+/**
+ * Import Attendance for an Employee from Excel / JSON
+ */
+export const importEmployeeAttendance = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const empId = employeeId || req.body.employeeId;
+
+        if (!empId) {
+            return res.status(400).json({ success: false, message: "Employee ID is required." });
+        }
+
+        let user = null;
+        if (mongoose.Types.ObjectId.isValid(empId)) {
+            user = await User.findById(empId);
+        }
+        if (!user) {
+            user = await User.findOne({ employeeId: empId });
+        }
+        if (!user) {
+            return res.status(404).json({ success: false, message: "Target employee not found." });
+        }
+
+        let rawRows = [];
+
+        if (req.file) {
+            const workbook = XLSX.read(req.file.buffer, { type: "buffer", cellDates: true });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        } else if (req.body.records) {
+            rawRows = typeof req.body.records === "string" ? JSON.parse(req.body.records) : req.body.records;
+        }
+
+        if (!Array.isArray(rawRows) || rawRows.length === 0) {
+            return res.status(400).json({ success: false, message: "No attendance data found in uploaded file or request." });
+        }
+
+        let upsertedCount = 0;
+        let skippedCount = 0;
+        const errors = [];
+
+        for (let i = 0; i < rawRows.length; i++) {
+            const row = rawRows[i];
+
+            const getValue = (patterns) => {
+                const keys = Object.keys(row);
+                for (const pat of patterns) {
+                    const foundKey = keys.find(k => pat.test(k.trim()));
+                    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== "") {
+                        return row[foundKey];
+                    }
+                }
+                return null;
+            };
+
+            const rawDate = getValue([/^date$/i, /attendance.*date/i, /^day$/i, /entry.*date/i]);
+            const parsedDate = parseExcelDate(rawDate);
+
+            if (!parsedDate) {
+                skippedCount++;
+                errors.push(`Row ${i + 1}: Missing or invalid date (${rawDate || "Empty"}).`);
+                continue;
+            }
+
+            parsedDate.setHours(0, 0, 0, 0);
+
+            const rawClockIn = getValue([/^clock.*in/i, /^punch.*in/i, /^in.*time/i, /^first.*in/i, /^check.*in/i, /^start.*time/i]);
+            const rawClockOut = getValue([/^clock.*out/i, /^punch.*out/i, /^out.*time/i, /^last.*out/i, /^check.*out/i, /^end.*time/i]);
+            const rawStatus = getValue([/^status$/i, /attendance.*status/i]);
+            const rawWorkMode = getValue([/^work.*mode/i, /^mode$/i]);
+            const rawWorkMins = getValue([/total.*work.*min/i, /work.*min/i, /work.*hours?/i, /total.*hours?/i]);
+            const rawBreakMins = getValue([/break.*min/i, /break.*time/i, /^break$/i]);
+            const rawRemarks = getValue([/remarks?/i, /notes?/i, /comments?/i, /reason/i]);
+
+            const clockInDate = parseTimeToDate(rawClockIn, parsedDate);
+            let clockOutDate = parseTimeToDate(rawClockOut, parsedDate);
+
+            if (clockInDate && clockOutDate && clockOutDate < clockInDate) {
+                clockOutDate.setDate(clockOutDate.getDate() + 1);
+            }
+
+            let status = "present";
+            if (rawStatus) {
+                const s = String(rawStatus).toLowerCase().trim().replace(/[-\s]/g, "_");
+                if (["present", "p"].includes(s)) status = "present";
+                else if (["absent", "a"].includes(s)) status = "absent";
+                else if (["half_day", "hd", "halfday"].includes(s)) status = "half_day";
+                else if (["week_off", "wo", "weekoff", "off", "weekend"].includes(s)) status = "week_off";
+                else if (["holiday", "h"].includes(s)) status = "holiday";
+                else status = "present";
+            } else {
+                status = clockInDate ? "present" : "absent";
+            }
+
+            let workMode = "Office";
+            if (rawWorkMode) {
+                const wm = String(rawWorkMode).toLowerCase().trim();
+                if (wm.includes("home") || wm.includes("wfh") || wm.includes("remote")) {
+                    workMode = "Work From Home";
+                }
+            }
+
+            let breakMinutes = 0;
+            if (rawBreakMins !== null) {
+                const parsedBreak = parseFloat(rawBreakMins);
+                if (!isNaN(parsedBreak)) breakMinutes = Math.round(parsedBreak);
+            }
+
+            let totalWorkMinutes = 0;
+            if (rawWorkMins !== null) {
+                const parsedWm = parseFloat(rawWorkMins);
+                if (!isNaN(parsedWm)) {
+                    totalWorkMinutes = parsedWm <= 24 ? Math.round(parsedWm * 60) : Math.round(parsedWm);
+                }
+            } else if (clockInDate && clockOutDate) {
+                const diffMs = clockOutDate.getTime() - clockInDate.getTime();
+                const diffMins = Math.floor(diffMs / (1000 * 60));
+                totalWorkMinutes = Math.max(0, diffMins - breakMinutes);
+            } else if (status === "present" && !clockInDate) {
+                totalWorkMinutes = 480;
+            }
+
+            const logs = [];
+            if (clockInDate) {
+                logs.push({ action: "clock_in", timestamp: clockInDate });
+            }
+            if (clockOutDate) {
+                logs.push({ action: "clock_out", timestamp: clockOutDate });
+            }
+
+            await Attendance.findOneAndUpdate(
+                { employeeId: user._id, date: parsedDate },
+                {
+                    $set: {
+                        employeeId: user._id,
+                        date: parsedDate,
+                        status,
+                        firstClockIn: clockInDate,
+                        lastClockOut: clockOutDate,
+                        totalWorkMinutes,
+                        totalBreakMinutes: breakMinutes,
+                        totalSessions: clockOutDate ? 1 : (clockInDate ? 1 : 0),
+                        workMode,
+                        remarks: rawRemarks ? String(rawRemarks).trim() : "",
+                        logs
+                    }
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+
+            upsertedCount++;
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Successfully imported ${upsertedCount} attendance records for ${user.fullName || user.firstName}!`,
+            importedCount: upsertedCount,
+            skippedCount,
+            errors: errors.slice(0, 10),
+            employee: {
+                id: user._id,
+                fullName: user.fullName || `${user.firstName} ${user.lastName || ""}`.trim()
+            }
+        });
+    } catch (error) {
+        console.error("Import Employee Attendance Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to import attendance data."
         });
     }
 };

@@ -156,6 +156,14 @@ const router = createBrowserRouter([
                 ),
             },
             {
+                path: "hire/search-by-ai",
+                element: (
+                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_HR}>
+                        <Hire initialTab="search-by-ai" />
+                    </ProtectedRoute>
+                ),
+            },
+            {
                 path: "assets",
                 element: (
                     <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>

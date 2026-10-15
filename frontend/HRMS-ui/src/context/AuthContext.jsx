@@ -75,9 +75,9 @@ const ROLE_PERMISSIONS = {
 
 /* Routes each role is allowed to visit */
 export const ROLE_ALLOWED_ROUTES = {
-    global_admin: ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding", "/assets"],
+    global_admin: ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/hire/search-by-ai", "/offboarding-onboarding", "/assets"],
     admin:        ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/offboarding-onboarding"],
-    hr:           ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/offboarding-onboarding"],
+    hr:           ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/hire/search-by-ai", "/offboarding-onboarding"],
     manager:      ["/dashboard", "/me", "/inbox", "/my-team", "/my-finances", "/documents", "/time-attendance"],
     employee:     ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance"],
     intern:       ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance"],

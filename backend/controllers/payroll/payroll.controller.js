@@ -147,11 +147,37 @@ export const createPayslip = async (req, res) => {
 export const getPayslips = async (req, res) => {
     try {
         const userId = req.user?.id || req.user?.userId;
-        const { employeeId } = req.query;
+        const userRole = (req.user?.role || "").toLowerCase();
+        const isGlobalAdminOrHr = userRole === "global_admin" || userRole === "admin" || userRole === "hr";
 
-        // If employeeId is explicitly requested in query, use it. Otherwise default to logged-in user's own payslips
-        const targetEmpId = employeeId ? employeeId : userId;
-        const query = { employeeId: targetEmpId };
+        const { employeeId, month, year, companyEntity } = req.query;
+        const query = {};
+
+        // If Global Admin or HR:
+        // - If an explicit employeeId is provided (and not "all"), filter by that employee
+        // - If no employeeId is provided (or "all"), return ALL issued payslips across the organization
+        // If regular employee:
+        // - Restrict strictly to their own payslips
+        if (isGlobalAdminOrHr) {
+            if (employeeId && employeeId !== "all") {
+                query.employeeId = employeeId;
+            }
+        } else {
+            query.employeeId = userId;
+        }
+
+        if (month && month !== "all") {
+            const m = month.trim().toUpperCase().substring(0, 3);
+            query.month = m;
+        }
+
+        if (year && year !== "all") {
+            query.year = Number(year);
+        }
+
+        if (companyEntity && companyEntity !== "all") {
+            query.companyEntity = companyEntity;
+        }
 
         const payslips = await Payslip.find(query)
             .populate("employeeId", "fullName firstName lastName employeeId department designation companyEntity profilePicture")

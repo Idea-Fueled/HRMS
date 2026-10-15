@@ -36,3 +36,15 @@ export const getEmployeeAttendanceHistory = async (employeeId, month = "", year 
     }
 };
 
+export const importEmployeeAttendance = async (employeeId, data) => {
+    if (data instanceof FormData) {
+        return API.post(`/attendance/import/${employeeId}`, data, {
+            headers: {
+                "Content-Type": "multipart/form-data"
+            }
+        });
+    }
+    return API.post(`/attendance/import/${employeeId}`, data);
+};
+
+

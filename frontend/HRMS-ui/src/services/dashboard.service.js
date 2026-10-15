@@ -64,6 +64,10 @@ export const updateEmployeeLeaveBalance = async (employeeId, balanceData) => {
     return API.put(`/leaves/balance/${employeeId}`, balanceData)
 }
 
+export const requestCompOffCredit = async (creditData) => {
+    return API.post("/leaves/request-comp-off-credit", creditData)
+}
+
 export const getAwayToday = async () => {
     return API.get("/users/away-today")
 }

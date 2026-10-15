@@ -37,6 +37,7 @@ const pageMetadata = {
     "/payroll":               { title: "Payroll", subtitle: "Manage payroll processing and salary records." },
     "/recruitment":           { title: "Recruitment", subtitle: "Manage job openings and candidates." },
     "/hire":                  { title: "Hire", subtitle: "Manage candidates, job openings, and interviews." },
+    "/hire/search-by-ai":     { title: "Search by AI", subtitle: "AI-powered resume screening, skill matching, and candidate search." },
     "/organization":          { title: "Organization", subtitle: "Manage organizational units, structure, and hierarchy." },
     "/unauthorized":          { title: "Access Denied", subtitle: "You do not have permission to view this page." },
 };
@@ -223,20 +224,41 @@ const GlobalSearch = () => {
             });
 
             // 2. Search Employees
-            const matchedEmployees = (pool || []).filter(e => {
-                const name = e.fullName || `${e.firstName || ""} ${e.lastName || ""}`;
+            let employeePool = pool || [];
+            let matched = employeePool.filter(e => {
+                const name = (e.fullName || `${e.firstName || ""} ${e.lastName || ""}`).trim();
+                const empId = (e.employeeId || "").trim();
+                const email = (e.email || "").trim();
+                const dept = (e.department || "").trim();
+                const desig = (e.designation || "").trim();
+                const phone = (e.phoneNumber || "").trim();
                 return (
                     name.toLowerCase().includes(q) ||
-                    (e.email || "").toLowerCase().includes(q) ||
-                    (e.employeeId || "").toLowerCase().includes(q) ||
-                    (e.department || "").toLowerCase().includes(q) ||
-                    (e.designation || "").toLowerCase().includes(q)
+                    email.toLowerCase().includes(q) ||
+                    empId.toLowerCase().includes(q) ||
+                    dept.toLowerCase().includes(q) ||
+                    desig.toLowerCase().includes(q) ||
+                    phone.toLowerCase().includes(q)
                 );
-            }).slice(0, 5).map(e => ({
+            });
+
+            // Live fallback: if in-memory pool returned 0 matches, query backend search directly
+            if (matched.length === 0) {
+                try {
+                    const apiRes = await getAllEmployees({ search: q, all: "true" });
+                    if (apiRes.data?.employees?.length > 0) {
+                        matched = apiRes.data.employees;
+                    }
+                } catch (err) {
+                    console.error("Live employee search error:", err);
+                }
+            }
+
+            const matchedEmployees = matched.slice(0, 10).map(e => ({
                 id: e._id,
                 _id: e._id,
                 title: e.fullName || `${e.firstName || ""} ${e.lastName || ""}`.trim(),
-                description: `${e.designation || "Employee"} · ${e.department || "Organization"} (${e.employeeId})`,
+                description: `${e.designation || "Employee"} · ${e.department || "Organization"} (${e.employeeId || "IF-EMP"})`,
                 category: "Employees",
                 route: `/profile/${e._id}`,
                 profilePicture: e.profilePicture,

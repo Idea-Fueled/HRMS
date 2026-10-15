@@ -24,13 +24,18 @@ export const getAllEmployees = async (req, res) => {
         }
 
         if (search) {
-            const searchRegex = new RegExp(search, "i");
+            const cleanSearch = String(search).trim();
+            const escaped = cleanSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const searchRegex = new RegExp(escaped, "i");
             query.$or = [
                 { firstName: searchRegex },
                 { lastName: searchRegex },
                 { fullName: searchRegex },
                 { email: searchRegex },
-                { employeeId: searchRegex }
+                { employeeId: searchRegex },
+                { department: searchRegex },
+                { designation: searchRegex },
+                { phoneNumber: searchRegex }
             ];
         }
 
@@ -368,6 +373,7 @@ export const updateEmployee = async (req, res) => {
         if (accountNumber !== undefined) employee.accountNumber = accountNumber;
         if (ifscCode !== undefined) employee.ifscCode = ifscCode;
         if (panNumber !== undefined) employee.panNumber = panNumber;
+        if (req.body.aadhaarNumber !== undefined) employee.aadhaarNumber = req.body.aadhaarNumber;
         if (salaryStructure !== undefined) employee.salaryStructure = salaryStructure;
         if (role) employee.role = role === "admin" ? "global_admin" : role;
         if (department) employee.department = department;

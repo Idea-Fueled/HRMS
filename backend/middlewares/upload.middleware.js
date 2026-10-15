@@ -27,6 +27,8 @@ const docFileFilter = (req, file, cb) => {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/csv",
+        "application/csv",
         "text/plain",
         "application/zip",
         "application/x-zip-compressed"

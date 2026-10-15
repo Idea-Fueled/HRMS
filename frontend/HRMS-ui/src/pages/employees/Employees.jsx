@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { AdminInitiateExitModal } from "../../components/ExitModals";
+import { isManagementUser } from "../../utils/roleUtils";
 import {
     ViewToggle, SkeletonLoader, EmptyState, SearchBar,
     Pagination, SortHeader, Avatar
@@ -67,6 +68,7 @@ const EMPLOYMENT_TYPES = [
 ];
 const ROLES = [
     { value: "global_admin", label: "Global Admin" },
+    { value: "management", label: "Management" },
     { value: "hr", label: "HR" },
     { value: "manager", label: "Manager" },
     { value: "employee", label: "Employee" },
@@ -143,6 +145,7 @@ const empTypeBadge = (t) => ({
 const roleLabel = (r) => ROLES.find(x => x.value === r)?.label || r;
 const roleBadge = (r) => ({
     global_admin: "bg-blue-50 text-[#1F5EA8] border-blue-200/80",
+    management: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
     admin: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
     hr: "bg-purple-50 text-purple-700 border-purple-200/80",
     manager: "bg-amber-50 text-amber-700 border-amber-200/80",
@@ -703,7 +706,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit, onInitiateExit }
                                 <Edit3 className="w-3.5 h-3.5" /> Edit
                             </button>
                         )}
-                        {onInitiateExit && (
+                        {onInitiateExit && !isManagementUser(employee) && (
                             <button onClick={() => { onClose(); onInitiateExit(employee); }} className="bg-rose-500/80 hover:bg-rose-600 text-white text-xs font-bold px-3.5 py-2 rounded-[10px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
                                 <LogOut className="w-3.5 h-3.5" /> Initiate Exit
                             </button>
@@ -740,8 +743,12 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit, onInitiateExit }
                             <InfoRow icon={Building2} label="Department" value={employee.department} />
                             <InfoRow icon={Shield} label="Designation" value={employee.designation} />
                             <InfoRow label="Role" value={roleLabel(employee.role)} />
-                            <InfoRow label="Reporting Manager" value={employee.managerId?.fullName} />
-                            <InfoRow label="Dotted Line Manager" value={employee.dottedManagerId?.fullName} />
+                            {!isManagementUser(employee) && employee.managerId?.fullName && (
+                                <InfoRow label="Reporting Manager" value={employee.managerId?.fullName} />
+                            )}
+                            {!isManagementUser(employee) && employee.dottedManagerId?.fullName && (
+                                <InfoRow label="Dotted Line Manager" value={employee.dottedManagerId?.fullName} />
+                            )}
                             <InfoRow label="Employment Type" value={empTypeLabel(effectiveType(employee))} />
                             <InfoRow label="Work Location" value={employee.workLocation} />
                             <InfoRow icon={Calendar} label="Joining Date" value={formatDate(employee.joiningDate)} />
@@ -2150,9 +2157,15 @@ const Employees = () => {
     };
 
     const filtered = data.employees.filter(emp => {
-        const name = emp.fullName || `${emp.firstName} ${emp.lastName}`;
-        const q = filters.search.toLowerCase();
-        if (q && !name.toLowerCase().includes(q) && !emp.email.toLowerCase().includes(q) && !emp.employeeId.toLowerCase().includes(q)) return false;
+        const name = (emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`).trim();
+        const q = (filters.search || "").toLowerCase().trim();
+        const email = (emp.email || "").toLowerCase();
+        const empCode = (emp.employeeId || "").toLowerCase();
+        const dept = (emp.department || "").toLowerCase();
+        const desig = (emp.designation || "").toLowerCase();
+        const phone = (emp.phoneNumber || "").toLowerCase();
+
+        if (q && !name.toLowerCase().includes(q) && !email.includes(q) && !empCode.includes(q) && !dept.includes(q) && !desig.includes(q) && !phone.includes(q)) return false;
         if (filters.companyEntity && (emp.companyEntity || "Idea Fueled") !== filters.companyEntity) return false;
         if (filters.department && emp.department !== filters.department) return false;
         if (filters.designation && emp.designation !== filters.designation) return false;
@@ -2237,7 +2250,13 @@ const Employees = () => {
                     employee={drawer.employee}
                     onClose={() => setDrawer(null)}
                     onEdit={(emp) => setDrawer({ mode: "edit", employee: emp })}
-                    onInitiateExit={userRole === "global_admin" ? (emp) => setExitModalEmployee(emp) : null}
+                    onInitiateExit={userRole === "global_admin" ? (emp) => {
+                        if (isManagementUser(emp)) {
+                            toast.error("Cannot initiate exit for management personnel.");
+                            return;
+                        }
+                        setExitModalEmployee(emp);
+                    } : null}
                 />
             )}
 

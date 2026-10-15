@@ -36,6 +36,7 @@ import {
 import { getEmployeeById } from "../../services/employee.service";
 import { ViewEmployeeDrawer } from "../employees/Employees";
 import { useAuth } from "../../context/AuthContext";
+import { isManagementUser } from "../../utils/roleUtils";
 
 const useResponsivePageSize = (viewMode) => {
     const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -377,7 +378,7 @@ const TeamMembersTab = () => {
         ? user.managerId
         : employees.find(e => e._id === user?.managerId || e.id === user?.managerId);
 
-    const managerName = (
+    const managerName = isManagementUser(user) ? "" : (
         rawManager?.name ||
         rawManager?.fullName ||
         `${rawManager?.firstName || ''} ${rawManager?.lastName || ''}`.trim() ||

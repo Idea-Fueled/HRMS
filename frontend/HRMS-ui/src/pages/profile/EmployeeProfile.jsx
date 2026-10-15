@@ -8,18 +8,20 @@ import {
     Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight,
     Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap,
     Umbrella, CheckCircle2, AlertCircle, SlidersHorizontal, Sparkles, Hourglass, RotateCcw, FileSpreadsheet,
-    ChevronLeft, ChevronRight, CheckCircle, XCircle, LogOut
+    ChevronLeft, ChevronRight, CheckCircle, XCircle, LogOut, CreditCard, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { ResignJobModal, AdminInitiateExitModal } from "../../components/ExitModals";
+import { isManagementUser } from "../../utils/roleUtils";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
 import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
 import { getAllAssets, getAssignedAssets } from "../../services/asset.service";
 import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
-import { getEmployeeAttendanceHistory, getTodayAttendanceStatus } from "../../services/attendance.service";
+import { getEmployeeAttendanceHistory, getTodayAttendanceStatus, importEmployeeAttendance } from "../../services/attendance.service";
+import * as XLSX from "xlsx";
 
 
 /* ─────────────────────────────────────────────
@@ -107,6 +109,12 @@ export const EmployeeProfile = () => {
     const [showDocModal, setShowDocModal] = useState(false);
     const [newDoc, setNewDoc] = useState({ name: "", category: "Government ID", numberOrTag: "", url: "" });
 
+    // Dedicated Government ID Modal States (Aadhaar & PAN)
+    const [govDocModal, setGovDocModal] = useState({ isOpen: false, type: "aadhaar" }); // "aadhaar" | "pan"
+    const [govDocNumber, setGovDocNumber] = useState("");
+    const [govDocFile, setGovDocFile] = useState(null);
+    const [savingGovDoc, setSavingGovDoc] = useState(false);
+
     const [showAssetModal, setShowAssetModal] = useState(false);
     const [newAsset, setNewAsset] = useState({ name: "", assetTag: "", category: "Hardware Workstation", condition: "Excellent" });
 
@@ -119,6 +127,13 @@ export const EmployeeProfile = () => {
     const [attendanceMonth, setAttendanceMonth] = useState(new Date().getMonth());
     const [attendanceYear, setAttendanceYear] = useState(new Date().getFullYear());
     const [todayAttendanceRec, setTodayAttendanceRec] = useState(null);
+
+    // Import Attendance Excel State (Global Admin)
+    const [showImportAttendanceModal, setShowImportAttendanceModal] = useState(false);
+    const [importAttendanceFile, setImportAttendanceFile] = useState(null);
+    const [importParsedRecords, setImportParsedRecords] = useState([]);
+    const [importingAttendance, setImportingAttendance] = useState(false);
+    const [importAttendanceError, setImportAttendanceError] = useState("");
 
     // Leaves State for this specific employee
     const [leaveSummaryData, setLeaveSummaryData] = useState(null);
@@ -207,6 +222,7 @@ export const EmployeeProfile = () => {
     const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
     const canViewAttendanceAndLeaves = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
     const canEditLeaves = userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
+    const canViewProfileCompletion = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
 
 
     // Fetch employee data from MongoDB
@@ -276,6 +292,264 @@ export const EmployeeProfile = () => {
             console.error("Fetch today attendance error:", err);
         }
     }, [employee, id]);
+
+    // Handler to download sample Excel template for Attendance Import
+    const handleDownloadAttendanceTemplate = () => {
+        try {
+            const sampleRows = [
+                {
+                    "Date": "2026-10-01",
+                    "Status": "Present",
+                    "Clock In": "09:30 AM",
+                    "Clock Out": "06:30 PM",
+                    "Work Mode": "Office",
+                    "Remarks": "Standard workday"
+                },
+                {
+                    "Date": "2026-10-02",
+                    "Status": "Present",
+                    "Clock In": "10:00 AM",
+                    "Clock Out": "07:00 PM",
+                    "Work Mode": "Work From Home",
+                    "Remarks": "Remote work day"
+                },
+                {
+                    "Date": "2026-10-03",
+                    "Status": "Half Day",
+                    "Clock In": "09:30 AM",
+                    "Clock Out": "01:30 PM",
+                    "Work Mode": "Office",
+                    "Remarks": "First half only"
+                },
+                {
+                    "Date": "2026-10-04",
+                    "Status": "Week Off",
+                    "Clock In": "",
+                    "Clock Out": "",
+                    "Work Mode": "Office",
+                    "Remarks": "Weekend"
+                },
+                {
+                    "Date": "2026-10-05",
+                    "Status": "Holiday",
+                    "Clock In": "",
+                    "Clock Out": "",
+                    "Work Mode": "Office",
+                    "Remarks": "Public Holiday"
+                }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(sampleRows);
+            ws["!cols"] = [
+                { wch: 15 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 18 },
+                { wch: 25 }
+            ];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Attendance_Template");
+            const safeName = (employee?.fullName || employee?.firstName || "Employee").replace(/[^a-zA-Z0-9_-]/g, "_");
+            XLSX.writeFile(wb, `Attendance_Template_${safeName}.xlsx`);
+            toast.success("Sample Excel template downloaded!");
+        } catch (err) {
+            console.error("Template download error:", err);
+            toast.error("Failed to generate Excel template.");
+        }
+    };
+
+    // Handler to parse uploaded Excel / CSV file
+    const handleImportAttendanceFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImportAttendanceError("");
+        setImportAttendanceFile(file);
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: "array", cellDates: true });
+                const firstSheetName = workbook.SheetNames[0];
+                if (!firstSheetName) {
+                    setImportAttendanceError("The uploaded file does not contain any worksheets.");
+                    setImportParsedRecords([]);
+                    return;
+                }
+
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                if (!rawRows || rawRows.length === 0) {
+                    setImportAttendanceError("No rows found in the uploaded spreadsheet.");
+                    setImportParsedRecords([]);
+                    return;
+                }
+
+                const parsed = [];
+                for (let i = 0; i < rawRows.length; i++) {
+                    const row = rawRows[i];
+                    const getValue = (patterns) => {
+                        const keys = Object.keys(row);
+                        for (const pat of patterns) {
+                            const found = keys.find(k => pat.test(k.trim()));
+                            if (found && row[found] !== undefined && row[found] !== "") {
+                                return row[found];
+                            }
+                        }
+                        return "";
+                    };
+
+                    const rawDate = getValue([/^date$/i, /attendance.*date/i, /^day$/i, /entry.*date/i]);
+                    if (!rawDate) continue;
+
+                    let formattedDate = "";
+                    if (rawDate instanceof Date) {
+                        if (!isNaN(rawDate.getTime())) {
+                            formattedDate = rawDate.toISOString().split("T")[0];
+                        }
+                    } else if (typeof rawDate === "number") {
+                        const utc_days = Math.floor(rawDate - 25569);
+                        const d = new Date(utc_days * 86400 * 1000);
+                        formattedDate = d.toISOString().split("T")[0];
+                    } else {
+                        const str = String(rawDate).trim();
+                        const dmy = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+                        if (dmy) {
+                            formattedDate = `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+                        } else {
+                            const parsedD = new Date(str);
+                            if (!isNaN(parsedD.getTime())) {
+                                formattedDate = parsedD.toISOString().split("T")[0];
+                            } else {
+                                formattedDate = str;
+                            }
+                        }
+                    }
+
+                    const rawClockIn = getValue([/^clock.*in/i, /^punch.*in/i, /^in.*time/i, /^first.*in/i, /^check.*in/i, /^start.*time/i]);
+                    const rawClockOut = getValue([/^clock.*out/i, /^punch.*out/i, /^out.*time/i, /^last.*out/i, /^check.*out/i, /^end.*time/i]);
+                    const rawStatus = getValue([/^status$/i, /attendance.*status/i]);
+                    const rawWorkMode = getValue([/^work.*mode/i, /^mode$/i]);
+                    const rawRemarks = getValue([/remarks?/i, /notes?/i, /comments?/i, /reason/i]);
+
+                    const formatTimeStr = (t) => {
+                        if (!t && t !== 0) return "";
+                        if (t instanceof Date) {
+                            return t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+                        }
+                        if (typeof t === "number") {
+                            let frac = t > 1 ? t - Math.floor(t) : t;
+                            const totalM = Math.round(frac * 24 * 60);
+                            const h = Math.floor(totalM / 60);
+                            const m = totalM % 60;
+                            const ampm = h >= 12 ? "PM" : "AM";
+                            const h12 = h % 12 || 12;
+                            return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+                        }
+                        return String(t).trim();
+                    };
+
+                    const clockInStr = formatTimeStr(rawClockIn);
+                    const clockOutStr = formatTimeStr(rawClockOut);
+
+                    let status = "Present";
+                    if (rawStatus) {
+                        const s = String(rawStatus).toLowerCase().trim();
+                        if (s.includes("absent") || s === "a") status = "Absent";
+                        else if (s.includes("half") || s === "hd") status = "Half Day";
+                        else if (s.includes("off") || s.includes("week") || s === "wo") status = "Week Off";
+                        else if (s.includes("holiday") || s === "h") status = "Holiday";
+                        else status = "Present";
+                    } else if (!clockInStr) {
+                        status = "Absent";
+                    }
+
+                    let workMode = "Office";
+                    if (rawWorkMode) {
+                        const wm = String(rawWorkMode).toLowerCase().trim();
+                        if (wm.includes("home") || wm.includes("wfh") || wm.includes("remote")) {
+                            workMode = "Work From Home";
+                        }
+                    }
+
+                    parsed.push({
+                        date: formattedDate,
+                        clockIn: clockInStr,
+                        clockOut: clockOutStr,
+                        status,
+                        workMode,
+                        remarks: rawRemarks ? String(rawRemarks).trim() : ""
+                    });
+                }
+
+                if (parsed.length === 0) {
+                    setImportAttendanceError("Could not detect any valid date rows. Please check column headers.");
+                }
+
+                setImportParsedRecords(parsed);
+            } catch (err) {
+                console.error("Excel parse error:", err);
+                setImportAttendanceError("Failed to parse Excel file. Please ensure it is a valid format.");
+                setImportParsedRecords([]);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    // Handler to submit attendance import to backend
+    const handleImportAttendanceSubmit = async () => {
+        const empId = employee?._id || id;
+        if (!empId) {
+            toast.error("Employee identifier not found.");
+            return;
+        }
+
+        if (!importAttendanceFile && importParsedRecords.length === 0) {
+            toast.error("Please upload an Excel or CSV file first.");
+            return;
+        }
+
+        setImportingAttendance(true);
+        try {
+            const formData = new FormData();
+            if (importAttendanceFile) {
+                formData.append("file", importAttendanceFile);
+            }
+            if (importParsedRecords.length > 0) {
+                formData.append("records", JSON.stringify(importParsedRecords));
+            }
+
+            const res = await importEmployeeAttendance(empId, formData);
+            if (res.data?.success) {
+                toast.success(res.data.message || `Successfully imported ${res.data.importedCount || importParsedRecords.length} records!`);
+                setShowImportAttendanceModal(false);
+                setImportAttendanceFile(null);
+                setImportParsedRecords([]);
+
+                // If imported records contain dates, automatically switch month view to match
+                if (importParsedRecords.length > 0 && importParsedRecords[0].date) {
+                    const parsedDate = new Date(importParsedRecords[0].date);
+                    if (!isNaN(parsedDate.getTime())) {
+                        setAttendanceMonth(parsedDate.getMonth());
+                        setAttendanceYear(parsedDate.getFullYear());
+                    }
+                }
+
+                fetchEmployeeAttendance();
+                fetchTodayAttendance();
+            } else {
+                toast.error(res.data?.message || "Failed to import attendance.");
+            }
+        } catch (err) {
+            console.error("Attendance import request error:", err);
+            toast.error(err.response?.data?.message || "Failed to import attendance.");
+        } finally {
+            setImportingAttendance(false);
+        }
+    };
 
     // Leaves Data Fetching for this specific employee
     const fetchEmployeeLeaves = useCallback(async () => {
@@ -348,19 +622,22 @@ export const EmployeeProfile = () => {
         if (!employee) return;
         setEditForm({
             phoneNumber: employee.phoneNumber || "",
-            aboutMe: employee.aboutMe || "Experienced professional passionate about operational excellence, workforce strategy, and digital innovation at Idea Fueled.",
+            aboutMe: (employee.aboutMe && !employee.aboutMe.includes("Experienced professional passionate") && !employee.aboutMe.includes("Dedicated team member")) ? employee.aboutMe : "",
             skills: Array.isArray(employee.skills) && employee.skills.length > 0 
                 ? employee.skills.join(", ") 
-                : "React.js, Node.js, HR Management, Team Leadership, Analytics",
-            interests: Array.isArray(employee.interests) && employee.interests.length > 0 
-                ? employee.interests.join(", ") 
-                : "Photography, Technology, Reading, Badminton, Chess",
+                : "",
+            interests: (() => {
+                if (!Array.isArray(employee.interests) || employee.interests.length === 0) return "";
+                const mockSet = new Set(["Photography", "Technology", "Reading", "Badminton", "Chess", "Open Source"]);
+                if (employee.interests.every(it => mockSet.has(it)) && employee.interests.length >= 4) return "";
+                return employee.interests.join(", ");
+            })(),
             dateOfBirth: safeDateToInput(employee.dateOfBirth),
             gender: employee.gender || "Male",
             bloodGroup: employee.bloodGroup || "O+",
             fatherName: employee.fatherName || "",
-            emergencyContactName: employee.emergencyContactName || "Ramesh Kumar",
-            emergencyContactRelation: employee.emergencyContactRelation || "Father",
+            emergencyContactName: employee.emergencyContactName || "",
+            emergencyContactRelation: employee.emergencyContactRelation || "",
             emergencyContactNumber: employee.emergencyContactNumber || employee.phoneNumber || "",
             presentAddress: employee.presentAddress || "",
             permanentAddress: employee.permanentAddress || "",
@@ -369,7 +646,7 @@ export const EmployeeProfile = () => {
         setIsEditDrawerOpen(true);
     };
 
-    // Profile picture upload
+    // Profile picture upload from edit drawer
     const handleProfilePicUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -380,14 +657,49 @@ export const EmployeeProfile = () => {
             formData.append("image", file);
 
             const res = await uploadProfilePicture(formData);
-            if (res.data?.success && res.data.imageUrl) {
-                setEditForm(prev => ({ ...prev, profilePicture: res.data.imageUrl }));
+            const imgUrl = res.data?.url || res.data?.imageUrl;
+            if (res.data?.success && imgUrl) {
+                setEditForm(prev => ({ ...prev, profilePicture: imgUrl }));
                 toast.success("Profile picture uploaded successfully!");
             } else {
                 toast.error("Failed to upload image.");
             }
         } catch (err) {
             console.error("Profile picture upload error:", err);
+            toast.error("Error uploading picture.");
+        } finally {
+            setUploadingPic(false);
+        }
+    };
+
+    // Direct hero avatar photo upload handler
+    const handleDirectHeroPicUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setUploadingPic(true);
+            const formData = new FormData();
+            formData.append("image", file);
+            toast.loading("Uploading photo...", { id: "hero-photo" });
+
+            const res = await uploadProfilePicture(formData);
+            toast.dismiss("hero-photo");
+            const imgUrl = res.data?.url || res.data?.imageUrl;
+            if (res.data?.success && imgUrl) {
+                const ok = await persistEmployeeUpdate({ profilePicture: imgUrl }, "Profile picture updated!");
+                if (ok) {
+                    setEmployee(prev => prev ? ({ ...prev, profilePicture: imgUrl }) : prev);
+                    if (isOwnProfile && updateUser) {
+                        updateUser({ profilePicture: imgUrl });
+                    }
+                }
+            } else {
+                toast.error("Failed to upload image.");
+            }
+        } catch (err) {
+            console.error("Hero photo upload error:", err);
+            toast.dismiss("hero-photo");
             toast.error("Error uploading picture.");
         } finally {
             setUploadingPic(false);
@@ -458,7 +770,7 @@ export const EmployeeProfile = () => {
     // 1. Skill Operations
     const currentSkills = useMemo(() => {
         if (Array.isArray(employee?.skills) && employee.skills.length > 0) return employee.skills;
-        return ["React.js", "Node.js", "MongoDB", "HR Management", "System Design", "Payroll"];
+        return [];
     }, [employee]);
 
     const handleAddSkill = async () => {
@@ -486,8 +798,10 @@ export const EmployeeProfile = () => {
 
     // 2. Interest Operations
     const currentInterests = useMemo(() => {
-        if (Array.isArray(employee?.interests) && employee.interests.length > 0) return employee.interests;
-        return ["Photography", "Open Source", "Badminton", "Reading", "Chess"];
+        if (!Array.isArray(employee?.interests) || employee.interests.length === 0) return [];
+        const mockSet = new Set(["Photography", "Technology", "Reading", "Badminton", "Chess", "Open Source"]);
+        if (employee.interests.every(it => mockSet.has(it)) && employee.interests.length >= 4) return [];
+        return employee.interests;
     }, [employee]);
 
     const handleAddInterest = async () => {
@@ -593,6 +907,105 @@ export const EmployeeProfile = () => {
         if (Array.isArray(employee?.userDocuments) && employee.userDocuments.length > 0) return employee.userDocuments;
         return [];
     }, [employee]);
+
+    const aadhaarDoc = useMemo(() => {
+        return currentDocuments.find(d => {
+            const name = (d.name || "").toLowerCase();
+            return name.includes("aadhaar") || name.includes("adhar");
+        });
+    }, [currentDocuments]);
+
+    const panDoc = useMemo(() => {
+        return currentDocuments.find(d => {
+            const name = (d.name || "").toLowerCase();
+            return name.includes("pan card") || name === "pan";
+        });
+    }, [currentDocuments]);
+
+    const otherDocuments = useMemo(() => {
+        return currentDocuments.filter(d => {
+            const name = (d.name || "").toLowerCase();
+            const isAadhaar = name.includes("aadhaar") || name.includes("adhar");
+            const isPan = name.includes("pan card") || name === "pan";
+            return !isAadhaar && !isPan;
+        });
+    }, [currentDocuments]);
+
+    const handleOpenGovDocModal = (type) => {
+        const isAadhaar = type === "aadhaar";
+        const currentNum = isAadhaar 
+            ? (employee?.aadhaarNumber || aadhaarDoc?.numberOrTag || "")
+            : (employee?.panNumber || panDoc?.numberOrTag || "");
+        setGovDocNumber(currentNum);
+        setGovDocFile(null);
+        setGovDocModal({ isOpen: true, type });
+    };
+
+    const handleGovDocSubmit = async (e) => {
+        e.preventDefault();
+        const isAadhaar = govDocModal.type === "aadhaar";
+        const docTitle = isAadhaar ? "Aadhaar Card" : "PAN Card";
+        const existingDoc = isAadhaar ? aadhaarDoc : panDoc;
+
+        if (!govDocNumber.trim() && !govDocFile && !existingDoc?.url) {
+            toast.error(`Please provide a ${docTitle} number or attach a file.`);
+            return;
+        }
+
+        setSavingGovDoc(true);
+        try {
+            let fileUrl = existingDoc?.url || "";
+            if (govDocFile) {
+                const formData = new FormData();
+                formData.append("file", govDocFile);
+                toast.loading(`Uploading ${docTitle}...`, { id: "gov-upload" });
+                const uploadRes = await uploadDocumentFile(formData);
+                toast.dismiss("gov-upload");
+                if (uploadRes.data?.success && uploadRes.data?.url) {
+                    fileUrl = uploadRes.data.url;
+                } else {
+                    toast.error("File upload failed.");
+                    setSavingGovDoc(false);
+                    return;
+                }
+            }
+
+            const newDocEntry = {
+                name: docTitle,
+                category: "Government ID",
+                numberOrTag: govDocNumber.trim(),
+                url: fileUrl,
+                uploadedAt: new Date(),
+                status: "Verified"
+            };
+
+            const filtered = currentDocuments.filter(d => {
+                const name = (d.name || "").toLowerCase();
+                return isAadhaar 
+                    ? !(name.includes("aadhaar") || name.includes("adhar"))
+                    : !(name.includes("pan card") || name === "pan");
+            });
+
+            const updatedDocs = [newDocEntry, ...filtered];
+            const updatePayload = {
+                userDocuments: updatedDocs,
+                ...(isAadhaar ? { aadhaarNumber: govDocNumber.trim() } : { panNumber: govDocNumber.trim().toUpperCase() })
+            };
+
+            const ok = await persistEmployeeUpdate(updatePayload, `${docTitle} saved successfully!`);
+            if (ok) {
+                setGovDocModal({ isOpen: false, type: "aadhaar" });
+                setGovDocFile(null);
+                setGovDocNumber("");
+            }
+        } catch (err) {
+            console.error(`Error saving ${docTitle}:`, err);
+            toast.dismiss("gov-upload");
+            toast.error(err.response?.data?.message || `Failed to save ${docTitle}.`);
+        } finally {
+            setSavingGovDoc(false);
+        }
+    };
 
     const handleAddDocumentSubmit = async (e) => {
         e.preventDefault();
@@ -825,15 +1238,54 @@ export const EmployeeProfile = () => {
     const empJoining = formatDateStr(employee?.joiningDate || employee?.createdAt || "2023-01-15");
     const empStatus = (employee?.status || "active").toLowerCase();
     
+    const isTargetManagement = isManagementUser(employee);
+
     const managerName = employee?.managerId?.fullName 
         ? employee.managerId.fullName 
-        : (typeof employee?.managerId === "string" ? employee.managerId : "Anirudh Joshi");
+        : (typeof employee?.managerId === "string" ? employee.managerId : "");
 
     const dottedManagerName = employee?.dottedManagerId?.fullName 
         ? employee.dottedManagerId.fullName 
         : null;
 
-    const aboutMeText = employee?.aboutMe || "Dedicated team member at Idea Fueled HRMS, focused on delivering strategic project milestones, fostering cross-departmental collaboration, and driving continuous process improvements.";
+    const aboutMeText = useMemo(() => {
+        const raw = (employee?.aboutMe || "").trim();
+        if (
+            raw.includes("Experienced professional passionate about operational excellence") ||
+            raw.includes("Dedicated team member at Idea Fueled HRMS")
+        ) {
+            return "";
+        }
+        return raw;
+    }, [employee]);
+
+    // Profile Completion Calculation (Dynamic progress across key profile pillars)
+    const profileCompletion = useMemo(() => {
+        const hasPhoto = Boolean(employee?.profilePicture && !employee.profilePicture.includes("default") && employee.profilePicture.length > 5);
+        const hasBio = Boolean(aboutMeText && aboutMeText.trim().length >= 10);
+        const hasInterests = Boolean(Array.isArray(currentInterests) && currentInterests.length > 0);
+        const hasEducation = Boolean(Array.isArray(currentEducation) && currentEducation.length > 0);
+        const hasAadhaar = Boolean(aadhaarDoc?.url || (employee?.aadhaarNumber && employee.aadhaarNumber.trim().length >= 8));
+        const hasPan = Boolean(panDoc?.url || (employee?.panNumber && employee.panNumber.trim().length >= 8));
+
+        const criteria = [
+            { id: "photo", label: "Profile Photo", done: hasPhoto, weight: 15, action: () => (document.getElementById("hero-profile-pic-input")?.click() || openEditDrawer()) },
+            { id: "bio", label: "About Me / Bio", done: hasBio, weight: 15, action: openEditDrawer },
+            { id: "interests", label: "Interests & Hobbies", done: hasInterests, weight: 15, action: () => { setActiveTab("Personal"); setShowAddInterestInput(true); } },
+            { id: "education", label: "Education Qualification", done: hasEducation, weight: 15, action: () => { setActiveTab("Personal"); setShowEduModal(true); } },
+            { id: "aadhaar", label: "Aadhaar Card", done: hasAadhaar, weight: 20, action: () => { setActiveTab("Documents"); handleOpenGovDocModal("aadhaar"); } },
+            { id: "pan", label: "PAN Card", done: hasPan, weight: 20, action: () => { setActiveTab("Documents"); handleOpenGovDocModal("pan"); } }
+        ];
+
+        const earned = criteria.reduce((sum, c) => sum + (c.done ? c.weight : 0), 0);
+        const pending = criteria.filter(c => !c.done);
+
+        return {
+            percent: Math.min(100, earned),
+            criteria,
+            pending
+        };
+    }, [employee, aadhaarDoc, panDoc]);
 
     // Tabs definition
     const allProfileTabs = useMemo(() => {
@@ -842,7 +1294,7 @@ export const EmployeeProfile = () => {
             { key: "Employment", label: "Employment", icon: Briefcase },
         ];
 
-        if (canViewAttendanceAndLeaves) {
+        if (canViewAttendanceAndLeaves && !isTargetManagement) {
             base.push(
                 { key: "Attendance", label: "Attendance", icon: Clock },
                 { key: "Leaves", label: "Leaves", icon: Umbrella }
@@ -856,7 +1308,7 @@ export const EmployeeProfile = () => {
         );
 
         return base;
-    }, [canViewAttendanceAndLeaves]);
+    }, [canViewAttendanceAndLeaves, isTargetManagement]);
 
 
     const profileTabs = useMemo(() => {
@@ -868,8 +1320,10 @@ export const EmployeeProfile = () => {
     useEffect(() => {
         if (!canViewConfidential && activeTab !== "Employment") {
             setActiveTab("Employment");
+        } else if (isTargetManagement && (activeTab === "Attendance" || activeTab === "Leaves")) {
+            setActiveTab("Personal");
         }
-    }, [canViewConfidential, activeTab]);
+    }, [canViewConfidential, isTargetManagement, activeTab]);
 
     if (loading) {
         return (
@@ -893,13 +1347,36 @@ export const EmployeeProfile = () => {
                     
                     {/* Left: Avatar & Info */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full lg:w-auto">
-                        <div className="relative shrink-0">
+                        <div className="relative shrink-0 group">
                             <Avatar
                                 src={employee?.profilePicture}
                                 name={empName}
                                 size="w-24 h-24 sm:w-28 sm:h-28"
                                 textSize="text-2xl font-black"
                             />
+                            {canEdit && (
+                                <label
+                                    title="Click to update profile photo"
+                                    className="absolute inset-0 rounded-full bg-black/40 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                                >
+                                    {uploadingPic ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Camera className="w-5 h-5 mb-0.5" />
+                                            <span className="text-[10px] font-bold">Change</span>
+                                        </>
+                                    )}
+                                    <input
+                                        id="hero-profile-pic-input"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleDirectHeroPicUpload}
+                                        disabled={uploadingPic}
+                                        className="hidden"
+                                    />
+                                </label>
+                            )}
                             <span className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center ${
                                 empStatus === "active" ? "bg-emerald-500" : empStatus === "on_notice" ? "bg-amber-500" : "bg-gray-400"
                             }`} title={`Status: ${empStatus}`} />
@@ -972,13 +1449,15 @@ export const EmployeeProfile = () => {
                                 <span className="font-semibold text-gray-700">{empPhone}</span>
                             </div>
 
-                            <div className="flex items-center lg:justify-end gap-2">
-                                <User className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
-                                <span>Reports to: <strong className="text-[#1E1E1E]">{managerName}</strong></span>
-                            </div>
+                            {!isTargetManagement && managerName && (
+                                <div className="flex items-center lg:justify-end gap-2">
+                                    <User className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
+                                    <span>Reports to: <strong className="text-[#1E1E1E]">{managerName}</strong></span>
+                                </div>
+                            )}
 
-                            {/* Resignation / Exit action directly below Reports to */}
-                            {isOwnProfile && (
+                            {/* Resignation / Exit action directly below Reports to (Excluded for Management) */}
+                            {isOwnProfile && !isTargetManagement && (
                                 <div className="flex items-center lg:justify-end pt-1.5">
                                     <button
                                         type="button"
@@ -991,7 +1470,7 @@ export const EmployeeProfile = () => {
                                 </div>
                             )}
 
-                            {!isOwnProfile && userRole === "global_admin" && (
+                            {!isOwnProfile && userRole === "global_admin" && !isTargetManagement && (
                                 <div className="flex items-center lg:justify-end pt-1.5">
                                     <button
                                         type="button"
@@ -1005,8 +1484,73 @@ export const EmployeeProfile = () => {
                             )}
                         </div>
                     </div>
-
                 </div>
+
+                {/* ─────────────────────────────────────────────
+                   PROFILE COMPLETION PROGRESS BAR (Full width)
+                   (Visible ONLY to: Self, Global Admin, and Assigned HR)
+                ───────────────────────────────────────────── */}
+                {canViewProfileCompletion && (
+                    <div className="mt-6 pt-5 border-t border-gray-150">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                    profileCompletion.percent === 100 ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-[#2D79C7]"
+                                }`}>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                    <span className="text-xs font-bold text-gray-800">Profile Completeness</span>
+                                    <span className="text-[11px] text-gray-400 font-semibold ml-2">
+                                        ({profileCompletion.criteria.filter(c => c.done).length} of {profileCompletion.criteria.length} completed)
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-2xs ${
+                                    profileCompletion.percent === 100
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        : profileCompletion.percent >= 60
+                                        ? "bg-blue-50 text-[#2D79C7] border-blue-200"
+                                        : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}>
+                                    {profileCompletion.percent}% Complete
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Progress Bar Track */}
+                        <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner p-0.5">
+                            <div
+                                className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                    profileCompletion.percent === 100
+                                        ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
+                                        : "bg-gradient-to-r from-[#2D79C7] to-blue-500"
+                                }`}
+                                style={{ width: `${profileCompletion.percent}%` }}
+                            />
+                        </div>
+
+                        {/* Pending Checklist Prompts */}
+                        {profileCompletion.pending.length > 0 && canEdit && (
+                            <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                                <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider">Complete your profile:</span>
+                                {profileCompletion.pending.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={item.action}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50/70 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-[11px] font-bold rounded-lg transition-colors cursor-pointer active:scale-95"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                        <span>{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* ─────────────────────────────────────────────
@@ -1056,9 +1600,25 @@ export const EmployeeProfile = () => {
                                     </button>
                                 )}
                             </div>
-                            <p className="text-gray-600 text-xs font-medium leading-relaxed">
-                                {aboutMeText}
-                            </p>
+                            {aboutMeText ? (
+                                <p className="text-gray-600 text-xs font-medium leading-relaxed whitespace-pre-line">
+                                    {aboutMeText}
+                                </p>
+                            ) : (
+                                <div className="py-5 text-center select-none bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                    <p className="text-slate-400 text-xs font-medium italic">No bio added yet.</p>
+                                    {canEdit && (
+                                        <button
+                                            type="button"
+                                            onClick={openEditDrawer}
+                                            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2D79C7]/10 hover:bg-[#2D79C7]/20 text-[#2D79C7] text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                                        >
+                                            <Edit3 className="w-3.5 h-3.5" />
+                                            <span>Add your bio</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Hobbies & Interests */}
@@ -1105,23 +1665,39 @@ export const EmployeeProfile = () => {
                                 </div>
                             )}
 
-                            <div className="flex flex-wrap gap-2 pt-1">
-                                {currentInterests.map((it, idx) => (
-                                    <span key={idx} className="bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5">
-                                        <span>{it}</span>
-                                        {canDelete && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteInterest(it)}
-                                                className="opacity-60 hover:opacity-100 text-rose-500 cursor-pointer ml-0.5"
-                                                title="Delete interest"
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        )}
-                                    </span>
-                                ))}
-                            </div>
+                            {currentInterests.length === 0 ? (
+                                <div className="py-5 text-center select-none bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                    <p className="text-slate-400 text-xs font-medium italic">No interests or hobbies added yet.</p>
+                                    {canEdit && !showAddInterestInput && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddInterestInput(true)}
+                                            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2D79C7]/10 hover:bg-[#2D79C7]/20 text-[#2D79C7] text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            <span>Add interest</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    {currentInterests.map((it, idx) => (
+                                        <span key={idx} className="bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                                            <span>{it}</span>
+                                            {canDelete && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteInterest(it)}
+                                                    className="opacity-60 hover:opacity-100 text-rose-500 cursor-pointer ml-0.5"
+                                                    title="Delete interest"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Education Qualification (Moved to Left Column) */}
@@ -1148,7 +1724,23 @@ export const EmployeeProfile = () => {
 
                             <div className="space-y-3">
                                 {currentEducation.length === 0 ? (
-                                    <p className="text-gray-400 text-xs italic text-center py-4 font-semibold select-none">No education qualifications added yet.</p>
+                                    <div className="py-5 text-center select-none bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                        <p className="text-slate-400 text-xs font-medium italic">No education qualifications added yet.</p>
+                                        {canEdit && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setNewEdu({ degree: "", institution: "", fieldOfStudy: "", passingYear: "", level: "Post Graduate" });
+                                                    setEditingEduIdx(null);
+                                                    setShowEduModal(true);
+                                                }}
+                                                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2D79C7]/10 hover:bg-[#2D79C7]/20 text-[#2D79C7] text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                <span>Add qualification</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 ) : (
                                     currentEducation.map((edu, idx) => (
                                         <div key={idx} className="group bg-[#F8FAFC] border border-gray-200/70 p-4 rounded-xl flex items-center justify-between">
@@ -1335,10 +1927,12 @@ export const EmployeeProfile = () => {
                                 <span className="text-[#1E1E1E] text-sm font-bold block">{empJoining}</span>
                             </div>
 
-                            <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
-                                <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Reporting Manager</span>
-                                <span className="text-[#1E1E1E] text-sm font-bold block">{managerName}</span>
-                            </div>
+                            {!isTargetManagement && (
+                                <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
+                                    <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Reporting Manager</span>
+                                    <span className="text-[#1E1E1E] text-sm font-bold block">{managerName || "Not Assigned"}</span>
+                                </div>
+                            )}
 
                             <div className="bg-[#F8FAFC] border border-gray-200 p-4 rounded-2xl space-y-1">
                                 <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Work Location</span>
@@ -1430,58 +2024,77 @@ export const EmployeeProfile = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (attendanceMonth === 0) {
-                                        setAttendanceMonth(11);
-                                        setAttendanceYear(prev => prev - 1);
-                                    } else {
-                                        setAttendanceMonth(prev => prev - 1);
-                                    }
-                                }}
-                                className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
-                                title="Previous Month"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                            {userRole === "global_admin" && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setImportAttendanceFile(null);
+                                        setImportParsedRecords([]);
+                                        setImportAttendanceError("");
+                                        setShowImportAttendanceModal(true);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl shadow-xs hover:shadow transition-all cursor-pointer"
+                                    title="Import attendance records from Excel"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                                    <span>Import Excel</span>
+                                </button>
+                            )}
 
-                            <select
-                                value={attendanceMonth}
-                                onChange={(e) => setAttendanceMonth(Number(e.target.value))}
-                                className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                            >
-                                {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, idx) => (
-                                    <option key={idx} value={idx}>{m}</option>
-                                ))}
-                            </select>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (attendanceMonth === 0) {
+                                            setAttendanceMonth(11);
+                                            setAttendanceYear(prev => prev - 1);
+                                        } else {
+                                            setAttendanceMonth(prev => prev - 1);
+                                        }
+                                    }}
+                                    className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
+                                    title="Previous Month"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
 
-                            <select
-                                value={attendanceYear}
-                                onChange={(e) => setAttendanceYear(Number(e.target.value))}
-                                className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                            >
-                                {[2024, 2025, 2026, 2027].map(y => (
-                                    <option key={y} value={y}>{y}</option>
-                                ))}
-                            </select>
+                                <select
+                                    value={attendanceMonth}
+                                    onChange={(e) => setAttendanceMonth(Number(e.target.value))}
+                                    className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                >
+                                    {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, idx) => (
+                                        <option key={idx} value={idx}>{m}</option>
+                                    ))}
+                                </select>
 
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (attendanceMonth === 11) {
-                                        setAttendanceMonth(0);
-                                        setAttendanceYear(prev => prev + 1);
-                                    } else {
-                                        setAttendanceMonth(prev => prev + 1);
-                                    }
-                                }}
-                                className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
-                                title="Next Month"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
+                                <select
+                                    value={attendanceYear}
+                                    onChange={(e) => setAttendanceYear(Number(e.target.value))}
+                                    className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                >
+                                    {[2024, 2025, 2026, 2027].map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (attendanceMonth === 11) {
+                                            setAttendanceMonth(0);
+                                            setAttendanceYear(prev => prev + 1);
+                                        } else {
+                                            setAttendanceMonth(prev => prev + 1);
+                                        }
+                                    }}
+                                    className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
+                                    title="Next Month"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1922,90 +2535,284 @@ export const EmployeeProfile = () => {
             ───────────────────────────────────────────── */}
             {activeTab === "Documents" && (
                 <div className="space-y-6">
-                    {canEdit && (
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setShowDocModal(true)}
-                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>Upload / Add Document</span>
-                            </button>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {currentDocuments.length === 0 ? (
-                            <div className="col-span-full py-12 text-center select-none bg-slate-50/50 rounded-[20px] border border-dashed border-slate-200 animate-fadeIn">
-                                <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] mx-auto mb-3">
-                                    <FileText className="w-5 h-5" />
-                                </div>
-                                <h4 className="text-slate-850 text-xs font-bold">No documents uploaded yet</h4>
-                                <p className="text-slate-400 text-[11px] mt-1">Official ID, agreements, or certificates will appear here.</p>
+                    {/* Primary Government ID Section (Aadhaar & PAN) */}
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                    <ShieldCheck className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>Government Identification & Verification</span>
+                                </h3>
+                                <p className="text-gray-400 text-[11px] font-medium mt-0.5">
+                                    Mandatory identity documents for payroll, tax verification & legal compliance.
+                                </p>
                             </div>
-                        ) : (
-                            currentDocuments.map((doc, idx) => (
-                                <div key={idx} className="premium-3d-card p-5 flex flex-col justify-between space-y-4 relative group">
-                                    <div className="flex items-start justify-between gap-3">
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            {/* Aadhaar Card */}
+                            <div className="premium-3d-card p-5 bg-white border border-gray-150 rounded-2xl flex flex-col justify-between space-y-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
-                                            <FileText className="w-5 h-5" />
+                                            <ShieldCheck className="w-5 h-5" />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
-                                                {doc.status || "Verified"}
-                                            </span>
+                                        <div>
+                                            <h4 className="text-[#1E1E1E] text-sm font-extrabold">Aadhaar Card</h4>
+                                            <p className="text-gray-400 text-[11px] font-medium">Unique Identification Authority of India</p>
+                                        </div>
+                                    </div>
+                                    {aadhaarDoc?.url ? (
+                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Uploaded & Verified
+                                        </span>
+                                    ) : (
+                                        <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3 text-amber-600" /> Pending Upload
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="bg-[#F8FAFC] border border-gray-150 p-3.5 rounded-xl space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-400 font-bold uppercase text-[10px]">Aadhaar Number</span>
+                                        <span className="text-[#1E1E1E] font-mono font-bold tracking-wider">
+                                            {employee?.aadhaarNumber || aadhaarDoc?.numberOrTag || "Not Provided"}
+                                        </span>
+                                    </div>
+                                    {aadhaarDoc?.uploadedAt && (
+                                        <div className="flex items-center justify-between text-[10.5px] text-gray-400 font-medium pt-1 border-t border-gray-100">
+                                            <span>Uploaded On</span>
+                                            <span>{formatDateStr(aadhaarDoc.uploadedAt)}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-2 pt-1">
+                                    {aadhaarDoc?.url ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDocModalFile({ name: "Aadhaar Card", tag: aadhaarDoc.numberOrTag || employee?.aadhaarNumber || "Aadhaar", type: "Government ID", url: aadhaarDoc.url })}
+                                                className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                <span>Preview</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => window.open(aadhaarDoc.url, "_blank")}
+                                                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Download className="w-3.5 h-3.5" />
+                                                <span>Download</span>
+                                            </button>
                                             {canEdit && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleDeleteDocument(idx)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
-                                                    title="Delete Document"
+                                                    onClick={() => handleOpenGovDocModal("aadhaar")}
+                                                    className="p-2 text-gray-400 hover:text-[#2D79C7] border border-gray-200 rounded-xl transition-colors cursor-pointer"
+                                                    title="Update / Re-upload Aadhaar"
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Edit3 className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
+                                        </>
+                                    ) : (
+                                        canEdit ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenGovDocModal("aadhaar")}
+                                                className="w-full flex items-center justify-center gap-1.5 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-sm cursor-pointer"
+                                            >
+                                                <Upload className="w-3.5 h-3.5" />
+                                                <span>Upload Aadhaar Card</span>
+                                            </button>
+                                        ) : (
+                                            <p className="text-gray-400 text-xs italic text-center w-full py-1">Document not uploaded by employee</p>
+                                        )
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* PAN Card */}
+                            <div className="premium-3d-card p-5 bg-white border border-gray-150 rounded-2xl flex flex-col justify-between space-y-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                                            <CreditCard className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[#1E1E1E] text-sm font-extrabold">PAN Card</h4>
+                                            <p className="text-gray-400 text-[11px] font-medium">Income Tax Department of India</p>
                                         </div>
                                     </div>
-
-                                    <div>
-                                        <h4 className="text-[#1E1E1E] text-sm font-bold">{doc.name}</h4>
-                                        <p className="text-gray-400 text-xs mt-0.5">{doc.category}</p>
-                                        {doc.numberOrTag && (
-                                            <p className="text-gray-500 font-mono text-xs font-bold mt-2">
-                                                {doc.numberOrTag}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                                        <button
-                                            type="button"
-                                            onClick={() => setDocModalFile({ name: doc.name, tag: doc.numberOrTag || "Doc-Preview", type: doc.category, url: doc.url })}
-                                            className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                        >
-                                            <Eye className="w-3.5 h-3.5" />
-                                            <span>View</span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (doc.url) {
-                                                    window.open(doc.url, "_blank");
-                                                } else {
-                                                    toast.info("No download URL available.");
-                                                }
-                                            }}
-                                            className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
-                                        >
-                                            <Download className="w-3.5 h-3.5" />
-                                            <span>Download</span>
-                                        </button>
-                                    </div>
+                                    {panDoc?.url ? (
+                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Uploaded & Verified
+                                        </span>
+                                    ) : (
+                                        <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3 text-amber-600" /> Pending Upload
+                                        </span>
+                                    )}
                                 </div>
-                            ))
-                        )}
+
+                                <div className="bg-[#F8FAFC] border border-gray-150 p-3.5 rounded-xl space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-400 font-bold uppercase text-[10px]">PAN Number</span>
+                                        <span className="text-[#1E1E1E] font-mono font-bold tracking-wider uppercase">
+                                            {employee?.panNumber || panDoc?.numberOrTag || "Not Provided"}
+                                        </span>
+                                    </div>
+                                    {panDoc?.uploadedAt && (
+                                        <div className="flex items-center justify-between text-[10.5px] text-gray-400 font-medium pt-1 border-t border-gray-100">
+                                            <span>Uploaded On</span>
+                                            <span>{formatDateStr(panDoc.uploadedAt)}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-2 pt-1">
+                                    {panDoc?.url ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDocModalFile({ name: "PAN Card", tag: panDoc.numberOrTag || employee?.panNumber || "PAN", type: "Government ID", url: panDoc.url })}
+                                                className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                <span>Preview</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => window.open(panDoc.url, "_blank")}
+                                                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Download className="w-3.5 h-3.5" />
+                                                <span>Download</span>
+                                            </button>
+                                            {canEdit && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenGovDocModal("pan")}
+                                                    className="p-2 text-gray-400 hover:text-[#2D79C7] border border-gray-200 rounded-xl transition-colors cursor-pointer"
+                                                    title="Update / Re-upload PAN"
+                                                >
+                                                    <Edit3 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        canEdit ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenGovDocModal("pan")}
+                                                className="w-full flex items-center justify-center gap-1.5 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-sm cursor-pointer"
+                                            >
+                                                <Upload className="w-3.5 h-3.5" />
+                                                <span>Upload PAN Card</span>
+                                            </button>
+                                        ) : (
+                                            <p className="text-gray-400 text-xs italic text-center w-full py-1">Document not uploaded by employee</p>
+                                        )
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Secondary Section: Other Company & Compliance Documents */}
+                    <div className="pt-4 border-t border-gray-150">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 className="text-[#1E1E1E] text-xs font-bold uppercase tracking-wider">Other Uploaded Documents</h4>
+                                <p className="text-gray-400 text-[11px] font-medium">Contracts, educational degrees, and miscellaneous files.</p>
+                            </div>
+                            {canEdit && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDocModal(true)}
+                                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                                >
+                                    <Plus className="w-3.5 h-3.5 text-[#2D79C7]" />
+                                    <span>Upload Other Document</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {otherDocuments.length === 0 ? (
+                                <div className="col-span-full py-10 text-center select-none bg-slate-50/50 rounded-[20px] border border-dashed border-slate-200 animate-fadeIn">
+                                    <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] mx-auto mb-2">
+                                        <FileText className="w-4 h-4" />
+                                    </div>
+                                    <h4 className="text-slate-700 text-xs font-bold">No additional documents uploaded</h4>
+                                    <p className="text-slate-400 text-[11px] mt-0.5">Other certificates and compliance agreements will appear here.</p>
+                                </div>
+                            ) : (
+                                otherDocuments.map((doc, idx) => (
+                                    <div key={idx} className="premium-3d-card p-5 flex flex-col justify-between space-y-4 relative group">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
+                                                <FileText className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold px-2.5 py-0.5 rounded-md">
+                                                    {doc.status || "Verified"}
+                                                </span>
+                                                {canEdit && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteDocument(currentDocuments.indexOf(doc))}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-600 transition-opacity cursor-pointer"
+                                                        title="Delete Document"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="text-[#1E1E1E] text-sm font-bold">{doc.name}</h4>
+                                            <p className="text-gray-400 text-xs mt-0.5">{doc.category}</p>
+                                            {doc.numberOrTag && (
+                                                <p className="text-gray-500 font-mono text-xs font-bold mt-2">
+                                                    {doc.numberOrTag}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                            <button
+                                                type="button"
+                                                onClick={() => setDocModalFile({ name: doc.name, tag: doc.numberOrTag || "Doc-Preview", type: doc.category, url: doc.url })}
+                                                className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                <span>View</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (doc.url) {
+                                                        window.open(doc.url, "_blank");
+                                                    } else {
+                                                        toast.info("No download URL available.");
+                                                    }
+                                                }}
+                                                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#2D79C7] border border-blue-100 text-xs font-bold py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Download className="w-3.5 h-3.5" />
+                                                <span>Download</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -2550,8 +3357,89 @@ export const EmployeeProfile = () => {
             )}
 
             {/* ─────────────────────────────────────────────
-               ADD ASSET MODAL
+               ADD GOVERNMENT ID MODAL (Aadhaar / PAN)
             ───────────────────────────────────────────── */}
+            {govDocModal.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setGovDocModal({ isOpen: false, type: "aadhaar" })} />
+                    <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-md p-6 space-y-4 select-none">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                {govDocModal.type === "aadhaar" ? (
+                                    <ShieldCheck className="w-4 h-4 text-[#2D79C7]" />
+                                ) : (
+                                    <CreditCard className="w-4 h-4 text-indigo-600" />
+                                )}
+                                <span>Upload {govDocModal.type === "aadhaar" ? "Aadhaar Card" : "PAN Card"}</span>
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setGovDocModal({ isOpen: false, type: "aadhaar" })}
+                                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleGovDocSubmit} className="space-y-4 text-xs">
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">
+                                    {govDocModal.type === "aadhaar" ? "Aadhaar Number (12 Digits)" : "PAN Card Number (10 Alphanumeric)"}
+                                    <span className="text-rose-500 ml-0.5">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={govDocNumber}
+                                    onChange={(e) => setGovDocNumber(e.target.value)}
+                                    placeholder={govDocModal.type === "aadhaar" ? "e.g. 1234 5678 9012" : "e.g. ABCDE1234F"}
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-mono font-medium focus:outline-none focus:border-[#2D79C7] uppercase"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-gray-700 font-bold block mb-1">
+                                    Attach Document File (Image or PDF)
+                                    <span className="text-rose-500 ml-0.5">*</span>
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setGovDocFile(e.target.files[0]);
+                                        }
+                                    }}
+                                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-2.5 font-medium focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                    required={!(govDocModal.type === "aadhaar" ? aadhaarDoc?.url : panDoc?.url)}
+                                />
+                                {(govDocModal.type === "aadhaar" ? aadhaarDoc?.url : panDoc?.url) && (
+                                    <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3" /> Existing file attached. Upload new file only if replacing.
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setGovDocModal({ isOpen: false, type: "aadhaar" })}
+                                    className="bg-white border border-gray-200 text-gray-700 font-bold py-2 px-4 rounded-xl cursor-pointer hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingGovDoc}
+                                    className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer disabled:opacity-50"
+                                >
+                                    {savingGovDoc ? "Uploading..." : `Save ${govDocModal.type === "aadhaar" ? "Aadhaar" : "PAN"}`}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             {showAssetModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAssetModal(false)} />
@@ -2830,6 +3718,247 @@ export const EmployeeProfile = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               IMPORT ATTENDANCE EXCEL MODAL (GLOBAL ADMIN)
+            ───────────────────────────────────────────── */}
+            {showImportAttendanceModal && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+                    <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-gray-150 overflow-hidden my-8">
+                        {/* Modal Header */}
+                        <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/50 via-white to-white">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                    <FileSpreadsheet className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-base font-extrabold text-[#1E1E1E]">Import Attendance via Excel</h3>
+                                        <span className="text-[10px] font-extrabold bg-emerald-100/80 text-emerald-800 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                            Admin Action
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 font-medium mt-0.5">
+                                        Upload attendance sheet for <span className="font-bold text-gray-800">{empName}</span> ({employee?.employeeId || "Emp"})
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowImportAttendanceModal(false);
+                                    setImportAttendanceFile(null);
+                                    setImportParsedRecords([]);
+                                    setImportAttendanceError("");
+                                }}
+                                className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                                title="Close"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-6 space-y-5">
+                            {/* Template Download Banner */}
+                            <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50/70 to-blue-50/40 border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-start gap-2.5">
+                                    <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-900">Need the sample file format?</h4>
+                                        <p className="text-[11px] text-gray-500 font-medium">
+                                            Download pre-configured Excel template with column headers (Date, Status, Clock In, Clock Out, Work Mode, Remarks).
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadAttendanceTemplate}
+                                    className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold shadow-xs hover:shadow transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>Download Template</span>
+                                </button>
+                            </div>
+
+                            {/* File Upload / Dropzone */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-2">
+                                    Upload Spreadsheet File (.xlsx, .xls, .csv)
+                                </label>
+                                <label className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                                    importAttendanceFile
+                                        ? "border-emerald-300 bg-emerald-50/20"
+                                        : "border-gray-250 hover:border-emerald-500 hover:bg-[#F8FAFC]"
+                                }`}>
+                                    <input
+                                        type="file"
+                                        accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                                        onChange={handleImportAttendanceFileChange}
+                                        className="hidden"
+                                    />
+                                    {importAttendanceFile ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                                <CheckCircle className="w-5 h-5" />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-xs font-bold text-gray-900 line-clamp-1">{importAttendanceFile.name}</p>
+                                                <p className="text-[11px] text-gray-500 font-medium">
+                                                    {(importAttendanceFile.size / 1024).toFixed(1)} KB • Click to change file
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="w-12 h-12 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center mb-2.5">
+                                                <Upload className="w-6 h-6 text-emerald-600" />
+                                            </div>
+                                            <p className="text-xs font-bold text-gray-800">
+                                                Click to browse or drag and drop your file here
+                                            </p>
+                                            <p className="text-[11px] text-gray-400 mt-1">
+                                                Supports Microsoft Excel (.xlsx, .xls) and CSV files
+                                            </p>
+                                        </>
+                                    )}
+                                </label>
+                            </div>
+
+                            {/* Error notification */}
+                            {importAttendanceError && (
+                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-700 text-xs">
+                                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <span>{importAttendanceError}</span>
+                                </div>
+                            )}
+
+                            {/* Parsed Preview Table */}
+                            {importParsedRecords.length > 0 && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-xs font-bold text-gray-800">Spreadsheet Data Preview</h4>
+                                            <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                                                {importParsedRecords.length} Rows Detected
+                                            </span>
+                                        </div>
+                                        <span className="text-[11px] text-gray-400 font-medium">
+                                            Showing first {Math.min(importParsedRecords.length, 50)} rows
+                                        </span>
+                                    </div>
+
+                                    <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-xl bg-white">
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead className="bg-[#F8FAFC] border-b border-gray-200 text-gray-500 uppercase text-[10px] font-extrabold sticky top-0">
+                                                <tr>
+                                                    <th className="py-2.5 px-3">#</th>
+                                                    <th className="py-2.5 px-3">Date</th>
+                                                    <th className="py-2.5 px-3">Status</th>
+                                                    <th className="py-2.5 px-3">Clock In</th>
+                                                    <th className="py-2.5 px-3">Clock Out</th>
+                                                    <th className="py-2.5 px-3">Mode</th>
+                                                    <th className="py-2.5 px-3">Remarks</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                                                {importParsedRecords.slice(0, 50).map((row, idx) => {
+                                                    const statusLower = (row.status || "").toLowerCase();
+                                                    let badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                                                    if (statusLower.includes("absent")) badgeStyle = "bg-rose-50 text-rose-700 border-rose-200";
+                                                    else if (statusLower.includes("half")) badgeStyle = "bg-amber-50 text-amber-700 border-amber-200";
+                                                    else if (statusLower.includes("week") || statusLower.includes("off")) badgeStyle = "bg-gray-100 text-gray-600 border-gray-200";
+                                                    else if (statusLower.includes("holiday")) badgeStyle = "bg-purple-50 text-purple-700 border-purple-200";
+
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-[#F8FAFC]">
+                                                            <td className="py-2 px-3 text-gray-400 font-mono text-[11px]">{idx + 1}</td>
+                                                            <td className="py-2 px-3 font-bold font-mono text-gray-900">{row.date || "—"}</td>
+                                                            <td className="py-2 px-3">
+                                                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${badgeStyle}`}>
+                                                                    {row.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-2 px-3 font-mono text-emerald-700 font-semibold">{row.clockIn || "—"}</td>
+                                                            <td className="py-2 px-3 font-mono text-gray-700 font-semibold">{row.clockOut || "—"}</td>
+                                                            <td className="py-2 px-3 text-gray-600">{row.workMode || "Office"}</td>
+                                                            <td className="py-2 px-3 text-gray-500 max-w-[120px] truncate" title={row.remarks}>{row.remarks || "—"}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Informational Note */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-gray-600 flex items-start gap-2 font-medium">
+                                <AlertCircle className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                <span>
+                                    Imported records will be merged with the employee&apos;s existing ledger. Existing entries on matching dates will be safely updated.
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 bg-[#F8FAFC] border-t border-gray-150 flex items-center justify-between gap-3">
+                            <div>
+                                {importParsedRecords.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setImportAttendanceFile(null);
+                                            setImportParsedRecords([]);
+                                            setImportAttendanceError("");
+                                        }}
+                                        className="text-xs font-bold text-gray-500 hover:text-rose-600 transition-colors cursor-pointer"
+                                    >
+                                        Clear File
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowImportAttendanceModal(false);
+                                        setImportAttendanceFile(null);
+                                        setImportParsedRecords([]);
+                                        setImportAttendanceError("");
+                                    }}
+                                    className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-100 transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleImportAttendanceSubmit}
+                                    disabled={importingAttendance || importParsedRecords.length === 0}
+                                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs shadow-sm flex items-center gap-2 transition-all cursor-pointer"
+                                >
+                                    {importingAttendance ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Importing...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
+                                            <span>
+                                                {importParsedRecords.length > 0
+                                                    ? `Import ${importParsedRecords.length} Records`
+                                                    : "Import Records"}
+                                            </span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

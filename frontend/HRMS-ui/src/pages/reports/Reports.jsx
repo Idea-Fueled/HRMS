@@ -287,7 +287,7 @@ const Reports = () => {
                             className="flex items-center gap-1.5 px-3.5 py-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold rounded-[12px] shadow-sm shadow-[#2D79C7]/20 transition-all cursor-pointer hover:shadow active:scale-95 disabled:opacity-50"
                         >
                             <Download className="w-3.5 h-3.5" />
-                            <span>Export Excel (CSV)</span>
+                            <span>Export Excel</span>
                         </button>
                     </div>
                 </div>

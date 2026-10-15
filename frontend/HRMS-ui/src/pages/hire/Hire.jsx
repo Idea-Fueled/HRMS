@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
     Users, UserPlus, Briefcase, FileText, Calendar, Clock,
     Search, Filter, Plus, Edit3, Trash2, Eye, X, CheckCircle2,
     XCircle, ArrowRight, ChevronRight, Star, ExternalLink,
     Upload, RefreshCw, AlertCircle, ShieldAlert, Award, UserCheck,
     IndianRupee, ArrowUpRight, ChevronDown, Check, Layers, MoveRight,
-    Building, Phone, Mail, MapPin, Download, Lock, PauseCircle, PlayCircle
+    Building, Phone, Mail, MapPin, Download, Lock, PauseCircle, PlayCircle,
+    Sparkles, Brain, Wand2, Loader2, CheckCircle, Zap, Target, TrendingUp, Cpu, FileUp, SlidersHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { ViewToggle, SkeletonLoader, EmptyState } from "../../components/SharedComponents";
@@ -22,7 +24,10 @@ import {
     deleteCandidateDocumentApi,
     updateOfferDetailsApi,
     archiveCandidateApi,
-    deleteCandidateApi
+    deleteCandidateApi,
+    parseResumeWithAi,
+    searchCandidatesWithAi,
+    uploadResumeToAiPool
 } from "../../services/hire.service";
 import { useAuth } from "../../context/AuthContext";
 import { downloadCandidateDocument, fileToDataUrl } from "../../utils/candidateDocumentUtils";
@@ -87,13 +92,23 @@ const INTERVIEWERS = ["Prashant Kumar", "Anirudh Joshi", "Vikram Sengupta", "Sid
 const DOCUMENT_TYPES = ["Resume", "Portfolio", "Experience Letter", "Offer Letter", "Other"];
 const ARCHIVE_REASONS = ["Rejected", "Withdrawn Application", "No Show"];
 
-export const Hire = () => {
+export const Hire = ({ initialTab }) => {
     const { user } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const isAiRoute = location.pathname.includes("search-by-ai") || initialTab === "search-by-ai";
+
     const [candidates, setCandidates] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Active Top Tab
-    const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "candidates" | "kanban" | "interviews" | "offers" | "archive"
+    const [activeTab, setActiveTab] = useState(isAiRoute ? "search-by-ai" : "dashboard");
+
+    useEffect(() => {
+        if (location.pathname.includes("search-by-ai") || initialTab === "search-by-ai") {
+            setActiveTab("search-by-ai");
+        }
+    }, [location.pathname, initialTab]);
 
     // View mode for Candidates Tab
     const [candidateView, setCandidateView] = useState("list"); // "list" | "card"
@@ -112,6 +127,13 @@ export const Hire = () => {
 
     // Modals State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [prefilledCandidateData, setPrefilledCandidateData] = useState(null);
+    const [aiParsingState, setAiParsingState] = useState({
+        isOpen: false,
+        progress: 0,
+        statusText: "",
+        fileName: ""
+    });
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [candidateToEdit, setCandidateToEdit] = useState(null);
 
@@ -286,6 +308,91 @@ export const Hire = () => {
         setDrawerOpen(true);
     };
 
+    const handleStartAiParsingFlow = async (file) => {
+        if (!file) return;
+
+        setAiParsingState({
+            isOpen: true,
+            progress: 8,
+            statusText: "Initializing AI Resume Parser...",
+            fileName: file.name
+        });
+
+        const startTime = Date.now();
+        const duration = 5200;
+
+        let parseResult = null;
+        const parsePromise = parseResumeWithAi(file)
+            .then(res => {
+                parseResult = res?.parsed || res?.data || res;
+            })
+            .catch(err => {
+                console.error("Resume parsing error:", err);
+            });
+
+        await new Promise((resolve) => {
+            const interval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const ratio = Math.min(1, elapsed / duration);
+                const currentPct = Math.round(ratio * 96);
+
+                let status = "Scanning document & extracting text...";
+                if (currentPct > 20 && currentPct <= 45) {
+                    status = "Extracting candidate identity, email & phone...";
+                } else if (currentPct > 45 && currentPct <= 70) {
+                    status = "Detecting tech stack, skills & domain...";
+                } else if (currentPct > 70 && currentPct <= 88) {
+                    status = "Calculating experience & current role...";
+                } else if (currentPct > 88) {
+                    status = "Finalizing profile & prefilling form...";
+                }
+
+                setAiParsingState(prev => ({
+                    ...prev,
+                    progress: Math.max(prev.progress, currentPct),
+                    statusText: status
+                }));
+
+                if (ratio >= 1) {
+                    clearInterval(interval);
+                    resolve();
+                }
+            }, 100);
+        });
+
+        await parsePromise;
+
+        setAiParsingState(prev => ({
+            ...prev,
+            progress: 100,
+            statusText: "Resume parsed! Opening candidate form..."
+        }));
+
+        await new Promise(r => setTimeout(r, 450));
+
+        setAiParsingState({ isOpen: false, progress: 0, statusText: "", fileName: "" });
+
+        const d = parseResult;
+        const prefilled = {
+            cvFile: file,
+            name: d?.name && d.name !== "New Candidate" ? d.name : "",
+            email: d?.email || "",
+            phone: d?.phone || "",
+            position: d?.position || "",
+            currentCompany: d?.currentCompany && d.currentCompany !== "N/A" ? d.currentCompany : "",
+            expYears: d?.expYears !== undefined ? String(d.expYears) : "0",
+            expMonths: d?.expMonths !== undefined ? String(d.expMonths) : "0",
+            skills: d?.skills?.length ? d.skills.join(", ") : "",
+            resumeText: d?.rawText || d?.resumeText || "",
+            aiSummary: d?.summary || d?.aiSummary || "",
+            cvName: file.name
+        };
+
+        setPrefilledCandidateData(prefilled);
+        setIsAddModalOpen(true);
+        toast.success(`Resume for ${prefilled.name || "candidate"} parsed! Form pre-filled.`);
+    };
+
     const handleMoveStage = async (candidateId, nextStage) => {
         try {
             const updated = await updateCandidateStageApi(candidateId, nextStage);
@@ -396,7 +503,8 @@ export const Hire = () => {
         { id: "kanban", label: "Kanban Pipeline", icon: Briefcase },
         { id: "hold", label: "On Hold", icon: PauseCircle, count: onHoldCandidatesList.length },
         { id: "offers", label: "Offers", icon: IndianRupee, count: offerCandidatesList.length },
-        { id: "archive", label: "Archive", icon: FileText, count: archivedCandidatesList.length }
+        { id: "archive", label: "Archive", icon: FileText, count: archivedCandidatesList.length },
+        { id: "search-by-ai", label: "Search by AI", icon: Sparkles }
     ];
 
     return (
@@ -439,7 +547,14 @@ export const Hire = () => {
                     return (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => {
+                                setActiveTab(tab.id);
+                                if (tab.id === "search-by-ai") {
+                                    navigate("/hire/search-by-ai");
+                                } else if (location.pathname.includes("search-by-ai")) {
+                                    navigate("/hire");
+                                }
+                            }}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-[14px] text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${isActive
                                 ? "bg-[#2D79C7] text-white shadow-md shadow-blue-500/15"
                                 : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
@@ -459,7 +574,7 @@ export const Hire = () => {
             </div>
 
             {/* Search & Filter Bar */}
-            {activeTab !== "dashboard" && (
+            {activeTab !== "dashboard" && activeTab !== "search-by-ai" && (
                 <div className="bg-white border border-[#E5E7EB] rounded-[18px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)] space-y-3">
                     <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
                         <div className="relative w-full lg:w-80">
@@ -622,6 +737,20 @@ export const Hire = () => {
                             onDelete={handleDeleteCandidate}
                         />
                     )}
+
+                    {/* TAB 7: SEARCH BY AI */}
+                    {activeTab === "search-by-ai" && (
+                        <SearchByAiView
+                            candidates={candidates}
+                            onOpenDrawer={handleOpenDrawer}
+                            onScheduleInterview={(cand) => {
+                                setCandidateForInterview(cand);
+                                setIsScheduleModalOpen(true);
+                            }}
+                            onMoveStage={handleMoveStage}
+                            onStartAiParsing={handleStartAiParsingFlow}
+                        />
+                    )}
                 </>
             )}
 
@@ -663,15 +792,23 @@ export const Hire = () => {
                 />
             )}
 
+            {/* AI RESUME PARSING PROGRESS OVERLAY */}
+            <AiParsingModal {...aiParsingState} />
+
             {/* MODALS */}
             {isAddModalOpen && (
                 <AddCandidateModal
-                    onClose={() => setIsAddModalOpen(false)}
+                    initialData={prefilledCandidateData}
+                    onClose={() => {
+                        setIsAddModalOpen(false);
+                        setPrefilledCandidateData(null);
+                    }}
                     onSave={async (formData) => {
                         try {
                             const newCand = await addCandidateApi(formData);
                             setCandidates(prev => [newCand, ...prev]);
                             setIsAddModalOpen(false);
+                            setPrefilledCandidateData(null);
                             toast.success("Candidate added successfully");
                         } catch {
                             toast.error("Failed to add candidate");
@@ -1568,6 +1705,614 @@ const ArchiveView = ({ candidates, onOpenDrawer, onRestore, onDelete }) => {
 };
 
 /* ─────────────────────────────────────────────
+   COMPONENT: SEARCH BY AI VIEW (MODERN & SLEEK)
+───────────────────────────────────────────── */
+const SUGGESTED_TAGS = [
+    { label: "⚡ React & Node.js (MERN)", query: "React Node.js MongoDB Express Frontend Backend" },
+    { label: "🐍 Python & AI/ML", query: "Python Django FastAPI Machine Learning Data" },
+    { label: "🎨 UI/UX Designer", query: "UI/UX Designer Figma Wireframing Prototyping" },
+    { label: "☁️ DevOps & AWS", query: "DevOps Docker Kubernetes AWS Cloud CI/CD" },
+    { label: "📱 React Native / Mobile", query: "React Native Flutter iOS Android Mobile" },
+    { label: "🧪 QA Automation", query: "QA Automation Selenium Cypress Testing" },
+    { label: "🚀 Senior Tech Lead", query: "Team Lead Architecture Microservices System Design 5+ years" }
+];
+
+const calculateLocalAiScore = (candidate, query, minExp) => {
+    const candSkills = (candidate.skills || []).map(s => s.toLowerCase());
+    const candPosition = (candidate.position || "").toLowerCase();
+    const candExp = parseFloat(candidate.experience) || 0;
+    const candResumeText = (candidate.resumeText || "").toLowerCase();
+    const candSummary = (candidate.aiSummary || "").toLowerCase();
+
+    if (!query || !query.trim()) {
+        return {
+            matchScore: 0,
+            matchingSkills: [],
+            matchedRole: false,
+            aiRationale: ""
+        };
+    }
+
+    const tokens = query.toLowerCase().split(/[\s,+/&|]+/).map(t => t.trim()).filter(t => t.length > 1);
+    const matchedSkills = [];
+    let roleMatched = false;
+
+    tokens.forEach(tok => {
+        const isSkillMatch = candSkills.some(s => s.includes(tok) || tok.includes(s));
+        const isRoleMatch = candPosition.includes(tok);
+        const isResumeMatch = candResumeText.includes(tok) || candSummary.includes(tok);
+
+        if (isSkillMatch) {
+            const originalSkill = (candidate.skills || []).find(s => s.toLowerCase().includes(tok)) || tok;
+            if (!matchedSkills.includes(originalSkill)) matchedSkills.push(originalSkill);
+        }
+        if (isRoleMatch) roleMatched = true;
+    });
+
+    let score = 25;
+    // Skill relevance
+    if (tokens.length > 0) {
+        score += Math.min(50, Math.round((matchedSkills.length / Math.max(1, tokens.length)) * 50));
+    }
+    // Overall skill breadth
+    if (candSkills.length > 0) {
+        score += Math.min(15, candSkills.length * 2);
+    }
+    // Target position fit
+    if (roleMatched) {
+        score += 15;
+    }
+    // Experience criteria
+    if (minExp && minExp !== "all") {
+        const targetExp = parseFloat(minExp);
+        if (candExp >= targetExp) score += 10;
+        else score -= 12;
+    }
+
+    const finalScore = Math.min(99, Math.max(25, score));
+    const rationale = matchedSkills.length > 0
+        ? `Matched ${matchedSkills.length} skill${matchedSkills.length > 1 ? "s" : ""} (${matchedSkills.slice(0, 4).join(", ")}) for ${candidate.position || "role"} with ${candExp} yrs experience.`
+        : `Candidate background aligns with ${candExp} yrs experience in ${candidate.position || "general domain"}.`;
+
+    return {
+        matchScore: finalScore,
+        matchingSkills: matchedSkills,
+        matchedRole: roleMatched,
+        aiRationale: rationale
+    };
+};
+
+const SearchByAiView = ({ candidates, onOpenDrawer, onScheduleInterview, onAddWithResume, onStartAiParsing }) => {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [minExpFilter, setMinExpFilter] = useState("all");
+    const [stageFilter, setStageFilter] = useState("all");
+    const [isSearching, setIsSearching] = useState(false);
+    const [showDropzone, setShowDropzone] = useState(true);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [rankedList, setRankedList] = useState([]);
+
+    const hasQuery = Boolean(searchQuery.trim());
+
+    const performSearch = useCallback(async (queryText, expVal, stgVal) => {
+        setIsSearching(true);
+        let baseList = [...candidates];
+
+        if (stgVal && stgVal !== "all") {
+            baseList = baseList.filter(c => c.stage === stgVal);
+        }
+
+        if (expVal && expVal !== "all") {
+            const minNum = parseFloat(expVal);
+            baseList = baseList.filter(c => (parseFloat(c.experience) || 0) >= minNum);
+        }
+
+        const scored = baseList.map(cand => {
+            const scoreData = calculateLocalAiScore(cand, queryText, expVal);
+            return {
+                ...cand,
+                ...scoreData
+            };
+        });
+
+        if (queryText.trim()) {
+            scored.sort((a, b) => b.matchScore - a.matchScore);
+        }
+
+        setRankedList(scored);
+
+        if (queryText.trim()) {
+            try {
+                const res = await searchCandidatesWithAi({
+                    query: queryText,
+                    minExp: expVal !== "all" ? parseFloat(expVal) : undefined,
+                    stage: stgVal !== "all" ? stgVal : undefined
+                });
+                if (res?.success && Array.isArray(res?.candidates) && res.candidates.length > 0) {
+                    const backendMap = new Map(res.candidates.map(c => [c.id, c]));
+                    const merged = scored.map(cand => {
+                        const fromBackend = backendMap.get(cand.id);
+                        if (fromBackend) {
+                            return {
+                                ...cand,
+                                matchScore: fromBackend.matchScore ?? cand.matchScore,
+                                matchingSkills: fromBackend.matchingSkills?.length ? fromBackend.matchingSkills : cand.matchingSkills,
+                                aiRationale: fromBackend.aiRationale || cand.aiRationale
+                            };
+                        }
+                        return cand;
+                    }).sort((a, b) => b.matchScore - a.matchScore);
+                    setRankedList(merged);
+                }
+            } catch {
+                // Keep local scored
+            } finally {
+                setIsSearching(false);
+            }
+        } else {
+            setIsSearching(false);
+        }
+    }, [candidates]);
+
+    useEffect(() => {
+        performSearch(searchQuery, minExpFilter, stageFilter);
+    }, [searchQuery, minExpFilter, stageFilter, candidates, performSearch]);
+
+    const handleResetAll = () => {
+        setSearchQuery("");
+        setMinExpFilter("all");
+        setStageFilter("all");
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* CLEAN & SIMPLE AI SEARCH BOX */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-4.5 sm:p-5 shadow-xs space-y-4">
+                {/* Header Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#2D79C7] to-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                            <Sparkles className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-[#1E1E1E]">Search by AI</h3>
+                            <p className="text-xs text-gray-500">
+                                Search and match candidates by skills, position, or experience using AI.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setShowDropzone(!showDropzone)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                showDropzone
+                                    ? "bg-blue-50 text-[#2D79C7] border-blue-300 shadow-2xs"
+                                    : "bg-white hover:bg-gray-50 text-gray-600 border-gray-200"
+                            }`}
+                        >
+                            <FileUp className="w-3.5 h-3.5 text-[#2D79C7]" />
+                            <span>{showDropzone ? "Hide Dropzone" : "Resume Dropzone"}</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Resume Dropzone */}
+                {showDropzone && (
+                    <div
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDragOver(true);
+                        }}
+                        onDragLeave={(e) => {
+                            e.preventDefault();
+                            setIsDragOver(false);
+                        }}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            setIsDragOver(false);
+                            const f = e.dataTransfer?.files?.[0];
+                            const handler = onStartAiParsing || onAddWithResume;
+                            if (f && handler) {
+                                handler(f);
+                            }
+                        }}
+                        className={`border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer relative ${
+                            isDragOver
+                                ? "border-[#2D79C7] bg-blue-50/70 scale-[1.01]"
+                                : "border-blue-200 bg-blue-50/20 hover:bg-blue-50/40"
+                        }`}
+                    >
+                        <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                const handler = onStartAiParsing || onAddWithResume;
+                                if (f && handler) {
+                                    handler(f);
+                                }
+                                e.target.value = "";
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                        />
+                        <div className="flex flex-col items-center justify-center space-y-1.5 pointer-events-none">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 text-[#2D79C7] flex items-center justify-center shadow-xs border border-blue-100">
+                                <Upload className="w-5 h-5 text-[#2D79C7]" />
+                            </div>
+                            <p className="text-xs font-bold text-gray-800">
+                                Drag & drop candidate resume here (PDF, DOC, DOCX)
+                            </p>
+                            <p className="text-[11px] text-gray-500">
+                                Scans candidate credentials in 5-6s and opens prefilled Add Candidate form
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Search Input Bar */}
+                <div className="relative flex items-center bg-gray-50 border border-gray-200 rounded-xl p-1.5 focus-within:bg-white focus-within:border-[#2D79C7] focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                    <div className="pl-3 pr-2 text-[#2D79C7]">
+                        {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search by required skills, target role, or experience (e.g. React, Node.js, 3+ years experience)..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                performSearch(searchQuery, minExpFilter, stageFilter);
+                            }
+                        }}
+                        className="w-full bg-transparent border-0 text-[#1E1E1E] placeholder-gray-400 text-xs sm:text-[13px] font-medium focus:outline-none py-1.5 px-1"
+                    />
+                    {searchQuery && (
+                        <button
+                            type="button"
+                            onClick={() => setSearchQuery("")}
+                            className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 transition-all cursor-pointer mr-1.5 shrink-0"
+                            title="Clear"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => performSearch(searchQuery, minExpFilter, stageFilter)}
+                        className="bg-[#2D79C7] hover:bg-[#205E9E] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Search</span>
+                    </button>
+                </div>
+
+                {/* Filters & Quick Tags Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* Experience Filter */}
+                        <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">
+                            <Clock className="w-3.5 h-3.5 text-gray-400" />
+                            <select
+                                value={minExpFilter}
+                                onChange={(e) => setMinExpFilter(e.target.value)}
+                                className="bg-transparent border-0 text-xs text-gray-700 font-semibold focus:outline-none cursor-pointer"
+                            >
+                                <option value="all">Any Experience</option>
+                                <option value="1">1+ Years</option>
+                                <option value="3">3+ Years</option>
+                                <option value="5">5+ Years</option>
+                                <option value="8">8+ Years Senior</option>
+                            </select>
+                        </div>
+
+                        {/* Stage Filter */}
+                        <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">
+                            <Briefcase className="w-3.5 h-3.5 text-gray-400" />
+                            <select
+                                value={stageFilter}
+                                onChange={(e) => setStageFilter(e.target.value)}
+                                className="bg-transparent border-0 text-xs text-gray-700 font-semibold focus:outline-none cursor-pointer"
+                            >
+                                <option value="all">All Stages</option>
+                                {PIPELINE_STAGES.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Suggestions Tags */}
+                        <div className="hidden lg:flex items-center gap-1.5 pl-2 border-l border-gray-200">
+                            <span className="text-[11px] text-gray-400 font-medium">Quick:</span>
+                            {SUGGESTED_TAGS.map((tag) => (
+                                <button
+                                    key={tag.label}
+                                    type="button"
+                                    onClick={() => setSearchQuery(tag.query)}
+                                    className="bg-gray-50 hover:bg-blue-50 text-gray-600 hover:text-[#2D79C7] border border-gray-200 hover:border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer"
+                                >
+                                    {tag.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold">
+                        <span className="bg-blue-50 text-[#2D79C7] px-2.5 py-0.5 rounded-full font-bold">
+                            {rankedList.length} Candidates
+                        </span>
+                        {(searchQuery || minExpFilter !== "all" || stageFilter !== "all") && (
+                            <button
+                                type="button"
+                                onClick={handleResetAll}
+                                className="text-[#2D79C7] hover:underline cursor-pointer font-bold text-xs"
+                            >
+                                Reset
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* CANDIDATES RESULTS LIST */}
+            {rankedList.length === 0 ? (
+                <EmptyState
+                    message="No candidates found"
+                    description="Try searching with different skills, keywords, or reset filters."
+                />
+            ) : (
+                <div className="space-y-3">
+                    {rankedList.map((cand) => {
+                        const score = cand.matchScore || 0;
+                        const initials = (cand.name || "C")
+                            .split(" ")
+                            .map(n => n[0])
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase();
+
+                        return (
+                            <div
+                                key={cand.id}
+                                className="bg-white border border-[#E5E7EB] hover:border-[#2D79C7]/40 rounded-xl p-4 shadow-2xs hover:shadow-xs transition-all space-y-3"
+                            >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        {cand.photo ? (
+                                            <img
+                                                src={cand.photo}
+                                                alt={cand.name}
+                                                className="w-10 h-10 min-w-10 min-h-10 rounded-full object-cover border border-gray-200 shrink-0"
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 min-w-10 min-h-10 rounded-full bg-blue-50 text-[#2D79C7] font-bold text-xs flex items-center justify-center shrink-0">
+                                                {initials}
+                                            </div>
+                                        )}
+
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h4
+                                                    onClick={() => onOpenDrawer(cand)}
+                                                    className="text-xs font-bold text-[#1E1E1E] hover:text-[#2D79C7] cursor-pointer truncate"
+                                                >
+                                                    {cand.name}
+                                                </h4>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${STAGE_CONFIG[cand.stage]?.badge || "bg-gray-100 text-gray-700"}`}>
+                                                    {cand.stage}
+                                                </span>
+                                                <span className="text-gray-300 text-xs">•</span>
+                                                <span className="text-xs font-semibold text-gray-600">
+                                                    {cand.experience || "0 Yrs"} Exp
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                                                <span className="font-semibold text-gray-700">{cand.position}</span>
+                                                {cand.currentCompany && cand.currentCompany !== "N/A" && (
+                                                    <>
+                                                        <span className="mx-1.5 text-gray-300">•</span>
+                                                        <span>{cand.currentCompany}</span>
+                                                    </>
+                                                )}
+                                                {cand.email && (
+                                                    <>
+                                                        <span className="mx-1.5 text-gray-300">•</span>
+                                                        <span className="text-gray-400">{cand.email}</span>
+                                                    </>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Score pill & actions */}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {hasQuery && score > 0 ? (
+                                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                                                score >= 75
+                                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                                    : score >= 50
+                                                    ? "bg-blue-50 text-[#2D79C7] border border-blue-200"
+                                                    : "bg-gray-100 text-gray-600 border border-gray-200"
+                                            }`}>
+                                                <Sparkles className="w-3.5 h-3.5" />
+                                                <span>{score}% Match</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-1 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-full text-[11px] font-medium text-gray-500">
+                                                <FileText className="w-3 h-3 text-gray-400" />
+                                                <span>Profile Indexed</span>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => onScheduleInterview(cand)}
+                                            className="px-3 py-1.5 bg-blue-50 hover:bg-[#2D79C7] text-[#2D79C7] hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span>Schedule</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => onOpenDrawer(cand)}
+                                            className="p-1.5 text-gray-400 hover:text-[#2D79C7] hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                                            title="View Profile"
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* AI Match Insight note (when query is active) */}
+                                {hasQuery && cand.aiRationale && (
+                                    <div className="bg-blue-50/50 border border-blue-100/80 rounded-lg px-3 py-1.5 text-[11.5px] text-gray-700 flex items-center gap-2">
+                                        <Wand2 className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
+                                        <span><strong>AI Insight:</strong> {cand.aiRationale}</span>
+                                    </div>
+                                )}
+
+                                {/* Skills */}
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-xs">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        {(cand.skills || []).slice(0, 10).map((sk, i) => {
+                                            const isMatched = hasQuery && (cand.matchingSkills || []).some(m => m.toLowerCase() === sk.toLowerCase());
+                                            return (
+                                                <span
+                                                    key={i}
+                                                    className={`text-[11px] px-2.5 py-0.5 rounded-md font-medium transition-all ${
+                                                        isMatched
+                                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold"
+                                                            : "bg-gray-100 text-gray-700"
+                                                    }`}
+                                                >
+                                                    {isMatched && "✓ "}{sk}
+                                                </span>
+                                            );
+                                        })}
+                                        {(cand.skills || []).length > 10 && (
+                                            <span className="text-[10px] text-gray-400 font-medium">
+                                                +{cand.skills.length - 10} more
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {cand.aiSummary && (
+                                        <span className="text-[11px] text-gray-400 italic max-w-sm truncate hidden sm:inline">
+                                            "{cand.aiSummary}"
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   AI RESUME PARSING PROGRESS OVERLAY
+───────────────────────────────────────────── */
+const AiParsingModal = ({ isOpen, progress, statusText, fileName }) => {
+    if (!isOpen) return null;
+
+    const steps = [
+        { id: 1, label: "Scanning Document", threshold: 18 },
+        { id: 2, label: "Identity & Contacts", threshold: 45 },
+        { id: 3, label: "Skills & Experience", threshold: 72 },
+        { id: 4, label: "Pre-filling Profile", threshold: 92 },
+    ];
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn select-none">
+            <div className="bg-white rounded-[20px] shadow-2xl border border-gray-100 max-w-md w-full p-6 space-y-5">
+                {/* Top Badge & Icon */}
+                <div className="text-center space-y-3">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 text-[#2D79C7] ring-8 ring-blue-50/70 shadow-xs relative">
+                        <Sparkles className="w-7 h-7 text-[#2D79C7] animate-pulse" />
+                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#2D79C7]"></span>
+                        </span>
+                    </div>
+
+                    <div>
+                        <h3 className="text-base font-black text-[#1E1E1E]">Parsing Resume with AI</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            Extracting candidate credentials & auto-filling form
+                        </p>
+                    </div>
+
+                    {fileName && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full text-xs text-gray-700 font-medium max-w-xs truncate">
+                            <FileText className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
+                            <span className="truncate">{fileName}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Progress Bar & Percentage */}
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-gray-600 flex items-center gap-1.5">
+                            <Loader2 className="w-3.5 h-3.5 text-[#2D79C7] animate-spin shrink-0" />
+                            <span className="truncate">{statusText || "Parsing resume..."}</span>
+                        </span>
+                        <span className="font-black text-[#2D79C7] text-sm tabular-nums">
+                            {Math.min(100, Math.round(progress))}%
+                        </span>
+                    </div>
+
+                    {/* Progress Track */}
+                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden p-0.5 border border-gray-200/50">
+                        <div
+                            className="h-full bg-gradient-to-r from-[#2D79C7] via-blue-500 to-[#1F5EA8] rounded-full transition-all duration-200 ease-out shadow-xs"
+                            style={{ width: `${Math.min(100, Math.max(6, progress))}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Steps Micro-List */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100 text-[11px]">
+                    {steps.map(step => {
+                        const isDone = progress >= step.threshold;
+                        const isCurrent = progress < step.threshold && (step.id === 1 || progress >= steps[step.id - 2]?.threshold);
+                        return (
+                            <div
+                                key={step.id}
+                                className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
+                                    isDone
+                                        ? "bg-emerald-50/70 text-emerald-800"
+                                        : isCurrent
+                                        ? "bg-blue-50/70 text-[#2D79C7] font-semibold"
+                                        : "bg-gray-50/50 text-gray-400"
+                                }`}
+                            >
+                                {isDone ? (
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                ) : isCurrent ? (
+                                    <Loader2 className="w-3.5 h-3.5 text-[#2D79C7] animate-spin shrink-0" />
+                                ) : (
+                                    <div className="w-3.5 h-3.5 rounded-full border border-gray-300 shrink-0" />
+                                )}
+                                <span className="truncate">{step.label}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Footer Note */}
+                <div className="text-center text-[10px] text-gray-400 font-medium">
+                    5-6 seconds automated parsing • Instant form pre-fill
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
    CANDIDATE DETAIL DRAWER
 ───────────────────────────────────────────── */
 const CandidateDetailDrawer = ({ candidate, onClose, onEdit, onScheduleInterview, onMoveStage, onHold, onUnhold, onReject, onAddFeedback, onUploadDoc, onDeleteDoc }) => {
@@ -1946,25 +2691,92 @@ const parseExperience = (expStr = "") => {
     return { years: String(years || 0), months: String(months || 0) };
 };
 
-const AddCandidateModal = ({ onClose, onSave }) => {
-    const [cvFile, setCvFile] = useState(null);
+const AddCandidateModal = ({ onClose, onSave, initialData = null, initialFile = null }) => {
+    const initialCv = initialData?.cvFile || initialFile || null;
+    const initialSkillsCount = initialData?.skills
+        ? initialData.skills.split(",").map(s => s.trim()).filter(Boolean).length
+        : 0;
+    const initialExpText = (initialData?.expYears && initialData.expYears !== "0") || (initialData?.expMonths && initialData.expMonths !== "0")
+        ? `${initialData.expYears || 0} Yrs ${initialData.expMonths && initialData.expMonths !== "0" ? initialData.expMonths + " Mos" : ""}`.trim()
+        : "Auto-detected";
+
+    const [cvFile, setCvFile] = useState(initialCv);
     const [isSaving, setIsSaving] = useState(false);
-    const [expYears, setExpYears] = useState("0");
-    const [expMonths, setExpMonths] = useState("0");
-    const [form, setForm] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        address: "",
-        position: "",
-        currentCompany: "",
-        currentCtc: "",
-        expectedCtc: "",
-        noticePeriod: "",
-        skills: "",
-        assignedHr: HR_ASSIGNESS[0],
-        stage: "New Application"
+    const [isParsing, setIsParsing] = useState(false);
+    const [aiParsedSuccess, setAiParsedSuccess] = useState(Boolean(initialData));
+    const [aiExtractedCount, setAiExtractedCount] = useState({
+        skills: initialSkillsCount,
+        exp: initialExpText
     });
+    const [resumeText, setResumeText] = useState(initialData?.resumeText || "");
+    const [aiSummary, setAiSummary] = useState(initialData?.aiSummary || "");
+    const [expYears, setExpYears] = useState(initialData?.expYears || "0");
+    const [expMonths, setExpMonths] = useState(initialData?.expMonths || "0");
+    const [isModalDragOver, setIsModalDragOver] = useState(false);
+    const [form, setForm] = useState({
+        name: initialData?.name || "",
+        email: initialData?.email || "",
+        phone: initialData?.phone || "",
+        address: initialData?.address || "",
+        position: initialData?.position || "",
+        currentCompany: initialData?.currentCompany || "",
+        currentCtc: initialData?.currentCtc || "",
+        expectedCtc: initialData?.expectedCtc || "",
+        noticePeriod: initialData?.noticePeriod || "",
+        skills: initialData?.skills || "",
+        assignedHr: initialData?.assignedHr || HR_ASSIGNESS[0],
+        stage: initialData?.stage || "New Application"
+    });
+
+    const handleResumeAutoFill = async (file) => {
+        if (!file) return;
+        setCvFile(file);
+        setIsParsing(true);
+        setAiParsedSuccess(false);
+        try {
+            toast.loading("Scanning resume with AI engine...", { id: "ai-parse" });
+            const res = await parseResumeWithAi(file);
+            const d = res?.parsed || res?.data || res;
+            if (d && (d.name || d.email || (d.skills && d.skills.length > 0) || d.position)) {
+                setForm(prev => ({
+                    ...prev,
+                    name: d.name && d.name !== "New Candidate" ? d.name : prev.name,
+                    email: d.email || prev.email,
+                    phone: d.phone || prev.phone,
+                    position: d.position || prev.position,
+                    currentCompany: d.currentCompany && d.currentCompany !== "N/A" ? d.currentCompany : prev.currentCompany,
+                    skills: d.skills && d.skills.length > 0 ? d.skills.join(", ") : prev.skills
+                }));
+                if (d.expYears !== undefined) {
+                    setExpYears(String(d.expYears));
+                }
+                if (d.expMonths !== undefined) {
+                    setExpMonths(String(d.expMonths));
+                }
+                setResumeText(d.rawText || d.resumeText || "");
+                setAiSummary(d.summary || d.aiSummary || "");
+                setAiParsedSuccess(true);
+                setAiExtractedCount({
+                    skills: d.skills?.length || 0,
+                    exp: d.experience || (d.expYears ? `${d.expYears} Yrs` : "Detected")
+                });
+                toast.success("Resume parsed! Form auto-filled.", { id: "ai-parse" });
+            } else {
+                toast.info("Resume attached. Fill in any missing details.", { id: "ai-parse" });
+            }
+        } catch (err) {
+            console.error("AI parse error:", err);
+            toast.error("Could not auto-extract text from resume, but file is attached.", { id: "ai-parse" });
+        } finally {
+            setIsParsing(false);
+        }
+    };
+
+    useEffect(() => {
+        if (initialFile && !initialData) {
+            handleResumeAutoFill(initialFile);
+        }
+    }, [initialFile, initialData]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -1987,7 +2799,9 @@ const AddCandidateModal = ({ onClose, onSave }) => {
             experience: formattedExp,
             cvFile,
             cvDataUrl,
-            cvName: cvFile ? cvFile.name : ""
+            cvName: cvFile ? cvFile.name : "",
+            resumeText,
+            aiSummary
         });
         setIsSaving(false);
     };
@@ -1996,8 +2810,86 @@ const AddCandidateModal = ({ onClose, onSave }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn select-none">
             <div className="bg-white rounded-[20px] shadow-2xl border border-gray-200 max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <h3 className="text-sm font-bold text-[#1E1E1E]">Add New Candidate</h3>
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-[10px] bg-blue-50 text-[#2D79C7] flex items-center justify-center font-bold">
+                            <UserPlus className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-[#1E1E1E]">Add New Candidate</h3>
+                            <p className="text-[11px] text-gray-400">Fill details manually or upload a resume for instant AI auto-fill</p>
+                        </div>
+                    </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                </div>
+
+                {/* AI Auto-Fill Resume Dropzone */}
+                <div
+                    onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsModalDragOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                        e.preventDefault();
+                        setIsModalDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        setIsModalDragOver(false);
+                        const f = e.dataTransfer?.files?.[0];
+                        if (f) handleResumeAutoFill(f);
+                    }}
+                    className={`rounded-[14px] border border-dashed p-3.5 transition-all ${
+                        isModalDragOver
+                            ? "border-[#2D79C7] bg-blue-50/80 scale-[1.01]"
+                            : "border-gray-300 bg-gray-50/80 hover:bg-gray-100/60"
+                    }`}
+                >
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-[10px] bg-blue-50 text-[#2D79C7] flex items-center justify-center shrink-0">
+                                {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                            </div>
+                            <div>
+                                <span className="text-xs font-bold text-[#1E1E1E]">Auto-fill with Resume</span>
+                                <p className="text-[11px] text-gray-500">
+                                    Upload CV (PDF/DOCX) to fill candidate details automatically.
+                                </p>
+                            </div>
+                        </div>
+                        <label className="cursor-pointer bg-white hover:bg-gray-100 text-[#2D79C7] border border-gray-200 px-3 py-1.5 rounded-[10px] text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{isParsing ? "Scanning..." : cvFile ? "Change File" : "Upload File"}</span>
+                            <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                onChange={e => {
+                                    const f = e.target.files?.[0];
+                                    if (f) handleResumeAutoFill(f);
+                                }}
+                                disabled={isParsing}
+                                className="hidden"
+                            />
+                        </label>
+                    </div>
+
+                    {isParsing && (
+                        <div className="mt-2.5 pt-2 border-t border-gray-200 flex items-center gap-2 text-xs text-[#2D79C7] font-semibold">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Extracting text, contact info, and skills from resume...</span>
+                        </div>
+                    )}
+
+                    {aiParsedSuccess && !isParsing && (
+                        <div className="mt-2.5 pt-2 border-t border-gray-200 flex items-center justify-between text-xs flex-wrap gap-2 text-emerald-700 font-medium">
+                            <div className="flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Auto-filled from <strong>{cvFile?.name}</strong></span>
+                            </div>
+                            <span className="text-[11px] text-gray-500">
+                                {aiExtractedCount.skills} skills • {aiExtractedCount.exp}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-3 text-xs">
@@ -2106,17 +2998,18 @@ const AddCandidateModal = ({ onClose, onSave }) => {
                     </div>
 
                     <div>
-                        <label className="block text-gray-500 font-bold mb-1">Upload CV / Resume (PDF, DOC, DOCX)</label>
+                        <label className="block text-gray-500 font-bold mb-1">Attached CV / Resume</label>
                         <div className="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-[10px]">
                             <input
                                 type="file"
                                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                 onChange={e => {
-                                    const file = e.target.files[0];
+                                    const file = e.target.files?.[0];
                                     if (file) {
-                                        setCvFile(file);
+                                        handleResumeAutoFill(file);
                                     }
                                 }}
+                                disabled={isParsing}
                                 className="w-full text-xs text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-[#2D79C7]/10 file:text-[#2D79C7] hover:file:bg-[#2D79C7]/20 cursor-pointer"
                             />
                         </div>
@@ -2129,7 +3022,7 @@ const AddCandidateModal = ({ onClose, onSave }) => {
 
                     <div className="pt-4 flex justify-end gap-2">
                         <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
-                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer disabled:opacity-50">
+                        <button type="submit" disabled={isSaving || isParsing} className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer disabled:opacity-50">
                             {isSaving ? "Saving..." : "Save Candidate"}
                         </button>
                     </div>

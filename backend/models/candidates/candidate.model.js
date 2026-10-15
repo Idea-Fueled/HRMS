@@ -73,6 +73,14 @@ const candidateSchema = new mongoose.Schema({
         type: String,
         default: "Candidate_Resume.pdf"
     },
+    resumeText: {
+        type: String,
+        default: ""
+    },
+    aiSummary: {
+        type: String,
+        default: ""
+    },
     interviews: [{
         id: { type: String },
         roundName: { type: String },

@@ -1,5 +1,7 @@
 import express from "express";
 import Candidate from "../../models/candidates/candidate.model.js";
+import { uploadDoc } from "../../middlewares/upload.middleware.js";
+import { extractTextFromBuffer, parseResumeDetails, rankCandidatesWithAi } from "../../utils/aiResumeParser.js";
 
 const router = express.Router();
 
@@ -243,6 +245,116 @@ router.delete("/candidates/:id", async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Internal server error"
+        });
+    }
+});
+
+// AI Route 1: Parse uploaded resume for Autofill
+router.post("/parse-resume", uploadDoc.single("file"), async (req, res) => {
+    try {
+        let text = "";
+        let filename = "";
+
+        if (req.file) {
+            filename = req.file.originalname || "";
+            text = await extractTextFromBuffer(req.file.buffer, req.file.mimetype, filename);
+        } else if (req.body.text) {
+            text = req.body.text;
+            filename = req.body.filename || "";
+        }
+
+        if (!text && !req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "No resume file or text provided."
+            });
+        }
+
+        const parsed = parseResumeDetails(text, filename);
+
+        return res.status(200).json({
+            success: true,
+            parsed,
+            message: "Resume parsed successfully by AI"
+        });
+    } catch (err) {
+        console.error("AI parse resume error:", err);
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to parse resume."
+        });
+    }
+});
+
+// AI Route 2: Search candidates using AI natural language query & keyword ranking
+router.post("/ai-search", async (req, res) => {
+    try {
+        const { query = "", minExp, maxExp, position, stage } = req.body;
+        let filter = {};
+        if (position && position !== "All") filter.position = position;
+        if (stage && stage !== "All") filter.stage = stage;
+
+        const candidates = await Candidate.find(filter).lean();
+
+        const rankedCandidates = rankCandidatesWithAi(candidates, query, { minExp, maxExp, position, stage });
+
+        return res.status(200).json({
+            success: true,
+            query,
+            totalMatches: rankedCandidates.length,
+            candidates: rankedCandidates
+        });
+    } catch (err) {
+        console.error("AI candidate search error:", err);
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to search candidates with AI."
+        });
+    }
+});
+
+// AI Route 3: Direct Resume Upload to AI Pool / Candidate DB
+router.post("/ai-upload-resume", uploadDoc.single("file"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Please provide a resume file (.pdf, .docx)." });
+        }
+
+        const filename = req.file.originalname || "Resume.pdf";
+        const text = await extractTextFromBuffer(req.file.buffer, req.file.mimetype, filename);
+        const parsed = parseResumeDetails(text, filename);
+
+        const newCandId = `cand_ai_${Date.now()}`;
+        const newCandidate = new Candidate({
+            id: newCandId,
+            name: parsed.name,
+            email: parsed.email || `${parsed.name.toLowerCase().replace(/\s+/g, ".")}@candidate.com`,
+            phone: parsed.phone || "",
+            position: parsed.position,
+            experience: parsed.experience,
+            currentCompany: parsed.currentCompany,
+            skills: parsed.skills,
+            appliedDate: new Date().toISOString().split("T")[0],
+            stage: "Resume Screening",
+            status: "In Progress",
+            resume: filename,
+            resumeText: text,
+            aiSummary: parsed.summary
+        });
+
+        await newCandidate.save();
+
+        return res.status(201).json({
+            success: true,
+            message: `Resume for ${parsed.name} scanned and added to pipeline!`,
+            candidate: newCandidate,
+            parsed
+        });
+    } catch (err) {
+        console.error("AI upload resume error:", err);
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to process resume."
         });
     }
 });

@@ -20,9 +20,11 @@ export const renderPayslipHtml = (payslip) => {
 
     const basic = Number(earn.basic) || 0;
     const hra = Number(earn.hra) || 0;
+    const medical = Number(earn.medicalAllowance) || 0;
+    const conveyance = Number(earn.conveyanceAllowance) || 0;
     const special = Number(earn.specialAllowance) || 0;
     const other = Number(earn.otherAllowances) || 0;
-    const totalEarnings = Number(earn.totalEarnings) || (basic + hra + special + other);
+    const totalEarnings = Number(earn.totalEarnings) || (basic + hra + medical + conveyance + special + other);
 
     const netSalary = Number(payslip.netSalaryPayable) || totalEarnings;
     
@@ -197,13 +199,22 @@ export const renderPayslipHtml = (payslip) => {
                             <td style="padding: 5px 0; text-align: right; color: #111827; font-weight: 600; font-size: 11px !important;">${formatAmount(hra)}</td>
                         </tr>
                         <tr>
+                            <td style="padding: 5px 0; color: #111827; font-weight: 500; font-size: 11px !important;">Medical Allowance</td>
+                            <td style="padding: 5px 0; text-align: right; color: #111827; font-weight: 600; font-size: 11px !important;">${formatAmount(medical)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 0; color: #111827; font-weight: 500; font-size: 11px !important;">Conveyance Allowance</td>
+                            <td style="padding: 5px 0; text-align: right; color: #111827; font-weight: 600; font-size: 11px !important;">${formatAmount(conveyance)}</td>
+                        </tr>
+                        <tr>
                             <td style="padding: 5px 0; color: #111827; font-weight: 500; font-size: 11px !important;">Special Allowance</td>
                             <td style="padding: 5px 0; text-align: right; color: #111827; font-weight: 600; font-size: 11px !important;">${formatAmount(special)}</td>
                         </tr>
+                        ${other > 0 ? `
                         <tr>
                             <td style="padding: 5px 0; color: #111827; font-weight: 500; font-size: 11px !important;">Other Allowances</td>
                             <td style="padding: 5px 0; text-align: right; color: #111827; font-weight: 600; font-size: 11px !important;">${formatAmount(other)}</td>
-                        </tr>
+                        </tr>` : ''}
                         <tr style="border-top: 1px solid #E5E7EB;">
                             <td style="padding: 8px 0 0 0; color: #000000; font-weight: 700; font-size: 11.5px !important;">Total Earnings (A)</td>
                             <td style="padding: 8px 0 0 0; text-align: right; color: #000000; font-weight: 700; font-size: 11.5px !important;">${formatAmount(totalEarnings)}</td>
@@ -228,7 +239,7 @@ export const renderPayslipHtml = (payslip) => {
             <!-- FOOTER NOTES -->
             <div style="font-size: 9.5px !important; color: #4B5563; line-height: 1.55; font-weight: 500;">
                 <strong style="color: #111827; font-weight: 700;">*Note:</strong><br/>
-                Other Allowances include transportation, medical, and other miscellaneous allowances.<br/>
+                Special allowances include telephone bill, & other miscellaneous allowances.<br/>
                 All amounts displayed in this payslip are in <strong style="color: #111827; font-weight: 700;">INR</strong>.<br/>
                 This is computer generated statement, does not require signature.
             </div>

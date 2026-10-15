@@ -419,6 +419,7 @@ export const updateLeaveStatus = async (req, res) => {
                 if (leave.leaveType === "sick_leave") key = "sick";
                 else if (leave.leaveType === "casual_leave") key = "casual";
                 else if (leave.leaveType === "earned_leave") key = "earned";
+                else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
 
                 const start = new Date(leave.startDate);
                 const end = new Date(leave.endDate);

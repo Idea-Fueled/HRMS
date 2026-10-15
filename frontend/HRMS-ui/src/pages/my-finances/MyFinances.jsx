@@ -272,7 +272,7 @@ const MyFinances = () => {
                                             <span className="text-gray-900 font-bold text-sm">₹{displayBasic.toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="py-3 flex justify-between items-center">
-                                            <span className="text-gray-600">House Rent Allowance (HRA - 20%)</span>
+                                            <span className="text-gray-600">House Rent Allowance (20%)</span>
                                             <span className="text-gray-900 font-bold text-sm">₹{displayHra.toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="py-3 flex justify-between items-center">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
     Clock,
     Calendar,
@@ -12,6 +12,8 @@ import {
     Umbrella,
     Award,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Info,
     Plus,
     Search,
@@ -29,14 +31,16 @@ import {
     ArrowUpRight,
     BarChart3,
     Sparkles,
+    Paperclip,
     X
 } from "lucide-react";
 import { toast } from "sonner";
-import { getLeaveSummary, getLeaveHistory, applyLeave, clockIn, clockOut, getTodayAttendanceLogs } from "../../services/dashboard.service";
+import { getLeaveSummary, getLeaveHistory, applyLeave, clockIn, clockOut, getTodayAttendanceLogs, requestCompOffCredit } from "../../services/dashboard.service";
 import { uploadProfilePicture, updateProfilePicture } from "../../services/auth.service";
 import { getAllEmployees } from "../../services/employee.service";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../../components/SharedComponents";
+import { isManagementUser } from "../../utils/roleUtils";
 
 /* ──────────────────────────────────────────�/* ─────────────────────────────────────────────
    ATTENDANCE TAB COMPONENTS (ENTERPRISE THEME BLUE UI)
@@ -754,14 +758,32 @@ const AttendanceKPIStats = () => {
 /* ─────────────────────────────────────────────
    LEAVE TAB — PENDING LEAVE REQUESTS
 ───────────────────────────────────────────── */
-const PendingLeaveRequestsCard = ({ pendingRequests = [], loading = false, onRequestLeave }) => {
+const PendingLeaveRequestsCard = ({
+    pendingRequests = [],
+    loading = false,
+    onRequestLeave,
+    selectedLeavePeriod = "Apr 2026 - Mar 2027",
+    onSelectLeavePeriod,
+    onRequestCompOffCredit
+}) => {
+    const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
+    const leavePeriods = [
+        "Apr 2026 - Mar 2027",
+        "Apr 2025 - Mar 2026",
+        "Apr 2024 - Mar 2025",
+        "Apr 2023 - Mar 2024"
+    ];
+
     const formatLeaveType = (type) => {
         switch (type) {
             case "casual_leave": return "Casual Leave";
             case "sick_leave": return "Sick Leave";
             case "earned_leave": return "Earned Leave";
             case "unpaid_leave": return "Unpaid Leave";
-            default: return type;
+            case "partial_leave": return "Partial Leave";
+            case "comp_off":
+            case "comp_off_leave": return "Compensatory Off";
+            default: return type ? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "--";
         }
     };
 
@@ -848,12 +870,37 @@ const PendingLeaveRequestsCard = ({ pendingRequests = [], loading = false, onReq
             {/* Right Side (20% on desktop) */}
             <div className="md:w-[22%] shrink-0 flex flex-col justify-start gap-4 pt-1">
                 {/* Leave Period Dropdown */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative">
                     <span className="text-gray-500 text-[9px] font-bold uppercase tracking-wider block">Leave Period</span>
-                    <button type="button" className="w-full text-[11px] text-gray-700 hover:text-gray-900 flex items-center justify-between font-bold bg-[#F8FAFC] border border-gray-200 rounded px-2.5 py-1.5 text-left cursor-pointer">
-                        <span>Apr 2026 - Mar 2027</span>
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
+                    <button
+                        type="button"
+                        onClick={() => setPeriodDropdownOpen(prev => !prev)}
+                        className="w-full text-[11px] text-gray-700 hover:text-gray-900 flex items-center justify-between font-bold bg-[#F8FAFC] hover:bg-slate-100 border border-gray-200 rounded px-2.5 py-1.5 text-left cursor-pointer transition-colors"
+                    >
+                        <span>{selectedLeavePeriod}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 ml-1 transition-transform ${periodDropdownOpen ? "rotate-180" : ""}`} />
                     </button>
+
+                    {periodDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-30 py-1 overflow-hidden">
+                            {leavePeriods.map(period => (
+                                <button
+                                    key={period}
+                                    type="button"
+                                    onClick={() => {
+                                        if (onSelectLeavePeriod) onSelectLeavePeriod(period);
+                                        setPeriodDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-2.5 py-1.5 text-[11px] text-left flex items-center justify-between font-medium hover:bg-[#F0F7FF] hover:text-[#2D79C7] transition-colors cursor-pointer ${
+                                        selectedLeavePeriod === period ? "text-[#2D79C7] font-bold bg-[#F0F7FF]" : "text-gray-700"
+                                    }`}
+                                >
+                                    <span>{period}</span>
+                                    {selectedLeavePeriod === period && <Check className="w-3.5 h-3.5 text-[#2D79C7]" />}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Primary CTA */}
@@ -869,6 +916,7 @@ const PendingLeaveRequestsCard = ({ pendingRequests = [], loading = false, onReq
                     <div className="pl-1">
                         <button
                             type="button"
+                            onClick={onRequestCompOffCredit}
                             className="flex items-center gap-1.5 text-[11px] font-bold text-[#2D79C7] hover:text-[#1F5EA8] transition-colors text-left cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5 text-[#2D79C7]" />
@@ -884,17 +932,26 @@ const PendingLeaveRequestsCard = ({ pendingRequests = [], loading = false, onReq
 /* ─────────────────────────────────────────────
    LEAVE TAB — MY LEAVE STATS GRAPH CARDS
 ───────────────────────────────────────────── */
-const WeeklyPatternCard = () => {
-    const data = [
-        { label: "Mon", val: 2 },
-        { label: "Tue", val: 4 },
-        { label: "Wed", val: 0 },
-        { label: "Thu", val: 3 },
-        { label: "Fri", val: 6 },
-        { label: "Sat", val: 0 },
-        { label: "Sun", val: 0 }
-    ];
-    const maxVal = 6;
+const WeeklyPatternCard = ({ leaves = [] }) => {
+    const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const dayIndexMap = [6, 0, 1, 2, 3, 4, 5]; // 0=Sun -> index 6
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+
+    leaves.forEach(l => {
+        if (l.status?.toLowerCase() === "approved" || l.status?.toLowerCase() === "pending") {
+            const date = new Date(l.startDate || l.createdAt);
+            if (!isNaN(date.getTime())) {
+                const dayIdx = dayIndexMap[date.getDay()];
+                counts[dayIdx] += (Number(l.totalDays) || 1);
+            }
+        }
+    });
+
+    const data = dayLabels.map((label, idx) => ({
+        label,
+        val: counts[idx]
+    }));
+    const maxVal = Math.max(5, ...data.map(d => d.val));
 
     return (
         <div className="premium-3d-card p-4.5 flex flex-col justify-between h-[280px]">
@@ -912,12 +969,14 @@ const WeeklyPatternCard = () => {
                                     {item.val}
                                 </span>
                                 {/* Bar */}
-                                <div className="w-4 bg-[#F8FAFC] border border-gray-100 rounded-t-md h-24 flex items-end">
+                                <div
+                                    className="w-4 bg-[#F8FAFC] border border-gray-100 rounded-t-md h-24 flex items-end cursor-pointer group-hover:border-gray-200 transition-colors"
+                                    title={`${item.label}: ${item.val} leave${item.val !== 1 ? 's' : ''}`}
+                                >
                                     {item.val > 0 && (
                                         <div
                                             className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] rounded-t-md transition-all duration-300"
                                             style={{ height: barHeight }}
-                                            title={`${item.label}: ${item.val} leaves`}
                                         />
                                     )}
                                 </div>
@@ -932,23 +991,39 @@ const WeeklyPatternCard = () => {
     );
 };
 
-const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
+const ConsumedLeaveTypesCard = ({ leaves = [], leaveSummary }) => {
     const [hoverText, setHoverText] = useState(null);
 
-    const balance = leaveSummary?.leaveBalance || {
-        sick: { used: 0 },
-        casual: { used: 0 },
-        earned: { used: 0 }
-    };
+    let casualUsed = 0;
+    let earnedUsed = 0;
+    let sickUsed = 0;
 
-    const casualUsed = balance.casual?.used ?? 0;
-    const earnedUsed = balance.earned?.used ?? 0;
-    const sickUsed = balance.sick?.used ?? 0;
+    if (Array.isArray(leaves) && leaves.length > 0) {
+        leaves.forEach(l => {
+            if (l.status?.toLowerCase() === "approved") {
+                const days = Number(l.totalDays) || 1;
+                const type = (l.leaveType || "").toLowerCase();
+                if (type.includes("casual")) casualUsed += days;
+                else if (type.includes("earned")) earnedUsed += days;
+                else if (type.includes("sick")) sickUsed += days;
+            }
+        });
+    } else if (Array.isArray(leaves)) {
+        casualUsed = 0;
+        earnedUsed = 0;
+        sickUsed = 0;
+    } else {
+        const balance = leaveSummary?.leaveBalance || {};
+        casualUsed = balance.casual?.used ?? 0;
+        earnedUsed = balance.earned?.used ?? 0;
+        sickUsed = balance.sick?.used ?? 0;
+    }
+
     const totalUsed = casualUsed + earnedUsed + sickUsed;
 
-    const casualPct = totalUsed > 0 ? (casualUsed / totalUsed) * 100 : 40;
-    const earnedPct = totalUsed > 0 ? (earnedUsed / totalUsed) * 100 : 35;
-    const sickPct = totalUsed > 0 ? (sickUsed / totalUsed) * 100 : 25;
+    const casualPct = totalUsed > 0 ? (casualUsed / totalUsed) * 100 : 0;
+    const earnedPct = totalUsed > 0 ? (earnedUsed / totalUsed) * 100 : 0;
+    const sickPct = totalUsed > 0 ? (sickUsed / totalUsed) * 100 : 0;
 
     const radius = 30;
     const strokeWidth = 9;
@@ -958,7 +1033,9 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
     const earnedDash = (earnedPct / 100) * circumference;
     const sickDash = (sickPct / 100) * circumference;
 
-    const defaultTooltip = `Casual: ${casualPct.toFixed(0)}% | Earned: ${earnedPct.toFixed(0)}% | Sick: ${sickPct.toFixed(0)}%`;
+    const defaultTooltip = totalUsed > 0
+        ? `Casual: ${casualPct.toFixed(0)}% | Earned: ${earnedPct.toFixed(0)}% | Sick: ${sickPct.toFixed(0)}%`
+        : "No consumed leaves in this period";
 
     return (
         <div className="premium-3d-card p-4.5 flex flex-col justify-between h-[280px]">
@@ -979,63 +1056,81 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
                     )}
                     
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-                        {/* Casual Leave Segment */}
+                        {/* Neutral Background Ring */}
                         <circle
                             cx="40"
                             cy="40"
                             r={radius}
                             fill="none"
-                            stroke="#38BDF8"
+                            stroke="#F1F5F9"
                             strokeWidth={strokeWidth}
-                            strokeDasharray={`${casualDash} ${circumference}`}
-                            strokeDashoffset="0"
-                            className="hover:stroke-[#0EA5E9] transition-colors"
-                            onMouseEnter={(e) => {
-                                e.stopPropagation();
-                                setHoverText(`Casual: ${casualPct.toFixed(0)}% (${casualUsed} days)`);
-                            }}
-                            onMouseLeave={() => setHoverText(defaultTooltip)}
                         />
-                        {/* Earned Leave Segment */}
-                        <circle
-                            cx="40"
-                            cy="40"
-                            r={radius}
-                            fill="none"
-                            stroke="#10B981"
-                            strokeWidth={strokeWidth}
-                            strokeDasharray={`${earnedDash} ${circumference}`}
-                            strokeDashoffset={-casualDash}
-                            className="hover:stroke-[#059669] transition-colors"
-                            onMouseEnter={(e) => {
-                                e.stopPropagation();
-                                setHoverText(`Earned: ${earnedPct.toFixed(0)}% (${earnedUsed} days)`);
-                            }}
-                            onMouseLeave={() => setHoverText(defaultTooltip)}
-                        />
-                        {/* Sick Leave Segment */}
-                        <circle
-                            cx="40"
-                            cy="40"
-                            r={radius}
-                            fill="none"
-                            stroke="#F59E0B"
-                            strokeWidth={strokeWidth}
-                            strokeDasharray={`${sickDash} ${circumference}`}
-                            strokeDashoffset={-(casualDash + earnedDash)}
-                            className="hover:stroke-[#D97706] transition-colors"
-                            onMouseEnter={(e) => {
-                                e.stopPropagation();
-                                setHoverText(`Sick: ${sickPct.toFixed(0)}% (${sickUsed} days)`);
-                            }}
-                            onMouseLeave={() => setHoverText(defaultTooltip)}
-                        />
+
+                        {totalUsed > 0 && (
+                            <>
+                                {/* Casual Leave Segment */}
+                                <circle
+                                    cx="40"
+                                    cy="40"
+                                    r={radius}
+                                    fill="none"
+                                    stroke="#38BDF8"
+                                    strokeWidth={strokeWidth}
+                                    strokeDasharray={`${casualDash} ${circumference}`}
+                                    strokeDashoffset="0"
+                                    className="hover:stroke-[#0EA5E9] transition-colors"
+                                    onMouseEnter={(e) => {
+                                        e.stopPropagation();
+                                        setHoverText(`Casual: ${casualPct.toFixed(0)}% (${casualUsed} days)`);
+                                    }}
+                                    onMouseLeave={() => setHoverText(defaultTooltip)}
+                                />
+                                {/* Earned Leave Segment */}
+                                <circle
+                                    cx="40"
+                                    cy="40"
+                                    r={radius}
+                                    fill="none"
+                                    stroke="#10B981"
+                                    strokeWidth={strokeWidth}
+                                    strokeDasharray={`${earnedDash} ${circumference}`}
+                                    strokeDashoffset={-casualDash}
+                                    className="hover:stroke-[#059669] transition-colors"
+                                    onMouseEnter={(e) => {
+                                        e.stopPropagation();
+                                        setHoverText(`Earned: ${earnedPct.toFixed(0)}% (${earnedUsed} days)`);
+                                    }}
+                                    onMouseLeave={() => setHoverText(defaultTooltip)}
+                                />
+                                {/* Sick Leave Segment */}
+                                <circle
+                                    cx="40"
+                                    cy="40"
+                                    r={radius}
+                                    fill="none"
+                                    stroke="#F59E0B"
+                                    strokeWidth={strokeWidth}
+                                    strokeDasharray={`${sickDash} ${circumference}`}
+                                    strokeDashoffset={-(casualDash + earnedDash)}
+                                    className="hover:stroke-[#D97706] transition-colors"
+                                    onMouseEnter={(e) => {
+                                        e.stopPropagation();
+                                        setHoverText(`Sick: ${sickPct.toFixed(0)}% (${sickUsed} days)`);
+                                    }}
+                                    onMouseLeave={() => setHoverText(defaultTooltip)}
+                                />
+                            </>
+                        )}
                     </svg>
                     
                     {/* Inner Label */}
                     <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none select-none">
-                        <span className="text-[#1E1E1E] text-[10px] font-extrabold leading-none">Leave</span>
-                        <span className="text-gray-400 text-[8px] font-bold mt-0.5 uppercase tracking-wider">Types</span>
+                        <span className="text-[#1E1E1E] text-[10px] font-extrabold leading-none">
+                            {totalUsed > 0 ? "Leave" : "0"}
+                        </span>
+                        <span className="text-gray-400 text-[8px] font-bold mt-0.5 uppercase tracking-wider">
+                            {totalUsed > 0 ? "Types" : "Days"}
+                        </span>
                     </div>
                 </div>
 
@@ -1068,22 +1163,29 @@ const ConsumedLeaveTypesCard = ({ leaveSummary }) => {
     );
 };
 
-const MonthlyStatsCard = () => {
-    const data = [
-        { label: "Apr", val: 3 },
-        { label: "May", val: 5 },
-        { label: "Jun", val: 1 },
-        { label: "Jul", val: 0 },
-        { label: "Aug", val: 0 },
-        { label: "Sep", val: 0 },
-        { label: "Oct", val: 0 },
-        { label: "Nov", val: 0 },
-        { label: "Dec", val: 0 },
-        { label: "Jan", val: 0 },
-        { label: "Feb", val: 0 },
-        { label: "Mar", val: 0 }
-    ];
-    const maxVal = 5;
+const MonthlyStatsCard = ({ leaves = [] }) => {
+    const monthLabels = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+    const monthIndices = [3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2];
+    const counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    leaves.forEach(l => {
+        if (l.status?.toLowerCase() === "approved" || l.status?.toLowerCase() === "pending") {
+            const date = new Date(l.startDate || l.createdAt);
+            if (!isNaN(date.getTime())) {
+                const m = date.getMonth();
+                const pos = monthIndices.indexOf(m);
+                if (pos !== -1) {
+                    counts[pos] += (Number(l.totalDays) || 1);
+                }
+            }
+        }
+    });
+
+    const data = monthLabels.map((label, idx) => ({
+        label,
+        val: counts[idx]
+    }));
+    const maxVal = Math.max(5, ...data.map(d => d.val));
 
     return (
         <div className="premium-3d-card p-4.5 flex flex-col justify-between h-[280px]">
@@ -1095,18 +1197,20 @@ const MonthlyStatsCard = () => {
                     {data.map((item, idx) => {
                         const barHeight = `${(item.val / maxVal) * 100}%`;
                         return (
-                            <div key={idx} className="flex flex-col items-center flex-1">
+                            <div key={idx} className="flex flex-col items-center flex-1 group">
                                 {/* Value Label */}
                                 <span className={`text-[8px] font-bold text-gray-500 mb-1.5 transition-opacity ${item.val > 0 ? "opacity-100" : "opacity-0"}`}>
                                     {item.val}
                                 </span>
                                 {/* Bar */}
-                                <div className="w-full bg-[#F8FAFC] border border-gray-100 rounded-t h-24 flex items-end">
+                                <div
+                                    className="w-full bg-[#F8FAFC] border border-gray-100 rounded-t h-24 flex items-end cursor-pointer group-hover:border-gray-200 transition-colors"
+                                    title={`${item.label}: ${item.val} leave${item.val !== 1 ? 's' : ''}`}
+                                >
                                     {item.val > 0 && (
                                         <div
                                             className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] rounded-t transition-all duration-300"
                                             style={{ height: barHeight }}
-                                            title={`${item.label}: ${item.val} leaves`}
                                         />
                                     )}
                                 </div>
@@ -1296,7 +1400,10 @@ const LeaveHistorySection = ({
             case "sick_leave": return "Sick Leave";
             case "earned_leave": return "Earned Leave";
             case "unpaid_leave": return "Unpaid Leave";
-            default: return type;
+            case "partial_leave": return "Partial Leave";
+            case "comp_off":
+            case "comp_off_leave": return "Compensatory Off";
+            default: return type ? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "--";
         }
     };
 
@@ -1404,6 +1511,8 @@ const LeaveHistorySection = ({
                                 <option>Casual Leave</option>
                                 <option>Earned Leave</option>
                                 <option>Sick Leave</option>
+                                <option>Compensatory Off</option>
+                                <option>Partial Leave</option>
                                 <option>Unpaid Leave</option>
                             </select>
                             <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-2.5 pointer-events-none" />
@@ -1558,13 +1667,32 @@ const LeaveHistorySection = ({
 ───────────────────────────────────────────── */
 const LeaveTab = ({
     leaveSummary,
-    leaveHistory,
+    leaveHistory = [],
     loadingSummary,
     loadingHistory,
-    onRequestLeave
+    onRequestLeave,
+    onRequestCompOffCredit
 }) => {
-    // Dynamically calculate Consumed Unpaid Leaves from the live leaveHistory list
-    const unpaidConsumed = leaveHistory
+    const [selectedLeavePeriod, setSelectedLeavePeriod] = useState("Apr 2026 - Mar 2027");
+
+    // Filter leaves according to selected leave period
+    const filteredPeriodLeaves = useMemo(() => {
+        if (!selectedLeavePeriod) return leaveHistory;
+        const match = selectedLeavePeriod.match(/(\d{4})\s*-\s*Mar\s*(\d{4})/i);
+        if (!match) return leaveHistory;
+        const startYear = parseInt(match[1], 10);
+        const endYear = parseInt(match[2], 10);
+        const startPeriod = new Date(startYear, 3, 1, 0, 0, 0); // 1st April
+        const endPeriod = new Date(endYear, 2, 31, 23, 59, 59, 999); // 31st March
+
+        return leaveHistory.filter(l => {
+            const leaveDate = new Date(l.startDate || l.createdAt);
+            return leaveDate >= startPeriod && leaveDate <= endPeriod;
+        });
+    }, [leaveHistory, selectedLeavePeriod]);
+
+    // Dynamically calculate Consumed Unpaid Leaves from the filtered live leave list
+    const unpaidConsumed = filteredPeriodLeaves
         .filter(l => l.leaveType === "unpaid_leave" && l.status?.toLowerCase() === "approved")
         .reduce((sum, l) => sum + (l.totalDays || 0), 0);
 
@@ -1613,18 +1741,21 @@ const LeaveTab = ({
         <div className="space-y-8 text-left select-none">
             {/* Top: Pending Leave Requests */}
             <PendingLeaveRequestsCard
-                pendingRequests={leaveHistory.filter(l => l.status?.toLowerCase() === "pending")}
+                pendingRequests={filteredPeriodLeaves.filter(l => l.status?.toLowerCase() === "pending")}
                 loading={loadingHistory}
                 onRequestLeave={onRequestLeave}
+                selectedLeavePeriod={selectedLeavePeriod}
+                onSelectLeavePeriod={setSelectedLeavePeriod}
+                onRequestCompOffCredit={onRequestCompOffCredit}
             />
 
             {/* Middle: My Leave Stats Section */}
             <div className="space-y-3">
                 <h3 className="text-[#1E1E1E] text-[14px] font-extrabold text-left pl-1">My Leave Stats</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <WeeklyPatternCard />
-                    <ConsumedLeaveTypesCard leaveSummary={leaveSummary} />
-                    <MonthlyStatsCard />
+                    <WeeklyPatternCard leaves={filteredPeriodLeaves} />
+                    <ConsumedLeaveTypesCard leaves={filteredPeriodLeaves} leaveSummary={leaveSummary} />
+                    <MonthlyStatsCard leaves={filteredPeriodLeaves} />
                 </div>
             </div>
 
@@ -1685,7 +1816,7 @@ const LeaveTab = ({
 
             {/* Leave History Table Section */}
             <LeaveHistorySection
-                leaveHistory={leaveHistory}
+                leaveHistory={filteredPeriodLeaves}
                 loadingHistory={loadingHistory}
                 selectedType={selectedType}
                 setSelectedType={setSelectedType}
@@ -1785,6 +1916,14 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
             return;
         }
 
+        if (leaveType === "comp_off") {
+            const availableCompOff = leaveSummary?.leaveBalance?.compOff?.available ?? 0;
+            if (availableCompOff < duration) {
+                toast.error(`Insufficient compensatory off balance. You have ${availableCompOff} day(s) available. Please request credit first.`);
+                return;
+            }
+        }
+
         if (isPartial && (leaveSummary?.leaveBalance?.partial?.used > 0)) {
             toast.error("You have already consumed your monthly quota.");
             return;
@@ -1878,12 +2017,26 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                                 <option value="casual_leave">Casual Leave</option>
                                 <option value="sick_leave">Sick Leave</option>
                                 <option value="earned_leave">Earned Leave</option>
+                                <option value="comp_off">Compensatory Off</option>
                                 <option value="partial_leave">Partial Leave</option>
                                 <option value="unpaid_leave">Unpaid Leave</option>
                             </select>
                             <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
                         </div>
                     </div>
+
+                    {/* Comp Off Info Badge when selected */}
+                    {leaveType === "comp_off" && (
+                        <div className="flex items-center justify-between p-2.5 bg-purple-50/70 border border-purple-150 rounded-[10px]">
+                            <div>
+                                <span className="text-xs font-extrabold text-purple-900 block">Available Compensatory Off</span>
+                                <span className="text-[10px] font-medium text-purple-600">Balance credited by Global Admins</span>
+                            </div>
+                            <span className="text-[12px] font-mono font-extrabold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                                {leaveSummary?.leaveBalance?.compOff?.available ?? 0} Day(s)
+                            </span>
+                        </div>
+                    )}
 
                     {/* Partial Leave Section */}
                     {isPartial ? (
@@ -2018,6 +2171,515 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                             className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-[12px] font-bold py-2 px-5 rounded-[8px] transition-colors shadow-sm cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {submitting ? "Submitting..." : "Submit Request"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   DUAL-MONTH DATE RANGE PICKER COMPONENT
+───────────────────────────────────────────── */
+const DualMonthRangePicker = ({
+    startDate,
+    endDate,
+    onSelectRange,
+    isOpen,
+    onClose
+}) => {
+    // Left month view (0-indexed: 9 = October, default to current month/year or 2026)
+    const [viewMonth, setViewMonth] = useState(() => {
+        return new Date().getMonth();
+    });
+    const [viewYear, setViewYear] = useState(() => {
+        return new Date().getFullYear();
+    });
+    const [hoverDate, setHoverDate] = useState("");
+    const pickerRef = useRef(null);
+
+    const monthNames = [
+        "October", "November", "December", "January", "February", "March",
+        "April", "May", "June", "July", "August", "September"
+    ];
+    const fullMonthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    const leftMonth = viewMonth;
+    const leftYear = viewYear;
+    const rightMonth = (viewMonth + 1) % 12;
+    const rightYear = viewMonth === 11 ? viewYear + 1 : viewYear;
+
+    const handlePrevMonth = (e) => {
+        e.stopPropagation();
+        if (viewMonth === 0) {
+            setViewMonth(11);
+            setViewYear(prev => prev - 1);
+        } else {
+            setViewMonth(prev => prev - 1);
+        }
+    };
+
+    const handleNextMonth = (e) => {
+        e.stopPropagation();
+        if (viewMonth === 11) {
+            setViewMonth(0);
+            setViewYear(prev => prev + 1);
+        } else {
+            setViewMonth(prev => prev + 1);
+        }
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+                onClose();
+            }
+        };
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    const getMonthCells = (year, month) => {
+        const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sun
+        const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+        const cells = [];
+
+        // Prev month padding days
+        for (let i = firstDayIndex - 1; i >= 0; i--) {
+            const d = daysInPrevMonth - i;
+            const pMonth = month === 0 ? 11 : month - 1;
+            const pYear = month === 0 ? year - 1 : year;
+            const dateStr = `${pYear}-${String(pMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            cells.push({ day: d, isCurrentMonth: false, dateStr });
+        }
+
+        // Current month days
+        for (let d = 1; d <= daysInCurrentMonth; d++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            cells.push({ day: d, isCurrentMonth: true, dateStr });
+        }
+
+        // Next month padding days to complete exactly 42 cells (6 rows x 7 cols)
+        const remaining = 42 - cells.length;
+        for (let d = 1; d <= remaining; d++) {
+            const nMonth = month === 11 ? 0 : month + 1;
+            const nYear = month === 11 ? year + 1 : year;
+            const dateStr = `${nYear}-${String(nMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            cells.push({ day: d, isCurrentMonth: false, dateStr });
+        }
+
+        return cells;
+    };
+
+    const handleDateClick = (dateStr) => {
+        if (!startDate || (startDate && endDate)) {
+            // First click: start new range
+            onSelectRange(dateStr, "");
+            setHoverDate("");
+        } else if (startDate && !endDate) {
+            // Second click:
+            if (dateStr < startDate) {
+                // Clicked earlier date, swap
+                onSelectRange(dateStr, startDate);
+            } else {
+                onSelectRange(startDate, dateStr);
+            }
+            setHoverDate("");
+            onClose(); // Auto close on range completion
+        }
+    };
+
+    const renderMonthGrid = (year, month) => {
+        const cells = getMonthCells(year, month);
+        return (
+            <div className="flex-1 p-3">
+                {/* Weekday headers */}
+                <div className="grid grid-cols-7 text-center text-[12px] font-medium text-gray-700 py-1 mb-1">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(w => (
+                        <span key={w} className="py-1">{w}</span>
+                    ))}
+                </div>
+
+                {/* Days grid (6x7 = 42 cells) */}
+                <div className="grid grid-cols-7 gap-y-1">
+                    {cells.map((cell, idx) => {
+                        const isStart = cell.dateStr === startDate;
+                        const isEnd = cell.dateStr === (endDate || (!hoverDate ? startDate : ""));
+                        const effectiveEnd = endDate || (startDate && hoverDate && hoverDate >= startDate ? hoverDate : "");
+                        const inRange = Boolean(
+                            startDate && effectiveEnd &&
+                            cell.dateStr > startDate && cell.dateStr < effectiveEnd
+                        );
+
+                        return (
+                            <div
+                                key={idx}
+                                className={`h-8 flex items-center justify-center relative ${
+                                    inRange ? "bg-[#EDE9FE]" : ""
+                                } ${
+                                    isStart && effectiveEnd && effectiveEnd !== startDate ? "bg-gradient-to-r from-transparent to-[#EDE9FE]" : ""
+                                } ${
+                                    isEnd && startDate && startDate !== effectiveEnd ? "bg-gradient-to-l from-transparent to-[#EDE9FE]" : ""
+                                }`}
+                                onMouseEnter={() => {
+                                    if (startDate && !endDate) {
+                                        setHoverDate(cell.dateStr);
+                                    }
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDateClick(cell.dateStr);
+                                    }}
+                                    className={`w-7 h-7 flex items-center justify-center text-[12px] transition-all cursor-pointer ${
+                                        isStart || (isEnd && (endDate || !startDate))
+                                            ? "bg-[#5548B8] text-white font-bold rounded-full shadow-xs"
+                                            : cell.isCurrentMonth
+                                            ? inRange
+                                                ? "text-[#5548B8] font-bold"
+                                                : "text-gray-700 hover:bg-purple-100 hover:text-[#5548B8] rounded-full"
+                                            : "text-gray-300 select-none cursor-default"
+                                    }`}
+                                >
+                                    {cell.day}
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div
+            ref={pickerRef}
+            className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-[6px] shadow-2xl overflow-hidden w-[510px] select-none"
+        >
+            {/* Top Purple Header */}
+            <div className="bg-[#5548B8] text-white flex items-center justify-between text-[13.5px] font-semibold divide-x divide-white/20">
+                {/* Left Month Header */}
+                <div className="flex-1 px-4 py-2.5 flex items-center justify-between">
+                    <button
+                        type="button"
+                        onClick={handlePrevMonth}
+                        className="hover:bg-white/10 rounded p-1 transition-colors cursor-pointer"
+                    >
+                        <ChevronLeft className="w-4 h-4 text-white" />
+                    </button>
+                    <div className="flex items-center gap-2">
+                        <span>{fullMonthNames[leftMonth]}</span>
+                        <span>{leftYear}</span>
+                    </div>
+                    <div className="w-4" />
+                </div>
+
+                {/* Right Month Header */}
+                <div className="flex-1 px-4 py-2.5 flex items-center justify-between">
+                    <div className="w-4" />
+                    <div className="flex items-center gap-2">
+                        <span>{fullMonthNames[rightMonth]}</span>
+                        <span>{rightYear}</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleNextMonth}
+                        className="hover:bg-white/10 rounded p-1 transition-colors cursor-pointer"
+                    >
+                        <ChevronRight className="w-4 h-4 text-white" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Side-by-Side Dual Calendars */}
+            <div className="flex divide-x divide-gray-150 bg-white">
+                {renderMonthGrid(leftYear, leftMonth)}
+                {renderMonthGrid(rightYear, rightMonth)}
+            </div>
+        </div>
+    );
+};
+
+/* ─────────────────────────────────────────────
+   REQUEST CREDIT FOR COMPENSATORY OFF MODAL
+───────────────────────────────────────────── */
+const RequestCompOffCreditModal = ({ isOpen, onClose, onSubmitSuccess }) => {
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [dateError, setDateError] = useState(false);
+    const [isHalfDay, setIsHalfDay] = useState(false);
+    const [note, setNote] = useState("");
+    const [files, setFiles] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+    const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setStartDate("");
+            setEndDate("");
+            setIsCalendarOpen(false);
+            setDateError(false);
+            setIsHalfDay(false);
+            setNote("");
+            setFiles([]);
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const formatDateDisplay = (dateStr) => {
+        if (!dateStr) return "";
+        const [y, m, d] = dateStr.split("-");
+        const dateObj = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+        return dateObj.toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        });
+    };
+
+    const dateDisplayValue = startDate && endDate
+        ? startDate === endDate
+            ? formatDateDisplay(startDate)
+            : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`
+        : startDate
+        ? formatDateDisplay(startDate)
+        : "";
+
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const newFiles = Array.from(e.target.files).map(f => ({
+                name: f.name,
+                size: f.size
+            }));
+            setFiles(prev => [...prev, ...newFiles]);
+        }
+    };
+
+    const handleRemoveFile = (idx) => {
+        setFiles(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!startDate) {
+            setDateError(true);
+            return;
+        }
+
+        // Build array of all dates in the selected range
+        const allDates = [];
+        const curr = new Date(startDate);
+        const end = new Date(endDate || startDate);
+        while (curr <= end) {
+            const y = curr.getFullYear();
+            const m = String(curr.getMonth() + 1).padStart(2, "0");
+            const d = String(curr.getDate()).padStart(2, "0");
+            allDates.push(`${y}-${m}-${d}`);
+            curr.setDate(curr.getDate() + 1);
+        }
+
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const employeeId = user?._id || user?.id;
+        if (!employeeId) {
+            toast.error("Session expired. Please sign in again.");
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const res = await requestCompOffCredit({
+                employeeId,
+                workedDates: allDates,
+                isHalfDay,
+                note: note.trim() || (isHalfDay ? "Half Day Compensatory Off Request" : "Compensatory Off Credit Request"),
+                attachments: files
+            });
+
+            if (res.data?.success) {
+                toast.success(res.data?.message || "Compensatory off credit request sent to Global Admins!");
+                if (onSubmitSuccess) onSubmitSuccess();
+                onClose();
+            } else {
+                toast.error(res.data?.message || "Failed to submit credit request.");
+            }
+        } catch (err) {
+            console.error("Comp Off Request Error:", err);
+            toast.error(err.response?.data?.message || "Failed to submit credit request.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 select-none">
+            <div className="bg-white border border-gray-200 rounded-[6px] shadow-2xl w-full max-w-[560px] relative transition-all duration-200">
+                {/* Modal Header */}
+                <div className="px-6 py-4.5 border-b border-gray-200 flex items-center justify-between">
+                    <h3 className="text-[#1E293B] text-[16px] font-semibold tracking-tight">
+                        Request Credit for Compensatory Off
+                    </h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 transition-colors p-1 cursor-pointer"
+                    >
+                        <X className="w-5 h-5 text-gray-400" />
+                    </button>
+                </div>
+
+                {/* Modal Form */}
+                <form onSubmit={handleSubmit} className="p-6 text-left">
+                    {/* Description Paragraph */}
+                    <p className="text-[13px] text-gray-600 leading-normal mb-5">
+                        Choose the date on which you have worked for to avail Compensatory Off. You can choose to apply for half day Compensatory off too.
+                    </p>
+
+                    {/* Compensatory off dates */}
+                    <div className="space-y-1.5 mb-4 relative">
+                        <label className="text-[13px] text-gray-700 font-normal block">
+                            Compensatory off dates
+                        </label>
+                        <div
+                            onClick={() => setIsCalendarOpen(prev => !prev)}
+                            className={`w-full bg-white border ${
+                                dateError ? "border-red-400" : isCalendarOpen ? "border-[#5548B8] ring-1 ring-[#5548B8]/20" : "border-gray-300"
+                            } text-gray-700 text-[13px] py-2 px-3 rounded-[4px] flex items-center justify-between cursor-pointer select-none transition-all`}
+                        >
+                            <span className={dateDisplayValue ? "text-gray-800 font-medium" : "text-gray-400"}>
+                                {dateDisplayValue || ""}
+                            </span>
+                            <Calendar className="w-4 h-4 text-gray-400 shrink-0 pointer-events-none" />
+                        </div>
+                        {dateError && (
+                            <p className="text-[12px] text-red-500 mt-1">
+                                Compoff request dates are required
+                            </p>
+                        )}
+
+                        {/* Dual Month Calendar Range Picker */}
+                        <DualMonthRangePicker
+                            isOpen={isCalendarOpen}
+                            startDate={startDate}
+                            endDate={endDate}
+                            onSelectRange={(start, end) => {
+                                setStartDate(start);
+                                setEndDate(end);
+                                if (start) setDateError(false);
+                            }}
+                            onClose={() => setIsCalendarOpen(false)}
+                        />
+                    </div>
+
+                    {/* Request Half Day Checkbox */}
+                    <div className="flex items-center gap-2 mb-4">
+                        <input
+                            type="checkbox"
+                            id="requestHalfDay"
+                            checked={isHalfDay}
+                            onChange={(e) => setIsHalfDay(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-[#5548B8] accent-[#5548B8] cursor-pointer"
+                        />
+                        <label
+                            htmlFor="requestHalfDay"
+                            className="text-[13px] text-gray-700 font-normal select-none cursor-pointer"
+                        >
+                            Request Half Day
+                        </label>
+                    </div>
+
+                    {/* Note Textarea */}
+                    <div className="space-y-1.5 mb-4">
+                        <label className="text-[13px] text-gray-700 font-normal block">
+                            Note
+                        </label>
+                        <textarea
+                            rows="4"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            className="w-full bg-white border border-gray-300 rounded-[4px] p-2.5 text-[13px] text-gray-800 focus:outline-none focus:border-[#5548B8] resize-y min-h-[90px]"
+                        />
+                    </div>
+
+                    {/* Upload Files Row */}
+                    <div className="mb-6">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            multiple
+                            className="hidden"
+                        />
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5548B8] hover:text-[#43369B] transition-colors cursor-pointer"
+                            >
+                                <Paperclip className="w-4 h-4 text-[#5548B8] -rotate-45" />
+                                <span>Upload Files</span>
+                            </button>
+                            <div className="group relative flex items-center">
+                                <Info className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 cursor-pointer" />
+                                <div className="hidden group-hover:block absolute left-5 -top-2 bg-slate-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow z-20">
+                                    Upload proof or deliverables (optional)
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Selected file pills */}
+                        {files.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {files.map((f, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="inline-flex items-center gap-1.5 text-[11.5px] bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200"
+                                    >
+                                        <span className="truncate max-w-[180px]">{f.name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveFile(idx)}
+                                            className="text-gray-400 hover:text-red-500 cursor-pointer"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Modal Footer Buttons */}
+                    <div className="border-t border-gray-200 pt-4 flex items-center justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-[13px] font-medium py-1.5 px-5 rounded-[4px] transition-colors cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="bg-[#5548B8] hover:bg-[#483C9F] text-white text-[13px] font-medium py-1.5 px-5 rounded-[4px] transition-colors shadow-xs cursor-pointer disabled:opacity-60"
+                        >
+                            {submitting ? "Confirming..." : "Confirm"}
                         </button>
                     </div>
                 </form>
@@ -2770,7 +3432,14 @@ import { useLocation } from "react-router-dom";
 const Me = () => {
     const { user, refreshUser } = useAuth();
     const location = useLocation();
-    const [activeTab, setActiveTab] = useState("Attendance");
+    const isMgmt = isManagementUser(user);
+    const [activeTab, setActiveTab] = useState(isMgmt ? "Performance" : "Attendance");
+
+    useEffect(() => {
+        if (isMgmt && (activeTab === "Attendance" || activeTab === "Leave")) {
+            setActiveTab("Performance");
+        }
+    }, [isMgmt, activeTab]);
 
     const employeeId = user?._id || user?.id;
 
@@ -2780,6 +3449,7 @@ const Me = () => {
     const [loadingSummary, setLoadingSummary] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+    const [isCompOffCreditModalOpen, setIsCompOffCreditModalOpen] = useState(false);
     const [initialLeaveType, setInitialLeaveType] = useState("casual_leave");
 
     // Web Clock In & Attendance Integration States
@@ -2859,7 +3529,12 @@ const Me = () => {
 
     useEffect(() => {
         if (location.state?.activeTab) {
-            setActiveTab(location.state.activeTab);
+            const requested = location.state.activeTab;
+            if (isMgmt && (requested === "Attendance" || requested === "Leave")) {
+                setActiveTab("Performance");
+            } else {
+                setActiveTab(requested);
+            }
         }
         if (location.state?.openApplyLeaveModal) {
             setInitialLeaveType(location.state?.leaveType || "casual_leave");
@@ -2906,8 +3581,10 @@ const Me = () => {
     }, [activeTab, employeeId]);
 
     const tabs = [
-        { key: "Attendance", icon: Clock, label: "Attendance" },
-        { key: "Leave", icon: Umbrella, label: "Leave" },
+        ...(!isMgmt ? [
+            { key: "Attendance", icon: Clock, label: "Attendance" },
+            { key: "Leave", icon: Umbrella, label: "Leave" },
+        ] : []),
         { key: "Performance", icon: Award, label: "Performance" }
     ];
 
@@ -2965,6 +3642,7 @@ const Me = () => {
                     loadingSummary={loadingSummary}
                     loadingHistory={loadingHistory}
                     onRequestLeave={handleOpenGeneralLeaveModal}
+                    onRequestCompOffCredit={() => setIsCompOffCreditModalOpen(true)}
                 />
             )}
 
@@ -2978,6 +3656,13 @@ const Me = () => {
                 onClose={() => setIsApplyModalOpen(false)}
                 onSubmitSuccess={fetchLeaveData}
                 leaveSummary={leaveSummary}
+            />
+
+            {/* Request Credit for Compensatory Off Modal */}
+            <RequestCompOffCreditModal
+                isOpen={isCompOffCreditModalOpen}
+                onClose={() => setIsCompOffCreditModalOpen(false)}
+                onSubmitSuccess={fetchLeaveData}
             />
 
             {/* Web Clock In Daily Goal Modal */}

@@ -137,6 +137,23 @@ const menuCategories = [
                         <line x1="16" y1="11" x2="22" y2="11" />
                     </svg>
                 ),
+                subItems: [
+                    {
+                        name: "Search by AI",
+                        to: "/hire/search-by-ai",
+                        permissionKey: "hire",
+                        roles: ["global_admin", "hr"],
+                        icon: (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0 text-amber-300">
+                                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                                <path d="M5 3v4" />
+                                <path d="M19 17v4" />
+                                <path d="M3 5h4" />
+                                <path d="M17 19h4" />
+                            </svg>
+                        ),
+                    }
+                ]
             },
             {
                 name: "Time Attend",
@@ -273,7 +290,7 @@ const Sidebar = ({ onClose }) => {
         }
 
         // Hire module is strictly accessible to Global Admin and HR users only
-        if (item.permissionKey === "hire" || item.to === "/hire") {
+        if (item.permissionKey === "hire" || item.to === "/hire" || item.to === "/hire/search-by-ai") {
             return role === "global_admin" || role === "hr";
         }
 

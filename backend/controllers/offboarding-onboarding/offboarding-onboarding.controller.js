@@ -42,6 +42,23 @@ const getHRVisibleEmployeeIds = async (user) => {
     return null;
 };
 
+// Helper to identify management users
+export const isManagementUser = (user) => {
+    if (!user) return false;
+    const role = (user.role || "").trim().toLowerCase();
+    const dept = (user.department || "").trim().toLowerCase();
+    const designation = (user.designation || "").trim().toLowerCase();
+
+    return (
+        role === "management" ||
+        dept === "management" ||
+        designation === "ceo" ||
+        designation === "co-founder" ||
+        designation.includes("founder") ||
+        designation.includes("managing director")
+    );
+};
+
 /* ─────────────────────────────────────────────
    GET ONBOARDING RECORDS
  ───────────────────────────────────────────── */
@@ -440,6 +457,13 @@ export const submitEmployeeResignation = async (req, res) => {
             return res.status(404).json({ success: false, message: "Employee not found." });
         }
 
+        if (isManagementUser(employee)) {
+            return res.status(403).json({
+                success: false,
+                message: "Management personnel cannot submit resignation through this portal."
+            });
+        }
+
         const empName = employee.fullName || `${employee.firstName || ""} ${employee.lastName || ""}`.trim() || "Employee";
 
         // Calculate dynamic notice period days
@@ -682,6 +706,13 @@ export const adminInitiateExit = async (req, res) => {
         const employee = await User.findById(employeeId).populate("managerId", "fullName firstName lastName email").lean();
         if (!employee) {
             return res.status(404).json({ success: false, message: "Employee not found." });
+        }
+
+        if (isManagementUser(employee)) {
+            return res.status(403).json({
+                success: false,
+                message: "Cannot initiate exit for management personnel."
+            });
         }
 
         const empName = employee.fullName || `${employee.firstName || ""} ${employee.lastName || ""}`.trim() || "Employee";

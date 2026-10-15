@@ -1,7 +1,9 @@
 import Leave from "../../models/leaves/leave.model.js";
 import User from "../../models/users/user.model.js";
 import Email from "../../models/emails/email.model.js";
+import CompOffRequest from "../../models/leaves/compOffRequest.model.js";
 import { emitToUser } from "../../socket/socket.js";
+import { dispatchExternalEmail } from "../../services/email.service.js";
 
 /**
  * Calculates accrued leave quota for a financial year (1st April to 31st March)
@@ -148,13 +150,14 @@ export const applyLeave = async (req, res) => {
         else if (leaveType === "casual_leave") key = "casual";
         else if (leaveType === "earned_leave") key = "earned";
         else if (leaveType === "partial_leave") key = "partial";
+        else if (leaveType === "comp_off" || leaveType === "comp_off_leave") key = "compOff";
 
         const updateObj = {
             pendingLeaves: days
         };
 
         if (key) {
-            updateObj[`leaveBalance.${key}.pending`] = 1;
+            updateObj[`leaveBalance.${key}.pending`] = days;
         }
 
         await User.findByIdAndUpdate(employeeId, {
@@ -412,6 +415,196 @@ export const updateLeaveBalance = async (req, res) => {
         });
     } catch (error) {
         console.error("Update Leave Balance Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const requestCompOffCredit = async (req, res) => {
+    try {
+        const { employeeId, workedDates, note, isHalfDay, attachments } = req.body;
+
+        if (!employeeId || !workedDates || !note?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Employee ID, worked dates, and note are required."
+            });
+        }
+
+        const datesArray = Array.isArray(workedDates) ? workedDates : [workedDates];
+        if (datesArray.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Please specify at least one worked date."
+            });
+        }
+
+        const applicant = await User.findById(employeeId).populate("department");
+        if (!applicant) {
+            return res.status(404).json({
+                success: false,
+                message: "Applicant user not found."
+            });
+        }
+
+        const applicantName = applicant.fullName || `${applicant.firstName || ""} ${applicant.lastName || ""}`.trim() || "Employee";
+        const applicantEmail = applicant.email;
+        const applicantEmpId = applicant.employeeId || "N/A";
+        const applicantDept = applicant.department?.name || applicant.department || "N/A";
+        const applicantDesignation = applicant.designation || "N/A";
+
+        const parsedDates = datesArray.map(d => new Date(d));
+        const daysCount = isHalfDay ? 0.5 : parsedDates.length;
+
+        // Save Comp Off Credit Request in DB
+        const creditRequest = await CompOffRequest.create({
+            employeeId,
+            workedDates: parsedDates,
+            daysCount,
+            isHalfDay: !!isHalfDay,
+            attachments: Array.isArray(attachments) ? attachments : [],
+            note: note.trim(),
+            status: "pending"
+        });
+
+        // Find all Global Admins
+        const globalAdmins = await User.find({ role: "global_admin" });
+
+        // Format dates for display in email
+        const formattedDatesList = parsedDates.map(d => {
+            return d.toLocaleDateString("en-IN", {
+                weekday: "short",
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            });
+        }).join(", ");
+
+        const subject = `Compensatory Off Credit Request: ${applicantName} (${applicantEmpId})`;
+        const snippet = `${applicantName} requested credit for ${daysCount} compensatory off day(s) worked on: ${formattedDatesList}.`;
+
+        const emailHtml = `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 24px; color: #ffffff;">
+                    <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Compensatory Off Credit Request</h2>
+                    <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px;">Employee has worked on a weekend / holiday and requested comp-off credit.</p>
+                </div>
+                
+                <div style="padding: 24px;">
+                    <p style="font-size: 14px; color: #374151; margin-top: 0;">
+                        Hello Global Admin,
+                    </p>
+                    <p style="font-size: 14px; color: #374151;">
+                        <strong>${applicantName}</strong> has submitted a request for <strong>${daysCount} day(s)</strong> of Compensatory Off credit.
+                    </p>
+
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748B; font-weight: 600; width: 140px;">Employee Name:</td>
+                                <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${applicantName}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Employee ID:</td>
+                                <td style="padding: 6px 0; color: #1E293B;">${applicantEmpId}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Department:</td>
+                                <td style="padding: 6px 0; color: #1E293B;">${applicantDept}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Designation:</td>
+                                <td style="padding: 6px 0; color: #1E293B;">${applicantDesignation}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Dates Worked:</td>
+                                <td style="padding: 6px 0; color: #2D79C7; font-weight: 700;">${formattedDatesList}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Days Count:</td>
+                                <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${daysCount} Day(s)</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px 0; color: #64748B; font-weight: 600; vertical-align: top;">Employee Note:</td>
+                                <td style="padding: 6px 0; color: #1E293B; white-space: pre-line;">${note}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <p style="font-size: 13px; color: #64748B; margin-bottom: 24px;">
+                        Please review the request and grant the compensatory off balance in the HRMS Leave Balances section.
+                    </p>
+
+                    <div style="text-align: center;">
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/employees" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
+                            Manage Employee Leaves
+                        </a>
+                    </div>
+                </div>
+
+                <div style="background: #F1F5F9; padding: 12px 24px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
+                    Idea-Fueled HRMS Automated Notification
+                </div>
+            </div>
+        `;
+
+        for (const admin of globalAdmins) {
+            const adminEmail = (admin.email || "").toLowerCase();
+            if (!adminEmail) continue;
+
+            // Save in internal HRMS mailbox
+            try {
+                const emailDoc = new Email({
+                    sender: applicant._id,
+                    senderEmail: applicantEmail,
+                    senderName: applicantName,
+                    senderAvatar: applicant.profilePicture || "",
+                    senderRole: applicant.role,
+                    to: [adminEmail],
+                    subject,
+                    body: emailHtml,
+                    snippet,
+                    priority: "high",
+                    labels: ["Leave", "Comp Off", "Credit Request"],
+                    userStates: [{
+                        user: admin._id,
+                        email: adminEmail,
+                        folder: "inbox",
+                        isRead: false
+                    }]
+                });
+                emailDoc.threadId = emailDoc._id;
+                await emailDoc.save();
+
+                emitToUser({ userId: admin._id, email: adminEmail }, "new_email", {
+                    email: emailDoc,
+                    unreadCount: 1
+                });
+            } catch (internalMailErr) {
+                console.error("Error creating internal email doc for admin:", internalMailErr);
+            }
+
+            // Dispatch via nodemailer SMTP if configured
+            try {
+                await dispatchExternalEmail({
+                    to: adminEmail,
+                    subject,
+                    body: emailHtml
+                });
+            } catch (externalMailErr) {
+                console.warn("External email delivery to admin skipped/failed:", externalMailErr);
+            }
+        }
+
+        return res.status(201).json({
+            success: true,
+            message: "Compensatory off credit request submitted successfully. Global Admins have been notified via email.",
+            creditRequest
+        });
+    } catch (error) {
+        console.error("Request Comp Off Credit Error:", error);
         return res.status(500).json({
             success: false,
             message: error.message

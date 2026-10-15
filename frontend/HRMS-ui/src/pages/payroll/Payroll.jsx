@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
     FileText, Download, Plus, Trash2, Search, 
     CheckCircle2, Building2, Building,
-    Loader2, IndianRupee
+    Loader2, IndianRupee, Calendar, X, Filter
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllEmployees } from "../../services/employee.service";
@@ -25,6 +25,8 @@ export default function Payroll() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedEntityFilter, setSelectedEntityFilter] = useState("all");
+    const [selectedMonthFilter, setSelectedMonthFilter] = useState("all");
+    const [selectedYearFilter, setSelectedYearFilter] = useState("all");
     const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
 
     // Form State for Payslip Generation
@@ -192,12 +194,25 @@ export default function Payroll() {
         const period = p.periodString || "";
         const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || period.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesEntity = selectedEntityFilter === "all" || (p.companyEntity || "Idea Fueled") === selectedEntityFilter;
-        return matchesSearch && matchesEntity;
+        
+        let matchesMonth = true;
+        if (selectedMonthFilter !== "all") {
+            const m = (p.month || "").toUpperCase();
+            const pMonth = period.toUpperCase();
+            matchesMonth = m.startsWith(selectedMonthFilter.toUpperCase()) || pMonth.includes(selectedMonthFilter.toUpperCase());
+        }
+
+        let matchesYear = true;
+        if (selectedYearFilter !== "all") {
+            matchesYear = String(p.year) === String(selectedYearFilter) || period.includes(String(selectedYearFilter));
+        }
+
+        return matchesSearch && matchesEntity && matchesMonth && matchesYear;
     });
 
-    const totalOutflow = payslips.reduce((acc, curr) => acc + (curr.netSalaryPayable || 0), 0);
-    const ideaFueledCount = payslips.filter(p => (p.companyEntity || "").toLowerCase().includes("llp") === false).length;
-    const ideaFueledLlpCount = payslips.filter(p => (p.companyEntity || "").toLowerCase().includes("llp")).length;
+    const totalOutflow = filteredPayslips.reduce((acc, curr) => acc + (curr.netSalaryPayable || 0), 0);
+    const ideaFueledCount = filteredPayslips.filter(p => (p.companyEntity || "").toLowerCase().includes("llp") === false).length;
+    const ideaFueledLlpCount = filteredPayslips.filter(p => (p.companyEntity || "").toLowerCase().includes("llp")).length;
 
     return (
         <div className="space-y-6 pb-12 animate-fadeIn select-none">
@@ -268,7 +283,7 @@ export default function Payroll() {
 
             {/* Filter Bar & Table Container */}
             <div className="bg-white border border-gray-200/80 rounded-[16px] p-6 shadow-sm space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="relative flex-1 max-w-md">
                         <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
@@ -276,31 +291,93 @@ export default function Payroll() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search by Employee name or Period (e.g. JUN 2026)..."
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50/80 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
+                            className="w-full pl-10 pr-8 py-2 bg-gray-50/80 border border-gray-200/80 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:border-[#2D79C7]"
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        {/* Month Filter Dropdown */}
+                        <div className="flex items-center gap-1.5 bg-gray-50/80 border border-gray-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
+                            <Calendar className="w-3.5 h-3.5 text-[#2D79C7]" />
+                            <select
+                                value={selectedMonthFilter}
+                                onChange={(e) => setSelectedMonthFilter(e.target.value)}
+                                className="bg-transparent border-0 text-xs text-gray-700 font-bold focus:outline-none cursor-pointer"
+                            >
+                                <option value="all">All Months</option>
+                                <option value="JAN">January (JAN)</option>
+                                <option value="FEB">February (FEB)</option>
+                                <option value="MAR">March (MAR)</option>
+                                <option value="APR">April (APR)</option>
+                                <option value="MAY">May (MAY)</option>
+                                <option value="JUN">June (JUN)</option>
+                                <option value="JUL">July (JUL)</option>
+                                <option value="AUG">August (AUG)</option>
+                                <option value="SEP">September (SEP)</option>
+                                <option value="OCT">October (OCT)</option>
+                                <option value="NOV">November (NOV)</option>
+                                <option value="DEC">December (DEC)</option>
+                            </select>
+                        </div>
+
+                        {/* Year Filter Dropdown */}
+                        <div className="flex items-center gap-1.5 bg-gray-50/80 border border-gray-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
+                            <select
+                                value={selectedYearFilter}
+                                onChange={(e) => setSelectedYearFilter(e.target.value)}
+                                className="bg-transparent border-0 text-xs text-gray-700 font-bold focus:outline-none cursor-pointer"
+                            >
+                                <option value="all">All Years</option>
+                                {YEARS.map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Entity Filter */}
                         <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
                             <button
                                 onClick={() => setSelectedEntityFilter("all")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                             >
                                 All Entities
                             </button>
                             <button
                                 onClick={() => setSelectedEntityFilter("Idea Fueled")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                             >
                                 Idea Fueled
                             </button>
                             <button
                                 onClick={() => setSelectedEntityFilter("Idea Fueled LLP")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                             >
                                 Idea Fueled LLP
                             </button>
                         </div>
+
+                        {/* Reset Filters */}
+                        {(searchQuery || selectedMonthFilter !== "all" || selectedYearFilter !== "all" || selectedEntityFilter !== "all") && (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setSelectedMonthFilter("all");
+                                    setSelectedYearFilter("all");
+                                    setSelectedEntityFilter("all");
+                                }}
+                                className="text-[#2D79C7] hover:underline text-xs font-bold cursor-pointer px-1.5 py-1"
+                            >
+                                Reset
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -314,7 +391,24 @@ export default function Payroll() {
                     <div className="py-16 text-center text-gray-400 border-2 border-dashed border-gray-200/80 rounded-xl flex flex-col items-center justify-center gap-2">
                         <FileText className="w-10 h-10 text-gray-300" />
                         <p className="font-bold text-gray-700 text-sm">No payslips found</p>
-                        <p className="text-xs text-gray-500">Click "Process New Salary" to generate monthly payslips.</p>
+                        <p className="text-xs text-gray-500">
+                            {payslips.length > 0
+                                ? "No payslips match your active filters. Try resetting the month, entity, or search filter."
+                                : "Click \"Process New Salary\" to generate monthly payslips."}
+                        </p>
+                        {payslips.length > 0 && (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setSelectedMonthFilter("all");
+                                    setSelectedYearFilter("all");
+                                    setSelectedEntityFilter("all");
+                                }}
+                                className="mt-2 text-xs font-bold text-[#2D79C7] hover:underline cursor-pointer"
+                            >
+                                Reset All Filters
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
