@@ -237,15 +237,6 @@ const CelebrationWishModal = ({ isOpen, onClose, data, onWishSent }) => {
                             className="w-full px-3.5 py-2.5 bg-gray-50/60 border border-gray-200 rounded-2xl text-xs text-gray-800 focus:outline-none focus:border-[#2D79C7] focus:bg-white transition-all resize-none leading-relaxed"
                         />
                     </div>
-
-                    {/* Email Delivery Note */}
-                    <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
-                        <Mail className="w-4 h-4 text-[#2D79C7] shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-blue-800 leading-relaxed">
-                            Clicking <strong>Send Wish</strong> will deliver an official celebration email to{" "}
-                            <span className="font-bold underline">{recipient.email || recipient.fullName}</span> and post this wish to their internal HRMS inbox.
-                        </p>
-                    </div>
                 </div>
 
                 {/* Footer Buttons */}
