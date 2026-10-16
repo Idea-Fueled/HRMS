@@ -411,87 +411,87 @@ const Probation = () => {
             {/* Policies Section Cards */}
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-[13px] font-black text-[#1E1E1E] uppercase tracking-wider">Probation Categories & Policies</h2>
-                    <span className="text-[11px] text-gray-400 font-medium">Click on any card to view and manage its employees</span>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-[13px] font-bold text-slate-800">Probation Policies</h2>
+                        <span className="text-[11px] text-slate-400 font-medium">• Select a policy to view assigned employees</span>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     {/* All tab card */}
                     <div
                         onClick={() => setSelectedPolicyId("all")}
-                        className={`p-4 rounded-[16px] border transition-all cursor-pointer flex flex-col justify-between ${
+                        className={`bg-white rounded-xl p-3.5 border transition-all cursor-pointer relative group flex flex-col justify-between ${
                             selectedPolicyId === "all"
-                                ? "bg-gradient-to-br from-[#2D79C7] to-[#1F5EA8] text-white border-transparent shadow-md"
-                                : "bg-white hover:bg-gray-50/80 border-gray-200/80 text-gray-800"
+                                ? "border-[#2D79C7] ring-2 ring-[#2D79C7]/15 bg-blue-50/15 shadow-xs"
+                                : "border-slate-200/80 hover:border-slate-300 hover:shadow-2xs"
                         }`}
                     >
                         <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                                    selectedPolicyId === "all" ? "bg-white/20 text-white" : "bg-blue-50 text-[#2D79C7]"
-                                }`}>
-                                    All Categories
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    All Policies
                                 </span>
-                                <span className={`text-xs font-mono font-bold ${selectedPolicyId === "all" ? "text-white/80" : "text-gray-400"}`}>
+                                <span className="text-[11px] font-semibold font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
                                     {stats.onProbationEmployees} enrolled
                                 </span>
                             </div>
-                            <h3 className="text-[15px] font-extrabold">All Probation Employees</h3>
-                            <p className={`text-xs mt-1 line-clamp-2 ${selectedPolicyId === "all" ? "text-white/80" : "text-gray-500"}`}>
-                                View all employees assigned to any probation policy across the organization
+                            <h3 className={`text-[13.5px] font-bold ${selectedPolicyId === "all" ? "text-[#2D79C7]" : "text-slate-800"}`}>
+                                All Probation Employees
+                            </h3>
+                            <p className="text-[11.5px] text-slate-400 truncate mt-0.5">
+                                View all employees assigned to any policy
                             </p>
                         </div>
-                        <div className="pt-3 mt-3 border-t border-white/20 flex items-center justify-between text-xs font-bold">
-                            <span>Browse all employees</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
+                        <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <span className="text-[11.5px] font-medium text-slate-500">
+                                Total: {stats.onProbationEmployees}
+                            </span>
+                            <span className="text-[11.5px] font-bold text-[#2D79C7] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                                <span>View all</span>
+                                <ArrowRight className="w-3 h-3" />
+                            </span>
                         </div>
                     </div>
 
                     {/* Individual policy cards */}
                     {policies.map(policy => {
                         const isSelected = selectedPolicyId === policy._id;
+                        const daysSet = policy.days > 0;
                         return (
                             <div
                                 key={policy._id}
                                 onClick={() => setSelectedPolicyId(policy._id)}
-                                className={`p-4 rounded-[16px] border transition-all cursor-pointer flex flex-col justify-between ${
+                                className={`bg-white rounded-xl p-3.5 border transition-all cursor-pointer relative group flex flex-col justify-between ${
                                     isSelected
-                                        ? "bg-gradient-to-br from-[#2D79C7] to-[#1F5EA8] text-white border-transparent shadow-md"
-                                        : "bg-white hover:bg-gray-50/80 border-gray-200/80 text-gray-800"
+                                        ? "border-[#2D79C7] ring-2 ring-[#2D79C7]/15 bg-blue-50/15 shadow-xs"
+                                        : "border-slate-200/80 hover:border-slate-300 hover:shadow-2xs"
                                 }`}
                             >
                                 <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                                            isSelected ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md ${
+                                            daysSet
+                                                ? "bg-blue-50 text-[#2D79C7] border border-blue-100/60"
+                                                : "bg-slate-100 text-slate-500"
                                         }`}>
-                                            {policy.days > 0 ? `${policy.days} Days` : "Days not set"}
+                                            {daysSet ? `${policy.days} Days` : "Days not set"}
                                         </span>
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                                             <button
                                                 type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleTriggerEdit(policy);
-                                                }}
+                                                onClick={() => handleTriggerEdit(policy)}
                                                 title="Edit Policy & Days"
-                                                className={`p-1 rounded-[6px] transition-colors cursor-pointer ${
-                                                    isSelected ? "hover:bg-white/20 text-white" : "hover:bg-gray-100 text-gray-500"
-                                                }`}
+                                                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                                             >
                                                 <Edit3 className="w-3.5 h-3.5" />
                                             </button>
                                             {!policy.isDefault && (
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setConfirmDeletePolicy(policy);
-                                                    }}
+                                                    onClick={() => setConfirmDeletePolicy(policy)}
                                                     title="Delete Policy"
-                                                    className={`p-1 rounded-[6px] transition-colors cursor-pointer ${
-                                                        isSelected ? "hover:bg-white/20 text-white" : "hover:bg-rose-50 text-rose-500"
-                                                    }`}
+                                                    className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
@@ -499,28 +499,28 @@ const Probation = () => {
                                         </div>
                                     </div>
 
-                                    <h3 className="text-[15px] font-extrabold truncate" title={policy.name}>{policy.name}</h3>
-                                    <p className={`text-xs mt-1 line-clamp-2 ${isSelected ? "text-white/80" : "text-gray-500"}`}>
-                                        {policy.description || "No description provided."}
+                                    <h3 className={`text-[13.5px] font-bold truncate ${isSelected ? "text-[#2D79C7]" : "text-slate-800"}`} title={policy.name}>
+                                        {policy.name}
+                                    </h3>
+                                    <p className="text-[11.5px] text-slate-400 truncate mt-0.5" title={policy.description}>
+                                        {policy.description || "Standard probation timeline"}
                                     </p>
                                 </div>
 
-                                <div className={`pt-3 mt-3 border-t flex items-center justify-between text-xs font-bold ${
-                                    isSelected ? "border-white/20" : "border-gray-100"
-                                }`}>
-                                    <span className="font-mono">{policy.enrolledCount || 0} Employees</span>
+                                <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                                    <span className="text-[11.5px] font-medium text-slate-500 font-mono">
+                                        {policy.enrolledCount || 0} {policy.enrolledCount === 1 ? "Employee" : "Employees"}
+                                    </span>
                                     <button
                                         type="button"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             handleOpenAssignModal(policy._id);
                                         }}
-                                        className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-[6px] transition-colors cursor-pointer ${
-                                            isSelected ? "bg-white text-[#2D79C7] hover:bg-white/90" : "bg-blue-50 text-[#2D79C7] hover:bg-blue-100"
-                                        }`}
+                                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2D79C7] hover:bg-blue-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
                                     >
                                         <Plus className="w-3 h-3" />
-                                        <span>Add</span>
+                                        <span>Assign</span>
                                     </button>
                                 </div>
                             </div>

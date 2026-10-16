@@ -4,8 +4,8 @@ export const getDashboardData = async (employeeId) => {
     return API.get(`/dashboard/${employeeId}`)
 }
 
-export const clockIn = async (employeeId, workMode = "Office", wfhMessage = "", dailyWorkPlan = "") => {
-    return API.post("/attendance/clock-in", { employeeId, workMode, wfhMessage, dailyWorkPlan })
+export const clockIn = async (employeeId, workMode = "Office", wfhMessage = "", dailyWorkPlan = "", extra = {}) => {
+    return API.post("/attendance/clock-in", { employeeId, workMode, wfhMessage, dailyWorkPlan, ...extra })
 }
 
 export const clockOut = async (employeeId) => {

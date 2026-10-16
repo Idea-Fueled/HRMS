@@ -59,8 +59,10 @@ import {
     getUpcomingHolidays,
     createHoliday,
     updateHoliday,
-    deleteHoliday
+    deleteHoliday,
+    getLeaveSummary
 } from "../../services/dashboard.service";
+import { WebClockInModal, WfhRequestModal, ApplyLeaveModal } from "../me/Me";
 
 
 
@@ -757,14 +759,15 @@ const AttendanceLogsModal = ({ onClose, dateStr, logs, totalWorkMinutes, totalSe
 /* ─────────────────────────────────────────────
    TIME TODAY CARD
 ───────────────────────────────────────────── */
-const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
+const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeId }) => {
     const [now, setNow] = useState(new Date());
     const [elapsedSec, setElapsedSec] = useState(0);
     const [otherOpen, setOtherOpen] = useState(false);
     const [logsOpen, setLogsOpen] = useState(false);
+    const [webClockInOpen, setWebClockInOpen] = useState(false);
     const [wfhModalOpen, setWfhModalOpen] = useState(false);
-    const [wfhMessage, setWfhMessage] = useState("");
-    const [wfhSubmitting, setWfhSubmitting] = useState(false);
+    const [partialLeaveOpen, setPartialLeaveOpen] = useState(false);
+    const [leaveSummary, setLeaveSummary] = useState(null);
     const dropRef = useRef(null);
 
     const logs = attendance?.logs || [];
@@ -827,7 +830,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
         if (checkedIn) {
             onClockOut();
         } else {
-            onClockIn("Office");
+            setWebClockInOpen(true);
         }
     };
 
@@ -855,109 +858,34 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
                 />
             )}
 
-            {/* WFH Clock-In Modal */}
-            {wfhModalOpen && (
-                <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[999] flex items-center justify-center p-4 select-none animate-fadeIn">
-                    <div className="bg-white rounded-[20px] border border-gray-100 shadow-2xl max-w-md w-full overflow-hidden transform transition-all duration-300">
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6]">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-7 h-7 rounded-[10px] bg-blue-50 flex items-center justify-center border border-blue-100/50">
-                                    <Home className="w-3.5 h-3.5 text-[#2D79C7]" strokeWidth={2.5} />
-                                </div>
-                                <h3 className="text-[#1E1E1E] text-[14px] font-bold tracking-wide">Work From Home — Clock In</h3>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setWfhModalOpen(false);
-                                    setWfhMessage("");
-                                }}
-                                className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                            >
-                                <X className="w-4.5 h-4.5" />
-                            </button>
-                        </div>
+            {/* Web Clock In Daily Goal Modal */}
+            <WebClockInModal
+                isOpen={webClockInOpen}
+                onClose={() => setWebClockInOpen(false)}
+                onSubmit={async (dailyWorkPlan) => {
+                    await onClockIn("Office", "", dailyWorkPlan);
+                }}
+            />
 
-                        {/* Body */}
-                        <div className="p-6 space-y-4">
-                            <div className="flex items-start gap-3 bg-amber-50/70 border border-amber-100 rounded-[12px] p-3.5">
-                                <FileText className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                                <p className="text-amber-800 text-[11.5px] font-medium leading-relaxed">
-                                    WFH task description is <span className="font-bold">mandatory</span>. Please describe your planned tasks for today so HR and your manager can track your work.
-                                </p>
-                            </div>
+            {/* Request Work From Home Drawer Modal */}
+            <WfhRequestModal
+                isOpen={wfhModalOpen}
+                onClose={() => setWfhModalOpen(false)}
+                onSubmitSuccess={() => {
+                    if (onRefresh) onRefresh();
+                }}
+            />
 
-                            <div>
-                                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
-                                    Today's Task Plan *
-                                </label>
-                                <textarea
-                                    value={wfhMessage}
-                                    onChange={(e) => setWfhMessage(e.target.value)}
-                                    placeholder="e.g. Working on dashboard API integration, fixing attendance module bugs, attending team standup at 10 AM..."
-                                    rows={4}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-[14px] text-sm text-[#1E1E1E] placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all duration-200 shadow-inner resize-none"
-                                />
-                                <div className="flex items-center justify-between mt-1.5">
-                                    <span className="text-gray-400 text-[10px] font-medium">
-                                        {wfhMessage.trim().length === 0 ? "Required field" : `${wfhMessage.trim().length} characters`}
-                                    </span>
-                                    {wfhMessage.trim().length > 0 && wfhMessage.trim().length < 10 && (
-                                        <span className="text-amber-600 text-[10px] font-bold">Minimum 10 characters</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#F3F4F6] bg-[#FAFBFC]">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setWfhModalOpen(false);
-                                    setWfhMessage("");
-                                }}
-                                className="px-4 py-2 text-[12px] font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-[10px] transition-colors cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                disabled={wfhMessage.trim().length < 10 || wfhSubmitting}
-                                onClick={async () => {
-                                    try {
-                                        setWfhSubmitting(true);
-                                        await onClockIn("Work From Home", wfhMessage.trim());
-                                        setWfhModalOpen(false);
-                                        setWfhMessage("");
-                                    } catch (err) {
-                                        // error handled by parent
-                                    } finally {
-                                        setWfhSubmitting(false);
-                                    }
-                                }}
-                                className={`px-5 py-2 text-[12px] font-bold rounded-[10px] transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${wfhMessage.trim().length < 10 || wfhSubmitting
-                                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                    : "bg-[#2D79C7] hover:bg-[#1F5EA8] text-white shadow-sm active:scale-95"
-                                    }`}
-                            >
-                                {wfhSubmitting ? (
-                                    <>
-                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Clocking In...
-                                    </>
-                                ) : (
-                                    <>
-                                        <LogIn className="w-3.5 h-3.5" />
-                                        Clock In — WFH
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Apply Leave / Partial Day Modal */}
+            <ApplyLeaveModal
+                isOpen={partialLeaveOpen}
+                onClose={() => setPartialLeaveOpen(false)}
+                onSubmitSuccess={() => {
+                    if (onRefresh) onRefresh();
+                }}
+                initialLeaveType="partial_leave"
+                leaveSummary={leaveSummary}
+            />
 
             <Card>
                 <CardHeader icon={Clock} title="Time Today" />
@@ -1011,9 +939,19 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut }) => {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 setOtherOpen(false);
-                                                onClockIn("Partial Day");
+                                                if (employeeId) {
+                                                    try {
+                                                        const res = await getLeaveSummary(employeeId);
+                                                        if (res.data?.success) {
+                                                            setLeaveSummary(res.data.leaveSummary);
+                                                        }
+                                                    } catch (e) {
+                                                        console.error("Failed to fetch leave summary:", e);
+                                                    }
+                                                }
+                                                setPartialLeaveOpen(true);
                                             }}
                                             className="w-full flex items-center gap-3 px-4 py-2.5 text-[12px] font-medium text-gray-700 hover:bg-[#F0F7FF] hover:text-[#2D79C7] transition-colors text-left cursor-pointer"
                                         >
@@ -1853,9 +1791,9 @@ const Dashboard = () => {
         }
     }, [employeeId]);
 
-    const handleClockIn = async (workMode = "Office", wfhMessage = "") => {
+    const handleClockIn = async (workMode = "Office", wfhMessage = "", dailyWorkPlan = "") => {
         try {
-            const response = await clockIn(employeeId, workMode, wfhMessage);
+            const response = await clockIn(employeeId, workMode, wfhMessage, dailyWorkPlan);
             if (response.data && response.data.success) {
                 toast.success(`Clocked In successfully (${workMode})!`);
                 await fetchDashboard();
@@ -1978,6 +1916,8 @@ const Dashboard = () => {
                         attendance={dashboardData?.attendance}
                         onClockIn={handleClockIn}
                         onClockOut={handleClockOut}
+                        onRefresh={fetchDashboard}
+                        employeeId={employeeId}
                     />
                     <WhosAwayTodayCard
                         leaves={awayToday.leaves}

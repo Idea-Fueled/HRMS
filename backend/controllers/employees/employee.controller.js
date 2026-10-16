@@ -219,7 +219,7 @@ export const createEmployee = async (req, res) => {
             hire: isHrOrAdmin,
             offboardingAndOnboarding: isHrOrAdmin,
             organization: isHrOrAdmin,
-            probation: role === "global_admin" || role === "admin"
+            probation: isHrOrAdmin
         };
 
         const resolvedPermissions = permissions 

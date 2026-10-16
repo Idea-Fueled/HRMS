@@ -481,7 +481,17 @@ const WfhRequestModal = ({ isOpen, onClose, onSubmitSuccess }) => {
         setSubmitting(true);
         try {
             const employeeId = user?._id || user?.id;
-            const res = await clockIn(employeeId, "Work From Home", note || "Work From Home Request");
+            const res = await clockIn(
+                employeeId,
+                "Work From Home",
+                note || "Work From Home Request",
+                "",
+                {
+                    fromDate,
+                    toDate,
+                    notifyEmployees: selectedEmployees.map(e => e._id || e.id)
+                }
+            );
             if (res.data?.success) {
                 toast.success("Work From Home request submitted successfully!");
                 if (onSubmitSuccess) onSubmitSuccess(res.data.attendance);
@@ -3701,4 +3711,5 @@ const Me = () => {
     );
 };
 
+export { WebClockInModal, WfhRequestModal, ApplyLeaveModal, NotifyEmployeeSelector };
 export default Me;

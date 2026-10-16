@@ -166,12 +166,18 @@ export const AuthProvider = ({ children }) => {
             return !!(user.permissions.documents?.companyDocuments || user.permissions.documents?.employeeDocuments);
         }
         if (normPath === "time-attendance") return user.permissions.timeAndAttend !== false;
-        if (normPath === "employees") return user.permissions.employees !== false;
+        if (normPath === "employees") {
+            if (userRole === "hr") return user.permissions?.employees !== false;
+            return user.permissions?.employees === true;
+        }
         if (normPath === "payroll") return user.permissions.payroll !== false;
         if (normPath === "recruitment") return user.permissions.recruitment !== false;
         if (normPath === "offboarding-onboarding") return user.permissions.offboardingAndOnboarding !== false;
         if (normPath === "organization") return user.permissions.organization !== false;
-        if (normPath === "probation") return user.permissions?.probation === true;
+        if (normPath === "probation") {
+            if (userRole === "hr") return user.permissions?.probation !== false;
+            return user.permissions?.probation === true;
+        }
         if (normPath === "settings") return true;
 
         return true;

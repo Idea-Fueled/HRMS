@@ -1,6 +1,9 @@
 import Attendance from "../../models/attendance/attendance.model.js";
 import Leave from "../../models/leaves/leave.model.js";
 import User from "../../models/users/user.model.js";
+import Email from "../../models/emails/email.model.js";
+import { emitToUser } from "../../socket/socket.js";
+import { dispatchExternalEmail } from "../../services/email.service.js";
 import mongoose from "mongoose";
 import XLSX from "xlsx";
 
@@ -9,7 +12,7 @@ import XLSX from "xlsx";
  */
 export const clockIn = async (req, res) => {
     try {
-        const { employeeId, workMode, wfhMessage, dailyWorkPlan } = req.body;
+        const { employeeId, workMode, wfhMessage, dailyWorkPlan, fromDate, toDate, notifyEmployees } = req.body;
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -64,6 +67,149 @@ export const clockIn = async (req, res) => {
             }
 
             await attendance.save();
+        }
+
+        // If applying for Work From Home, dispatch notifications to Global Admins and Reporting Manager
+        if (workMode === "Work From Home") {
+            try {
+                const applicant = await User.findById(employeeId).populate("department").populate("managerId");
+                if (applicant) {
+                    const applicantName = applicant.fullName || `${applicant.firstName || ''} ${applicant.lastName || ''}`.trim() || "Employee";
+                    const applicantEmpId = applicant.employeeId || "—";
+                    const applicantDept = applicant.department?.name || applicant.department || "General";
+                    const applicantDesignation = applicant.designation || "Employee";
+                    const applicantEmail = applicant.email;
+
+                    const recipientUserIds = new Set();
+                    if (Array.isArray(notifyEmployees)) {
+                        notifyEmployees.forEach(id => { if (id) recipientUserIds.add(id.toString()); });
+                    }
+                    if (applicant?.managerId?._id) {
+                        recipientUserIds.add(applicant.managerId._id.toString());
+                    } else if (applicant?.managerId) {
+                        recipientUserIds.add(applicant.managerId.toString());
+                    }
+                    const globalAdmins = await User.find({ role: { $in: ["global_admin", "admin"] } }).select("_id email fullName role");
+                    globalAdmins.forEach(ga => recipientUserIds.add(ga._id.toString()));
+
+                    recipientUserIds.delete(employeeId.toString());
+
+                    const recipients = await User.find({ _id: { $in: Array.from(recipientUserIds) } });
+
+                    const fromStr = fromDate || new Date().toISOString().split("T")[0];
+                    const toStr = toDate || fromStr;
+                    const datesDisplay = fromStr === toStr ? fromStr : `${fromStr} to ${toStr}`;
+                    const noteText = wfhMessage || "Work From Home Request";
+
+                    const subject = `Work From Home Request: ${applicantName} (${applicantEmpId})`;
+                    const snippet = `${applicantName} has requested Work From Home for ${datesDisplay}.`;
+
+                    const emailHtml = `
+                        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+                            <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 24px; color: #ffffff;">
+                                <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Work From Home Request</h2>
+                                <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px;">Employee has submitted a Work From Home notification/request.</p>
+                            </div>
+                            
+                            <div style="padding: 24px;">
+                                <p style="font-size: 14px; color: #374151; margin-top: 0;">
+                                    Hello,
+                                </p>
+                                <p style="font-size: 14px; color: #374151;">
+                                    <strong>${applicantName}</strong> has requested <strong>Work From Home</strong> for <strong>${datesDisplay}</strong>.
+                                </p>
+
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600; width: 140px;">Employee Name:</td>
+                                            <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${applicantName}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Employee ID:</td>
+                                            <td style="padding: 6px 0; color: #1E293B;">${applicantEmpId}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Department:</td>
+                                            <td style="padding: 6px 0; color: #1E293B;">${applicantDept}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Designation:</td>
+                                            <td style="padding: 6px 0; color: #1E293B;">${applicantDesignation}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Duration / Date:</td>
+                                            <td style="padding: 6px 0; color: #2D79C7; font-weight: 700;">${datesDisplay}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600; vertical-align: top;">Work Plan / Note:</td>
+                                            <td style="padding: 6px 0; color: #1E293B; white-space: pre-line;">${noteText}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div style="text-align: center; margin-top: 20px;">
+                                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/me" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
+                                        View in Attendance
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div style="background: #F1F5F9; padding: 12px 24px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
+                                Idea-Fueled HRMS Automated Notification
+                            </div>
+                        </div>
+                    `;
+
+                    for (const rec of recipients) {
+                        const recEmail = (rec.email || "").toLowerCase();
+                        if (!recEmail) continue;
+
+                        try {
+                            const emailDoc = new Email({
+                                sender: applicant._id,
+                                senderEmail: applicantEmail,
+                                senderName: applicantName,
+                                senderAvatar: applicant.profilePicture || "",
+                                senderRole: applicant.role,
+                                to: [recEmail],
+                                subject,
+                                body: emailHtml,
+                                snippet,
+                                priority: "high",
+                                labels: ["Attendance", "WFH", "Notification"],
+                                userStates: [{
+                                    user: rec._id,
+                                    email: recEmail,
+                                    folder: "inbox",
+                                    isRead: false
+                                }]
+                            });
+                            emailDoc.threadId = emailDoc._id;
+                            await emailDoc.save();
+
+                            emitToUser({ userId: rec._id, email: recEmail }, "new_email", {
+                                email: emailDoc,
+                                unreadCount: 1
+                            });
+                        } catch (internalMailErr) {
+                            console.error("Error creating internal email doc for WFH:", internalMailErr);
+                        }
+
+                        try {
+                            await dispatchExternalEmail({
+                                to: recEmail,
+                                subject,
+                                body: emailHtml
+                            });
+                        } catch (externalMailErr) {
+                            console.warn("External email delivery for WFH skipped/failed:", externalMailErr);
+                        }
+                    }
+                }
+            } catch (wfhErr) {
+                console.error("Error dispatching WFH notification emails:", wfhErr);
+            }
         }
 
         return res.status(200).json({

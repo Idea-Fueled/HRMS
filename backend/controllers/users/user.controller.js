@@ -31,7 +31,8 @@ const resolveUserPermissions = (user) => {
             recruitment: isHrOrAdmin,
             hire: isHrOrAdmin,
             offboardingAndOnboarding: isHrOrAdmin,
-            organization: isHrOrAdmin
+            organization: isHrOrAdmin,
+            probation: isHrOrAdmin
         };
     }
     return userObj;

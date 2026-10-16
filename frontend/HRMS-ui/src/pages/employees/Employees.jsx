@@ -119,7 +119,10 @@ const EMPTY_FORM = {
     ctc: 0, basic: 0, hra: 0, medicalAllowance: 0, conveyanceAllowance: 0, specialAllowance: 0, otherAllowances: 0,
     casualLeave: 2.5, sickLeave: 6, earnedLeave: 5, compOffLeave: 0,
     password: "", confirmPassword: "", status: "active",
-    permissions: { ...DEFAULT_PERMISSIONS }
+    permissions: { 
+        ...DEFAULT_PERMISSIONS,
+        documents: { ...DEFAULT_PERMISSIONS.documents }
+    }
 };
 
 
@@ -858,10 +861,23 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 password: "",
                 confirmPassword: "",
                 status: employee.status || "active",
-                permissions: employee.permissions || { ...DEFAULT_PERMISSIONS }
+                permissions: {
+                    ...DEFAULT_PERMISSIONS,
+                    ...(employee.permissions || {}),
+                    documents: {
+                        ...DEFAULT_PERMISSIONS.documents,
+                        ...(employee.permissions?.documents || {})
+                    }
+                }
             };
         }
-        return { ...EMPTY_FORM, permissions: { ...DEFAULT_PERMISSIONS } };
+        return { 
+            ...EMPTY_FORM, 
+            permissions: { 
+                ...DEFAULT_PERMISSIONS,
+                documents: { ...DEFAULT_PERMISSIONS.documents }
+            } 
+        };
     });
 
     const [errors, setErrors] = useState({});
@@ -1048,7 +1064,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     hire: isHrOrAdmin,
                     offboardingAndOnboarding: isHrOrAdmin,
                     organization: isHrOrAdmin,
-                    probation: val === "global_admin" || val === "admin"
+                    employees: isHrOrAdmin,
+                    probation: isHrOrAdmin
                 }
             }));
             if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }));
@@ -1538,25 +1555,104 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                         />
                                     </div>
 
-                                    {/* Employees */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
-                                        <div>
-                                            <p className="text-xs font-black text-slate-800">Employees Module</p>
-                                            <p className="text-[10px] text-gray-400 font-bold">Create and manage workforce accounts</p>
+                                    {/* Organization Tabs Group */}
+                                    <div className="p-3 bg-white border border-gray-200/90 rounded-[12px] space-y-2.5 shadow-2xs">
+                                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-6 h-6 rounded-lg bg-blue-50 text-[#2D79C7] flex items-center justify-center font-bold text-xs">
+                                                    <Building2 className="w-3.5 h-3.5" />
+                                                </span>
+                                                <div>
+                                                    <p className="text-xs font-black text-slate-800">Organization (Tabs & Structure)</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold">Manage visibility for Organization menu & its child tabs</p>
+                                                </div>
+                                            </div>
+                                            {!isRoleGlobalAdmin && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const isAnyOff = form.permissions?.organization === false || form.permissions?.employees === false || form.permissions?.probation !== true;
+                                                        setForm(prev => ({
+                                                            ...prev,
+                                                            permissions: {
+                                                                ...prev.permissions,
+                                                                organization: isAnyOff,
+                                                                employees: isAnyOff,
+                                                                probation: isAnyOff
+                                                            }
+                                                        }));
+                                                    }}
+                                                    className="text-[10.5px] font-bold text-[#2D79C7] hover:text-[#1F5EA8] cursor-pointer"
+                                                >
+                                                    {(form.permissions?.organization === false || form.permissions?.employees === false || form.permissions?.probation !== true) ? "Enable All" : "Disable All"}
+                                                </button>
+                                            )}
                                         </div>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={isRoleGlobalAdmin || form.permissions?.employees !== false} 
-                                            disabled={isRoleGlobalAdmin}
-                                            onChange={(e) => setForm(prev => ({
-                                                ...prev,
-                                                permissions: {
-                                                    ...prev.permissions,
-                                                    employees: e.target.checked
-                                                }
-                                            }))}
-                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
-                                        />
+
+                                        <div className="space-y-2 pt-0.5">
+                                            {/* Organization -> Structure / Hierarchy */}
+                                            <div className={`flex items-center justify-between p-2.5 bg-gray-50/70 border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200 hover:bg-white'}`}>
+                                                <div className="pl-1">
+                                                    <p className="text-xs font-black text-slate-800">Organization → Structure & Hierarchy</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold">Company structure, hierarchy tree and organization chart</p>
+                                                </div>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isRoleGlobalAdmin || form.permissions?.organization !== false} 
+                                                    disabled={isRoleGlobalAdmin}
+                                                    onChange={(e) => setForm(prev => ({
+                                                        ...prev,
+                                                        permissions: {
+                                                            ...prev.permissions,
+                                                            organization: e.target.checked
+                                                        }
+                                                    }))}
+                                                    className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                />
+                                            </div>
+
+                                            {/* Organization -> Employees */}
+                                            <div className={`flex items-center justify-between p-2.5 bg-gray-50/70 border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200 hover:bg-white'}`}>
+                                                <div className="pl-1">
+                                                    <p className="text-xs font-black text-slate-800">Organization → Employees</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold">Workforce directory, profiles, and employee accounts</p>
+                                                </div>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isRoleGlobalAdmin || form.permissions?.employees !== false} 
+                                                    disabled={isRoleGlobalAdmin}
+                                                    onChange={(e) => setForm(prev => ({
+                                                        ...prev,
+                                                        permissions: {
+                                                            ...prev.permissions,
+                                                            employees: e.target.checked
+                                                        }
+                                                    }))}
+                                                    className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                />
+                                            </div>
+
+                                            {/* Organization -> Probation */}
+                                            <div className={`flex items-center justify-between p-2.5 bg-gray-50/70 border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200 hover:bg-white'}`}>
+                                                <div className="pl-1">
+                                                    <p className="text-xs font-black text-slate-800">Organization → Probation</p>
+                                                    <p className="text-[10px] text-gray-400 font-bold">Probation policies, duration countdown and employee tracking</p>
+                                                </div>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isRoleGlobalAdmin || form.permissions?.probation === true} 
+                                                    disabled={isRoleGlobalAdmin}
+                                                    onChange={(e) => setForm(prev => ({
+                                                        ...prev,
+                                                        permissions: {
+                                                            ...prev.permissions,
+                                                            probation: e.target.checked
+                                                        }
+                                                    }))}
+                                                    className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     {/* Payroll */}
@@ -1637,48 +1733,6 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                                 permissions: {
                                                     ...prev.permissions,
                                                     offboardingAndOnboarding: e.target.checked
-                                                }
-                                            }))}
-                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
-                                        />
-                                    </div>
-
-                                    {/* Organization */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
-                                        <div>
-                                            <p className="text-xs font-black text-slate-800">Organization</p>
-                                            <p className="text-[10px] text-gray-400 font-bold">Company structure, hierarchy and units</p>
-                                        </div>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={isRoleGlobalAdmin || form.permissions?.organization !== false} 
-                                            disabled={isRoleGlobalAdmin}
-                                            onChange={(e) => setForm(prev => ({
-                                                ...prev,
-                                                permissions: {
-                                                    ...prev.permissions,
-                                                    organization: e.target.checked
-                                                }
-                                            }))}
-                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
-                                        />
-                                    </div>
-
-                                    {/* Probation */}
-                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
-                                        <div>
-                                            <p className="text-xs font-black text-slate-800">Probation</p>
-                                            <p className="text-[10px] text-gray-400 font-bold">Probation policies, duration and employee tracking</p>
-                                        </div>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={isRoleGlobalAdmin || form.permissions?.probation === true} 
-                                            disabled={isRoleGlobalAdmin}
-                                            onChange={(e) => setForm(prev => ({
-                                                ...prev,
-                                                permissions: {
-                                                    ...prev.permissions,
-                                                    probation: e.target.checked
                                                 }
                                             }))}
                                             className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 

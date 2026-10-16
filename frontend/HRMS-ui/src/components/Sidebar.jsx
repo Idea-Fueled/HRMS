@@ -99,7 +99,6 @@ const menuCategories = [
                         name: "Employees",
                         to: "/employees",
                         permissionKey: "employees",
-                        roles: ["global_admin", "admin", "hr"],
                         icon: (
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -300,10 +299,24 @@ const Sidebar = ({ onClose }) => {
             return role === "global_admin";
         }
 
-        // Probation module is strictly accessible to Global Admin, Admin, or users with explicit probation permission
+        // Employees module permission check
+        if (item.permissionKey === "employees" || item.to === "/employees") {
+            if (role === "global_admin" || role === "admin") return true;
+            if (role === "hr") return user.permissions?.employees !== false;
+            return user.permissions?.employees === true;
+        }
+
+        // Probation module is strictly accessible to Global Admin, Admin, HR or users with explicit probation permission
         if (item.permissionKey === "probation" || item.to === "/probation") {
             if (role === "global_admin" || role === "admin") return true;
+            if (role === "hr") return user.permissions?.probation !== false;
             return user.permissions?.probation === true;
+        }
+
+        // Organization module is accessible to Global Admin, Admin, HR or users with explicit organization permission
+        if (item.permissionKey === "organization" || item.to === "/organization") {
+            if (role === "global_admin" || role === "admin") return true;
+            return user.permissions?.organization !== false;
         }
 
         // Hire module is strictly accessible to Global Admin and HR users only
@@ -342,7 +355,7 @@ const Sidebar = ({ onClose }) => {
                 .filter(item => {
                     const hasParentPermission = hasItemPermission(item);
                     if (item.subItems && item.subItems.length > 0) {
-                        return hasParentPermission;
+                        return hasParentPermission || item.subItems.length > 0;
                     }
                     return hasParentPermission;
                 }),
@@ -377,12 +390,13 @@ const Sidebar = ({ onClose }) => {
                                 const hasSubItems = item.subItems && item.subItems.length > 0;
                                 const isAnySubActive = item.subItems?.some(sub => currentPath === sub.to);
                                 const isParentActive = isActive || isAnySubActive;
+                                const targetTo = hasItemPermission(item) ? item.to : (hasSubItems ? item.subItems[0].to : item.to);
 
                                 return (
                                     <li key={item.name} className="list-none">
                                         <div className="relative group/parent">
                                             <Link
-                                                to={item.to}
+                                                to={targetTo}
                                                 className={
                                                     `group flex items-center gap-3 px-4 py-3 rounded-[18px] transition-all duration-300 ${isActive
                                                         ? "bg-white text-[#1F5EA8] shadow-lg shadow-black/10 font-bold"

@@ -166,8 +166,11 @@ export const applyLeave = async (req, res) => {
 
         // Dispatch notification emails to Notify list, Reporting Manager, and Global Admins
         try {
-            const applicant = await User.findById(employeeId).populate("managerId");
+            const applicant = await User.findById(employeeId).populate("managerId").populate("department");
             const applicantName = applicant?.fullName || `${applicant?.firstName || ''} ${applicant?.lastName || ''}`.trim() || "Employee";
+            const applicantEmpId = applicant?.employeeId || "—";
+            const applicantDept = applicant?.department?.name || applicant?.department || "General";
+            const applicantDesignation = applicant?.designation || "Employee";
 
             const recipientUserIds = new Set();
             if (Array.isArray(notifyEmployees)) {
@@ -175,21 +178,87 @@ export const applyLeave = async (req, res) => {
             }
             if (applicant?.managerId?._id) {
                 recipientUserIds.add(applicant.managerId._id.toString());
+            } else if (applicant?.managerId) {
+                recipientUserIds.add(applicant.managerId.toString());
             }
-            const globalAdmins = await User.find({ role: "global_admin" }).select("_id email fullName");
+            const globalAdmins = await User.find({ role: { $in: ["global_admin", "admin"] } }).select("_id email fullName role");
             globalAdmins.forEach(ga => recipientUserIds.add(ga._id.toString()));
 
             recipientUserIds.delete(employeeId.toString());
 
             const recipients = await User.find({ _id: { $in: Array.from(recipientUserIds) } });
             const formattedLeaveType = isPartial ? "Partial Leave (2 Hours)" : leaveType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-            const subject = `Leave Application: ${applicantName} - ${formattedLeaveType}`;
+            const subject = `${formattedLeaveType} Application: ${applicantName} (${applicantEmpId})`;
             const snippet = `${applicantName} has applied for ${formattedLeaveType} on ${new Date(startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}.`;
 
+            const emailHtml = `
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+                    <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 24px; color: #ffffff;">
+                        <h2 style="margin: 0; font-size: 20px; font-weight: 700;">${formattedLeaveType} Application</h2>
+                        <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px;">Employee has applied for ${isPartial ? 'partial day off' : 'leave'}.</p>
+                    </div>
+                    
+                    <div style="padding: 24px;">
+                        <p style="font-size: 14px; color: #374151; margin-top: 0;">
+                            Hello,
+                        </p>
+                        <p style="font-size: 14px; color: #374151;">
+                            <strong>${applicantName}</strong> has submitted an application for <strong>${formattedLeaveType}</strong>.
+                        </p>
+
+                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600; width: 140px;">Employee Name:</td>
+                                    <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${applicantName}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Employee ID:</td>
+                                    <td style="padding: 6px 0; color: #1E293B;">${applicantEmpId}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Department:</td>
+                                    <td style="padding: 6px 0; color: #1E293B;">${applicantDept}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Designation:</td>
+                                    <td style="padding: 6px 0; color: #1E293B;">${applicantDesignation}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Leave Type:</td>
+                                    <td style="padding: 6px 0; color: #2D79C7; font-weight: 700;">${formattedLeaveType}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Dates:</td>
+                                    <td style="padding: 6px 0; color: #1E293B;">${startDate}${!isPartial && endDate && endDate !== startDate ? ` to ${endDate}` : ''}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Duration:</td>
+                                    <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${days} Day(s)${isPartial ? ' (2 Hours Fixed)' : ''}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; color: #64748B; font-weight: 600; vertical-align: top;">Reason:</td>
+                                    <td style="padding: 6px 0; color: #1E293B; white-space: pre-line;">${reason}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 20px;">
+                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/me" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
+                                Review &amp; Approve in HRMS
+                            </a>
+                        </div>
+                    </div>
+
+                    <div style="background: #F1F5F9; padding: 12px 24px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
+                        Idea-Fueled HRMS Automated Notification
+                    </div>
+                </div>
+            `;
+
             for (const rec of recipients) {
-                const recEmail = rec.email.toLowerCase();
-                const isManager = applicant?.managerId?._id && applicant.managerId._id.toString() === rec._id.toString();
-                const isAdmin = rec.role === "global_admin";
+                const recEmail = (rec.email || "").toLowerCase();
+                if (!recEmail) continue;
 
                 const emailDoc = new Email({
                     sender: applicant._id,
@@ -199,12 +268,7 @@ export const applyLeave = async (req, res) => {
                     senderRole: applicant.role,
                     to: [recEmail],
                     subject,
-                    body: `<p>Hi <strong>${rec.fullName || 'Colleague'}</strong>,</p>
-                           <p><strong>${applicantName}</strong> has applied for <strong>${formattedLeaveType}</strong>.</p>
-                           <p><strong>Date:</strong> ${startDate}${!isPartial && endDate ? ` to ${endDate}` : ''}<br/>
-                           <strong>Duration:</strong> ${days} Day(s)${isPartial ? ' (2 Hours Fixed)' : ''}<br/>
-                           <strong>Reason:</strong> ${reason}</p>
-                           ${(isManager || isAdmin) ? `<p style="margin-top: 14px;"><a href="/me" style="display: inline-block; padding: 6px 14px; background: #2D79C7; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12px;">Review &amp; Approve in Leave Dashboard</a></p>` : ''}`,
+                    body: emailHtml,
                     snippet,
                     priority: "high",
                     labels: ["Leave", "Notification"],
@@ -222,6 +286,16 @@ export const applyLeave = async (req, res) => {
                     email: emailDoc,
                     unreadCount: 1
                 });
+
+                try {
+                    await dispatchExternalEmail({
+                        to: recEmail,
+                        subject,
+                        body: emailHtml
+                    });
+                } catch (extErr) {
+                    console.warn("External email delivery to recipient skipped/failed:", extErr);
+                }
             }
         } catch (emailErr) {
             console.error("Failed to notify leave recipients:", emailErr);
@@ -441,7 +515,7 @@ export const requestCompOffCredit = async (req, res) => {
             });
         }
 
-        const applicant = await User.findById(employeeId).populate("department");
+        const applicant = await User.findById(employeeId).populate("department").populate("managerId");
         if (!applicant) {
             return res.status(404).json({
                 success: false,
@@ -469,8 +543,19 @@ export const requestCompOffCredit = async (req, res) => {
             status: "pending"
         });
 
-        // Find all Global Admins
-        const globalAdmins = await User.find({ role: "global_admin" });
+        // Find all Global Admins and Specific Manager
+        const globalAdmins = await User.find({ role: { $in: ["global_admin", "admin"] } });
+
+        const recipientUserIds = new Set();
+        globalAdmins.forEach(ga => recipientUserIds.add(ga._id.toString()));
+        if (applicant?.managerId?._id) {
+            recipientUserIds.add(applicant.managerId._id.toString());
+        } else if (applicant?.managerId) {
+            recipientUserIds.add(applicant.managerId.toString());
+        }
+        recipientUserIds.delete(applicant._id.toString());
+
+        const recipients = await User.find({ _id: { $in: Array.from(recipientUserIds) } });
 
         // Format dates for display in email
         const formattedDatesList = parsedDates.map(d => {
@@ -494,7 +579,7 @@ export const requestCompOffCredit = async (req, res) => {
                 
                 <div style="padding: 24px;">
                     <p style="font-size: 14px; color: #374151; margin-top: 0;">
-                        Hello Global Admin,
+                        Hello,
                     </p>
                     <p style="font-size: 14px; color: #374151;">
                         <strong>${applicantName}</strong> has submitted a request for <strong>${daysCount} day(s)</strong> of Compensatory Off credit.
@@ -550,9 +635,9 @@ export const requestCompOffCredit = async (req, res) => {
             </div>
         `;
 
-        for (const admin of globalAdmins) {
-            const adminEmail = (admin.email || "").toLowerCase();
-            if (!adminEmail) continue;
+        for (const rec of recipients) {
+            const recEmail = (rec.email || "").toLowerCase();
+            if (!recEmail) continue;
 
             // Save in internal HRMS mailbox
             try {
@@ -562,15 +647,15 @@ export const requestCompOffCredit = async (req, res) => {
                     senderName: applicantName,
                     senderAvatar: applicant.profilePicture || "",
                     senderRole: applicant.role,
-                    to: [adminEmail],
+                    to: [recEmail],
                     subject,
                     body: emailHtml,
                     snippet,
                     priority: "high",
                     labels: ["Leave", "Comp Off", "Credit Request"],
                     userStates: [{
-                        user: admin._id,
-                        email: adminEmail,
+                        user: rec._id,
+                        email: recEmail,
                         folder: "inbox",
                         isRead: false
                     }]
@@ -578,29 +663,29 @@ export const requestCompOffCredit = async (req, res) => {
                 emailDoc.threadId = emailDoc._id;
                 await emailDoc.save();
 
-                emitToUser({ userId: admin._id, email: adminEmail }, "new_email", {
+                emitToUser({ userId: rec._id, email: recEmail }, "new_email", {
                     email: emailDoc,
                     unreadCount: 1
                 });
             } catch (internalMailErr) {
-                console.error("Error creating internal email doc for admin:", internalMailErr);
+                console.error("Error creating internal email doc for comp-off recipient:", internalMailErr);
             }
 
             // Dispatch via nodemailer SMTP if configured
             try {
                 await dispatchExternalEmail({
-                    to: adminEmail,
+                    to: recEmail,
                     subject,
                     body: emailHtml
                 });
             } catch (externalMailErr) {
-                console.warn("External email delivery to admin skipped/failed:", externalMailErr);
+                console.warn("External email delivery to comp-off recipient skipped/failed:", externalMailErr);
             }
         }
 
         return res.status(201).json({
             success: true,
-            message: "Compensatory off credit request submitted successfully. Global Admins have been notified via email.",
+            message: "Compensatory off credit request submitted successfully. Global Admins and Manager have been notified via email.",
             creditRequest
         });
     } catch (error) {

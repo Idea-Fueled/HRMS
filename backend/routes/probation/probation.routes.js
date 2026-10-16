@@ -23,7 +23,7 @@ const canAccessProbation = async (req, res, next) => {
         }
         
         const user = await User.findById(req.user?._id).select("permissions");
-        if (user?.permissions?.probation === true) {
+        if (user?.permissions?.probation === true || (role === "hr" && user?.permissions?.probation !== false)) {
             return next();
         }
 
