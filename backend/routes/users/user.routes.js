@@ -10,7 +10,10 @@ import {
     uploadProfilePicture,
     updateProfilePicture,
     getUserFinances,
-    uploadDocument
+    uploadDocument,
+    changePassword,
+    updateUserPreferences,
+    sendCelebrationWish
 } from "../../controllers/users/user.controller.js";
 import { isAuthenticated } from "../../middlewares/auth.middleware.js";
 import { upload, uploadDoc } from "../../middlewares/upload.middleware.js";
@@ -28,5 +31,8 @@ router.get("/people-events", isAuthenticated, getPeopleEvents);
 router.post("/upload-profile-picture", isAuthenticated, upload.single("image"), uploadProfilePicture);
 router.put("/update-profile-picture", isAuthenticated, updateProfilePicture);
 router.post("/upload-document", isAuthenticated, uploadDoc.single("file"), uploadDocument);
+router.put("/change-password", isAuthenticated, changePassword);
+router.put("/preferences", isAuthenticated, updateUserPreferences);
+router.post("/send-wish", isAuthenticated, sendCelebrationWish);
 
 export default router;

@@ -110,6 +110,17 @@ const menuCategories = [
                         ),
                     },
                     {
+                        name: "Probation",
+                        to: "/probation",
+                        permissionKey: "probation",
+                        icon: (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                        ),
+                    },
+                    {
                         name: "Documents",
                         to: "/documents",
                         permissionKey: "documents",
@@ -287,6 +298,12 @@ const Sidebar = ({ onClose }) => {
 
         if (item.permissionKey === "logs" || item.to === "/logs") {
             return role === "global_admin";
+        }
+
+        // Probation module is strictly accessible to Global Admin, Admin, or users with explicit probation permission
+        if (item.permissionKey === "probation" || item.to === "/probation") {
+            if (role === "global_admin" || role === "admin") return true;
+            return user.permissions?.probation === true;
         }
 
         // Hire module is strictly accessible to Global Admin and HR users only

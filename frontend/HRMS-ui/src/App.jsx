@@ -24,6 +24,8 @@ import Assets from "./pages/assets/Assets";
 import Inbox from "./pages/inbox/Inbox";
 import Reports from "./pages/reports/Reports";
 import ActivityLogs from "./pages/activity-logs/ActivityLogs";
+import Probation from "./pages/probation/Probation";
+import Settings from "./pages/settings/Settings";
 
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
@@ -104,6 +106,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={ADMIN_HR}>
                         <Employees />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "probation",
+                element: (
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
+                        <Probation />
                     </ProtectedRoute>
                 ),
             },
@@ -196,6 +206,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={ALL_ROLES}>
                         <Organization />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "settings",
+                element: (
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
+                        <Settings />
                     </ProtectedRoute>
                 ),
             },

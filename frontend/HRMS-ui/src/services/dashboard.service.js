@@ -77,6 +77,10 @@ export const getPeopleEvents = async () => {
     return API.get("/users/people-events")
 }
 
+export const sendCelebrationWish = async ({ recipientId, eventType, message, meta }) => {
+    return API.post("/users/send-wish", { recipientId, eventType, message, meta });
+}
+
 export const createPoll = async (pollData) => {
     return API.post("/polls", pollData)
 }

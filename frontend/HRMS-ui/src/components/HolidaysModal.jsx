@@ -4,6 +4,7 @@ import { X, CalendarDays, Loader2, AlertCircle, Calendar, Edit3, Trash2 } from "
 import { toast } from "sonner";
 import { getAllHolidays, updateHoliday, deleteHoliday } from "../services/dashboard.service";
 import { useAuth } from "../context/AuthContext";
+import ConfirmDialog from "./ConfirmDialog";
 import independanceDayImg from "../assets/independance_day.png";
 import newYearImg from "../assets/new_year.png";
 import mahashivratriImg from "../assets/mahashivratri_day.png";
@@ -189,6 +190,7 @@ const HolidaysModal = ({ isOpen, onClose }) => {
     const [error, setError] = useState(null);
     const [editingHoliday, setEditingHoliday] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
+    const [confirmDeleteHoliday, setConfirmDeleteHoliday] = useState(null);
 
     const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
@@ -215,13 +217,18 @@ const HolidaysModal = ({ isOpen, onClose }) => {
         if (isOpen) fetchHolidays();
     }, [isOpen]);
 
-    const handleDelete = async (holiday) => {
-        if (!window.confirm(`Delete "${holiday.title}"? This cannot be undone.`)) return;
-        setDeletingId(holiday._id);
+    const handleDeleteClick = (holiday) => {
+        setConfirmDeleteHoliday(holiday);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!confirmDeleteHoliday) return;
+        setDeletingId(confirmDeleteHoliday._id);
         try {
-            const res = await deleteHoliday(holiday._id);
+            const res = await deleteHoliday(confirmDeleteHoliday._id);
             if (res.data?.success) {
                 toast.success("Holiday deleted.");
+                setConfirmDeleteHoliday(null);
                 fetchHolidays();
             } else {
                 toast.error(res.data?.message || "Failed to delete.");
@@ -306,7 +313,7 @@ const HolidaysModal = ({ isOpen, onClose }) => {
                             <Edit3 className="w-3 h-3" />
                         </button>
                         <button
-                            onClick={() => handleDelete(h)}
+                            onClick={() => handleDeleteClick(h)}
                             disabled={isDeleting}
                             title="Delete"
                             className="p-1.5 rounded-lg bg-white/85 backdrop-blur-md text-gray-600 hover:text-rose-600 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
@@ -453,6 +460,19 @@ const HolidaysModal = ({ isOpen, onClose }) => {
                     holiday={editingHoliday}
                     onClose={() => setEditingHoliday(null)}
                     onSuccess={() => { fetchHolidays(); setEditingHoliday(null); }}
+                />
+            )}
+            {/* Confirm Delete Holiday Dialog */}
+            {confirmDeleteHoliday && (
+                <ConfirmDialog
+                    isOpen={!!confirmDeleteHoliday}
+                    title={`Delete "${confirmDeleteHoliday.title}"?`}
+                    message={`Are you sure you want to delete "${confirmDeleteHoliday.title}"? This cannot be undone.`}
+                    confirmLabel="Delete Holiday"
+                    variant="danger"
+                    loading={!!deletingId}
+                    onConfirm={handleConfirmDelete}
+                    onCancel={() => setConfirmDeleteHoliday(null)}
                 />
             )}
         </>,

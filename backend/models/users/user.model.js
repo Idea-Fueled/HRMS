@@ -290,6 +290,11 @@ const userScehma = new mongoose.Schema({
         type: Number,
         default: 180 // duration in days
     },
+    probationPolicy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ProbationPolicy",
+        default: null
+    },
     permissions: {
         type: {
             dashboard: { type: Boolean, default: true },
@@ -306,7 +311,8 @@ const userScehma = new mongoose.Schema({
             recruitment: { type: Boolean, default: false },
             hire: { type: Boolean, default: false },
             offboardingAndOnboarding: { type: Boolean, default: false },
-            organization: { type: Boolean, default: false }
+            organization: { type: Boolean, default: false },
+            probation: { type: Boolean, default: false }
         },
         default: {
             dashboard: true,
@@ -323,8 +329,21 @@ const userScehma = new mongoose.Schema({
             recruitment: false,
             hire: false,
             offboardingAndOnboarding: false,
-            organization: false
+            organization: false,
+            probation: false
         }
+    },
+    preferences: {
+        emailNotifications: {
+            payslips: { type: Boolean, default: true },
+            leaves: { type: Boolean, default: true },
+            announcements: { type: Boolean, default: true },
+            emails: { type: Boolean, default: true }
+        },
+        inAppAlerts: { type: Boolean, default: true },
+        desktopNotifications: { type: Boolean, default: true },
+        dateFormat: { type: String, default: "DD/MM/YYYY" },
+        compactMode: { type: Boolean, default: false }
     }
 
 },

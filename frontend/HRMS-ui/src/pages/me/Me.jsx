@@ -41,6 +41,7 @@ import { getAllEmployees } from "../../services/employee.service";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../../components/SharedComponents";
 import { isManagementUser } from "../../utils/roleUtils";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 /* ──────────────────────────────────────────�/* ─────────────────────────────────────────────
    ATTENDANCE TAB COMPONENTS (ENTERPRISE THEME BLUE UI)
@@ -3236,6 +3237,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
 const ProfileTab = ({ user, refreshUser }) => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
@@ -3273,15 +3275,18 @@ const ProfileTab = ({ user, refreshUser }) => {
         }
     };
 
-    const handleDeletePhoto = async (e) => {
+    const handleDeletePhoto = (e) => {
         e.stopPropagation();
-        if (!window.confirm("Are you sure you want to delete your profile picture?")) return;
+        setShowDeleteConfirm(true);
+    };
 
+    const handleConfirmDeletePhoto = async () => {
         try {
             setUploading(true);
             const res = await updateProfilePicture("");
             if (res.data?.success) {
                 toast.success("Profile picture deleted successfully.");
+                setShowDeleteConfirm(false);
                 await refreshUser();
             } else {
                 toast.error("Failed to delete profile picture.");
@@ -3420,6 +3425,20 @@ const ProfileTab = ({ user, refreshUser }) => {
                     ))}
                 </div>
             </div>
+
+            {/* Confirm Delete Photo Dialog */}
+            {showDeleteConfirm && (
+                <ConfirmDialog
+                    isOpen={showDeleteConfirm}
+                    title="Delete Profile Picture?"
+                    message="Are you sure you want to remove your profile picture? This action cannot be undone."
+                    confirmLabel="Delete Picture"
+                    variant="danger"
+                    loading={uploading}
+                    onConfirm={handleConfirmDeletePhoto}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                />
+            )}
         </div>
     );
 };

@@ -680,10 +680,16 @@ const Navbar = ({ onToggleSidebar }) => {
                                 <User className="w-4 h-4 text-gray-400" />
                                 <span>My Profile</span>
                             </button>
-                            <a href="#settings" className="flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors">
+                            <button
+                                onClick={() => {
+                                    setIsProfileDropdownOpen(false);
+                                    navigate("/settings");
+                                }}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+                            >
                                 <Settings className="w-4 h-4 text-gray-400" />
                                 <span>Settings</span>
-                            </a>
+                            </button>
                             <div className="border-t border-gray-100 my-1" />
                             <button
                                 onClick={async () => {

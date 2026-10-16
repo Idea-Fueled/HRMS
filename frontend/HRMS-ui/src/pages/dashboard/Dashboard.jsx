@@ -45,6 +45,7 @@ import gandhiJayantiImg from "../../assets/gandhi_jayanti.png";
 import { useAuth } from "../../context/AuthContext";
 import HolidaysModal from "../../components/HolidaysModal";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import CelebrationWishModal from "../../components/CelebrationWishModal";
 import {
     getDashboardData,
     clockIn,
@@ -1515,10 +1516,32 @@ const PeopleEventsCard = ({ events }) => {
         { key: "New Joinees", icon: UserPlus, label: "New Joinees" },
     ];
 
-    const [wishedIds, setWishedIds] = useState([]);
-    const wish = (id) => {
-        setWishedIds((p) => [...p, id]);
-        toast.success("Wish sent successfully! 🎉");
+    const [wishedIds, setWishedIds] = useState(() => {
+        try {
+            const saved = localStorage.getItem("hrms_wished_events");
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const [wishModalData, setWishModalData] = useState(null);
+
+    const handleOpenWishModal = (person, eventType) => {
+        setWishModalData({
+            recipient: person,
+            eventType
+        });
+    };
+
+    const handleWishSent = (recipientId) => {
+        setWishedIds((prev) => {
+            const next = prev.includes(recipientId) ? prev : [...prev, recipientId];
+            try {
+                localStorage.setItem("hrms_wished_events", JSON.stringify(next));
+            } catch {}
+            return next;
+        });
     };
 
     const bdays = events.birthdays || [];
@@ -1534,6 +1557,7 @@ const PeopleEventsCard = ({ events }) => {
             ) : (
                 bdays.map((b) => {
                     const isToday = b.daysRemaining === 0;
+                    const isWished = wishedIds.includes(b._id);
                     return (
                         <div key={b._id} className="flex items-center justify-between py-2 border-b border-[#F9FAFB] last:border-0">
                             <div className="flex items-center gap-2.5">
@@ -1551,14 +1575,14 @@ const PeopleEventsCard = ({ events }) => {
                                     <p className="text-gray-400 text-[10px] mt-1">{isToday ? "Today!" : `in ${b.daysRemaining}d`}</p>
                                 </div>
                                 <button
-                                    onClick={() => wish(b._id)}
-                                    disabled={wishedIds.includes(b._id)}
-                                    className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${wishedIds.includes(b._id)
+                                    onClick={() => handleOpenWishModal(b, "birthday")}
+                                    disabled={isWished}
+                                    className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${isWished
                                         ? "bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default"
                                         : "bg-[#2D79C7] text-white border-transparent hover:bg-[#1F5EA8] active:scale-95"
                                         }`}
                                 >
-                                    {wishedIds.includes(b._id) ? "Wished!" : "Wish"}
+                                    {isWished ? "Wished!" : "Wish"}
                                 </button>
                             </div>
                         </div>
@@ -1575,35 +1599,38 @@ const PeopleEventsCard = ({ events }) => {
                     🏆 No anniversaries in next 30 days
                 </div>
             ) : (
-                annivs.map((a) => (
-                    <div key={a._id} className="flex items-center gap-3 p-3 bg-amber-50/20 border border-amber-100/50 rounded-[12px]">
-                        <Avatar name={a.fullName} src={a.profilePicture || null} size="w-9 h-9" textSize="text-xs" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[#1E1E1E] text-[12px] font-bold truncate leading-tight">{a.fullName}</p>
-                            <p className="text-gray-400 text-[10px] truncate mt-0.5">{a.designation}</p>
-                        </div>
-                        <div className="text-right shrink-0 flex items-center gap-3">
-                            <div>
-                                <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full leading-none">
-                                    🏆 {a.years} {a.years > 1 ? "Yrs" : "Yr"}
-                                </span>
-                                <p className="text-gray-400 text-[9px] mt-1.5 leading-none">
-                                    {a.joiningDate ? new Date(a.joiningDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""} (in {a.daysRemaining}d)
-                                </p>
+                annivs.map((a) => {
+                    const isWished = wishedIds.includes(a._id);
+                    return (
+                        <div key={a._id} className="flex items-center gap-3 p-3 bg-amber-50/20 border border-amber-100/50 rounded-[12px]">
+                            <Avatar name={a.fullName} src={a.profilePicture || null} size="w-9 h-9" textSize="text-xs" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[#1E1E1E] text-[12px] font-bold truncate leading-tight">{a.fullName}</p>
+                                <p className="text-gray-400 text-[10px] truncate mt-0.5">{a.designation}</p>
                             </div>
-                            <button
-                                onClick={() => wish(a._id)}
-                                disabled={wishedIds.includes(a._id)}
-                                className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${wishedIds.includes(a._id)
-                                    ? "bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default"
-                                    : "bg-[#2D79C7] text-white border-transparent hover:bg-[#1F5EA8] active:scale-95"
-                                    }`}
-                            >
-                                {wishedIds.includes(a._id) ? "Wished!" : "Wish"}
-                            </button>
+                            <div className="text-right shrink-0 flex items-center gap-3">
+                                <div>
+                                    <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full leading-none">
+                                        🏆 {a.years} {a.years > 1 ? "Yrs" : "Yr"}
+                                    </span>
+                                    <p className="text-gray-400 text-[9px] mt-1.5 leading-none">
+                                        {a.joiningDate ? new Date(a.joiningDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""} (in {a.daysRemaining}d)
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => handleOpenWishModal(a, "anniversary")}
+                                    disabled={isWished}
+                                    className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${isWished
+                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default"
+                                        : "bg-[#2D79C7] text-white border-transparent hover:bg-[#1F5EA8] active:scale-95"
+                                        }`}
+                                >
+                                    {isWished ? "Wished!" : "Wish"}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                ))
+                    );
+                })
             )}
         </div>
     );
@@ -1620,6 +1647,7 @@ const PeopleEventsCard = ({ events }) => {
                     const displayDays = daysAgo < 0
                         ? `${Math.abs(daysAgo)} days ago`
                         : (daysAgo === 0 ? "Today" : `in ${daysAgo} days`);
+                    const isWished = wishedIds.includes(j._id);
                     return (
                         <div key={j._id} className="flex items-center gap-3 p-3 bg-blue-50/20 border border-blue-100/50 rounded-[12px]">
                             <Avatar name={j.fullName} src={j.profilePicture || null} size="w-9 h-9" textSize="text-xs" />
@@ -1635,14 +1663,14 @@ const PeopleEventsCard = ({ events }) => {
                                     <p className="text-gray-400 text-[9px] mt-1.5 leading-none">{displayDays}</p>
                                 </div>
                                 <button
-                                    onClick={() => wish(j._id)}
-                                    disabled={wishedIds.includes(j._id)}
-                                    className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${wishedIds.includes(j._id)
+                                    onClick={() => handleOpenWishModal(j, "new_joinee")}
+                                    disabled={isWished}
+                                    className={`px-3 py-1.5 rounded-[10px] text-[11px] font-bold border transition-all duration-200 shrink-0 cursor-pointer ${isWished
                                         ? "bg-emerald-50 text-emerald-600 border-emerald-100 cursor-default"
                                         : "bg-[#2D79C7] text-white border-transparent hover:bg-[#1F5EA8] active:scale-95"
                                         }`}
                                 >
-                                    {wishedIds.includes(j._id) ? "Wished!" : "Wish"}
+                                    {isWished ? "Wished!" : "Wish"}
                                 </button>
                             </div>
                         </div>
@@ -1677,9 +1705,18 @@ const PeopleEventsCard = ({ events }) => {
                 {tab === "Work Anniversaries" && renderAnniversaries()}
                 {tab === "New Joinees" && renderNewJoinees()}
             </div>
+
+            {/* Celebration Wish Modal */}
+            <CelebrationWishModal
+                isOpen={Boolean(wishModalData)}
+                onClose={() => setWishModalData(null)}
+                data={wishModalData}
+                onWishSent={handleWishSent}
+            />
         </Card>
     );
 };
+
 
 /* ─────────────────────────────────────────────
    WELCOME BANNER

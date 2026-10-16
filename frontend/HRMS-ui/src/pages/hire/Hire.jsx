@@ -31,6 +31,7 @@ import {
 } from "../../services/hire.service";
 import { useAuth } from "../../context/AuthContext";
 import { downloadCandidateDocument, fileToDataUrl } from "../../utils/candidateDocumentUtils";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 /* ─────────────────────────────────────────────
    CONSTANTS & PIPELINE STAGES
@@ -150,6 +151,9 @@ export const Hire = ({ initialTab }) => {
 
     const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
     const [candidateToHold, setCandidateToHold] = useState(null);
+
+    const [candidateToDelete, setCandidateToDelete] = useState(null);
+    const [deletingCandidate, setDeletingCandidate] = useState(false);
 
     // Dragged candidate ID for Kanban board
     const [draggedCandidateId, setDraggedCandidateId] = useState(null);
@@ -457,18 +461,28 @@ export const Hire = ({ initialTab }) => {
         }
     };
 
-    const handleDeleteCandidate = async (candidateId) => {
-        if (!window.confirm("Are you sure you want to permanently delete this candidate record?")) return;
+    const handleDeleteCandidate = (candidateId) => {
+        const cand = candidates.find(c => c.id === candidateId || c._id === candidateId);
+        setCandidateToDelete(cand || { id: candidateId });
+    };
+
+    const handleConfirmDeleteCandidate = async () => {
+        if (!candidateToDelete) return;
+        const candidateId = candidateToDelete.id || candidateToDelete._id;
         try {
+            setDeletingCandidate(true);
             await deleteCandidateApi(candidateId);
-            setCandidates(prev => prev.filter(c => c.id !== candidateId));
-            if (selectedCandidate?.id === candidateId) {
+            setCandidates(prev => prev.filter(c => c.id !== candidateId && c._id !== candidateId));
+            if (selectedCandidate?.id === candidateId || selectedCandidate?._id === candidateId) {
                 setDrawerOpen(false);
                 setSelectedCandidate(null);
             }
             toast.success("Candidate record deleted");
+            setCandidateToDelete(null);
         } catch {
             toast.error("Failed to delete candidate");
+        } finally {
+            setDeletingCandidate(false);
         }
     };
 
@@ -943,6 +957,20 @@ export const Hire = ({ initialTab }) => {
                         setCandidateToReject(null);
                     }}
                     onConfirm={handleConfirmReject}
+                />
+            )}
+
+            {/* CONFIRM DELETE CANDIDATE DIALOG */}
+            {candidateToDelete && (
+                <ConfirmDialog
+                    isOpen={!!candidateToDelete}
+                    title="Delete Candidate Record?"
+                    message={`Are you sure you want to permanently delete ${candidateToDelete.name || "this candidate"}'s record? This cannot be undone.`}
+                    confirmLabel="Delete Candidate"
+                    variant="danger"
+                    loading={deletingCandidate}
+                    onConfirm={handleConfirmDeleteCandidate}
+                    onCancel={() => setCandidateToDelete(null)}
                 />
             )}
         </div>

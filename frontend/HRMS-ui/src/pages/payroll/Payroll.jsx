@@ -10,6 +10,7 @@ import { generatePayslip, getPayslips, deletePayslip, notifyPayslipDownload } fr
 import { downloadPayslipPdf } from "../../utils/payslipPdfGenerator";
 import { Avatar } from "../../components/SharedComponents";
 import { useAuth } from "../../context/AuthContext";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const MONTHS = [
     "JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
@@ -28,6 +29,8 @@ export default function Payroll() {
     const [selectedMonthFilter, setSelectedMonthFilter] = useState("all");
     const [selectedYearFilter, setSelectedYearFilter] = useState("all");
     const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+    const [deleteConfirmPayslip, setDeleteConfirmPayslip] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Form State for Payslip Generation
     const [selectedEmpId, setSelectedEmpId] = useState("");
@@ -154,17 +157,25 @@ export default function Payroll() {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this payslip?")) return;
+    const handleDeleteClick = (payslip) => {
+        setDeleteConfirmPayslip(payslip);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteConfirmPayslip) return;
         try {
-            const res = await deletePayslip(id);
+            setDeleting(true);
+            const res = await deletePayslip(deleteConfirmPayslip._id);
             if (res.data?.success) {
                 toast.success("Payslip deleted successfully.");
-                setPayslips(prev => prev.filter(p => p._id !== id));
+                setPayslips(prev => prev.filter(p => p._id !== deleteConfirmPayslip._id));
+                setDeleteConfirmPayslip(null);
             }
         } catch (err) {
             console.error(err);
             toast.error("Failed to delete payslip.");
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -469,7 +480,7 @@ export default function Payroll() {
                                                     </button>
 
                                                     <button
-                                                        onClick={() => handleDelete(p._id)}
+                                                        onClick={() => handleDeleteClick(p)}
                                                         className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                                         title="Delete Payslip Record"
                                                     >
@@ -696,6 +707,19 @@ export default function Payroll() {
                         </form>
                     </div>
                 </div>
+            )}
+            {/* Confirm Delete Payslip Dialog */}
+            {deleteConfirmPayslip && (
+                <ConfirmDialog
+                    isOpen={!!deleteConfirmPayslip}
+                    title="Delete Payslip Record?"
+                    message={`Are you sure you want to delete the payslip for ${deleteConfirmPayslip.employeeName || "this employee"} (${deleteConfirmPayslip.periodString || "selected period"})? This action cannot be undone.`}
+                    confirmLabel="Delete Payslip"
+                    variant="danger"
+                    loading={deleting}
+                    onConfirm={handleConfirmDelete}
+                    onCancel={() => setDeleteConfirmPayslip(null)}
+                />
             )}
         </div>
     );

@@ -1,6 +1,7 @@
 import User from "../../models/users/user.model.js";
 import bcrypt from "bcryptjs";
 import Department from "../../models/departments/department.model.js";
+import ProbationPolicy from "../../models/probation/probationPolicy.model.js";
 
 /* ─────────────────────────────────────────────
    GET ALL EMPLOYEES (with summary stats)
@@ -63,6 +64,7 @@ export const getAllEmployees = async (req, res) => {
         const employees = await User.find(query)
             .populate("managerId", "fullName employeeId designation department")
             .populate("dottedManagerId", "fullName employeeId designation department")
+            .populate("probationPolicy", "name days description")
             .select("-password")
             .sort({ createdAt: -1 })
             .lean();
@@ -109,6 +111,7 @@ export const getEmployeeById = async (req, res) => {
         const employee = await User.findById(id)
             .populate("managerId", "fullName employeeId designation department email")
             .populate("dottedManagerId", "fullName employeeId designation department email")
+            .populate("probationPolicy", "name days description")
             .select("-password")
             .lean();
 
@@ -145,6 +148,7 @@ export const createEmployee = async (req, res) => {
             workLocation,
             joiningDate,
             probationPeriod,
+            probationPolicy,
             dateOfBirth,
             gender,
             bloodGroup,
@@ -214,7 +218,8 @@ export const createEmployee = async (req, res) => {
             recruitment: isHrOrAdmin,
             hire: isHrOrAdmin,
             offboardingAndOnboarding: isHrOrAdmin,
-            organization: isHrOrAdmin
+            organization: isHrOrAdmin,
+            probation: role === "global_admin" || role === "admin"
         };
 
         const resolvedPermissions = permissions 
@@ -227,6 +232,15 @@ export const createEmployee = async (req, res) => {
             finalEmpType = "intern";
         } else if (finalEmpType === "intern" && (!finalRole || finalRole === "employee")) {
             finalRole = "intern";
+        }
+
+        let finalProbationPeriod = probationPeriod !== undefined && probationPeriod !== "" ? Number(probationPeriod) : 0;
+        let finalProbationPolicy = probationPolicy || null;
+        if (finalProbationPolicy) {
+            const policyDoc = await ProbationPolicy.findById(finalProbationPolicy);
+            if (policyDoc) {
+                finalProbationPeriod = policyDoc.days;
+            }
         }
 
         const employee = await User.create({
@@ -247,7 +261,8 @@ export const createEmployee = async (req, res) => {
             employementType: finalEmpType,
             workLocation,
             joiningDate,
-            probationPeriod: probationPeriod !== undefined && probationPeriod !== "" ? Number(probationPeriod) : 180,
+            probationPeriod: finalProbationPeriod,
+            probationPolicy: finalProbationPolicy,
             dateOfBirth: dateOfBirth || null,
             gender: gender || undefined,
             bloodGroup: bloodGroup || undefined,
@@ -390,7 +405,19 @@ export const updateEmployee = async (req, res) => {
         }
         if (workLocation) employee.workLocation = workLocation;
         if (joiningDate) employee.joiningDate = joiningDate;
-        if (probationPeriod !== undefined && probationPeriod !== "") employee.probationPeriod = Number(probationPeriod);
+        if (req.body.probationPolicy !== undefined) {
+            employee.probationPolicy = req.body.probationPolicy || null;
+            if (req.body.probationPolicy) {
+                const policyDoc = await ProbationPolicy.findById(req.body.probationPolicy);
+                if (policyDoc) {
+                    employee.probationPeriod = policyDoc.days;
+                }
+            } else if (probationPeriod !== undefined && probationPeriod !== "") {
+                employee.probationPeriod = Number(probationPeriod);
+            }
+        } else if (probationPeriod !== undefined && probationPeriod !== "") {
+            employee.probationPeriod = Number(probationPeriod);
+        }
         if (dateOfBirth !== undefined) employee.dateOfBirth = dateOfBirth || null;
         if (gender) employee.gender = gender;
         if (bloodGroup !== undefined) employee.bloodGroup = bloodGroup;

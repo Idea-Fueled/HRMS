@@ -36,4 +36,12 @@ export const uploadDocumentFile = async (formData) => {
     });
 };
 
+export const changeUserPassword = async (data) => {
+    return API.put("/users/change-password", data);
+};
+
+export const updateUserPreferences = async (preferences) => {
+    return API.put("/users/preferences", { preferences });
+};
+
 export default API;

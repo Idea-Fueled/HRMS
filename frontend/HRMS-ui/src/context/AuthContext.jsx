@@ -75,12 +75,12 @@ const ROLE_PERMISSIONS = {
 
 /* Routes each role is allowed to visit */
 export const ROLE_ALLOWED_ROUTES = {
-    global_admin: ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/hire/search-by-ai", "/offboarding-onboarding", "/assets"],
-    admin:        ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/offboarding-onboarding"],
-    hr:           ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/hire/search-by-ai", "/offboarding-onboarding"],
-    manager:      ["/dashboard", "/me", "/inbox", "/my-team", "/my-finances", "/documents", "/time-attendance"],
-    employee:     ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance"],
-    intern:       ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance"],
+    global_admin: ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/probation", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/hire/search-by-ai", "/offboarding-onboarding", "/assets", "/settings"],
+    admin:        ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/probation", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/offboarding-onboarding", "/settings"],
+    hr:           ["/dashboard", "/me", "/inbox", "/my-team", "/employees", "/my-finances", "/documents", "/time-attendance", "/payroll", "/recruitment", "/hire", "/hire/search-by-ai", "/offboarding-onboarding", "/settings"],
+    manager:      ["/dashboard", "/me", "/inbox", "/my-team", "/my-finances", "/documents", "/time-attendance", "/settings"],
+    employee:     ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance", "/settings"],
+    intern:       ["/dashboard", "/me", "/inbox", "/my-finances", "/documents", "/time-attendance", "/settings"],
 };
 
 /* ─────────────────────────────────────────────
@@ -171,6 +171,8 @@ export const AuthProvider = ({ children }) => {
         if (normPath === "recruitment") return user.permissions.recruitment !== false;
         if (normPath === "offboarding-onboarding") return user.permissions.offboardingAndOnboarding !== false;
         if (normPath === "organization") return user.permissions.organization !== false;
+        if (normPath === "probation") return user.permissions?.probation === true;
+        if (normPath === "settings") return true;
 
         return true;
     }, [user]);

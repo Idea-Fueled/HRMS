@@ -31,6 +31,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { uploadProfilePicture } from "../../services/auth.service";
 import { getLeaveSummary } from "../../services/dashboard.service";
+import { getProbationPolicies } from "../../services/probation.service";
 
 const useResponsivePageSize = (viewMode) => {
     const [windowWidth, setWindowWidth] = React.useState(typeof window !== "undefined" ? window.innerWidth : 1024);
@@ -99,7 +100,8 @@ const DEFAULT_PERMISSIONS = {
     recruitment: false,
     hire: false,
     offboardingAndOnboarding: false,
-    organization: false
+    organization: false,
+    probation: false
 };
 
 const EMPTY_FORM = {
@@ -108,7 +110,8 @@ const EMPTY_FORM = {
     companyEntity: "Idea Fueled",
     role: "employee", department: "", designation: "", managerId: "", dottedManagerId: "",
     employementType: "full_time", workLocation: "Office", joiningDate: "",
-    probationPeriod: 180,
+    probationPeriod: 0,
+    probationPolicy: "",
     dateOfBirth: "", gender: "", bloodGroup: "",
     fatherName: "", emergencyContactNumber: "",
     presentAddress: "", permanentAddress: "",
@@ -752,7 +755,7 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit, onInitiateExit }
                             <InfoRow label="Employment Type" value={empTypeLabel(effectiveType(employee))} />
                             <InfoRow label="Work Location" value={employee.workLocation} />
                             <InfoRow icon={Calendar} label="Joining Date" value={formatDate(employee.joiningDate)} />
-                            <InfoRow label="Probation Period" value={`${employee.probationPeriod ? (Number(employee.probationPeriod) <= 12 ? Number(employee.probationPeriod) * 30 : Number(employee.probationPeriod)) : 180} Days`} />
+                            <InfoRow label="Probation Policy" value={employee.probationPolicy?.name ? `${employee.probationPolicy.name} (${employee.probationPeriod || employee.probationPolicy.days || 0} Days)` : (employee.probationPeriod ? `${employee.probationPeriod} Days` : "None")} />
                         </div>
                     </div>
 
@@ -827,7 +830,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 employementType: employee.employementType || "full_time",
                 workLocation: employee.workLocation || "Office",
                 joiningDate: employee.joiningDate ? employee.joiningDate.split("T")[0] : "",
-                probationPeriod: employee.probationPeriod !== undefined && employee.probationPeriod !== null ? (Number(employee.probationPeriod) <= 12 ? Number(employee.probationPeriod) * 30 : Number(employee.probationPeriod)) : 180,
+                probationPeriod: employee.probationPeriod !== undefined && employee.probationPeriod !== null ? Number(employee.probationPeriod) : 0,
+                probationPolicy: employee.probationPolicy?._id || employee.probationPolicy || "",
                 dateOfBirth: employee.dateOfBirth ? employee.dateOfBirth.split("T")[0] : "",
                 gender: employee.gender || "",
                 bloodGroup: employee.bloodGroup || "",
@@ -881,6 +885,27 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
 
     const [hrVisibleEmployees, setHrVisibleEmployees] = useState([]);
     const [hrSearchQuery, setHrSearchQuery] = useState("");
+    const [probationPolicies, setProbationPolicies] = useState([]);
+
+    useEffect(() => {
+        getProbationPolicies()
+            .then(res => {
+                if (res.data?.success) {
+                    setProbationPolicies(res.data.policies || []);
+                }
+            })
+            .catch(err => console.error("Error loading probation policies:", err));
+    }, []);
+
+    const handleProbationPolicyChange = (e) => {
+        const selectedId = e.target.value;
+        const selectedPolicy = probationPolicies.find(p => p._id === selectedId);
+        setForm(prev => ({
+            ...prev,
+            probationPolicy: selectedId,
+            probationPeriod: selectedPolicy ? selectedPolicy.days : 0
+        }));
+    };
 
     useEffect(() => {
         if (isEdit && employee?._id && form.role === "hr") {
@@ -1022,7 +1047,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     recruitment: isHrOrAdmin,
                     hire: isHrOrAdmin,
                     offboardingAndOnboarding: isHrOrAdmin,
-                    organization: isHrOrAdmin
+                    organization: isHrOrAdmin,
+                    probation: val === "global_admin" || val === "admin"
                 }
             }));
             if (errors[field]) setErrors(prev => ({ ...prev, [field]: "" }));
@@ -1099,7 +1125,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     specialAllowance: Number(form.specialAllowance) || 0,
                     otherAllowances: Number(form.otherAllowances) || 0
                 },
-                probationPeriod: form.probationPeriod !== undefined && form.probationPeriod !== "" ? Number(form.probationPeriod) : 180
+                probationPeriod: form.probationPeriod !== undefined && form.probationPeriod !== "" ? Number(form.probationPeriod) : 0,
+                probationPolicy: form.probationPolicy || null
             };
             if (!payload.managerId) payload.managerId = null;
             if (!payload.dottedManagerId) payload.dottedManagerId = null;
@@ -1294,8 +1321,15 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         <FormField label="Joining Date" required error={errors.joiningDate}>
                             <input type="date" value={form.joiningDate} onChange={set("joiningDate")} className={`${inputCls} ${errors.joiningDate ? "border-rose-300" : ""}`} />
                         </FormField>
-                        <FormField label="Probation Period (Days)">
-                            <input type="number" min="0" step="1" value={form.probationPeriod} onChange={set("probationPeriod")} placeholder="180" className={inputCls} />
+                        <FormField label="Probation Policy">
+                            <SelectField value={form.probationPolicy} onChange={handleProbationPolicyChange}>
+                                <option value="">No Probation Policy</option>
+                                {probationPolicies.map(p => (
+                                    <option key={p._id} value={p._id}>
+                                        {p.name} ({p.days} Days)
+                                    </option>
+                                ))}
+                            </SelectField>
                         </FormField>
                     </div>
 
@@ -1624,6 +1658,27 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                                 permissions: {
                                                     ...prev.permissions,
                                                     organization: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* Probation */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Probation</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Probation policies, duration and employee tracking</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleGlobalAdmin || form.permissions?.probation === true} 
+                                            disabled={isRoleGlobalAdmin}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    probation: e.target.checked
                                                 }
                                             }))}
                                             className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 

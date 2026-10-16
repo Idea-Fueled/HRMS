@@ -1,9 +1,12 @@
 import User from "../../models/users/user.model.js";
 import Leave from "../../models/leaves/leave.model.js";
 import Attendance from "../../models/attendance/attendance.model.js";
+import Email from "../../models/emails/email.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinary.service.js";
+import { dispatchExternalEmail } from "../../services/email.service.js";
+import { emitToUser } from "../../socket/socket.js";
 
 const resolveUserPermissions = (user) => {
     if (!user) return null;
@@ -473,6 +476,7 @@ export const getPeopleEvents = async (req, res) => {
                     birthdays.push({
                         _id: u._id,
                         fullName: u.fullName,
+                        email: u.email,
                         designation: u.designation,
                         profilePicture: u.profilePicture,
                         dateOfBirth: u.dateOfBirth,
@@ -495,6 +499,7 @@ export const getPeopleEvents = async (req, res) => {
                     anniversaries.push({
                         _id: u._id,
                         fullName: u.fullName,
+                        email: u.email,
                         designation: u.designation,
                         profilePicture: u.profilePicture,
                         joiningDate: u.joiningDate,
@@ -514,6 +519,7 @@ export const getPeopleEvents = async (req, res) => {
                     newJoinees.push({
                         _id: u._id,
                         fullName: u.fullName,
+                        email: u.email,
                         designation: u.designation,
                         profilePicture: u.profilePicture,
                         joiningDate: u.joiningDate,
@@ -725,3 +731,297 @@ export const uploadDocument = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+/* ─────────────────────────────────────────────
+   CHANGE PASSWORD (ACCOUNT SETTINGS)
+ ───────────────────────────────────────────── */
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+        const userId = req.user?.userId || req.user?.id || req.user?._id;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: "Please provide both current and new password." });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ success: false, message: "New password must be at least 8 characters long." });
+        }
+
+        if (confirmPassword && newPassword !== confirmPassword) {
+            return res.status(400).json({ success: false, message: "New passwords do not match." });
+        }
+
+        const user = await User.findById(userId).select("+password");
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Current password is incorrect." });
+        }
+
+        const isSame = await bcrypt.compare(newPassword, user.password);
+        if (isSame) {
+            return res.status(400).json({ success: false, message: "New password cannot be the same as your current password." });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password changed successfully."
+        });
+    } catch (error) {
+        console.error("Change password error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* ─────────────────────────────────────────────
+   UPDATE USER PREFERENCES (ACCOUNT SETTINGS)
+ ───────────────────────────────────────────── */
+export const updateUserPreferences = async (req, res) => {
+    try {
+        const { preferences } = req.body;
+        const userId = req.user?.userId || req.user?.id || req.user?._id;
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        user.preferences = {
+            ...(user.preferences?.toObject ? user.preferences.toObject() : (user.preferences || {})),
+            ...preferences
+        };
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Preferences updated successfully.",
+            preferences: user.preferences
+        });
+    } catch (error) {
+        console.error("Update preferences error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* ─────────────────────────────────────────────
+   SEND CELEBRATION WISH (BIRTHDAY, ANNIVERSARY, NEW JOINEE)
+ ───────────────────────────────────────────── */
+export const sendCelebrationWish = async (req, res) => {
+    try {
+        const senderId = req.user?.userId || req.user?.id || req.user?._id;
+        const { recipientId, eventType, message, meta } = req.body;
+
+        if (!recipientId) {
+            return res.status(400).json({ success: false, message: "Recipient ID is required." });
+        }
+
+        const sender = await User.findById(senderId);
+        if (!sender) {
+            return res.status(404).json({ success: false, message: "Sender not found." });
+        }
+
+        const recipient = await User.findById(recipientId);
+        if (!recipient) {
+            return res.status(404).json({ success: false, message: "Recipient not found." });
+        }
+
+        if (!recipient.email) {
+            return res.status(400).json({ success: false, message: "Recipient does not have a registered email address." });
+        }
+
+        const senderName = sender.fullName || [sender.firstName, sender.lastName].filter(Boolean).join(" ") || "A Colleague";
+        const recipientName = recipient.fullName || [recipient.firstName, recipient.lastName].filter(Boolean).join(" ") || "Colleague";
+        const senderRoleOrDesig = sender.designation || sender.department || "Idea Fueled Team";
+
+        let defaultMessage = "";
+        let eventSubject = "";
+        let eventTitle = "";
+        let eventIcon = "";
+        let eventBadge = "";
+        let eventLabel = "";
+
+        if (eventType === "birthday") {
+            eventIcon = "🎂";
+            eventLabel = "Birthday";
+            eventBadge = "Birthday Celebration";
+            eventSubject = `🎉 Happy Birthday from ${senderName}!`;
+            eventTitle = `Happy Birthday, ${recipientName}! 🎂`;
+            defaultMessage = `Wishing you a very Happy Birthday! May your special day and the year ahead be packed with good health, happiness, and tremendous success! 🎂🎉`;
+        } else if (eventType === "anniversary") {
+            eventIcon = "🏆";
+            eventLabel = "Work Anniversary";
+            const yearsStr = meta?.years ? `${meta.years} Year${meta.years > 1 ? "s" : ""}` : "Work Anniversary";
+            eventBadge = `Work Anniversary Milestone (${yearsStr})`;
+            eventSubject = `🏆 Happy Work Anniversary from ${senderName}!`;
+            eventTitle = `Congratulations on your Work Anniversary, ${recipientName}! 🏆`;
+            defaultMessage = `Congratulations on completing ${meta?.years ? `${meta.years} year${meta.years > 1 ? "s" : ""}` : "another great milestone"} at Idea Fueled! Thank you for your continued dedication, energy, and commitment to excellence. Cheers to many more milestones together! 🏆🎉`;
+        } else if (eventType === "new_joinee") {
+            eventIcon = "🌟";
+            eventLabel = "New Joinee Welcome";
+            eventBadge = "Warm Welcome to the Team";
+            eventSubject = `🌟 Welcome to Idea Fueled from ${senderName}!`;
+            eventTitle = `Welcome to the Team, ${recipientName}! 🌟`;
+            defaultMessage = `A very warm welcome to Idea Fueled! We are thrilled to have you join our team and can't wait to collaborate and celebrate big milestones together! 🚀🌟`;
+        } else {
+            eventIcon = "🎉";
+            eventLabel = "Celebration";
+            eventBadge = "Team Celebration";
+            eventSubject = `🎉 Best Wishes from ${senderName}!`;
+            eventTitle = `Warm Wishes from ${senderName}! 🎉`;
+            defaultMessage = `Sending you the best wishes on this special occasion! 🌟🎉`;
+        }
+
+        const finalMessage = message && message.trim().length > 0 ? message.trim() : defaultMessage;
+        const portalUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+        // HTML Email Template
+        const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${eventSubject}</title>
+</head>
+<body style="margin: 0; padding: 24px 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 36px 30px; text-align: center; color: #ffffff;">
+        <div style="font-size: 46px; line-height: 1; margin-bottom: 12px;">${eventIcon}</div>
+        <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.35); padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; margin-bottom: 10px;">
+          ${eventBadge}
+        </div>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
+          ${eventTitle}
+        </h1>
+      </td>
+    </tr>
+    <!-- Content -->
+    <tr>
+      <td style="padding: 36px 32px 28px;">
+        <p style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #0f172a;">
+          Hi ${recipientName},
+        </p>
+        <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #475569;">
+          Your colleague <strong>${senderName}</strong> (<span style="color: #2D79C7;">${senderRoleOrDesig}</span>) has sent you a special celebration wish:
+        </p>
+        
+        <!-- Wish Box -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background: #f8fafc; border-left: 4px solid #2D79C7; border-radius: 0 12px 12px 0; margin: 0 0 28px;">
+          <tr>
+            <td style="padding: 20px 22px;">
+              <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #1e3a8a; font-style: italic;">
+                "${finalMessage}"
+              </p>
+              <p style="margin: 12px 0 0; font-size: 12px; font-weight: 700; color: #64748b; font-style: normal;">
+                &mdash; ${senderName}
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Portal Link -->
+        <div style="text-align: center; margin: 32px 0 10px;">
+          <a href="${portalUrl}/dashboard" style="display: inline-block; background-color: #2D79C7; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 12px; font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(45,121,199,0.3);">
+            Open HRMS Portal &rarr;
+          </a>
+        </div>
+      </td>
+    </tr>
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f8fafc; padding: 22px 30px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8; line-height: 1.5;">
+        <strong style="color: #64748b;">Idea Fueled HRMS</strong> &bull; People & Culture Experience<br>
+        Celebrating team milestones together.
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+        `;
+
+        // 1. Create Internal Email Document
+        let emailDoc = null;
+        try {
+            emailDoc = await Email.create({
+                sender: sender._id,
+                senderEmail: sender.email.toLowerCase(),
+                senderName,
+                senderAvatar: sender.profilePicture || "",
+                senderRole: sender.role || "employee",
+                to: [recipient.email.toLowerCase()],
+                subject: eventSubject,
+                body: emailHtml,
+                snippet: finalMessage.slice(0, 120),
+                priority: "normal",
+                labels: ["Celebration", eventLabel],
+                userStates: [
+                    {
+                        user: sender._id,
+                        email: sender.email.toLowerCase(),
+                        folder: "sent",
+                        isRead: true,
+                    },
+                    {
+                        user: recipient._id,
+                        email: recipient.email.toLowerCase(),
+                        folder: "inbox",
+                        isRead: false,
+                    }
+                ]
+            });
+        } catch (emailDocErr) {
+            console.error("Error creating internal celebration email document:", emailDocErr);
+        }
+
+        // 2. Dispatch External SMTP Email
+        let deliveryResult = null;
+        try {
+            deliveryResult = await dispatchExternalEmail({
+                to: recipient.email,
+                subject: eventSubject,
+                body: emailHtml
+            });
+        } catch (mailErr) {
+            console.warn("External wish email dispatch warning:", mailErr.message);
+        }
+
+        // 3. Emit Real-time Socket Notification
+        if (emailDoc) {
+            try {
+                emitToUser({ userId: recipient._id, email: recipient.email }, "new_email", {
+                    email: emailDoc,
+                    unreadCount: 1
+                });
+            } catch (sockErr) {
+                console.warn("Socket notification warning:", sockErr.message);
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Wish sent to ${recipientName} successfully! 🎉`,
+            wish: {
+                recipientId: recipient._id,
+                recipientName,
+                recipientEmail: recipient.email,
+                eventType,
+                message: finalMessage,
+                deliveredExternally: deliveryResult?.delivered || false
+            }
+        });
+    } catch (error) {
+        console.error("Send celebration wish error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
