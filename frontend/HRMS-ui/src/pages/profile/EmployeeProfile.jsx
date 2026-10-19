@@ -3756,12 +3756,6 @@ export const EmployeeProfile = () => {
                                 </div>
                             )}
 
-                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-[11px] text-slate-500 flex items-start gap-2">
-                                <Mail className="w-3.5 h-3.5 text-[#2D79C7] shrink-0 mt-0.5" />
-                                <span>
-                                    Your request will be emailed to <strong>Prashant Kumar</strong> and CC'd to <strong>Puneet Chopra</strong> &amp; <strong>Esha Mohindru</strong>.
-                                </span>
-                            </div>
 
                             <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
                                 <button
