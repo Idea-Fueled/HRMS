@@ -8,7 +8,7 @@ import {
     Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight,
     Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap,
     Umbrella, CheckCircle2, AlertCircle, SlidersHorizontal, Sparkles, Hourglass, RotateCcw, FileSpreadsheet,
-    ChevronLeft, ChevronRight, CheckCircle, XCircle, LogOut, CreditCard, ExternalLink
+    ChevronLeft, ChevronRight, CheckCircle, XCircle, LogOut, CreditCard, ExternalLink, Headphones
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
@@ -18,7 +18,7 @@ import { ResignJobModal, AdminInitiateExitModal } from "../../components/ExitMod
 import { isManagementUser } from "../../utils/roleUtils";
 import { getEmployeeById, updateEmployee } from "../../services/employee.service";
 import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
-import { getAllAssets, getAssignedAssets } from "../../services/asset.service";
+import { getAllAssets, getAssignedAssets, acknowledgeAsset, requestNewAsset } from "../../services/asset.service";
 import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
 import { getEmployeeAttendanceHistory, getTodayAttendanceStatus, importEmployeeAttendance } from "../../services/attendance.service";
 import * as XLSX from "xlsx";
@@ -117,6 +117,24 @@ export const EmployeeProfile = () => {
 
     const [showAssetModal, setShowAssetModal] = useState(false);
     const [newAsset, setNewAsset] = useState({ name: "", assetTag: "", category: "Hardware Workstation", condition: "Excellent" });
+
+    // Request New Asset Modal state (for employees other than global admin)
+    const [showRequestAssetModal, setShowRequestAssetModal] = useState(false);
+    const [requestAssetType, setRequestAssetType] = useState("Monitor");
+    const [requestAssetComment, setRequestAssetComment] = useState("");
+    const [submittingAssetRequest, setSubmittingAssetRequest] = useState(false);
+    const [acknowledgingId, setAcknowledgingId] = useState(null);
+
+    // Check for email acknowledge redirection in URL query params
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get("acknowledged") === "true") {
+            const assetCode = searchParams.get("assetId") || "";
+            toast.success(`Asset ${assetCode ? `"${assetCode}" ` : ""}receipt acknowledged successfully! Confirmation sent to Management.`);
+            const cleanPath = window.location.pathname + (searchParams.get("tab") ? `?tab=${searchParams.get("tab")}` : "");
+            window.history.replaceState({}, document.title, cleanPath);
+        }
+    }, []);
 
     // Confirm dialog state for deletions
     const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, title: "", message: "", action: null });
@@ -1171,11 +1189,17 @@ export const EmployeeProfile = () => {
     const getCategoryIcon = (category, className = "w-5 h-5") => {
         switch (category) {
             case "Screen":
+            case "Monitor":
+            case "Display Monitor":
                 return <Monitor className={className} />;
             case "Keyboard":
                 return <KeyboardIcon className={className} />;
             case "Mouse":
                 return <MouseIcon className={className} />;
+            case "Earphone/Headphone":
+            case "Headphones":
+            case "Earphones":
+                return <Headphones className={className} />;
             case "Mobile":
                 return <Smartphone className={className} />;
             case "Tablet":
@@ -1189,6 +1213,49 @@ export const EmployeeProfile = () => {
             case "Laptop":
             default:
                 return <Laptop className={className} />;
+        }
+    };
+
+    // Handle receipt acknowledgment directly from profile card
+    const handleAcknowledgeAsset = async (asset) => {
+        if (!asset || !asset._id) return;
+        setAcknowledgingId(asset._id);
+        try {
+            const res = await acknowledgeAsset(asset._id);
+            if (res.data?.success) {
+                toast.success(res.data.message || "Asset acknowledged! Management has been notified.");
+                fetchUserAssets();
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to acknowledge asset.");
+        } finally {
+            setAcknowledgingId(null);
+        }
+    };
+
+    // Handle employee asset request submission
+    const handleRequestAssetSubmit = async (e) => {
+        e.preventDefault();
+        if (requestAssetType === "Other" && !requestAssetComment.trim()) {
+            toast.error("Please specify which asset you require in the comment box.");
+            return;
+        }
+        setSubmittingAssetRequest(true);
+        try {
+            const res = await requestNewAsset({
+                assetType: requestAssetType,
+                comment: requestAssetComment.trim()
+            });
+            if (res.data?.success) {
+                toast.success(res.data.message || "Asset request submitted successfully!");
+                setShowRequestAssetModal(false);
+                setRequestAssetType("Monitor");
+                setRequestAssetComment("");
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to submit asset request.");
+        } finally {
+            setSubmittingAssetRequest(false);
         }
     };
 
@@ -2822,6 +2889,35 @@ export const EmployeeProfile = () => {
             ───────────────────────────────────────────── */}
             {activeTab === "Assets" && (
                 <div className="space-y-6">
+                    {/* Header Row above Assets Grid */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-[20px] border border-slate-200/80 shadow-2xs">
+                        <div>
+                            <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
+                                <Laptop className="w-4.5 h-4.5 text-[#2D79C7]" />
+                                <span>Assigned Corporate Assets</span>
+                            </h3>
+                            <p className="text-gray-400 text-xs mt-0.5">
+                                Official devices, hardware, and IT equipment allocated to you
+                            </p>
+                        </div>
+
+                        {/* Top Right Corner Request Button for Employees other than Global Admin */}
+                        {userRole !== "global_admin" && userRole !== "admin" && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setRequestAssetType("Monitor");
+                                    setRequestAssetComment("");
+                                    setShowRequestAssetModal(true);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-[#2D79C7] hover:bg-[#2063A6] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Request New Asset</span>
+                            </button>
+                        )}
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {loadingAssets ? (
                             <div className="col-span-full py-12 text-center text-slate-400 font-bold">
@@ -2836,7 +2932,9 @@ export const EmployeeProfile = () => {
                                 <p className="text-slate-400 text-[11px] mt-1">Devices and items assigned to this employee from the Assets tab will appear here.</p>
                             </div>
                         ) : (
-                            userAssets.map((asset, idx) => (
+                            userAssets.map((asset, idx) => {
+                                const isAck = asset.acknowledgmentStatus === "Acknowledged";
+                                return (
                                 <div key={asset._id || idx} className="premium-3d-card p-6 space-y-4 relative group">
                                     <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                                         <div className="flex items-center gap-3">
@@ -2848,10 +2946,21 @@ export const EmployeeProfile = () => {
                                                 <p className="text-gray-400 text-[10.5px]">{asset.category}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
                                             <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
                                                 {asset.status || "Assigned"}
                                             </span>
+                                            {isAck ? (
+                                                <span className="bg-emerald-100/70 text-emerald-800 border border-emerald-200 text-[9.5px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                                    <span>Acknowledged</span>
+                                                </span>
+                                            ) : (
+                                                <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[9.5px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <Clock className="w-3 h-3 text-amber-600" />
+                                                    <span>Ack Pending</span>
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
@@ -2868,9 +2977,35 @@ export const EmployeeProfile = () => {
                                             <span className="text-gray-400">Condition:</span>
                                             <span className="text-emerald-600 font-bold">{asset.condition || "Excellent"}</span>
                                         </div>
+                                        {isAck && asset.acknowledgedAt && (
+                                            <div className="flex justify-between text-[11px] text-emerald-700 pt-1 border-t border-emerald-100/60">
+                                                <span>Confirmed On:</span>
+                                                <span className="font-semibold">{formatDateStr(asset.acknowledgedAt)}</span>
+                                            </div>
+                                        )}
                                     </div>
+
+                                    {/* Action button if pending acknowledgment and viewing own profile */}
+                                    {!isAck && isOwnProfile && asset._id && (
+                                        <div className="pt-2 border-t border-gray-100">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAcknowledgeAsset(asset)}
+                                                disabled={acknowledgingId === asset._id}
+                                                className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                                            >
+                                                {acknowledgingId === asset._id ? (
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                ) : (
+                                                    <Check className="w-3.5 h-3.5" />
+                                                )}
+                                                <span>Acknowledge Receipt</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
-                            ))
+                            );
+                            })
                         )}
                     </div>
                 </div>
@@ -3514,6 +3649,145 @@ export const EmployeeProfile = () => {
                                 </button>
                                 <button type="submit" disabled={saving} className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold py-2 px-5 rounded-xl shadow-sm cursor-pointer">
                                     Assign Asset
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               REQUEST NEW ASSET MODAL (For Employees other than Global Admin)
+            ───────────────────────────────────────────── */}
+            {showRequestAssetModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                        onClick={() => !submittingAssetRequest && setShowRequestAssetModal(false)}
+                    />
+                    <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-lg p-6 sm:p-7 space-y-5 select-none animate-fadeIn">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3.5">
+                            <div>
+                                <h3 className="text-[#1E1E1E] text-base font-extrabold flex items-center gap-2">
+                                    <Laptop className="w-5 h-5 text-[#2D79C7]" />
+                                    <span>Request New Asset</span>
+                                </h3>
+                                <p className="text-gray-400 text-xs mt-0.5">
+                                    Select the item you require. Your request will be sent directly to management.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowRequestAssetModal(false)}
+                                disabled={submittingAssetRequest}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleRequestAssetSubmit} className="space-y-4">
+                            <div>
+                                <label className="text-xs font-extrabold text-slate-700 block mb-2">
+                                    Select Asset Type <span className="text-rose-500">*</span>
+                                </label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                    {[
+                                        { id: "Monitor", label: "Monitor", icon: Monitor },
+                                        { id: "Mouse", label: "Mouse", icon: MouseIcon },
+                                        { id: "Keyboard", label: "Keyboard", icon: KeyboardIcon },
+                                        { id: "Earphone/Headphone", label: "Earphone / Headphone", icon: Headphones },
+                                        { id: "Other", label: "Other", icon: PlusCircle },
+                                    ].map((item) => {
+                                        const IconComp = item.icon;
+                                        const isSelected = requestAssetType === item.id;
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => setRequestAssetType(item.id)}
+                                                className={`p-3 rounded-2xl border text-left flex flex-col justify-between gap-2 transition-all cursor-pointer ${
+                                                    isSelected
+                                                        ? "border-[#2D79C7] bg-blue-50/70 text-[#2D79C7] ring-2 ring-blue-100 shadow-sm"
+                                                        : "border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                                                }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                                                    isSelected ? "bg-[#2D79C7] text-white" : "bg-slate-100 text-slate-600"
+                                                }`}>
+                                                    <IconComp className="w-4 h-4" />
+                                                </div>
+                                                <span className="text-xs font-bold leading-tight">{item.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Comment box - opens when other is clicked, or optional for other types */}
+                            {requestAssetType === "Other" ? (
+                                <div className="space-y-1.5 animate-fadeIn">
+                                    <label className="text-xs font-extrabold text-slate-700 flex items-center justify-between">
+                                        <span>Specify Required Asset &amp; Details <span className="text-rose-500">*</span></span>
+                                        <span className="text-[11px] text-amber-600 font-semibold">Required for "Other"</span>
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        value={requestAssetComment}
+                                        onChange={(e) => setRequestAssetComment(e.target.value)}
+                                        placeholder="Please tell us which asset you need and why (e.g. Type-C Multiport Adapter, Ergonomic Chair, Web Camera)..."
+                                        className="w-full bg-[#F8FAFC] border border-gray-300 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-[#2D79C7] focus:bg-white resize-none"
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-extrabold text-slate-700 block">
+                                        Additional Notes / Specifications <span className="text-slate-400 font-normal">(Optional)</span>
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        value={requestAssetComment}
+                                        onChange={(e) => setRequestAssetComment(e.target.value)}
+                                        placeholder="Any specific preference, model, connectivity port, or reason..."
+                                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-[#2D79C7] focus:bg-white resize-none"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 text-[11px] text-slate-500 flex items-start gap-2">
+                                <Mail className="w-3.5 h-3.5 text-[#2D79C7] shrink-0 mt-0.5" />
+                                <span>
+                                    Your request will be emailed to <strong>Prashant Kumar</strong> and CC'd to <strong>Puneet Chopra</strong> &amp; <strong>Esha Mohindru</strong>.
+                                </span>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRequestAssetModal(false)}
+                                    disabled={submittingAssetRequest}
+                                    className="px-4 py-2 border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={submittingAssetRequest}
+                                    className="px-5 py-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+                                >
+                                    {submittingAssetRequest ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Submitting...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check className="w-3.5 h-3.5" />
+                                            <span>Submit Request</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>

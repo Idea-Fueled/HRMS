@@ -32,4 +32,13 @@ export const deleteAsset = async (id) => {
     return API.delete(`/assets/${id}`);
 };
 
+export const acknowledgeAsset = async (id) => {
+    return API.post(`/assets/${id}/acknowledge`);
+};
+
+export const requestNewAsset = async (data) => {
+    return API.post("/assets/request", data);
+};
+
 export default API;
+

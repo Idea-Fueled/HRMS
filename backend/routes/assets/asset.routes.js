@@ -8,28 +8,40 @@ import {
     assignAsset,
     unassignAsset,
     updateAssetStatusCondition,
-    deleteAsset
+    deleteAsset,
+    acknowledgeAssetByToken,
+    acknowledgeAsset,
+    requestNewAsset
 } from "../../controllers/assets/asset.controller.js";
 
 const router = express.Router();
 
-// Middleware to restrict all asset operations strictly to Global Admin only
+// Middleware to restrict admin asset operations strictly to Global Admin only
 const isGlobalAdmin = (req, res, next) => {
-    if (req.user && req.user.role === "global_admin") {
+    if (req.user && (req.user.role === "global_admin" || req.user.role === "admin")) {
         next();
     } else {
         return res.status(403).json({
             success: false,
-            message: "Forbidden. Access denied. Only Global Admin can access the Assets module."
+            message: "Forbidden. Access denied. Only Global Admin can access this Assets management action."
         });
     }
 };
 
-// Read-only endpoints for all authenticated users (Employees can view assigned assets on profile)
+// 1. Employee Acknowledgment Endpoints
+// Direct link from email (token in query string, no login required)
+router.get("/:id/acknowledge", acknowledgeAssetByToken);
+// Authenticated call from HRMS UI
+router.post("/:id/acknowledge", isAuthenticated, acknowledgeAsset);
+
+// 2. Employee Request New Asset (Available to any authenticated employee)
+router.post("/request", isAuthenticated, requestNewAsset);
+
+// 3. Read-only endpoints for all authenticated users (Employees can view assigned assets on profile)
 router.get("/", isAuthenticated, getAllAssets);
 router.get("/assigned", isAuthenticated, getAssignedAssets);
 
-// Mutation endpoints strictly restricted to Global Admin only
+// 4. Mutation endpoints strictly restricted to Global Admin only
 router.post("/", isAuthenticated, isGlobalAdmin, createAsset);
 router.put("/:id", isAuthenticated, isGlobalAdmin, updateAsset);
 router.post("/:id/assign", isAuthenticated, isGlobalAdmin, assignAsset);
@@ -38,3 +50,4 @@ router.patch("/:id/status", isAuthenticated, isGlobalAdmin, updateAssetStatusCon
 router.delete("/:id", isAuthenticated, isGlobalAdmin, deleteAsset);
 
 export default router;
+

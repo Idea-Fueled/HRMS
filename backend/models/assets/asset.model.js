@@ -61,6 +61,19 @@ const assetSchema = new mongoose.Schema(
             type: String,
             trim: true,
             default: ""
+        },
+        acknowledgmentStatus: {
+            type: String,
+            enum: ["Pending", "Acknowledged"],
+            default: "Pending"
+        },
+        acknowledgedAt: {
+            type: Date,
+            default: null
+        },
+        acknowledgmentToken: {
+            type: String,
+            default: null
         }
     },
     { timestamps: true }
