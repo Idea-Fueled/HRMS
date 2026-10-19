@@ -3,6 +3,7 @@ import Offboarding from "../../models/offboarding/offboarding.model.js";
 import User from "../../models/users/user.model.js";
 import Email from "../../models/emails/email.model.js";
 import { emitToUser } from "../../socket/socket.js";
+import { dispatchExternalEmail } from "../../services/email.service.js";
 
 /**
  * Dynamic notice period calculation:
@@ -517,27 +518,38 @@ export const submitEmployeeResignation = async (req, res) => {
         await User.findByIdAndUpdate(employeeId, { status: "offboarding" });
 
         // Notifications to Manager and Global Admins
-        const globalAdmins = await User.find({ role: "global_admin" }).select("_id email fullName firstName lastName").lean();
         const recipientList = [];
         const seenEmails = new Set();
 
-        if (employee.managerId && employee.managerId.email) {
-            const mEmail = employee.managerId.email.toLowerCase();
+        // 1. Employee's specific manager
+        let manager = employee.managerId;
+        if (manager && (!manager.email || typeof manager === "string")) {
+            manager = await User.findById(manager._id || manager).select("_id email fullName firstName lastName").lean();
+        }
+
+        if (manager && manager.email) {
+            const mEmail = manager.email.toLowerCase().trim();
             recipientList.push({
-                id: employee.managerId._id,
+                id: manager._id,
                 email: mEmail,
-                name: employee.managerId.fullName || `${employee.managerId.firstName || ""} ${employee.managerId.lastName || ""}`.trim()
+                name: manager.fullName || `${manager.firstName || ""} ${manager.lastName || ""}`.trim() || "Manager"
             });
             seenEmails.add(mEmail);
         }
 
+        // 2. Global Admins
+        const globalAdmins = await User.find({
+            role: { $in: ["global_admin", "admin"] }
+        }).select("_id email fullName firstName lastName").lean();
+
         for (const admin of globalAdmins) {
-            const aEmail = (admin.email || "").toLowerCase();
+            if (admin._id.toString() === employeeId.toString()) continue;
+            const aEmail = (admin.email || "").toLowerCase().trim();
             if (aEmail && !seenEmails.has(aEmail)) {
                 recipientList.push({
                     id: admin._id,
                     email: aEmail,
-                    name: admin.fullName || `${admin.firstName || ""} ${admin.lastName || ""}`.trim()
+                    name: admin.fullName || `${admin.firstName || ""} ${admin.lastName || ""}`.trim() || "Admin"
                 });
                 seenEmails.add(aEmail);
             }
@@ -647,6 +659,16 @@ export const submitEmployeeResignation = async (req, res) => {
                         }
                     });
 
+                    // Real-time socket events for UI update & audio chime
+                    emitToUser(
+                        { userId: rec.id, email: rec.email },
+                        "new_email",
+                        {
+                            email: newEmail,
+                            unreadCount
+                        }
+                    );
+
                     emitToUser(
                         { userId: rec.id, email: rec.email },
                         "resignation_alert",
@@ -657,8 +679,19 @@ export const submitEmployeeResignation = async (req, res) => {
                             unreadCount
                         }
                     );
+
+                    // External SMTP email delivery
+                    try {
+                        await dispatchExternalEmail({
+                            to: rec.email,
+                            subject,
+                            body: emailBody
+                        });
+                    } catch (extErr) {
+                        console.warn(`External resignation email delivery failed to ${rec.email}:`, extErr?.message || extErr);
+                    }
                 } catch (e) {
-                    console.error("Socket error on resignation alert:", e);
+                    console.error(`Error notifying recipient ${rec.email} on resignation:`, e);
                 }
             }
         }
@@ -768,35 +801,50 @@ export const adminInitiateExit = async (req, res) => {
             });
         }
 
-        const globalAdmins = await User.find({ role: "global_admin" }).select("_id email fullName firstName lastName").lean();
         const recipientList = [];
         const seenEmails = new Set();
 
+        // 1. Employee whose exit is being initiated
         if (employee.email) {
-            const eEmail = employee.email.toLowerCase();
-            recipientList.push({ id: employee._id, email: eEmail, name: empName });
+            const eEmail = employee.email.toLowerCase().trim();
+            recipientList.push({
+                id: employee._id,
+                email: eEmail,
+                name: empName
+            });
             seenEmails.add(eEmail);
         }
 
-        if (employee.managerId && employee.managerId.email) {
-            const mEmail = employee.managerId.email.toLowerCase();
+        // 2. Employee's specific manager
+        let manager = employee.managerId;
+        if (manager && (!manager.email || typeof manager === "string")) {
+            manager = await User.findById(manager._id || manager).select("_id email fullName firstName lastName").lean();
+        }
+
+        if (manager && manager.email) {
+            const mEmail = manager.email.toLowerCase().trim();
             if (!seenEmails.has(mEmail)) {
                 recipientList.push({
-                    id: employee.managerId._id,
+                    id: manager._id,
                     email: mEmail,
-                    name: employee.managerId.fullName || `${employee.managerId.firstName || ""} ${employee.managerId.lastName || ""}`.trim()
+                    name: manager.fullName || `${manager.firstName || ""} ${manager.lastName || ""}`.trim() || "Manager"
                 });
                 seenEmails.add(mEmail);
             }
         }
 
+        // 3. Global Admins
+        const globalAdmins = await User.find({
+            role: { $in: ["global_admin", "admin"] }
+        }).select("_id email fullName firstName lastName").lean();
+
         for (const admin of globalAdmins) {
-            const aEmail = (admin.email || "").toLowerCase();
+            const aEmail = (admin.email || "").toLowerCase().trim();
             if (aEmail && !seenEmails.has(aEmail)) {
                 recipientList.push({
                     id: admin._id,
                     email: aEmail,
-                    name: admin.fullName || `${admin.firstName || ""} ${admin.lastName || ""}`.trim()
+                    name: admin.fullName || `${admin.firstName || ""} ${admin.lastName || ""}`.trim() || "Admin"
                 });
                 seenEmails.add(aEmail);
             }
@@ -908,6 +956,16 @@ export const adminInitiateExit = async (req, res) => {
                         }
                     });
 
+                    // Real-time socket events for UI update & audio chime
+                    emitToUser(
+                        { userId: rec.id, email: rec.email },
+                        "new_email",
+                        {
+                            email: newEmail,
+                            unreadCount
+                        }
+                    );
+
                     emitToUser(
                         { userId: rec.id, email: rec.email },
                         "exit_alert",
@@ -918,8 +976,19 @@ export const adminInitiateExit = async (req, res) => {
                             unreadCount
                         }
                     );
+
+                    // External SMTP email delivery
+                    try {
+                        await dispatchExternalEmail({
+                            to: rec.email,
+                            subject,
+                            body: emailBody
+                        });
+                    } catch (extErr) {
+                        console.warn(`External exit email delivery failed to ${rec.email}:`, extErr?.message || extErr);
+                    }
                 } catch (e) {
-                    console.error("Socket error on exit alert:", e);
+                    console.error(`Error notifying recipient ${rec.email} on exit initiation:`, e);
                 }
             }
         }
