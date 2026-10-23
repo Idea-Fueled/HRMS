@@ -458,9 +458,10 @@ export const getAttendanceDashboardSummary = async (req, res) => {
             if (att) {
                 if (att.workMode) workMode = att.workMode;
                 if (att.firstClockIn) {
-                    checkIn = new Date(att.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
-                    const clockInHour = new Date(att.firstClockIn).getHours();
-                    const clockInMin = new Date(att.firstClockIn).getMinutes();
+                    checkIn = new Date(att.firstClockIn).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
+                    const istParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(new Date(att.firstClockIn));
+                    const clockInHour = Number(istParts.find(p => p.type === "hour")?.value || 0);
+                    const clockInMin = Number(istParts.find(p => p.type === "minute")?.value || 0);
                     const clockInTotalMin = clockInHour * 60 + clockInMin;
                     const shiftStartMin = 10 * 60; // 10:00 AM
 
@@ -481,7 +482,7 @@ export const getAttendanceDashboardSummary = async (req, res) => {
                 }
 
                 if (att.lastClockOut) {
-                    checkOut = new Date(att.lastClockOut).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+                    checkOut = new Date(att.lastClockOut).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
                 }
 
                 if (att.totalWorkMinutes) {

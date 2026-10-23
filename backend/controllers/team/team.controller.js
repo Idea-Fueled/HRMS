@@ -193,8 +193,8 @@ export const getTeamAttendance = async (req, res) => {
                     presentCount++;
                 }
 
-                checkIn = att.firstClockIn ? new Date(att.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "-- : --";
-                checkOut = att.lastClockOut ? new Date(att.lastClockOut).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "-- : --";
+                checkIn = att.firstClockIn ? new Date(att.firstClockIn).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "-- : --";
+                checkOut = att.lastClockOut ? new Date(att.lastClockOut).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "-- : --";
 
                 if (att.totalWorkMinutes) {
                     const h = Math.floor(att.totalWorkMinutes / 60);
@@ -203,10 +203,15 @@ export const getTeamAttendance = async (req, res) => {
                 }
                 mode = att.workMode || "Office";
 
-                // Count late if clock-in is after 9:15 AM
-                if (att.firstClockIn && new Date(att.firstClockIn).getHours() >= 9 && new Date(att.firstClockIn).getMinutes() > 15) {
-                    status = "Late";
-                    lateCount++;
+                // Count late if clock-in is after 9:15 AM IST
+                if (att.firstClockIn) {
+                    const istParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(new Date(att.firstClockIn));
+                    const istHour = Number(istParts.find(p => p.type === "hour")?.value || 0);
+                    const istMin = Number(istParts.find(p => p.type === "minute")?.value || 0);
+                    if (istHour > 9 || (istHour === 9 && istMin > 15)) {
+                        status = "Late";
+                        lateCount++;
+                    }
                 }
             } else if (onLeave) {
                 status = "On Leave";
@@ -226,7 +231,7 @@ export const getTeamAttendance = async (req, res) => {
                 mode,
                 status,
                 movementLogs: att ? att.logs.map(l => ({
-                    time: new Date(l.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+                    time: new Date(l.timestamp).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }),
                     type: l.action === "clock_in" ? "IN" : "OUT"
                 })) : []
             };
