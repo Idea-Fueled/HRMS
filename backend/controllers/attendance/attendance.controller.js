@@ -311,21 +311,20 @@ export const getTodayAttendance = async (req, res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        let userObjId = employeeId;
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+            const user = await User.findOne({ employeeId });
+            if (user) userObjId = user._id;
+        }
+
         const attendance = await Attendance.findOne({
-            employeeId,
+            employeeId: userObjId,
             date: today,
         });
 
-        if (!attendance) {
-            return res.status(200).json({
-                success: true,
-                attendance: null,
-            });
-        }
-
         return res.status(200).json({
             success: true,
-            attendance,
+            attendance: attendance || null,
         });
     } catch (error) {
         return res.status(500).json({
@@ -345,14 +344,20 @@ export const getTodayLogs = async (req, res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        let userObjId = employeeId;
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+            const user = await User.findOne({ employeeId });
+            if (user) userObjId = user._id;
+        }
+
         const attendance = await Attendance.findOne({
-            employeeId,
+            employeeId: userObjId,
             date: today,
-        }).select("logs totalWorkMinutes totalBreakMinutes totalSessions");
+        });
 
         return res.status(200).json({
             success: true,
-            data: attendance,
+            data: attendance || null,
         });
     } catch (error) {
         return res.status(500).json({
