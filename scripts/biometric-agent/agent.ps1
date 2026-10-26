@@ -84,7 +84,7 @@ function Sync-AttendancePunches {
 
                 $punches.Add(@{
                     enrollNumber = [string]$enrollNumber
-                    timestamp = "$year-$fMonth-$fDay ${fHour}:${fMin}:${fSec}"
+                    timestamp = "$year-$fMonth-$fDay ${fHour}:${fMin}:${fSec}+05:30"
                 })
             }
         }
@@ -124,7 +124,7 @@ function Sync-AttendancePunches {
                             }
                             $punches.Add(@{
                                 enrollNumber = [string]$enroll
-                                timestamp = "$y-$m-$d $rawTime"
+                                timestamp = "$y-$m-$d ${rawTime}+05:30"
                             })
                         }
                     }

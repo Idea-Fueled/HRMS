@@ -996,7 +996,16 @@ export const syncBiometricPunches = async (req, res) => {
             }
 
             const rawTimestamp = item.timestamp || item.time || item.punchTime;
-            const punchDate = new Date(rawTimestamp);
+            let punchDate;
+            if (typeof rawTimestamp === "string") {
+                let clean = rawTimestamp.trim().replace(" ", "T");
+                if (!clean.includes("+") && !clean.includes("Z") && !clean.endsWith("z")) {
+                    clean = `${clean}+05:30`;
+                }
+                punchDate = new Date(clean);
+            } else {
+                punchDate = new Date(rawTimestamp);
+            }
             if (isNaN(punchDate.getTime())) continue;
 
             const istDateStr = punchDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // "YYYY-MM-DD"
@@ -1042,6 +1051,9 @@ export const syncBiometricPunches = async (req, res) => {
             const [year, month, day] = istDateStr.split("-").map(Number);
             const dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 
+            const firstClockIn = filteredPunches[0];
+            const lastClockOut = filteredPunches.length > 1 ? filteredPunches[filteredPunches.length - 1] : null;
+
             // Generate logs with alternating clock_in and clock_out
             const logs = [];
             for (let i = 0; i < filteredPunches.length; i++) {
@@ -1051,24 +1063,40 @@ export const syncBiometricPunches = async (req, res) => {
                 });
             }
 
-            const firstClockIn = filteredPunches[0];
-            const lastClockOut = filteredPunches.length > 1 ? filteredPunches[filteredPunches.length - 1] : null;
-
-            // Calculate work and break minutes
-            const clockIns = logs.filter(l => l.action === "clock_in");
-            const clockOuts = logs.filter(l => l.action === "clock_out");
-
+            // Calculate work and break minutes strictly within this day
             let totalWorkMinutes = 0;
-            for (let i = 0; i < Math.min(clockIns.length, clockOuts.length); i++) {
-                const diff = (new Date(clockOuts[i].timestamp) - new Date(clockIns[i].timestamp)) / (1000 * 60);
-                if (diff > 0) totalWorkMinutes += diff;
-            }
-
             let totalBreakMinutes = 0;
-            for (let i = 0; i < clockOuts.length; i++) {
-                if (clockIns[i + 1]) {
-                    const breakDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / (1000 * 60);
-                    if (breakDiff > 0) totalBreakMinutes += breakDiff;
+
+            if (filteredPunches.length === 1) {
+                totalWorkMinutes = 0;
+                totalBreakMinutes = 0;
+            } else if (filteredPunches.length === 2) {
+                const spanMins = Math.round((lastClockOut.getTime() - firstClockIn.getTime()) / 60000);
+                totalWorkMinutes = Math.max(0, spanMins);
+                totalBreakMinutes = 0;
+            } else {
+                const clockIns = logs.filter(l => l.action === "clock_in");
+                const clockOuts = logs.filter(l => l.action === "clock_out");
+
+                for (let i = 0; i < Math.min(clockIns.length, clockOuts.length); i++) {
+                    const diff = (new Date(clockOuts[i].timestamp) - new Date(clockIns[i].timestamp)) / (1000 * 60);
+                    if (diff > 0) totalWorkMinutes += diff;
+                }
+
+                for (let i = 0; i < clockOuts.length; i++) {
+                    if (clockIns[i + 1]) {
+                        const breakDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / (1000 * 60);
+                        if (breakDiff > 0) totalBreakMinutes += breakDiff;
+                    }
+                }
+
+                totalWorkMinutes = Math.round(totalWorkMinutes);
+                totalBreakMinutes = Math.round(totalBreakMinutes);
+
+                // Sanity check: Total break cannot exceed the total day span (lastClockOut - firstClockIn)
+                const totalSpan = Math.round((lastClockOut.getTime() - firstClockIn.getTime()) / 60000);
+                if (totalBreakMinutes > totalSpan) {
+                    totalBreakMinutes = Math.max(0, totalSpan - totalWorkMinutes);
                 }
             }
 

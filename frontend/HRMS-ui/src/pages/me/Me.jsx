@@ -3083,6 +3083,13 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                 if (span > 0) work = Math.floor(span);
             }
 
+            if (record.firstClockIn && record.lastClockOut) {
+                const totalSpan = Math.round((new Date(record.lastClockOut) - new Date(record.firstClockIn)) / 60000);
+                if (brk > totalSpan) {
+                    brk = Math.max(0, totalSpan - work);
+                }
+            }
+
             return { work, brk };
         };
 

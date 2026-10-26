@@ -2232,7 +2232,7 @@ export const EmployeeProfile = () => {
                             </div>
                             <p className="text-gray-500 text-[11px] font-medium mt-0.5">
                                 {todayAttendanceRec?.firstClockIn ? (
-                                    <>First Clocked In at <span className="font-bold text-[#1E1E1E]">{new Date(todayAttendanceRec.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}</span> • Mode: <span className="font-bold text-[#2D79C7]">{todayAttendanceRec.workMode || "Office"}</span></>
+                                    <>First Clocked In at <span className="font-bold text-[#1E1E1E]">{new Date(todayAttendanceRec.firstClockIn).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })}</span> • Mode: <span className="font-bold text-[#2D79C7]">{todayAttendanceRec.workMode || "Office"}</span></>
                                 ) : (
                                     "No clock-in activity recorded for today yet."
                                 )}
@@ -2302,10 +2302,10 @@ export const EmployeeProfile = () => {
                                                 month: "short"
                                             });
                                             const clockInStr = log.firstClockIn
-                                                ? new Date(log.firstClockIn).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+                                                ? new Date(log.firstClockIn).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })
                                                 : "--";
                                             const clockOutStr = log.lastClockOut
-                                                ? new Date(log.lastClockOut).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+                                                ? new Date(log.lastClockOut).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })
                                                 : "--";
                                             const workMins = log.totalWorkMinutes || 0;
                                             const workHrs = Math.floor(workMins / 60);
