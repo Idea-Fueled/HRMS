@@ -23,17 +23,17 @@ $apiSecret = $config.apiSecret
 $intervalSeconds = [int]$config.syncIntervalMinutes * 60
 
 Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Idea-Fueled Biometric Agent Started."
-Write-Output "Target Machine: $deviceIp:$devicePort | Sync Interval: $($config.syncIntervalMinutes) minutes"
+Write-Output "Target Machine: ${deviceIp}:${devicePort} | Sync Interval: $($config.syncIntervalMinutes) minutes"
 
 function Sync-Attendance {
     try {
-        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Connecting to biometric device ($deviceIp:$devicePort)..."
+        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Connecting to biometric device (${deviceIp}:${devicePort})..."
         
         $zk = New-Object -ComObject "zkemkeeper.ZKEM"
         $connected = $zk.Connect_Net($deviceIp, $devicePort)
 
         if (-not $connected) {
-            Write-Warning "Could not connect to biometric machine at $deviceIp:$devicePort. Will retry in next cycle."
+            Write-Warning "Could not connect to biometric machine at ${deviceIp}:${devicePort}. Will retry in next cycle."
             return
         }
 
@@ -61,7 +61,7 @@ function Sync-Attendance {
             $formattedMin = "{0:D2}" -f $dwMinute
             $formattedSec = "{0:D2}" -f $dwSecond
 
-            $timestamp = "$dwYear-$formattedMonth-$formattedDay $formattedHour:$formattedMin:$formattedSec"
+            $timestamp = "$dwYear-$formattedMonth-$formattedDay ${formattedHour}:${formattedMin}:${formattedSec}"
 
             $punches += @{
                 enrollNumber = [string]$dwEnrollNumber
