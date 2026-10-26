@@ -1,11 +1,3 @@
-# ==============================================================================
-# Idea-Fueled HRMS - Biometric Hardware Sync Agent (PowerShell Native)
-# ==============================================================================
-# Connects directly to office eSSL / ZKTeco machine over LAN,
-# extracts punch logs, and syncs to HRMS Cloud Backend.
-# No Keka needed. Runs completely standalone as a Windows Service.
-# ==============================================================================
-
 param (
     [string]$ConfigPath = "$PSScriptRoot\config.json"
 )
@@ -16,97 +8,76 @@ if (-not (Test-Path $ConfigPath)) {
 }
 
 $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
-$deviceIp = $config.deviceIp
-$devicePort = [int]$config.devicePort
 $apiUrl = $config.apiUrl
 $apiSecret = $config.apiSecret
-$intervalSeconds = [int]$config.syncIntervalMinutes * 60
 
-Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Idea-Fueled Biometric Agent Started."
-Write-Output "Target Machine: ${deviceIp}:${devicePort} | Sync Interval: $($config.syncIntervalMinutes) minutes"
+Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Reading local biometric punch dump..."
 
-function Sync-Attendance {
-    try {
-        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Connecting to biometric device (${deviceIp}:${devicePort})..."
-        
-        $zk = New-Object -ComObject "zkemkeeper.ZKEM"
-        $connected = $zk.Connect_Net($deviceIp, $devicePort)
+$punches = [System.Collections.Generic.List[hashtable]]::new()
 
-        if (-not $connected) {
-            Write-Warning "Could not connect to biometric machine at ${deviceIp}:${devicePort}. Will retry in next cycle."
-            return
-        }
+$files = Get-ChildItem -Path "C:\ProgramData\KekaSyncTool" -Filter "*.dat" -Recurse -ErrorAction SilentlyContinue
+Write-Output "Found $($files.Count) log dump files. Processing punches with correct DD-MM-YYYY format..."
 
-        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Connected successfully. Reading logs from machine memory..."
-        $zk.RegEvent(1, 65535) | Out-Null
-        $zk.ReadGeneralLogData(1) | Out-Null
+foreach ($file in $files) {
+    $lines = Get-Content $file.FullName
+    foreach ($line in $lines) {
+        $parts = $line.Trim() -split '\s+'
+        if ($parts.Count -ge 3) {
+            $enroll = $parts[0]
+            $rawDate = $parts[1]
+            $rawTime = $parts[2]
 
-        $dwEnrollNumber = ""
-        $dwVerifyMode = 0
-        $dwInOutMode = 0
-        $dwYear = 0
-        $dwMonth = 0
-        $dwDay = 0
-        $dwHour = 0
-        $dwMinute = 0
-        $dwSecond = 0
-        $dwWorkCode = 0
-
-        $punches = @()
-
-        while ($zk.SSR_GetGeneralLogData(1, [ref]$dwEnrollNumber, [ref]$dwVerifyMode, [ref]$dwInOutMode, [ref]$dwYear, [ref]$dwMonth, [ref]$dwDay, [ref]$dwHour, [ref]$dwMinute, [ref]$dwSecond, [ref]$dwWorkCode)) {
-            $formattedMonth = "{0:D2}" -f $dwMonth
-            $formattedDay = "{0:D2}" -f $dwDay
-            $formattedHour = "{0:D2}" -f $dwHour
-            $formattedMin = "{0:D2}" -f $dwMinute
-            $formattedSec = "{0:D2}" -f $dwSecond
-
-            $timestamp = "$dwYear-$formattedMonth-$formattedDay ${formattedHour}:${formattedMin}:${formattedSec}"
-
-            $punches += @{
-                enrollNumber = [string]$dwEnrollNumber
-                timestamp = $timestamp
-                inOutMode = $dwInOutMode
-            }
-        }
-
-        $zk.Disconnect()
-        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Successfully fetched $($punches.Count) punches from device."
-
-        if ($punches.Count -gt 0) {
-            $batchSize = 2000
-            $totalBatches = [Math]::Ceiling($punches.Count / $batchSize)
-            Write-Output "Uploading $($punches.Count) punches in $totalBatches batches..."
-
-            for ($b = 0; $b -lt $totalBatches; $b++) {
-                $start = $b * $batchSize
-                $count = [Math]::Min($batchSize, $punches.Count - $start)
-                $batchPunches = $punches.GetRange($start, $count)
-
-                $body = @{
-                    apiKey = $apiSecret
-                    punches = $batchPunches
-                } | ConvertTo-Json -Depth 5
-
-                $headers = @{
-                    "Content-Type" = "application/json"
-                    "x-biometric-secret" = $apiSecret
+            $dparts = $rawDate -split '[\/\-\.]'
+            if ($dparts.Count -eq 3 -and $rawTime -match '^\d{2}:\d{2}:\d{2}$') {
+                # Format: DD-MM-YYYY
+                # dparts[0] = Day (e.g. 23)
+                # dparts[1] = Month (e.g. 10)
+                # dparts[2] = Year (e.g. 2026)
+                if ($dparts[2].Length -eq 4) {
+                    $year = $dparts[2]
+                    $month = $dparts[1].PadLeft(2, '0')
+                    $day = $dparts[0].PadLeft(2, '0')
+                } else {
+                    $year = $dparts[0]
+                    $month = $dparts[1].PadLeft(2, '0')
+                    $day = $dparts[2].PadLeft(2, '0')
                 }
 
-                Write-Output "Uploading Batch $($b + 1) of $totalBatches ($count punches)..."
-                $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 120
-                Write-Output "Batch $($b + 1) Success: $($response.message)"
+                $isoDate = "$year-$month-$day"
+
+                $punches.Add(@{
+                    enrollNumber = [string]$enroll
+                    timestamp = "$isoDate $rawTime"
+                })
             }
-            Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ALL PUNCHES SYNCED SUCCESSFULLY!"
         }
-    }
-    catch {
-        Write-Error "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Sync failed with error: $_"
     }
 }
 
-# Continuous Background Loop
-while ($true) {
-    Sync-Attendance
-    Start-Sleep -Seconds $intervalSeconds
+Write-Output "Successfully extracted $($punches.Count) punches!"
+
+if ($punches.Count -gt 0) {
+    $batchSize = 2500
+    $totalBatches = [Math]::Ceiling($punches.Count / $batchSize)
+
+    for ($b = 0; $b -lt $totalBatches; $b++) {
+        $start = $b * $batchSize
+        $count = [Math]::Min($batchSize, $punches.Count - $start)
+        $batchPunches = $punches.GetRange($start, $count)
+
+        $body = @{
+            apiKey = $apiSecret
+            punches = $batchPunches
+        } | ConvertTo-Json -Depth 5
+
+        $headers = @{
+            "Content-Type" = "application/json"
+            "x-biometric-secret" = $apiSecret
+        }
+
+        Write-Output "Uploading Batch $($b + 1) of $totalBatches ($count punches) to HRMS..."
+        $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 120
+        Write-Output "Batch $($b + 1) Response: $($response.message)"
+    }
+    Write-Output "ALL HISTORICAL ATTENDANCE SYNCED SUCCESSFULLY TO HRMS!"
 }
