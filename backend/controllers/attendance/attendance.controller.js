@@ -1005,6 +1005,7 @@ export const syncBiometricPunches = async (req, res) => {
 
         let updatedDaysCount = 0;
         const employeeSummary = new Map();
+        const bulkOps = [];
 
         for (const [, group] of groupedMap.entries()) {
             const { user, istDateStr, punches } = group;
@@ -1068,27 +1069,33 @@ export const syncBiometricPunches = async (req, res) => {
                 status = "half_day";
             }
 
-            await Attendance.findOneAndUpdate(
-                { employeeId: user._id, date: dateObj },
-                {
-                    $set: {
-                        employeeId: user._id,
-                        date: dateObj,
-                        status,
-                        firstClockIn,
-                        lastClockOut,
-                        totalWorkMinutes: Math.floor(totalWorkMinutes),
-                        totalBreakMinutes: Math.floor(totalBreakMinutes),
-                        totalSessions: clockIns.length,
-                        workMode: "Office",
-                        logs
-                    }
-                },
-                { upsert: true, new: true, setDefaultsOnInsert: true }
-            );
+            bulkOps.push({
+                updateOne: {
+                    filter: { employeeId: user._id, date: dateObj },
+                    update: {
+                        $set: {
+                            employeeId: user._id,
+                            date: dateObj,
+                            status,
+                            firstClockIn,
+                            lastClockOut,
+                            totalWorkMinutes: Math.floor(totalWorkMinutes),
+                            totalBreakMinutes: Math.floor(totalBreakMinutes),
+                            totalSessions: clockIns.length,
+                            workMode: "Office",
+                            logs
+                        }
+                    },
+                    upsert: true
+                }
+            });
 
             updatedDaysCount++;
             employeeSummary.set(user._id.toString(), user.fullName || user.firstName);
+        }
+
+        if (bulkOps.length > 0) {
+            await Attendance.bulkWrite(bulkOps, { ordered: false });
         }
 
         return res.status(200).json({
