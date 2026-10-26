@@ -2250,11 +2250,32 @@ const MyTeam = () => {
     const { user } = useAuth();
     const userRole = (user?.role || "employee").toLowerCase();
     const isGlobalAdmin = userRole === "global_admin" || userRole === "admin";
-    const isManager = userRole === "manager";
+    const isManager = userRole === "manager" || userRole === "management";
     const isHr = userRole === "hr";
 
+    // Regular employee / intern protection
+    if (!isGlobalAdmin && !isManager && !isHr) {
+        return (
+            <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-sm max-w-xl mx-auto mt-8 select-none animate-fadeIn">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#2D79C7] mx-auto flex items-center justify-center mb-4 border border-blue-100">
+                    <Clock className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1.5">Team Attendance is Restricted</h3>
+                <p className="text-xs text-slate-500 leading-relaxed mb-5">
+                    Team Attendance and team management are accessible only to Managers, HR, and Administrators. You can view your personal attendance history in the <strong>Me</strong> tab.
+                </p>
+                <a
+                    href="/me"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2D79C7] hover:bg-[#2367ac] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+                >
+                    View My Attendance
+                </a>
+            </div>
+        );
+    }
+
     const tabs = React.useMemo(() => {
-        if (isGlobalAdmin || isHr) {
+        if (isGlobalAdmin || isHr || isManager) {
             return [
                 { key: "Team Summary", icon: LayoutDashboard, label: "Team Summary" },
                 { key: "Team Members", icon: Users, label: "Team Members" },
@@ -2263,24 +2284,14 @@ const MyTeam = () => {
                 { key: "Team Performance", icon: Award, label: "Team Performance" }
             ];
         }
-        if (isManager) {
-            return [
-                { key: "Team Members", icon: Users, label: "Team Members" },
-                { key: "Team Attendance", icon: Clock, label: "Team Attendance" },
-                { key: "Team Leaves", icon: Umbrella, label: "Team Leaves" }
-            ];
-        }
-        // Employee Role: Show ONLY Team Members
-        return [
-            { key: "Team Members", icon: Users, label: "Team Members" }
-        ];
+        return [];
     }, [isGlobalAdmin, isHr, isManager]);
 
-    const [activeTab, setActiveTab] = useState(tabs[0]?.key || "Team Members");
+    const [activeTab, setActiveTab] = useState(tabs[0]?.key || "Team Attendance");
 
     useEffect(() => {
         if (!tabs.some(t => t.key === activeTab)) {
-            setActiveTab(tabs[0]?.key || "Team Members");
+            setActiveTab(tabs[0]?.key || "Team Attendance");
         }
     }, [tabs, activeTab]);
 

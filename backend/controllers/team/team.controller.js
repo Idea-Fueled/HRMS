@@ -10,24 +10,29 @@ const seedMockDataIfNeeded = async (currentUserId) => {
 
 // Helper function to get caller's assigned visible/team employee IDs
 const getHrVisibleFilter = async (currentUserId) => {
-    if (!currentUserId) return null;
+    if (!currentUserId) return [];
     const currentUser = await User.findById(currentUserId).select("role visibleEmployees").lean();
-    if (!currentUser) return null;
+    if (!currentUser) return [];
 
     // Global Admin / Admin has full company-wide visibility
     if (currentUser.role === "global_admin" || currentUser.role === "admin") {
         return null;
     }
 
-    // HR user with custom visible employees list configured
+    // HR user: ONLY see their assigned visible employees (if none assigned, see 0 employees)
     if (currentUser.role === "hr") {
         if (currentUser.visibleEmployees && currentUser.visibleEmployees.length > 0) {
             return currentUser.visibleEmployees.map(id => id.toString());
         }
-        return null;
+        return [];
     }
 
-    // Team Lead / Manager / Employee: ONLY see their direct reports
+    // Regular Employee or Intern: CANNOT see team attendance
+    if (currentUser.role === "employee" || currentUser.role === "intern") {
+        return [];
+    }
+
+    // Manager / Management / Team Lead: ONLY see their direct reports
     const directReports = await User.find({
         $or: [
             { managerId: currentUser._id },
@@ -177,6 +182,19 @@ export const getTeamAttendance = async (req, res) => {
         await seedMockDataIfNeeded(userId);
 
         const hrVisibleIds = await getHrVisibleFilter(userId);
+
+        if (Array.isArray(hrVisibleIds) && hrVisibleIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                stats: {
+                    present: 0,
+                    absent: 0,
+                    wfh: 0,
+                    late: 0
+                },
+                logs: []
+            });
+        }
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);

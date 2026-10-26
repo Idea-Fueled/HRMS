@@ -273,13 +273,19 @@ const Sidebar = ({ onClose }) => {
     const hasItemPermission = (item) => {
         if (!user) return false;
 
-        // Workspace categories (Dashboard, Me, My Team, My Finances, Inbox) are visible to everyone
-        const alwaysVisibleKeys = ["dashboard", "me", "myTeam", "myFinances", "inbox"];
+        // Workspace categories (Dashboard, Me, My Finances, Inbox) are visible to everyone
+        const alwaysVisibleKeys = ["dashboard", "me", "myFinances", "inbox"];
         if (alwaysVisibleKeys.includes(item.permissionKey)) {
             return true;
         }
 
         const role = user.role?.toLowerCase();
+
+        // My Team is strictly visible only to Managers, HR, and Admins
+        // Regular employees and interns do NOT see My Team
+        if (item.permissionKey === "myTeam" || item.to === "/my-team") {
+            return role === "global_admin" || role === "admin" || role === "hr" || role === "manager" || role === "management";
+        }
 
         // Check role restriction if item explicitly defines roles
         if (item.roles && Array.isArray(item.roles) && item.roles.length > 0) {

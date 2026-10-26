@@ -634,6 +634,39 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
             });
         }
 
+        // Authorization check:
+        const callerId = req.user?.id || req.user?.userId;
+        const callerRole = (req.user?.role || "").toLowerCase();
+
+        if (callerId) {
+            const isSelf = callerId.toString() === userObjId.toString();
+            if (!isSelf) {
+                if (callerRole === "global_admin" || callerRole === "admin") {
+                    // Global admin / Admin has company-wide access
+                } else if (callerRole === "hr") {
+                    // HR can only view their assigned visible employees
+                    const hrUser = await User.findById(callerId).select("visibleEmployees").lean();
+                    const visible = (hrUser?.visibleEmployees || []).map(id => id.toString());
+                    if (!visible.includes(userObjId.toString())) {
+                        return res.status(403).json({ success: false, message: "Unauthorized: You can only view attendance for employees assigned to you" });
+                    }
+                } else if (callerRole === "manager" || callerRole === "management") {
+                    // Manager can only view their direct reports
+                    const targetUser = await User.findById(userObjId).select("managerId dottedManagerId").lean();
+                    const isReport = targetUser && (
+                        (targetUser.managerId && targetUser.managerId.toString() === callerId.toString()) ||
+                        (targetUser.dottedManagerId && targetUser.dottedManagerId.toString() === callerId.toString())
+                    );
+                    if (!isReport) {
+                        return res.status(403).json({ success: false, message: "Unauthorized: You can only view attendance for your own team members" });
+                    }
+                } else {
+                    // Regular employee or intern cannot view anyone else's attendance
+                    return res.status(403).json({ success: false, message: "Unauthorized: Employees can only view their own attendance history" });
+                }
+            }
+        }
+
         let dateFilter = { employeeId: userObjId };
 
         if (days && days !== "all") {

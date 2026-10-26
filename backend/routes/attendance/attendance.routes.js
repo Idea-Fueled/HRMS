@@ -11,17 +11,18 @@ import {
     getBiometricStatus
 } from "../../controllers/attendance/attendance.controller.js";
 import { uploadDoc } from "../../middlewares/upload.middleware.js";
+import { isAuthenticated } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.post("/clock-in", clockIn);
-router.post("/clock-out", clockOut);
+router.post("/clock-in", isAuthenticated, clockIn);
+router.post("/clock-out", isAuthenticated, clockOut);
 
-router.get("/today/:employeeId", getTodayAttendance);
-router.get("/logs/today/:employeeId", getTodayLogs);
-router.get("/dashboard-summary", getAttendanceDashboardSummary);
-router.get("/history/:employeeId", getEmployeeAttendanceHistory);
-router.post("/import/:employeeId", uploadDoc.single("file"), importEmployeeAttendance);
+router.get("/today/:employeeId", isAuthenticated, getTodayAttendance);
+router.get("/logs/today/:employeeId", isAuthenticated, getTodayLogs);
+router.get("/dashboard-summary", isAuthenticated, getAttendanceDashboardSummary);
+router.get("/history/:employeeId", isAuthenticated, getEmployeeAttendanceHistory);
+router.post("/import/:employeeId", isAuthenticated, uploadDoc.single("file"), importEmployeeAttendance);
 
 // Biometric Direct Sync Endpoints
 router.post("/biometric-sync", syncBiometricPunches);
