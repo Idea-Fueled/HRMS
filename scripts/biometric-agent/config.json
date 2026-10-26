@@ -1,0 +1,7 @@
+{
+  "deviceIp": "192.168.10.57",
+  "devicePort": 4370,
+  "syncIntervalMinutes": 5,
+  "apiUrl": "https://idea-fueled-hrms-backend.onrender.com/api/attendance/biometric-sync",
+  "apiSecret": "IdeaFueled_Biometric_Secret_2026_Secure"
+}
