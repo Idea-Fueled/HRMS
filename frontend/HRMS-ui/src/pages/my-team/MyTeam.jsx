@@ -749,6 +749,20 @@ const calculateMemberPunctuality = (clockInTime, dept = "") => {
 };
 
 const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") onClose();
+        };
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.body.style.overflow = prevOverflow;
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isOpen, onClose]);
+
     if (!isOpen) return null;
 
     const rawLogs = (row?.logs && row.logs.length > 0) ? row.logs : [];
@@ -794,9 +808,17 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
         });
     }
 
-    return (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fadeIn select-none">
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-scaleUp">
+    const modalContent = (
+        <div 
+            className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 select-none animate-fadeIn"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
+            <div 
+                className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-scaleUp"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Modal Header */}
                 <div className="bg-slate-50/90 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
                     <div>
@@ -895,6 +917,8 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 };
 
 const TeamMemberAttendanceHistory = ({ member, onBack }) => {
