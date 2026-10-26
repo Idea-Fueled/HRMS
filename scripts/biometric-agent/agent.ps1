@@ -7,7 +7,7 @@ param (
 if ([Environment]::Is64BitProcess) {
     $sysWow64Ps = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
     if (Test-Path $sysWow64Ps) {
-        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Switching to 32-bit PowerShell for ZKTeco hardware driver..."
+        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Switching to 32-bit PowerShell for ZKTeco driver..."
         $scriptArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"")
         if ($Once) { $scriptArgs += "-Once" }
         & $sysWow64Ps $scriptArgs
@@ -34,17 +34,34 @@ function Sync-AttendancePunches {
 
     # 1. Try Direct Hardware Connection to Biometric Device (192.168.10.57:4370)
     try {
-        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Connecting directly to Biometric Machine (${deviceIp}:${devicePort})..."
+        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Connecting to Biometric Machine (${deviceIp}:${devicePort})..."
         $zk = New-Object -ComObject zkemkeeper.ZKEM
+        # Set 3 second connection timeout
         $connected = $zk.Connect_Net($deviceIp, $devicePort)
     } catch {
-        Write-Output "[WARN] Could not create zkemkeeper COM object: $($_.Exception.Message)"
+        Write-Output "[WARN] COM error: $($_.Exception.Message)"
     }
 
     if ($connected) {
-        Write-Output "[OK] Connected to machine! Reading logs directly from hardware memory..."
+        Write-Output "[OK] Connected to machine! Reading logs from device..."
         $machineNumber = 1
-        $zk.ReadGeneralLogData($machineNumber)
+        
+        # Crucial for ZKTeco: pause device UI while reading buffer to prevent socket packet drops
+        try { $zk.EnableDevice($machineNumber, $false) } catch {}
+
+        # First try ReadTimeGLogData for current month to avoid reading full multi-year buffer
+        $readSuccess = $false
+        try {
+            $nowStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+            $readSuccess = $zk.ReadTimeGLogData($machineNumber, "2026-10-01 00:00:00", $nowStr)
+        } catch {}
+
+        if (-not $readSuccess) {
+            # Fallback to ReadGeneralLogData
+            try {
+                $readSuccess = $zk.ReadGeneralLogData($machineNumber)
+            } catch {}
+        }
 
         $enrollNumber = ""
         $verifyMode = 0
@@ -71,12 +88,20 @@ function Sync-AttendancePunches {
                 })
             }
         }
+
+        # Re-enable device and disconnect
+        try { $zk.EnableDevice($machineNumber, $true) } catch {}
         $zk.Disconnect()
+
         Write-Output "[OK] Extracted $($punches.Count) punches directly from hardware device."
-    } else {
-        Write-Output "[WARN] Biometric hardware socket busy or unavailable. Reading local dump files as fallback..."
+    }
+
+    # 2. If hardware returned 0 or socket gave error, read local dump files
+    if ($punches.Count -eq 0) {
+        Write-Output "[INFO] Reading local biometric dump files..."
         $files = Get-ChildItem -Path "C:\ProgramData\KekaSyncTool" -Filter "*.dat" -Recurse -ErrorAction SilentlyContinue
         if ($files) {
+            Write-Output "Found $($files.Count) local dump files. Parsing..."
             foreach ($file in $files) {
                 $lines = Get-Content $file.FullName
                 foreach ($line in $lines) {
@@ -129,37 +154,31 @@ function Sync-AttendancePunches {
             }
 
             try {
-                Write-Output "Uploading Batch $($b + 1) of $totalBatches ($count punches) to Idea-Fueled HRMS..."
+                Write-Output "Uploading Batch $($b + 1) of $totalBatches ($count punches) to HRMS Cloud..."
                 $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 120
                 Write-Output "Batch $($b + 1) Status: $($response.message)"
             } catch {
                 Write-Output "[ERROR] Upload failed for batch $($b + 1): $($_.Exception.Message)"
             }
         }
-        Write-Output "[SUCCESS] All biometric punches synced to Idea-Fueled HRMS at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')!"
+        Write-Output "[SUCCESS] All biometric punches synced to HRMS at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')!"
     } else {
-        Write-Output "[INFO] No punches found to sync at this time."
+        Write-Output "[WARN] No punches found to sync."
     }
 }
-
-Write-Output "=========================================================="
-Write-Output "Idea-Fueled Biometric Sync Agent Active"
-Write-Output "Machine Target: ${deviceIp}:${devicePort}"
-Write-Output "HRMS Cloud API: $apiUrl"
-Write-Output "=========================================================="
 
 if ($Once) {
     Sync-AttendancePunches
     exit 0
 }
 
-# Continuous Sync Loop (runs every $intervalMinutes)
+# Continuous loop for background service
 while ($true) {
     try {
         Sync-AttendancePunches
     } catch {
-        Write-Output "[ERROR] Sync iteration error: $($_.Exception.Message)"
+        Write-Output "[ERROR] Sync error: $($_.Exception.Message)"
     }
-    Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Sleeping for $intervalMinutes minutes until next auto-sync..."
+    Write-Output "[$(Get-Date -Format 'HH:mm:ss')] Sleeping for $intervalMinutes minutes until next auto-sync..."
     Start-Sleep -Seconds ($intervalMinutes * 60)
 }
