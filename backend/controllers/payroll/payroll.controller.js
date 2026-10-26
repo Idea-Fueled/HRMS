@@ -61,23 +61,47 @@ export const createPayslip = async (req, res) => {
         const monthClean = month.trim().toUpperCase().substring(0, 3);
         const periodString = `${monthClean} ${year}`;
 
-        // Compute Earnings & Net Payable
+        // Compute Gross Earnings & Net Payable
         const numBasic = Number(basic) || 0;
         const numHra = Number(hra) || 0;
         const numMedical = Number(medicalAllowance) || 0;
         const numConveyance = Number(conveyanceAllowance) || 0;
         const numSpecial = Number(specialAllowance) || 0;
         const numOther = Number(otherAllowances) || 0;
-        const totalEarnings = numBasic + numHra + numMedical + numConveyance + numSpecial + numOther;
+        const grossEarnings = numBasic + numHra + numMedical + numConveyance + numSpecial + numOther;
 
         // Attendance & LOP Deduction Calculation
         const numTotalDays = Number(totalWorkingDays) || 30;
         const numLopDays = parseFloat(lossOfPayDays) || 0;
         const numDaysPayable = Math.max(0, numTotalDays - numLopDays);
-        const perDaySalary = numTotalDays > 0 ? (totalEarnings / numTotalDays) : 0;
+        const perDaySalary = numTotalDays > 0 ? (grossEarnings / numTotalDays) : 0;
         const lopDeduction = Math.round(perDaySalary * numLopDays);
-        const netSalaryPayable = Math.max(0, Math.round(totalEarnings - lopDeduction));
+        const netSalaryPayable = Math.max(0, Math.round(grossEarnings - lopDeduction));
         const netSalaryInWords = numberToWordsINR(netSalaryPayable);
+
+        // Deduct LOP proportionately from each earnings component according to their set breakdown
+        let earnedBasic = numBasic;
+        let earnedHra = numHra;
+        let earnedMedical = numMedical;
+        let earnedConveyance = numConveyance;
+        let earnedSpecial = numSpecial;
+        let earnedOther = numOther;
+
+        if (numLopDays > 0 && numTotalDays > 0 && grossEarnings > 0) {
+            const ratio = numDaysPayable / numTotalDays;
+            earnedBasic = Math.round(numBasic * ratio);
+            earnedHra = Math.round(numHra * ratio);
+            earnedMedical = Math.round(numMedical * ratio);
+            earnedConveyance = Math.round(numConveyance * ratio);
+            earnedSpecial = Math.round(numSpecial * ratio);
+            earnedOther = Math.round(numOther * ratio);
+
+            const earnedSum = earnedBasic + earnedHra + earnedMedical + earnedConveyance + earnedSpecial + earnedOther;
+            const diff = netSalaryPayable - earnedSum;
+            if (diff !== 0) {
+                earnedSpecial += diff;
+            }
+        }
 
         // Employee Snapshot
         const empName = employee.fullName || `${employee.firstName} ${employee.lastName}`.trim();
@@ -110,13 +134,13 @@ export const createPayslip = async (req, res) => {
                 daysPayable: numDaysPayable
             },
             earnings: {
-                basic: numBasic,
-                hra: numHra,
-                medicalAllowance: numMedical,
-                conveyanceAllowance: numConveyance,
-                specialAllowance: numSpecial,
-                otherAllowances: numOther,
-                totalEarnings
+                basic: earnedBasic,
+                hra: earnedHra,
+                medicalAllowance: earnedMedical,
+                conveyanceAllowance: earnedConveyance,
+                specialAllowance: earnedSpecial,
+                otherAllowances: earnedOther,
+                totalEarnings: netSalaryPayable
             },
             netSalaryPayable,
             netSalaryInWords,

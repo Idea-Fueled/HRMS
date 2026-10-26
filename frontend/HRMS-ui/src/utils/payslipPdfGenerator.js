@@ -18,15 +18,39 @@ export const renderPayslipHtml = (payslip) => {
     const att = payslip.attendanceDetails || {};
     const earn = payslip.earnings || {};
 
-    const basic = Number(earn.basic) || 0;
-    const hra = Number(earn.hra) || 0;
-    const medical = Number(earn.medicalAllowance) || 0;
-    const conveyance = Number(earn.conveyanceAllowance) || 0;
-    const special = Number(earn.specialAllowance) || 0;
-    const other = Number(earn.otherAllowances) || 0;
-    const totalEarnings = Number(earn.totalEarnings) || (basic + hra + medical + conveyance + special + other);
+    const totalWorkingDays = Number(att.totalWorkingDays) || 30;
+    const lossOfPayDays = parseFloat(att.lossOfPayDays) || 0;
+    const daysPayable = Math.max(0, Number(att.daysPayable) ?? (totalWorkingDays - lossOfPayDays));
 
-    const netSalary = Number(payslip.netSalaryPayable) || totalEarnings;
+    let basic = Number(earn.basic) || 0;
+    let hra = Number(earn.hra) || 0;
+    let medical = Number(earn.medicalAllowance) || 0;
+    let conveyance = Number(earn.conveyanceAllowance) || 0;
+    let special = Number(earn.specialAllowance) || 0;
+    let other = Number(earn.otherAllowances) || 0;
+
+    const netSalary = Number(payslip.netSalaryPayable) || (basic + hra + medical + conveyance + special + other);
+
+    // If LOP exists and the earnings components still reflect unadjusted gross (or sum > netSalary),
+    // deduct LOP proportionately across each component so earnings breakdown matches netSalary exactly:
+    const unadjustedSum = basic + hra + medical + conveyance + special + other;
+    if (lossOfPayDays > 0 && totalWorkingDays > 0 && (unadjustedSum > netSalary || Number(earn.totalEarnings) > netSalary)) {
+        const ratio = daysPayable / totalWorkingDays;
+        basic = Math.round(basic * ratio);
+        hra = Math.round(hra * ratio);
+        medical = Math.round(medical * ratio);
+        conveyance = Math.round(conveyance * ratio);
+        special = Math.round(special * ratio);
+        other = Math.round(other * ratio);
+
+        const currentSum = basic + hra + medical + conveyance + special + other;
+        const diff = netSalary - currentSum;
+        if (diff !== 0) {
+            special += diff;
+        }
+    }
+
+    const totalEarnings = netSalary;
     
     // Format net salary in words to "X Rupees Only" (e.g., Ninety Thousand Rupees Only)
     let netWords = payslip.netSalaryInWords || "Zero Rupees Only";
