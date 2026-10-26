@@ -617,15 +617,27 @@ export const getAttendanceDashboardSummary = async (req, res) => {
 export const getEmployeeAttendanceHistory = async (req, res) => {
     try {
         const { employeeId } = req.params;
-        const { month, year } = req.query;
+        const { month, year, days } = req.query;
 
-        let dateFilter = { employeeId };
+        let userObjId = employeeId;
+        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+            const user = await User.findOne({ employeeId });
+            if (user) userObjId = user._id;
+        }
 
-        if (month !== undefined && year !== undefined && month !== "" && year !== "") {
-            const m = parseInt(month);
-            const y = parseInt(year);
-            const startOfMonth = new Date(y, m, 1);
-            const endOfMonth = new Date(y, m + 1, 0, 23, 59, 59, 999);
+        let dateFilter = { employeeId: userObjId };
+
+        if (days) {
+            const d = parseInt(days, 10) || 30;
+            const pastDate = new Date();
+            pastDate.setDate(pastDate.getDate() - d);
+            pastDate.setHours(0, 0, 0, 0);
+            dateFilter.date = { $gte: pastDate };
+        } else if (month !== undefined && year !== undefined && month !== "" && year !== "") {
+            const m = parseInt(month, 10);
+            const y = parseInt(year, 10);
+            const startOfMonth = new Date(Date.UTC(y, m, 1));
+            const endOfMonth = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999));
             dateFilter.date = { $gte: startOfMonth, $lte: endOfMonth };
         }
 

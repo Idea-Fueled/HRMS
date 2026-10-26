@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getLeaveSummary, getLeaveHistory, applyLeave, clockIn, clockOut, getTodayAttendanceLogs, requestCompOffCredit } from "../../services/dashboard.service";
+import { getEmployeeAttendanceHistory } from "../../services/attendance.service";
 import { uploadProfilePicture, updateProfilePicture } from "../../services/auth.service";
 import { getAllEmployees } from "../../services/employee.service";
 import { useAuth } from "../../context/AuthContext";
@@ -2825,8 +2826,8 @@ const PerformanceTab = () => {
 const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
     if (!isOpen) return null;
 
-    // Build log pairs from todayAttendance logs if available
-    const rawLogs = todayAttendance?.logs || [];
+    // Build log pairs from row's logs or todayAttendance logs
+    const rawLogs = (row?.logs && row.logs.length > 0) ? row.logs : (todayAttendance?.logs || []);
     const punchPairs = [];
 
     if (rawLogs.length > 0) {
@@ -2834,6 +2835,7 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
         for (let i = 0; i < rawLogs.length; i++) {
             const l = rawLogs[i];
             const timeStr = new Date(l.timestamp).toLocaleTimeString("en-US", {
+                timeZone: "Asia/Kolkata",
                 hour: "2-digit",
                 minute: "2-digit",
                 second: "2-digit",
@@ -2845,7 +2847,8 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
             } else if (l.action === "clock_out") {
                 punchPairs.push({
                     in: currentIn || "Missing",
-                    out: timeStr
+                    out: timeStr,
+                    isWorking: false
                 });
                 currentIn = null;
             }
@@ -2853,29 +2856,36 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
         if (currentIn) {
             punchPairs.push({
                 in: currentIn,
-                out: "MISSING"
+                out: "Active / In Office",
+                isWorking: true
             });
         }
     }
 
     if (punchPairs.length === 0) {
         punchPairs.push({
-            in: row?.timeStr || "10:00:00 AM",
-            out: "MISSING"
+            in: row?.timeStr || "10:00 AM",
+            out: "—",
+            isWorking: false
         });
     }
 
     return (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fadeIn select-none">
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-scaleUp">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-scaleUp">
                 {/* Modal Header */}
-                <div className="bg-slate-50/80 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+                <div className="bg-slate-50/90 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
                     <div>
-                        <h3 className="text-sm font-bold text-slate-900">
-                            Idea Fueled - ({row?.date || "Today"})
-                        </h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Movement &amp; Punch Audit
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EBF3FC] text-[#2D79C7] border border-blue-200">
+                                {row?.date || "Today"}
+                            </span>
+                        </div>
                         <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                            Shift: <span className="text-[#2D79C7] font-mono font-bold">10:00 AM - 07:00 PM</span>
+                            Shift: <span className="text-[#2D79C7] font-mono font-bold">10:00 AM – 07:00 PM</span>
                         </p>
                     </div>
                     <button
@@ -2889,50 +2899,55 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
 
                 {/* Modal Body */}
                 <div className="p-6 space-y-5">
-                    {/* Action Links */}
-                    <div className="flex items-center gap-3 bg-blue-50/60 p-3 rounded-xl border border-blue-100 text-xs font-bold text-[#2D79C7]">
-                        <button type="button" className="flex items-center gap-1.5 hover:underline cursor-pointer">
-                            <span>✏️</span> <span>Regularize Attendance</span>
-                        </button>
-                        <span className="text-blue-200">|</span>
-                        <button type="button" className="flex items-center gap-1.5 hover:underline cursor-pointer">
-                            <span>✏️</span> <span>Apply Partial Day</span>
-                        </button>
+                    {/* Metrics Summary Strip */}
+                    <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                        <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Effective Work</span>
+                            <span className="text-xs font-extrabold font-mono text-teal-700">{row?.effectiveHours || "--"}</span>
+                        </div>
+                        <div className="border-x border-slate-200">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Break Taken</span>
+                            <span className="text-xs font-extrabold font-mono text-amber-700">{row?.breakTaken || "0m"}</span>
+                        </div>
+                        <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Gross Hours</span>
+                            <span className="text-xs font-extrabold font-mono text-slate-800">{row?.grossHours || "--"}</span>
+                        </div>
                     </div>
 
                     {/* Punch Details Section */}
                     <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                Punjab - Idea Fueled
+                        <div className="flex items-center justify-between mb-2.5">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Office Biometric Punch History
                             </span>
-                            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                Verified Log
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                {punchPairs.length} Session{punchPairs.length > 1 ? "s" : ""}
                             </span>
                         </div>
 
-                        <div className="space-y-2 font-mono text-xs">
+                        <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto pr-1">
                             {punchPairs.map((pair, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-slate-800 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200/80">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-extrabold text-xs">
+                                <div key={idx} className="flex items-center justify-between text-slate-800 bg-slate-50/80 hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 transition-colors">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-xs shrink-0">
                                             ↙
                                         </span>
                                         <div>
-                                            <span className="text-[10px] text-slate-400 block font-sans uppercase font-bold">Clock In</span>
+                                            <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock In</span>
                                             <span className="font-bold text-slate-800">{pair.in}</span>
                                         </div>
                                     </div>
                                     
-                                    <div className="flex items-center gap-2 text-right">
+                                    <div className="flex items-center gap-2.5 text-right">
                                         <div>
-                                            <span className="text-[10px] text-slate-400 block font-sans uppercase font-bold">Clock Out</span>
-                                            <span className={`font-bold ${pair.out === "MISSING" ? "text-rose-600" : "text-slate-800"}`}>
+                                            <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock Out</span>
+                                            <span className={`font-bold ${pair.isWorking ? "text-emerald-600 font-sans text-[11px]" : "text-slate-800"}`}>
                                                 {pair.out}
                                             </span>
                                         </div>
-                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center font-extrabold text-xs ${
-                                            pair.out === "MISSING" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"
+                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 ${
+                                            pair.isWorking ? "bg-emerald-100 text-emerald-600 animate-pulse" : "bg-slate-200 text-slate-600"
                                         }`}>
                                             ↗
                                         </span>
@@ -2944,7 +2959,7 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="bg-slate-50/50 border-t border-slate-100 px-6 py-3 text-right">
+                <div className="bg-slate-50/60 border-t border-slate-100 px-6 py-3 text-right">
                     <button
                         type="button"
                         onClick={onClose}
@@ -2962,62 +2977,141 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
    ATTENDANCE LOGS AND REQUESTS COMPONENT
 ───────────────────────────────────────────── */
 const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
+    const { user } = useAuth();
     const [subTab, setSubTab] = useState("Log");
     const [is24Hour, setIs24Hour] = useState(false);
     const [activePeriod, setActivePeriod] = useState("30");
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedAuditRow, setSelectedAuditRow] = useState(null);
+    const [historyList, setHistoryList] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
 
-    const logsData = [];
+    // Dynamically generate the timeframe tabs (30 DAYS, plus current and previous 5 months)
+    const periods = useMemo(() => {
+        const list = [{ key: "30", label: "30 DAYS" }];
+        const now = new Date();
+        const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            list.push({
+                key: `${d.getFullYear()}-${d.getMonth()}`,
+                label: monthNames[d.getMonth()],
+                month: d.getMonth(),
+                year: d.getFullYear()
+            });
+        }
+        return list;
+    }, []);
 
-    if (todayAttendance && todayAttendance.firstClockIn) {
-        const todayDateObj = new Date(todayAttendance.date || Date.now());
-        const formattedDate = todayDateObj.toLocaleDateString("en-US", { weekday: "short", day: "2-digit", month: "short" });
+    // Fetch historical attendance from backend
+    useEffect(() => {
+        const fetchHistory = async () => {
+            const empId = user?._id || user?.id || user?.employeeId;
+            if (!empId) return;
 
-        const punctuality = calculatePunctualityStatus(todayAttendance.firstClockIn);
+            setLoadingHistory(true);
+            try {
+                let params = {};
+                if (activePeriod === "30") {
+                    params = { days: 30 };
+                } else {
+                    const found = periods.find(p => p.key === activePeriod);
+                    if (found && found.month !== undefined) {
+                        params = { month: found.month, year: found.year };
+                    }
+                }
 
-        const totalWorkMins = todayAttendance.totalWorkMinutes || 0;
-        const workHrs = Math.floor(totalWorkMins / 60);
-        const workMins = totalWorkMins % 60;
-        const effectiveHours = `${workHrs}h ${workMins.toString().padStart(2, "0")}m`;
+                const res = await getEmployeeAttendanceHistory(empId, params);
+                if (res.data?.success && Array.isArray(res.data.attendances)) {
+                    setHistoryList(res.data.attendances);
+                } else {
+                    setHistoryList([]);
+                }
+            } catch (err) {
+                console.error("Failed to load attendance history:", err);
+                setHistoryList([]);
+            } finally {
+                setLoadingHistory(false);
+            }
+        };
 
-        const totalBreakMins = todayAttendance.totalBreakMinutes || 0;
-        const breakHrs = Math.floor(totalBreakMins / 60);
-        const breakMins = totalBreakMins % 60;
-        const breakTaken = breakHrs > 0 ? `${breakHrs}h ${breakMins.toString().padStart(2, "0")}m` : `${breakMins}m`;
+        fetchHistory();
+    }, [activePeriod, user, periods]);
 
-        const grossTotalMins = totalWorkMins + totalBreakMins;
-        const grossHrs = Math.floor(grossTotalMins / 60);
-        const grossMins = grossTotalMins % 60;
-        const grossHours = `${grossHrs}h ${grossMins.toString().padStart(2, "0")}m`;
+    // Build unified logsData combining today and past days
+    const logsData = useMemo(() => {
+        const list = [];
+        const dateSet = new Set();
 
-        logsData.push({
-            date: formattedDate,
-            isWeekend: false,
-            status: todayAttendance.workMode === "Work From Home" ? "wfh" : "present",
-            effectiveHours,
-            breakTaken,
-            grossHours,
-            arrival: punctuality.tag,
-            isLate: punctuality.isLate,
-            timeStr: punctuality.timeStr,
-            logType: "success"
-        });
-    }
+        const formatMinutes = (totalMins) => {
+            const hrs = Math.floor((totalMins || 0) / 60);
+            const mins = (totalMins || 0) % 60;
+            return hrs > 0 ? `${hrs}h ${mins.toString().padStart(2, "0")}m` : `${mins}m`;
+        };
 
-    const periods = [
-        { key: "30", label: "30 DAYS" },
-        { key: "jun", label: "JUN" },
-        { key: "may", label: "MAY" },
-        { key: "apr", label: "APR" },
-        { key: "mar", label: "MAR" },
-        { key: "feb", label: "FEB" },
-        { key: "jan", label: "JAN" }
-    ];
+        // Helper to format row
+        const processRecord = (record, isToday = false) => {
+            if (!record) return null;
+            const dateObj = new Date(record.date || record.firstClockIn || Date.now());
+            const istDateKey = dateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+            if (dateSet.has(istDateKey)) return null;
+            dateSet.add(istDateKey);
+
+            const formattedDate = dateObj.toLocaleDateString("en-US", {
+                timeZone: "Asia/Kolkata",
+                weekday: "short",
+                day: "2-digit",
+                month: "short"
+            });
+
+            const punctuality = calculatePunctualityStatus(record.firstClockIn);
+
+            const totalWorkMins = record.totalWorkMinutes || 0;
+            const effectiveHours = formatMinutes(totalWorkMins);
+
+            const totalBreakMins = record.totalBreakMinutes || 0;
+            const breakTaken = formatMinutes(totalBreakMins);
+
+            const grossTotalMins = totalWorkMins + totalBreakMins;
+            const grossHours = formatMinutes(grossTotalMins);
+
+            return {
+                date: formattedDate,
+                rawDate: dateObj,
+                isToday,
+                isWeekend: false,
+                status: record.workMode === "Work From Home" ? "wfh" : (record.status || "present"),
+                effectiveHours,
+                breakTaken,
+                grossHours,
+                arrival: punctuality.tag || (record.firstClockIn ? "Present" : "—"),
+                isLate: punctuality.isLate,
+                timeStr: punctuality.timeStr,
+                logs: record.logs || [],
+                logType: "success"
+            };
+        };
+
+        // 1. Add today's record if present
+        if (todayAttendance && todayAttendance.firstClockIn) {
+            const todayRow = processRecord(todayAttendance, true);
+            if (todayRow) list.push(todayRow);
+        }
+
+        // 2. Add historical records
+        for (const record of historyList) {
+            const row = processRecord(record, false);
+            if (row) list.push(row);
+        }
+
+        return list;
+    }, [todayAttendance, historyList]);
 
     const filteredLogs = logsData.filter(log => 
         log.date.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.arrival.toLowerCase().includes(searchQuery.toLowerCase())
+        log.arrival.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.status.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -3099,7 +3193,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                                 onClick={() => setActivePeriod(p.key)}
                                 className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer shrink-0 ${
                                     isActive
-                                        ? "bg-[#2D79C7] text-white"
+                                        ? "bg-[#2D79C7] text-white shadow-xs"
                                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                                 }`}
                             >
@@ -3113,116 +3207,108 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
             {/* Attendance Log Table */}
             {subTab === "Log" && (
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                                <th className="py-3 px-6">Date</th>
-                                <th className="py-3 px-6">Status / Arrival</th>
-                                <th className="py-3 px-6">Effective Hours</th>
-                                <th className="py-3 px-6">Break</th>
-                                <th className="py-3 px-6">Gross Hours</th>
-                                <th className="py-3 px-6 text-center">Log Audit</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                            {filteredLogs.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} className="py-12 text-center text-slate-400 font-semibold select-none">
-                                        <div className="flex flex-col items-center justify-center gap-2">
-                                            <Clock className="w-8 h-8 text-slate-300 stroke-[1.5]" />
-                                            <span className="text-xs font-semibold text-slate-500">No time entries logged for this period.</span>
-                                            <span className="text-[11px] font-medium text-slate-400">Clock in to start logging your attendance!</span>
-                                        </div>
-                                    </td>
+                    {loadingHistory ? (
+                        <div className="py-16 text-center text-slate-400 font-semibold select-none flex flex-col items-center justify-center gap-2">
+                            <div className="w-6 h-6 border-2 border-[#2D79C7] border-t-transparent rounded-full animate-spin" />
+                            <span className="text-xs text-slate-500">Loading attendance records...</span>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                    <th className="py-3 px-6">Date</th>
+                                    <th className="py-3 px-6">Status / Arrival</th>
+                                    <th className="py-3 px-6">Effective Hours</th>
+                                    <th className="py-3 px-6">Break Taken</th>
+                                    <th className="py-3 px-6">Gross Hours</th>
+                                    <th className="py-3 px-6 text-center">Movement Logs</th>
                                 </tr>
-                            ) : (
-                                filteredLogs.map((row, idx) => {
-                                if (row.isWeekend) {
-                                    return (
-                                        <tr key={idx} className="bg-slate-50/40">
-                                            <td className="py-3.5 px-6 font-semibold text-slate-600">{row.date}</td>
-                                            <td className="py-3.5 px-6" colSpan={4}>
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200">
-                                                    {row.description}
-                                                </span>
-                                            </td>
-                                            <td className="py-3.5 px-6 text-center text-slate-400 font-mono text-[11px]">-</td>
-                                        </tr>
-                                    );
-                                }
-
-                                if (row.status === "empty") {
-                                    return (
-                                        <tr key={idx} className="hover:bg-slate-50/50">
-                                            <td className="py-3.5 px-6 font-semibold text-slate-700">{row.date}</td>
-                                            <td className="py-3.5 px-6" colSpan={4}>
-                                                <span className="text-slate-400 text-xs italic font-medium">{row.description}</span>
-                                            </td>
-                                            <td className="py-3.5 px-6 text-center text-slate-400 font-mono text-[11px]">-</td>
-                                        </tr>
-                                    );
-                                }
-
-                                return (
-                                    <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                                        {/* Date */}
-                                        <td className="py-3.5 px-6 font-bold text-slate-800">{row.date}</td>
-                                        
-                                        {/* Status & Arrival */}
-                                        <td className="py-3.5 px-6">
-                                            <div className="flex items-center gap-2">
-                                                {row.status === "wfh" ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                                        <Home className="w-3 h-3" />
-                                                        <span>WFH</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
-                                                        row.isLate
-                                                            ? "bg-amber-50 text-amber-800 border-amber-200"
-                                                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                    }`}>
-                                                        <CheckCircle2 className={`w-3 h-3 ${row.isLate ? "text-amber-600" : "text-emerald-600"}`} />
-                                                        <span>{row.arrival}</span>
-                                                    </span>
-                                                )}
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                                {filteredLogs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-12 text-center text-slate-400 font-semibold select-none">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <Clock className="w-8 h-8 text-slate-300 stroke-[1.5]" />
+                                                <span className="text-xs font-semibold text-slate-500">No time entries logged for this period.</span>
+                                                <span className="text-[11px] font-medium text-slate-400">Punches from biometric machine will appear here automatically.</span>
                                             </div>
-                                        </td>
-
-                                        {/* Effective Hours */}
-                                        <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-                                                <span>{row.effectiveHours}</span>
-                                            </div>
-                                        </td>
-
-                                        {/* Break Taken */}
-                                        <td className="py-3.5 px-6 font-mono text-slate-500 font-medium">{row.breakTaken}</td>
-
-                                        {/* Gross Hours */}
-                                        <td className="py-3.5 px-6 font-mono font-bold text-slate-800">{row.grossHours}</td>
-
-                                        {/* Log Audit Icon & Fixed Overlay Modal Trigger */}
-                                        <td className="py-3.5 px-6 text-center">
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedAuditRow(row)}
-                                                className="w-7 h-7 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs group"
-                                                title="View Detailed Punch Logs"
-                                            >
-                                                {row.isLate ? (
-                                                    <Info className="w-4 h-4 text-amber-600" />
-                                                ) : (
-                                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                                )}
-                                            </button>
                                         </td>
                                     </tr>
-                                );
-                            }))}
-                        </tbody>
-                    </table>
+                                ) : (
+                                    filteredLogs.map((row, idx) => {
+                                        return (
+                                            <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                                                {/* Date */}
+                                                <td className="py-3.5 px-6 font-bold text-slate-800">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{row.date}</span>
+                                                        {row.isToday && (
+                                                            <span className="text-[9.5px] font-extrabold uppercase bg-blue-100 text-[#2D79C7] px-1.5 py-0.2 rounded font-sans">
+                                                                Today
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                
+                                                {/* Status & Arrival */}
+                                                <td className="py-3.5 px-6">
+                                                    <div className="flex items-center gap-2">
+                                                        {row.status === "wfh" ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                                <Home className="w-3 h-3" />
+                                                                <span>WFH</span>
+                                                            </span>
+                                                        ) : (
+                                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
+                                                                row.isLate
+                                                                    ? "bg-amber-50 text-amber-800 border-amber-200"
+                                                                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                            }`}>
+                                                                <CheckCircle2 className={`w-3 h-3 ${row.isLate ? "text-amber-600" : "text-emerald-600"}`} />
+                                                                <span>{row.arrival}</span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Effective Hours */}
+                                                <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                                                        <span>{row.effectiveHours}</span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Break Taken */}
+                                                <td className="py-3.5 px-6 font-mono text-amber-700 font-semibold">
+                                                    {row.breakTaken}
+                                                </td>
+
+                                                {/* Gross Hours */}
+                                                <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                                                    {row.grossHours}
+                                                </td>
+
+                                                {/* Log Audit Trigger */}
+                                                <td className="py-3.5 px-6 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedAuditRow(row)}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-[#EBF3FC] text-slate-600 hover:text-[#2D79C7] border border-slate-200 hover:border-blue-200 transition-all cursor-pointer font-sans font-bold text-[11px]"
+                                                        title="View Detailed Punch Audit"
+                                                    >
+                                                        <span>🔍</span>
+                                                        <span>View Logs</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             )}
 

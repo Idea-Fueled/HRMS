@@ -24,10 +24,11 @@ export const getTodayAttendanceStatus = async (employeeId) => {
     return API.get(`/attendance/today/${employeeId}`);
 };
 
-export const getEmployeeAttendanceHistory = async (employeeId, month = "", year = "") => {
+export const getEmployeeAttendanceHistory = async (employeeId, params = {}) => {
     try {
+        const queryParams = typeof params === "object" ? params : { month: params, year: arguments[2] || "" };
         const response = await API.get(`/attendance/history/${employeeId}`, {
-            params: { month, year }
+            params: queryParams
         });
         return response;
     } catch (error) {
