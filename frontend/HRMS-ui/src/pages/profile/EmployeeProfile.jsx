@@ -282,7 +282,7 @@ export const EmployeeProfile = () => {
         if (!empId) return;
         setLoadingAttendance(true);
         try {
-            const res = await getEmployeeAttendanceHistory(empId, attendanceMonth, attendanceYear);
+            const res = await getEmployeeAttendanceHistory(empId, { month: attendanceMonth, year: attendanceYear });
             if (res.data?.success && Array.isArray(res.data.attendances)) {
                 setAttendanceLogs(res.data.attendances);
             } else {
