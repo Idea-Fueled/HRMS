@@ -7,6 +7,11 @@ const userScehma = new mongoose.Schema({
         unique: true,
         trim: true
     },
+    biometricEnrollNumber: {
+        type: String,
+        trim: true,
+        default: null
+    },
     firstName: {
         type: String,
         required: true,

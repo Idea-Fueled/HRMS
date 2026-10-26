@@ -308,8 +308,14 @@ export const getTodayAttendance = async (req, res) => {
     try {
         const { employeeId } = req.params;
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const [y, m, d] = istDateStr.split("-").map(Number);
+        const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+
+        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
+        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
 
         let userObjId = employeeId;
         if (!mongoose.Types.ObjectId.isValid(employeeId)) {
@@ -319,8 +325,13 @@ export const getTodayAttendance = async (req, res) => {
 
         const attendance = await Attendance.findOne({
             employeeId: userObjId,
-            date: today,
-        });
+            $or: [
+                { date: todayUtc },
+                { date: todayLocal },
+                { date: { $gte: startOfDay, $lte: endOfDay } },
+                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+            ]
+        }).sort({ date: -1, updatedAt: -1 });
 
         return res.status(200).json({
             success: true,
@@ -341,8 +352,14 @@ export const getTodayLogs = async (req, res) => {
     try {
         const { employeeId } = req.params;
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const [y, m, d] = istDateStr.split("-").map(Number);
+        const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+
+        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
+        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
 
         let userObjId = employeeId;
         if (!mongoose.Types.ObjectId.isValid(employeeId)) {
@@ -352,8 +369,13 @@ export const getTodayLogs = async (req, res) => {
 
         const attendance = await Attendance.findOne({
             employeeId: userObjId,
-            date: today,
-        });
+            $or: [
+                { date: todayUtc },
+                { date: todayLocal },
+                { date: { $gte: startOfDay, $lte: endOfDay } },
+                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+            ]
+        }).sort({ date: -1, updatedAt: -1 });
 
         return res.status(200).json({
             success: true,
@@ -993,8 +1015,10 @@ export const syncBiometricPunches = async (req, res) => {
             });
         }
 
-        const users = await User.find({}).select("_id employeeId firstName lastName fullName").lean();
+        const users = await User.find({}).select("_id employeeId biometricEnrollNumber firstName lastName fullName").lean();
         const userMap = new Map();
+
+        // 1. Map employeeId fallback
         users.forEach(u => {
             userMap.set(u._id.toString(), u);
             if (u.employeeId) {
@@ -1004,6 +1028,19 @@ export const syncBiometricPunches = async (req, res) => {
                 if (digits) {
                     userMap.set(digits, u);
                     userMap.set(String(parseInt(digits, 10)), u);
+                }
+            }
+        });
+
+        // 2. Map explicit biometricEnrollNumber (PRIORITY over employeeId)
+        users.forEach(u => {
+            if (u.biometricEnrollNumber) {
+                const rawBio = String(u.biometricEnrollNumber).trim();
+                userMap.set(rawBio.toUpperCase(), u);
+                const digitsBio = rawBio.replace(/\D/g, "");
+                if (digitsBio) {
+                    userMap.set(digitsBio, u);
+                    userMap.set(String(parseInt(digitsBio, 10)), u);
                 }
             }
         });

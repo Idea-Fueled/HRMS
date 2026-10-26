@@ -196,16 +196,35 @@ export const getTeamAttendance = async (req, res) => {
             });
         }
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const [y, m, d] = istDateStr.split("-").map(Number);
+        const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+
+        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
+        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
 
         const userQuery = hrVisibleIds ? { status: "active", _id: { $in: hrVisibleIds } } : { status: "active" };
 
         const activeUsers = await User.find(userQuery);
         const activeUserIds = activeUsers.map(u => u._id);
 
-        const attendanceLogs = await Attendance.find({ date: today, employeeId: { $in: activeUserIds } });
-        const leavesToday = await Leave.find({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today }, employeeId: { $in: activeUserIds } });
+        const attendanceLogs = await Attendance.find({
+            employeeId: { $in: activeUserIds },
+            $or: [
+                { date: todayUtc },
+                { date: todayLocal },
+                { date: { $gte: startOfDay, $lte: endOfDay } },
+                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+            ]
+        });
+        const leavesToday = await Leave.find({
+            status: "approved",
+            startDate: { $lte: endOfDay },
+            endDate: { $gte: startOfDay },
+            employeeId: { $in: activeUserIds }
+        });
 
         let presentCount = 0;
         let absentCount = 0;
