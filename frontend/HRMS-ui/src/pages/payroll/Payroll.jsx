@@ -44,6 +44,14 @@ export default function Payroll() {
         daysPayable: 30
     });
 
+    const [baseEarnings, setBaseEarnings] = useState({
+        basic: 0,
+        hra: 0,
+        medicalAllowance: 0,
+        conveyanceAllowance: 0,
+        specialAllowance: 0
+    });
+
     const [earnings, setEarnings] = useState({
         basic: 0,
         hra: 0,
@@ -80,6 +88,56 @@ export default function Payroll() {
         }
     };
 
+    // Helper to compute proportionate earnings given base earnings and LOP days
+    const computeEarningsBreakdown = (base, lopDays, totalDays) => {
+        const numBaseBasic = Number(base.basic) || 0;
+        const numBaseHra = Number(base.hra) || 0;
+        const numBaseMed = Number(base.medicalAllowance) || 0;
+        const numBaseConv = Number(base.conveyanceAllowance) || 0;
+        const numBaseSpec = Number(base.specialAllowance) || 0;
+        const gross = numBaseBasic + numBaseHra + numBaseMed + numBaseConv + numBaseSpec;
+
+        if (gross <= 0) return { ...base };
+
+        const numLop = parseFloat(lopDays) || 0;
+        const numTot = Number(totalDays) || 30;
+
+        if (numLop <= 0 || numTot <= 0) {
+            return {
+                basic: numBaseBasic,
+                hra: numBaseHra,
+                medicalAllowance: numBaseMed,
+                conveyanceAllowance: numBaseConv,
+                specialAllowance: numBaseSpec
+            };
+        }
+
+        const perDay = gross / numTot;
+        const deduction = Math.round(perDay * numLop);
+        const net = Math.max(0, gross - deduction);
+        const ratio = Math.max(0, (numTot - numLop) / numTot);
+
+        let cBasic = Math.round(numBaseBasic * ratio);
+        let cHra = Math.round(numBaseHra * ratio);
+        let cMed = Math.round(numBaseMed * ratio);
+        let cConv = Math.round(numBaseConv * ratio);
+        let cSpec = Math.round(numBaseSpec * ratio);
+
+        const currentSum = cBasic + cHra + cMed + cConv + cSpec;
+        const diff = net - currentSum;
+        if (diff !== 0) {
+            cSpec = Math.max(0, cSpec + diff);
+        }
+
+        return {
+            basic: cBasic,
+            hra: cHra,
+            medicalAllowance: cMed,
+            conveyanceAllowance: cConv,
+            specialAllowance: cSpec
+        };
+    };
+
     // Auto fill employee salary details on select
     const handleEmployeeSelect = (empId) => {
         setSelectedEmpId(empId);
@@ -93,30 +151,105 @@ export default function Payroll() {
             const convVal = str.conveyanceAllowance || str.conveyance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 10000);
             const specVal = str.specialAllowance || (baseGross > 0 ? Math.round(baseGross * 0.10) : 10000);
 
-            setEarnings({
+            const initialBase = {
                 basic: basicVal,
                 hra: hraVal,
                 medicalAllowance: medVal,
                 conveyanceAllowance: convVal,
                 specialAllowance: specVal
+            };
+
+            setBaseEarnings(initialBase);
+            setEarnings(initialBase);
+            setAttendance({
+                actualPayableDays: 30,
+                totalWorkingDays: 30,
+                lossOfPayDays: 0,
+                daysPayable: 30
             });
         }
     };
+
+    // Attendance and LOP change handlers with real-time recalculation of earnings breakdown
+    const handleLopDaysChange = (val) => {
+        const numLop = parseFloat(val) || 0;
+        const totalDays = Number(attendance.totalWorkingDays) || 30;
+        const payableDays = Math.max(0, +(totalDays - numLop).toFixed(2));
+
+        setAttendance(prev => ({
+            ...prev,
+            lossOfPayDays: val,
+            daysPayable: payableDays,
+            actualPayableDays: payableDays
+        }));
+
+        const updated = computeEarningsBreakdown(baseEarnings, val, totalDays);
+        setEarnings(updated);
+    };
+
+    const handleTotalWorkingDaysChange = (val) => {
+        const totalDays = Number(val) || 30;
+        const numLop = parseFloat(attendance.lossOfPayDays) || 0;
+        const payableDays = Math.max(0, +(totalDays - numLop).toFixed(2));
+
+        setAttendance(prev => ({
+            ...prev,
+            totalWorkingDays: val,
+            daysPayable: payableDays,
+            actualPayableDays: payableDays
+        }));
+
+        const updated = computeEarningsBreakdown(baseEarnings, numLop, val);
+        setEarnings(updated);
+    };
+
+    const handleActualPayableDaysChange = (val) => {
+        const totalDays = Number(attendance.totalWorkingDays) || 30;
+        const payable = parseFloat(val) || 0;
+        const computedLop = Math.max(0, +(totalDays - payable).toFixed(2));
+
+        setAttendance(prev => ({
+            ...prev,
+            actualPayableDays: val,
+            lossOfPayDays: computedLop,
+            daysPayable: payable
+        }));
+
+        const updated = computeEarningsBreakdown(baseEarnings, computedLop, totalDays);
+        setEarnings(updated);
+    };
+
+    const handleEarningChange = (field, val) => {
+        setEarnings(prev => ({ ...prev, [field]: val }));
+        const numLop = parseFloat(attendance.lossOfPayDays) || 0;
+        if (numLop === 0) {
+            setBaseEarnings(prev => ({ ...prev, [field]: val }));
+        }
+    };
+
+    const numBaseBasic = Number(baseEarnings.basic) || 0;
+    const numBaseHra = Number(baseEarnings.hra) || 0;
+    const numBaseMed = Number(baseEarnings.medicalAllowance) || 0;
+    const numBaseConv = Number(baseEarnings.conveyanceAllowance) || 0;
+    const numBaseSpec = Number(baseEarnings.specialAllowance) || 0;
+    const baseGrossEarnings = numBaseBasic + numBaseHra + numBaseMed + numBaseConv + numBaseSpec;
 
     const numBasic = Number(earnings.basic) || 0;
     const numHra = Number(earnings.hra) || 0;
     const numMedical = Number(earnings.medicalAllowance) || 0;
     const numConveyance = Number(earnings.conveyanceAllowance) || 0;
     const numSpecial = Number(earnings.specialAllowance) || 0;
-    const grossEarnings = numBasic + numHra + numMedical + numConveyance + numSpecial;
+    const currentEarningsSum = numBasic + numHra + numMedical + numConveyance + numSpecial;
 
     // Loss of Pay Days & Auto Deduction
     const totalWorkingDays = Number(attendance.totalWorkingDays) || 30;
     const lossOfPayDays = parseFloat(attendance.lossOfPayDays) || 0;
     const daysPayable = Math.max(0, +(totalWorkingDays - lossOfPayDays).toFixed(2));
-    const perDaySalary = totalWorkingDays > 0 ? (grossEarnings / totalWorkingDays) : 0;
+
+    const effectiveGross = baseGrossEarnings > 0 ? baseGrossEarnings : currentEarningsSum;
+    const perDaySalary = totalWorkingDays > 0 ? (effectiveGross / totalWorkingDays) : 0;
     const lopDeduction = Math.round(perDaySalary * lossOfPayDays);
-    const totalEarnings = Math.max(0, Math.round(grossEarnings - lopDeduction));
+    const totalEarnings = Math.max(0, effectiveGross - lopDeduction);
 
     const handleGenerateSubmit = async (e) => {
         e.preventDefault();
@@ -135,6 +268,7 @@ export default function Payroll() {
                 totalWorkingDays: totalWorkingDays,
                 lossOfPayDays: lossOfPayDays,
                 daysPayable: daysPayable,
+                baseGross: effectiveGross,
                 basic: numBasic,
                 hra: numHra,
                 medicalAllowance: numMedical,
@@ -237,7 +371,30 @@ export default function Payroll() {
                 </div>
 
                 <button
-                    onClick={() => setIsGenerateModalOpen(true)}
+                    onClick={() => {
+                        setSelectedEmpId("");
+                        setAttendance({
+                            actualPayableDays: 30,
+                            totalWorkingDays: 30,
+                            lossOfPayDays: 0,
+                            daysPayable: 30
+                        });
+                        setEarnings({
+                            basic: 0,
+                            hra: 0,
+                            medicalAllowance: 0,
+                            conveyanceAllowance: 0,
+                            specialAllowance: 0
+                        });
+                        setBaseEarnings({
+                            basic: 0,
+                            hra: 0,
+                            medicalAllowance: 0,
+                            conveyanceAllowance: 0,
+                            specialAllowance: 0
+                        });
+                        setIsGenerateModalOpen(true);
+                    }}
                     className="bg-[#2D79C7] hover:bg-[#1D5E9E] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0"
                 >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -581,7 +738,7 @@ export default function Payroll() {
                                         <input
                                             type="number"
                                             value={attendance.actualPayableDays}
-                                            onChange={(e) => setAttendance(prev => ({ ...prev, actualPayableDays: e.target.value }))}
+                                            onChange={(e) => handleActualPayableDaysChange(e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
@@ -590,7 +747,7 @@ export default function Payroll() {
                                         <input
                                             type="number"
                                             value={attendance.totalWorkingDays}
-                                            onChange={(e) => setAttendance(prev => ({ ...prev, totalWorkingDays: e.target.value }))}
+                                            onChange={(e) => handleTotalWorkingDaysChange(e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
@@ -600,7 +757,7 @@ export default function Payroll() {
                                             type="number"
                                             step="any"
                                             value={attendance.lossOfPayDays}
-                                            onChange={(e) => setAttendance(prev => ({ ...prev, lossOfPayDays: e.target.value }))}
+                                            onChange={(e) => handleLopDaysChange(e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-rose-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             placeholder="0"
                                         />
@@ -627,7 +784,7 @@ export default function Payroll() {
                                         <input
                                             type="number"
                                             value={earnings.basic}
-                                            onChange={(e) => setEarnings(prev => ({ ...prev, basic: e.target.value }))}
+                                            onChange={(e) => handleEarningChange("basic", e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
@@ -636,7 +793,7 @@ export default function Payroll() {
                                         <input
                                             type="number"
                                             value={earnings.hra}
-                                            onChange={(e) => setEarnings(prev => ({ ...prev, hra: e.target.value }))}
+                                            onChange={(e) => handleEarningChange("hra", e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
@@ -645,7 +802,7 @@ export default function Payroll() {
                                         <input
                                             type="number"
                                             value={earnings.medicalAllowance}
-                                            onChange={(e) => setEarnings(prev => ({ ...prev, medicalAllowance: e.target.value }))}
+                                            onChange={(e) => handleEarningChange("medicalAllowance", e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
@@ -654,7 +811,7 @@ export default function Payroll() {
                                         <input
                                             type="number"
                                             value={earnings.conveyanceAllowance}
-                                            onChange={(e) => setEarnings(prev => ({ ...prev, conveyanceAllowance: e.target.value }))}
+                                            onChange={(e) => handleEarningChange("conveyanceAllowance", e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
@@ -663,7 +820,7 @@ export default function Payroll() {
                                         <input
                                             type="number"
                                             value={earnings.specialAllowance}
-                                            onChange={(e) => setEarnings(prev => ({ ...prev, specialAllowance: e.target.value }))}
+                                            onChange={(e) => handleEarningChange("specialAllowance", e.target.value)}
                                             className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
@@ -676,7 +833,7 @@ export default function Payroll() {
                                 <div>
                                     <span className="text-xs font-bold text-emerald-900 uppercase block">Calculated Net Salary Payable</span>
                                     <span className="text-xs text-emerald-700 font-medium">
-                                        Gross: ₹{grossEarnings.toLocaleString("en-IN")}
+                                        Gross: ₹{effectiveGross.toLocaleString("en-IN")}
                                         {lossOfPayDays > 0 && ` • LOP Deduction (${lossOfPayDays} days): -₹${lopDeduction.toLocaleString("en-IN")}`}
                                     </span>
                                 </div>

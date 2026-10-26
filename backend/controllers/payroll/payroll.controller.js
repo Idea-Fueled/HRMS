@@ -68,12 +68,17 @@ export const createPayslip = async (req, res) => {
         const numConveyance = Number(conveyanceAllowance) || 0;
         const numSpecial = Number(specialAllowance) || 0;
         const numOther = Number(otherAllowances) || 0;
-        const grossEarnings = numBasic + numHra + numMedical + numConveyance + numSpecial + numOther;
+        const currentSum = numBasic + numHra + numMedical + numConveyance + numSpecial + numOther;
 
         // Attendance & LOP Deduction Calculation
         const numTotalDays = Number(totalWorkingDays) || 30;
         const numLopDays = parseFloat(lossOfPayDays) || 0;
         const numDaysPayable = Math.max(0, numTotalDays - numLopDays);
+
+        // Check if baseGross was sent explicitly (e.g., from frontend where breakdown is already LOP-adjusted)
+        const incomingBaseGross = Number(req.body.baseGross) || 0;
+        const grossEarnings = incomingBaseGross > 0 ? incomingBaseGross : currentSum;
+
         const perDaySalary = numTotalDays > 0 ? (grossEarnings / numTotalDays) : 0;
         const lopDeduction = Math.round(perDaySalary * numLopDays);
         const netSalaryPayable = Math.max(0, Math.round(grossEarnings - lopDeduction));
@@ -88,18 +93,29 @@ export const createPayslip = async (req, res) => {
         let earnedOther = numOther;
 
         if (numLopDays > 0 && numTotalDays > 0 && grossEarnings > 0) {
-            const ratio = numDaysPayable / numTotalDays;
-            earnedBasic = Math.round(numBasic * ratio);
-            earnedHra = Math.round(numHra * ratio);
-            earnedMedical = Math.round(numMedical * ratio);
-            earnedConveyance = Math.round(numConveyance * ratio);
-            earnedSpecial = Math.round(numSpecial * ratio);
-            earnedOther = Math.round(numOther * ratio);
+            // If currentSum is already equal to netSalaryPayable (e.g. frontend already recalculated the breakdown in real-time),
+            // use the breakdown as-is:
+            if (currentSum === netSalaryPayable) {
+                earnedBasic = numBasic;
+                earnedHra = numHra;
+                earnedMedical = numMedical;
+                earnedConveyance = numConveyance;
+                earnedSpecial = numSpecial;
+                earnedOther = numOther;
+            } else {
+                const ratio = numDaysPayable / numTotalDays;
+                earnedBasic = Math.round(numBasic * ratio);
+                earnedHra = Math.round(numHra * ratio);
+                earnedMedical = Math.round(numMedical * ratio);
+                earnedConveyance = Math.round(numConveyance * ratio);
+                earnedSpecial = Math.round(numSpecial * ratio);
+                earnedOther = Math.round(numOther * ratio);
 
-            const earnedSum = earnedBasic + earnedHra + earnedMedical + earnedConveyance + earnedSpecial + earnedOther;
-            const diff = netSalaryPayable - earnedSum;
-            if (diff !== 0) {
-                earnedSpecial += diff;
+                const earnedSum = earnedBasic + earnedHra + earnedMedical + earnedConveyance + earnedSpecial + earnedOther;
+                const diff = netSalaryPayable - earnedSum;
+                if (diff !== 0) {
+                    earnedSpecial += diff;
+                }
             }
         }
 
