@@ -24,9 +24,14 @@ export const getTodayAttendanceStatus = async (employeeId) => {
     return API.get(`/attendance/today/${employeeId}`);
 };
 
-export const getEmployeeAttendanceHistory = async (employeeId, params = {}) => {
+export const getEmployeeAttendanceHistory = async (employeeId, params = {}, maybeYear = "") => {
     try {
-        const queryParams = typeof params === "object" ? params : { month: params, year: arguments[2] || "" };
+        let queryParams = {};
+        if (typeof params === "object" && params !== null) {
+            queryParams = params;
+        } else {
+            queryParams = { month: params, year: maybeYear };
+        }
         const response = await API.get(`/attendance/history/${employeeId}`, {
             params: queryParams
         });

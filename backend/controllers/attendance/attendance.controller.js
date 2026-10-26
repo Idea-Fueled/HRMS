@@ -619,15 +619,27 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
         const { employeeId } = req.params;
         const { month, year, days } = req.query;
 
-        let userObjId = employeeId;
-        if (!mongoose.Types.ObjectId.isValid(employeeId)) {
-            const user = await User.findOne({ employeeId });
-            if (user) userObjId = user._id;
+        let user;
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            user = await User.findById(employeeId);
+        }
+        if (!user) {
+            user = await User.findOne({ employeeId });
         }
 
-        let dateFilter = { employeeId: userObjId };
+        const idsToMatch = [];
+        if (mongoose.Types.ObjectId.isValid(employeeId)) {
+            idsToMatch.push(new mongoose.Types.ObjectId(employeeId));
+        }
+        idsToMatch.push(employeeId);
+        if (user) {
+            idsToMatch.push(user._id);
+            if (user.employeeId) idsToMatch.push(user.employeeId);
+        }
 
-        if (days) {
+        let dateFilter = { employeeId: { $in: idsToMatch } };
+
+        if (days && days !== "all") {
             const d = parseInt(days, 10) || 30;
             const pastDate = new Date();
             pastDate.setDate(pastDate.getDate() - d);
@@ -636,8 +648,9 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
         } else if (month !== undefined && year !== undefined && month !== "" && year !== "") {
             const m = parseInt(month, 10);
             const y = parseInt(year, 10);
-            const startOfMonth = new Date(Date.UTC(y, m, 1));
-            const endOfMonth = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999));
+            // 24 hour buffer to absorb all UTC vs IST timezone midnight shifts
+            const startOfMonth = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0) - 24 * 3600 * 1000);
+            const endOfMonth = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999) + 24 * 3600 * 1000);
             dateFilter.date = { $gte: startOfMonth, $lte: endOfMonth };
         }
 

@@ -2986,16 +2986,19 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
     const [historyList, setHistoryList] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
-    // Dynamically generate the timeframe tabs (30 DAYS, plus current and previous 5 months)
+    // Dynamically generate the timeframe tabs (ALL HISTORY, 30 DAYS, plus calendar months)
     const periods = useMemo(() => {
-        const list = [{ key: "30", label: "30 DAYS" }];
+        const list = [
+            { key: "30", label: "30 DAYS" },
+            { key: "all", label: "ALL HISTORY" }
+        ];
         const now = new Date();
         const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
         for (let i = 0; i < 6; i++) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             list.push({
                 key: `${d.getFullYear()}-${d.getMonth()}`,
-                label: monthNames[d.getMonth()],
+                label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
                 month: d.getMonth(),
                 year: d.getFullYear()
             });
@@ -3012,7 +3015,9 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
             setLoadingHistory(true);
             try {
                 let params = {};
-                if (activePeriod === "30") {
+                if (activePeriod === "all") {
+                    params = { days: "all" };
+                } else if (activePeriod === "30") {
                     params = { days: 30 };
                 } else {
                     const found = periods.find(p => p.key === activePeriod);
@@ -3038,10 +3043,10 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
         fetchHistory();
     }, [activePeriod, user, periods]);
 
-    // Build unified logsData combining today and past days
+    // Build unified logsData combining today and past days with full calendar coverage
     const logsData = useMemo(() => {
         const list = [];
-        const dateSet = new Set();
+        const dateMap = new Map();
 
         const formatMinutes = (totalMins) => {
             const hrs = Math.floor((totalMins || 0) / 60);
@@ -3049,14 +3054,61 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
             return hrs > 0 ? `${hrs}h ${mins.toString().padStart(2, "0")}m` : `${mins}m`;
         };
 
-        // Helper to format row
-        const processRecord = (record, isToday = false) => {
-            if (!record) return null;
-            const dateObj = new Date(record.date || record.firstClockIn || Date.now());
-            const istDateKey = dateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const computeMinutes = (record) => {
+            let work = record.totalWorkMinutes || 0;
+            let brk = record.totalBreakMinutes || 0;
 
-            if (dateSet.has(istDateKey)) return null;
-            dateSet.add(istDateKey);
+            if (!work && Array.isArray(record.logs) && record.logs.length > 0) {
+                const ins = record.logs.filter(l => l.action === "clock_in");
+                const outs = record.logs.filter(l => l.action === "clock_out");
+                let sumWork = 0;
+                for (let i = 0; i < Math.min(ins.length, outs.length); i++) {
+                    const diff = (new Date(outs[i].timestamp) - new Date(ins[i].timestamp)) / 60000;
+                    if (diff > 0) sumWork += diff;
+                }
+                if (sumWork > 0) work = Math.floor(sumWork);
+
+                let sumBreak = 0;
+                for (let i = 0; i < outs.length; i++) {
+                    if (ins[i + 1]) {
+                        const bDiff = (new Date(ins[i + 1].timestamp) - new Date(outs[i].timestamp)) / 60000;
+                        if (bDiff > 0) sumBreak += bDiff;
+                    }
+                }
+                if (sumBreak > 0) brk = Math.floor(sumBreak);
+            }
+
+            if (!work && record.firstClockIn && record.lastClockOut) {
+                const span = (new Date(record.lastClockOut) - new Date(record.firstClockIn)) / 60000;
+                if (span > 0) work = Math.floor(span);
+            }
+
+            return { work, brk };
+        };
+
+        // Index records by IST date key YYYY-MM-DD
+        if (todayAttendance && (todayAttendance.firstClockIn || todayAttendance.date)) {
+            const d = new Date(todayAttendance.date || todayAttendance.firstClockIn);
+            const key = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            dateMap.set(key, { record: todayAttendance, isToday: true });
+        }
+
+        for (const r of historyList) {
+            const d = new Date(r.date || r.firstClockIn);
+            const key = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            if (!dateMap.has(key)) {
+                dateMap.set(key, { record: r, isToday: false });
+            }
+        }
+
+        // Determine which dates to generate
+        const todayObj = new Date();
+        const todayKey = todayObj.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+        const processDay = (dateObj, isToday = false) => {
+            const istDateKey = dateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            const dayOfWeek = dateObj.getDay(); // 0 is Sunday, 6 is Saturday
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
             const formattedDate = dateObj.toLocaleDateString("en-US", {
                 timeZone: "Asia/Kolkata",
@@ -3065,48 +3117,130 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                 month: "short"
             });
 
-            const punctuality = calculatePunctualityStatus(record.firstClockIn);
+            const entry = dateMap.get(istDateKey);
+            if (entry && entry.record) {
+                const record = entry.record;
+                const punctuality = calculatePunctualityStatus(record.firstClockIn);
+                const { work, brk } = computeMinutes(record);
+                const effectiveHours = formatMinutes(work);
+                const breakTaken = formatMinutes(brk);
+                const grossHours = formatMinutes(work + brk);
 
-            const totalWorkMins = record.totalWorkMinutes || 0;
-            const effectiveHours = formatMinutes(totalWorkMins);
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: isToday || entry.isToday,
+                    isWeekend,
+                    status: record.workMode === "Work From Home" ? "wfh" : (record.status || "present"),
+                    effectiveHours,
+                    breakTaken,
+                    grossHours,
+                    arrival: punctuality.tag || (record.firstClockIn ? "Present" : "—"),
+                    isLate: punctuality.isLate,
+                    timeStr: punctuality.timeStr,
+                    logs: record.logs || [],
+                    logType: "success"
+                };
+            }
 
-            const totalBreakMins = record.totalBreakMinutes || 0;
-            const breakTaken = formatMinutes(totalBreakMins);
+            // No punch record for this date
+            if (isToday) {
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: true,
+                    isWeekend,
+                    status: isWeekend ? "week_off" : "absent",
+                    effectiveHours: "0m",
+                    breakTaken: "0m",
+                    grossHours: "0m",
+                    arrival: isWeekend ? "Weekend" : "Not Clocked In",
+                    isLate: false,
+                    timeStr: "—",
+                    logs: [],
+                    logType: isWeekend ? "info" : "warning"
+                };
+            }
 
-            const grossTotalMins = totalWorkMins + totalBreakMins;
-            const grossHours = formatMinutes(grossTotalMins);
+            if (isWeekend) {
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: false,
+                    isWeekend: true,
+                    status: "week_off",
+                    effectiveHours: "—",
+                    breakTaken: "—",
+                    grossHours: "—",
+                    arrival: "Week Off",
+                    isLate: false,
+                    timeStr: "—",
+                    logs: [],
+                    logType: "info"
+                };
+            }
 
+            // Past weekday without punch
             return {
                 date: formattedDate,
                 rawDate: dateObj,
-                isToday,
+                isToday: false,
                 isWeekend: false,
-                status: record.workMode === "Work From Home" ? "wfh" : (record.status || "present"),
-                effectiveHours,
-                breakTaken,
-                grossHours,
-                arrival: punctuality.tag || (record.firstClockIn ? "Present" : "—"),
-                isLate: punctuality.isLate,
-                timeStr: punctuality.timeStr,
-                logs: record.logs || [],
-                logType: "success"
+                status: "absent",
+                effectiveHours: "0m",
+                breakTaken: "0m",
+                grossHours: "0m",
+                arrival: "Absent",
+                isLate: false,
+                timeStr: "—",
+                logs: [],
+                logType: "warning"
             };
         };
 
-        // 1. Add today's record if present
-        if (todayAttendance && todayAttendance.firstClockIn) {
-            const todayRow = processRecord(todayAttendance, true);
-            if (todayRow) list.push(todayRow);
-        }
+        if (activePeriod === "all") {
+            // Sort all recorded dates descending
+            const sortedDates = Array.from(dateMap.keys()).sort().reverse();
+            for (const k of sortedDates) {
+                const item = dateMap.get(k);
+                const d = new Date(item.record.date || item.record.firstClockIn);
+                list.push(processDay(d, item.isToday));
+            }
+        } else if (activePeriod === "30") {
+            // Last 30 calendar days from today down to 29 days ago
+            for (let i = 0; i < 30; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                list.push(processDay(d, k === todayKey));
+            }
+        } else {
+            // Calendar month
+            const found = periods.find(p => p.key === activePeriod);
+            if (found && found.month !== undefined) {
+                const { month, year } = found;
+                // Get days in that month
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const isCurrentMonth = todayObj.getFullYear() === year && todayObj.getMonth() === month;
+                const maxDay = isCurrentMonth ? todayObj.getDate() : daysInMonth;
 
-        // 2. Add historical records
-        for (const record of historyList) {
-            const row = processRecord(record, false);
-            if (row) list.push(row);
+                for (let day = maxDay; day >= 1; day--) {
+                    const d = new Date(year, month, day);
+                    const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                    list.push(processDay(d, k === todayKey));
+                }
+            } else {
+                for (let i = 0; i < 30; i++) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                    list.push(processDay(d, k === todayKey));
+                }
+            }
         }
 
         return list;
-    }, [todayAttendance, historyList]);
+    }, [todayAttendance, historyList, activePeriod, periods]);
 
     const filteredLogs = logsData.filter(log => 
         log.date.toLowerCase().includes(searchQuery.toLowerCase()) ||
