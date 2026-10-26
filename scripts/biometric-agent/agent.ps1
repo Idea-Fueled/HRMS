@@ -74,19 +74,30 @@ function Sync-Attendance {
         Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Successfully fetched $($punches.Count) punches from device."
 
         if ($punches.Count -gt 0) {
-            $body = @{
-                apiKey = $apiSecret
-                punches = $punches
-            } | ConvertTo-Json -Depth 5
+            $batchSize = 2000
+            $totalBatches = [Math]::Ceiling($punches.Count / $batchSize)
+            Write-Output "Uploading $($punches.Count) punches in $totalBatches batches..."
 
-            $headers = @{
-                "Content-Type" = "application/json"
-                "x-biometric-secret" = $apiSecret
+            for ($b = 0; $b -lt $totalBatches; $b++) {
+                $start = $b * $batchSize
+                $count = [Math]::Min($batchSize, $punches.Count - $start)
+                $batchPunches = $punches.GetRange($start, $count)
+
+                $body = @{
+                    apiKey = $apiSecret
+                    punches = $batchPunches
+                } | ConvertTo-Json -Depth 5
+
+                $headers = @{
+                    "Content-Type" = "application/json"
+                    "x-biometric-secret" = $apiSecret
+                }
+
+                Write-Output "Uploading Batch $($b + 1) of $totalBatches ($count punches)..."
+                $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 120
+                Write-Output "Batch $($b + 1) Success: $($response.message)"
             }
-
-            Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Uploading to HRMS Backend ($apiUrl)..."
-            $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 60
-            Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Sync Success: $($response.message)"
+            Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ALL PUNCHES SYNCED SUCCESSFULLY!"
         }
     }
     catch {
