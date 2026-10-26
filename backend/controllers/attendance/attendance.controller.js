@@ -1063,6 +1063,10 @@ export const syncBiometricPunches = async (req, res) => {
                 });
             }
 
+            // Separate clockIns and clockOuts
+            const clockIns = logs.filter(l => l.action === "clock_in");
+            const clockOuts = logs.filter(l => l.action === "clock_out");
+
             // Calculate work and break minutes strictly within this day
             let totalWorkMinutes = 0;
             let totalBreakMinutes = 0;
@@ -1075,8 +1079,6 @@ export const syncBiometricPunches = async (req, res) => {
                 totalWorkMinutes = Math.max(0, spanMins);
                 totalBreakMinutes = 0;
             } else {
-                const clockIns = logs.filter(l => l.action === "clock_in");
-                const clockOuts = logs.filter(l => l.action === "clock_out");
 
                 for (let i = 0; i < Math.min(clockIns.length, clockOuts.length); i++) {
                     const diff = (new Date(clockOuts[i].timestamp) - new Date(clockIns[i].timestamp)) / (1000 * 60);
