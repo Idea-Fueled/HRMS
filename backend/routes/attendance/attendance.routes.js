@@ -6,7 +6,9 @@ import {
     getTodayLogs,
     getAttendanceDashboardSummary,
     getEmployeeAttendanceHistory,
-    importEmployeeAttendance
+    importEmployeeAttendance,
+    syncBiometricPunches,
+    getBiometricStatus
 } from "../../controllers/attendance/attendance.controller.js";
 import { uploadDoc } from "../../middlewares/upload.middleware.js";
 
@@ -20,5 +22,9 @@ router.get("/logs/today/:employeeId", getTodayLogs);
 router.get("/dashboard-summary", getAttendanceDashboardSummary);
 router.get("/history/:employeeId", getEmployeeAttendanceHistory);
 router.post("/import/:employeeId", uploadDoc.single("file"), importEmployeeAttendance);
+
+// Biometric Direct Sync Endpoints
+router.post("/biometric-sync", syncBiometricPunches);
+router.get("/biometric-status", getBiometricStatus);
 
 export default router;

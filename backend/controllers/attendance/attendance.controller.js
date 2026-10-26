@@ -912,4 +912,209 @@ export const importEmployeeAttendance = async (req, res) => {
             message: error.message || "Failed to import attendance data."
         });
     }
+};
+
+/**
+ * Sync Biometric Punches Directly from Office Biometric Agent
+ * Route: POST /api/attendance/biometric-sync
+ */
+export const syncBiometricPunches = async (req, res) => {
+    try {
+        const secretKey = req.headers["x-biometric-secret"] || req.body.apiKey;
+        const expectedSecret = process.env.BIOMETRIC_SYNC_SECRET || "IdeaFueled_Biometric_Secret_2026_Secure";
+
+        if (!secretKey || secretKey !== expectedSecret) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized: Invalid or missing biometric secret key."
+            });
+        }
+
+        const rawPunches = Array.isArray(req.body.punches) ? req.body.punches : [];
+        if (rawPunches.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "No punches provided in request body."
+            });
+        }
+
+        const users = await User.find({}).select("_id employeeId firstName lastName fullName").lean();
+        const userMap = new Map();
+        users.forEach(u => {
+            userMap.set(u._id.toString(), u);
+            if (u.employeeId) {
+                const raw = String(u.employeeId).trim();
+                userMap.set(raw.toUpperCase(), u);
+                const digits = raw.replace(/\D/g, "");
+                if (digits) {
+                    userMap.set(digits, u);
+                    userMap.set(String(parseInt(digits, 10)), u);
+                }
+            }
+        });
+
+        // Group punches by user._id and date (IST: Asia/Kolkata)
+        // Key format: `${userId}_${istDateStr}`
+        const groupedMap = new Map();
+        let skippedUnknownUsers = 0;
+
+        for (const item of rawPunches) {
+            const rawId = item.enrollNumber ?? item.userId ?? item.employeeId ?? item.employeeCode;
+            if (rawId === undefined || rawId === null) continue;
+
+            const cleanKey = String(rawId).trim();
+            const digitsOnly = cleanKey.replace(/\D/g, "");
+            const user = userMap.get(cleanKey.toUpperCase()) || 
+                         (digitsOnly ? userMap.get(digitsOnly) : null) || 
+                         (digitsOnly ? userMap.get(String(parseInt(digitsOnly, 10))) : null);
+
+            if (!user) {
+                skippedUnknownUsers++;
+                continue;
+            }
+
+            const rawTimestamp = item.timestamp || item.time || item.punchTime;
+            const punchDate = new Date(rawTimestamp);
+            if (isNaN(punchDate.getTime())) continue;
+
+            const istDateStr = punchDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // "YYYY-MM-DD"
+            const groupKey = `${user._id.toString()}_${istDateStr}`;
+
+            if (!groupedMap.has(groupKey)) {
+                groupedMap.set(groupKey, {
+                    user,
+                    istDateStr,
+                    punches: []
+                });
+            }
+
+            groupedMap.get(groupKey).punches.push(punchDate);
+        }
+
+        let updatedDaysCount = 0;
+        const employeeSummary = new Map();
+
+        for (const [, group] of groupedMap.entries()) {
+            const { user, istDateStr, punches } = group;
+
+            // Sort chronologically
+            punches.sort((a, b) => a.getTime() - b.getTime());
+
+            // Debounce: filter duplicate punches closer than 45 seconds
+            const filteredPunches = [];
+            for (const p of punches) {
+                if (filteredPunches.length === 0) {
+                    filteredPunches.push(p);
+                } else {
+                    const lastP = filteredPunches[filteredPunches.length - 1];
+                    const diffSec = Math.abs((p.getTime() - lastP.getTime()) / 1000);
+                    if (diffSec >= 45) {
+                        filteredPunches.push(p);
+                    }
+                }
+            }
+
+            if (filteredPunches.length === 0) continue;
+
+            const [year, month, day] = istDateStr.split("-").map(Number);
+            const dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+
+            // Generate logs with alternating clock_in and clock_out
+            const logs = [];
+            for (let i = 0; i < filteredPunches.length; i++) {
+                logs.push({
+                    action: i % 2 === 0 ? "clock_in" : "clock_out",
+                    timestamp: filteredPunches[i]
+                });
+            }
+
+            const firstClockIn = filteredPunches[0];
+            const lastClockOut = filteredPunches.length > 1 ? filteredPunches[filteredPunches.length - 1] : null;
+
+            // Calculate work and break minutes
+            const clockIns = logs.filter(l => l.action === "clock_in");
+            const clockOuts = logs.filter(l => l.action === "clock_out");
+
+            let totalWorkMinutes = 0;
+            for (let i = 0; i < Math.min(clockIns.length, clockOuts.length); i++) {
+                const diff = (new Date(clockOuts[i].timestamp) - new Date(clockIns[i].timestamp)) / (1000 * 60);
+                if (diff > 0) totalWorkMinutes += diff;
+            }
+
+            let totalBreakMinutes = 0;
+            for (let i = 0; i < clockOuts.length; i++) {
+                if (clockIns[i + 1]) {
+                    const breakDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / (1000 * 60);
+                    if (breakDiff > 0) totalBreakMinutes += breakDiff;
+                }
+            }
+
+            let status = "present";
+            if (filteredPunches.length === 1) {
+                status = "present";
+            } else if (totalWorkMinutes < 240 && totalWorkMinutes > 0) {
+                status = "half_day";
+            }
+
+            await Attendance.findOneAndUpdate(
+                { employeeId: user._id, date: dateObj },
+                {
+                    $set: {
+                        employeeId: user._id,
+                        date: dateObj,
+                        status,
+                        firstClockIn,
+                        lastClockOut,
+                        totalWorkMinutes: Math.floor(totalWorkMinutes),
+                        totalBreakMinutes: Math.floor(totalBreakMinutes),
+                        totalSessions: clockIns.length,
+                        workMode: "Office",
+                        logs
+                    }
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+
+            updatedDaysCount++;
+            employeeSummary.set(user._id.toString(), user.fullName || user.firstName);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Biometric sync completed. Processed ${rawPunches.length} punches across ${updatedDaysCount} attendance records for ${employeeSummary.size} employees.`,
+            stats: {
+                totalPunchesReceived: rawPunches.length,
+                recordsUpserted: updatedDaysCount,
+                employeesCount: employeeSummary.size,
+                skippedUnknownUsers
+            }
+        });
+    } catch (error) {
+        console.error("Biometric Sync Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to sync biometric punches."
+        });
+    }
+};
+
+/**
+ * Biometric Status Check
+ * Route: GET /api/attendance/biometric-status
+ */
+export const getBiometricStatus = async (req, res) => {
+    try {
+        const lastRecord = await Attendance.findOne({ workMode: "Office", "logs.0": { $exists: true } })
+            .sort({ updatedAt: -1 })
+            .populate("employeeId", "fullName firstName lastName employeeId");
+
+        return res.status(200).json({
+            success: true,
+            status: "ready",
+            lastSyncTime: lastRecord ? lastRecord.updatedAt : null,
+            lastSyncedEmployee: lastRecord?.employeeId ? (lastRecord.employeeId.fullName || lastRecord.employeeId.firstName) : null
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
 };
