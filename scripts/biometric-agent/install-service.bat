@@ -24,8 +24,12 @@ if exist "%AGENT_DIR%\nssm.exe" (
 %NSSM% stop %SERVICE_NAME% >nul 2>&1
 %NSSM% remove %SERVICE_NAME% confirm >nul 2>&1
 
-:: Install service using powershell
-%NSSM% install %SERVICE_NAME% "powershell.exe" "-ExecutionPolicy Bypass -NoProfile -File \"%AGENT_DIR%\agent.ps1\""
+:: Install service using 32-bit powershell (required for zkemkeeper COM driver)
+set POWERSHELL=powershell.exe
+if exist "%WINDIR%\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" (
+    set POWERSHELL="%WINDIR%\SysWOW64\WindowsPowerShell\v1.0\powershell.exe"
+)
+%NSSM% install %SERVICE_NAME% %POWERSHELL% "-ExecutionPolicy Bypass -NoProfile -File \"%AGENT_DIR%\agent.ps1\""
 %NSSM% set %SERVICE_NAME% AppDirectory "%AGENT_DIR%"
 %NSSM% set %SERVICE_NAME% DisplayName "Idea-Fueled Biometric Attendance Service"
 %NSSM% set %SERVICE_NAME% Description "Pulls real-time biometric attendance from office eSSL machine (192.168.10.57) and pushes to Idea-Fueled HRMS Cloud."
