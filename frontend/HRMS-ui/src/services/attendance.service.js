@@ -52,5 +52,3 @@ export const importEmployeeAttendance = async (employeeId, data) => {
     }
     return API.post(`/attendance/import/${employeeId}`, data);
 };
-
-

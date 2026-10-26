@@ -8,14 +8,34 @@ const seedMockDataIfNeeded = async (currentUserId) => {
     return;
 };
 
-// Helper function to get HR caller's assigned visible employee IDs
+// Helper function to get caller's assigned visible/team employee IDs
 const getHrVisibleFilter = async (currentUserId) => {
     if (!currentUserId) return null;
     const currentUser = await User.findById(currentUserId).select("role visibleEmployees").lean();
-    if (currentUser && currentUser.role === "hr" && currentUser.visibleEmployees && currentUser.visibleEmployees.length > 0) {
-        return currentUser.visibleEmployees.map(id => id.toString());
+    if (!currentUser) return null;
+
+    // Global Admin / Admin has full company-wide visibility
+    if (currentUser.role === "global_admin" || currentUser.role === "admin") {
+        return null;
     }
-    return null;
+
+    // HR user with custom visible employees list configured
+    if (currentUser.role === "hr") {
+        if (currentUser.visibleEmployees && currentUser.visibleEmployees.length > 0) {
+            return currentUser.visibleEmployees.map(id => id.toString());
+        }
+        return null;
+    }
+
+    // Team Lead / Manager / Employee: ONLY see their direct reports
+    const directReports = await User.find({
+        $or: [
+            { managerId: currentUser._id },
+            { dottedManagerId: currentUser._id }
+        ]
+    }).select("_id").lean();
+
+    return directReports.map(d => d._id.toString());
 };
 
 /* ─────────────────────────────────────────────
@@ -306,10 +326,10 @@ export const getTeamLeaves = async (req, res) => {
         today.setHours(0, 0, 0, 0);
 
         const [pending, approved, rejected, onLeave] = await Promise.all([
-            Leave.countDocuments({ status: "pending" }),
-            Leave.countDocuments({ status: "approved" }),
-            Leave.countDocuments({ status: "rejected" }),
-            Leave.countDocuments({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today } })
+            Leave.countDocuments({ status: "pending", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            Leave.countDocuments({ status: "approved", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            Leave.countDocuments({ status: "rejected", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            Leave.countDocuments({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
         ]);
 
         return res.status(200).json({
@@ -331,7 +351,10 @@ export const getTeamPerformance = async (req, res) => {
         const userId = req.user?.id || req.user?.userId;
         await seedMockDataIfNeeded(userId);
 
-        const reviews = await Performance.find()
+        const hrVisibleIds = await getHrVisibleFilter(userId);
+        const perfQuery = hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {};
+
+        const reviews = await Performance.find(perfQuery)
             .populate("employeeId", "fullName department profilePicture")
             .populate("reviewerId", "fullName")
             .sort({ createdAt: -1 });
@@ -348,10 +371,10 @@ export const getTeamPerformance = async (req, res) => {
         }));
 
         // Stat metrics
-        const outstanding = await Performance.countDocuments({ status: "Outstanding" });
-        const exceeds = await Performance.countDocuments({ status: "Exceeds Expectations" });
-        const meets = await Performance.countDocuments({ status: "Meets Expectations" });
-        const needsImprovement = await Performance.countDocuments({ status: "Needs Improvement" });
+        const outstanding = await Performance.countDocuments({ status: "Outstanding", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) });
+        const exceeds = await Performance.countDocuments({ status: "Exceeds Expectations", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) });
+        const meets = await Performance.countDocuments({ status: "Meets Expectations", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) });
+        const needsImprovement = await Performance.countDocuments({ status: "Needs Improvement", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) });
 
         // Department distributions
         const deptPerformance = await Performance.aggregate([

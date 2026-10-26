@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { 
     Users, 
@@ -21,7 +21,11 @@ import {
     Percent,
     ChevronDown,
     ChevronUp,
-    Activity
+    Activity,
+    ArrowLeft,
+    CheckCircle2,
+    Home,
+    ShieldAlert
 } from "lucide-react";
 import { toast } from "sonner";
 import { ViewToggle, SkeletonLoader, EmptyState, SearchBar, Pagination, SortHeader, Avatar } from "../../components/SharedComponents";
@@ -33,6 +37,7 @@ import {
     getTeamPerformance,
     updateLeaveStatus 
 } from "../../services/team.service";
+import { getEmployeeAttendanceHistory } from "../../services/attendance.service";
 import { getEmployeeById } from "../../services/employee.service";
 import { ViewEmployeeDrawer } from "../employees/Employees";
 import { useAuth } from "../../context/AuthContext";
@@ -686,8 +691,710 @@ const TeamMembersTab = () => {
 };
 
 /* ─────────────────────────────────────────────
-   3. TEAM ATTENDANCE TAB
+   3. TEAM ATTENDANCE TAB & MEMBER HISTORY VIEW
 ───────────────────────────────────────────── */
+
+const calculateMemberPunctuality = (clockInTime) => {
+    if (!clockInTime) return { status: "off", label: "", tag: "", isLate: false };
+    const dateObj = new Date(clockInTime);
+    
+    // Parse in IST
+    const istParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(dateObj);
+    const hours = Number(istParts.find(p => p.type === "hour")?.value || 0);
+    const minutes = Number(istParts.find(p => p.type === "minute")?.value || 0);
+    const totalMinutes = hours * 60 + minutes;
+
+    const nineAM = 9 * 60; // 540
+    const tenAM = 10 * 60; // 600
+
+    const formattedTime = dateObj.toLocaleTimeString("en-US", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+    });
+
+    if (totalMinutes >= nineAM && totalMinutes <= tenAM) {
+        return {
+            status: "on_time",
+            label: "On Time",
+            tag: "On Time",
+            timeStr: formattedTime,
+            isLate: false
+        };
+    } else if (totalMinutes > tenAM) {
+        return {
+            status: "late",
+            label: "Late Arrival",
+            tag: `Late (${formattedTime})`,
+            timeStr: formattedTime,
+            isLate: true
+        };
+    } else {
+        return {
+            status: "early",
+            label: "Early Check-in",
+            tag: `Early (${formattedTime})`,
+            timeStr: formattedTime,
+            isLate: false
+        };
+    }
+};
+
+const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
+    if (!isOpen) return null;
+
+    const rawLogs = (row?.logs && row.logs.length > 0) ? row.logs : [];
+    const punchPairs = [];
+
+    if (rawLogs.length > 0) {
+        let currentIn = null;
+        for (let i = 0; i < rawLogs.length; i++) {
+            const l = rawLogs[i];
+            const timeStr = new Date(l.timestamp).toLocaleTimeString("en-US", {
+                timeZone: "Asia/Kolkata",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            });
+
+            if (l.action === "clock_in") {
+                currentIn = timeStr;
+            } else if (l.action === "clock_out") {
+                punchPairs.push({
+                    in: currentIn || "Missing",
+                    out: timeStr,
+                    isWorking: false
+                });
+                currentIn = null;
+            }
+        }
+        if (currentIn) {
+            punchPairs.push({
+                in: currentIn,
+                out: "Active / In Office",
+                isWorking: true
+            });
+        }
+    }
+
+    if (punchPairs.length === 0) {
+        punchPairs.push({
+            in: row?.timeStr || "-- : --",
+            out: "—",
+            isWorking: false
+        });
+    }
+
+    return (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fadeIn select-none">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-scaleUp">
+                {/* Modal Header */}
+                <div className="bg-slate-50/90 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Movement &amp; Punch Audit
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EBF3FC] text-[#2D79C7] border border-blue-200">
+                                {row?.date || "Today"}
+                            </span>
+                        </div>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                            Employee: <span className="text-[#2D79C7] font-bold">{memberName}</span> • Shift: <span className="text-slate-700 font-mono font-bold">10:00 AM – 07:00 PM</span>
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-6 space-y-5">
+                    {/* Metrics Summary Strip */}
+                    <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                        <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Effective Work</span>
+                            <span className="text-xs font-extrabold font-mono text-teal-700">{row?.effectiveHours || "--"}</span>
+                        </div>
+                        <div className="border-x border-slate-200">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Break Taken</span>
+                            <span className="text-xs font-extrabold font-mono text-amber-700">{row?.breakTaken || "0m"}</span>
+                        </div>
+                        <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Gross Hours</span>
+                            <span className="text-xs font-extrabold font-mono text-slate-800">{row?.grossHours || "--"}</span>
+                        </div>
+                    </div>
+
+                    {/* Punch Details Section */}
+                    <div>
+                        <div className="flex items-center justify-between mb-2.5">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                Office Biometric Punch History
+                            </span>
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                {punchPairs.length} Session{punchPairs.length > 1 ? "s" : ""}
+                            </span>
+                        </div>
+
+                        <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto pr-1">
+                            {punchPairs.map((pair, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-slate-800 bg-slate-50/80 hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 transition-colors">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-xs shrink-0">
+                                            ↙
+                                        </span>
+                                        <div>
+                                            <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock In</span>
+                                            <span className="font-bold text-slate-800">{pair.in}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2.5 text-right">
+                                        <div>
+                                            <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock Out</span>
+                                            <span className={`font-bold ${pair.isWorking ? "text-emerald-600 font-sans text-[11px]" : "text-slate-800"}`}>
+                                                {pair.out}
+                                            </span>
+                                        </div>
+                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 ${
+                                            pair.isWorking ? "bg-emerald-100 text-emerald-600 animate-pulse" : "bg-slate-200 text-slate-600"
+                                        }`}>
+                                            {pair.isWorking ? "●" : "↗"}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-4 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TeamMemberAttendanceHistory = ({ member, onBack }) => {
+    const [activePeriod, setActivePeriod] = useState("30");
+    const [loadingHistory, setLoadingHistory] = useState(true);
+    const [historyList, setHistoryList] = useState([]);
+    const [selectedAuditRow, setSelectedAuditRow] = useState(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [is24Hour, setIs24Hour] = useState(false);
+
+    const periods = useMemo(() => {
+        const list = [
+            { key: "30", label: "30 DAYS" },
+            { key: "all", label: "ALL HISTORY" }
+        ];
+        const now = new Date();
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthName = d.toLocaleString("default", { month: "long" }).toUpperCase();
+            const year = d.getFullYear();
+            list.push({
+                key: `month-${year}-${d.getMonth()}`,
+                label: `${monthName} ${year}`,
+                month: d.getMonth(),
+                year: year
+            });
+        }
+        return list;
+    }, []);
+
+    const memberId = member?.userId || member?._id;
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            if (!memberId) return;
+
+            setLoadingHistory(true);
+            try {
+                let params = {};
+                if (activePeriod === "all") {
+                    params = { days: "all" };
+                } else if (activePeriod === "30") {
+                    params = { days: 30 };
+                } else {
+                    const found = periods.find(p => p.key === activePeriod);
+                    if (found && found.month !== undefined) {
+                        params = { month: found.month, year: found.year };
+                    }
+                }
+
+                const res = await getEmployeeAttendanceHistory(memberId, params);
+                if (res.data?.success && Array.isArray(res.data.attendances)) {
+                    setHistoryList(res.data.attendances);
+                } else {
+                    setHistoryList([]);
+                }
+            } catch (err) {
+                console.error("Failed to load attendance history for member:", err);
+                setHistoryList([]);
+            } finally {
+                setLoadingHistory(false);
+            }
+        };
+
+        fetchHistory();
+    }, [activePeriod, memberId, periods]);
+
+    const logsData = useMemo(() => {
+        const list = [];
+        const dateMap = new Map();
+
+        const formatMinutes = (totalMins) => {
+            const hrs = Math.floor((totalMins || 0) / 60);
+            const mins = (totalMins || 0) % 60;
+            return hrs > 0 ? `${hrs}h ${mins.toString().padStart(2, "0")}m` : `${mins}m`;
+        };
+
+        const computeMinutes = (record) => {
+            let work = record.totalWorkMinutes || 0;
+            let brk = record.totalBreakMinutes || 0;
+
+            if (!work && Array.isArray(record.logs) && record.logs.length > 0) {
+                const ins = record.logs.filter(l => l.action === "clock_in");
+                const outs = record.logs.filter(l => l.action === "clock_out");
+                let sumWork = 0;
+                for (let i = 0; i < Math.min(ins.length, outs.length); i++) {
+                    const diff = (new Date(outs[i].timestamp) - new Date(ins[i].timestamp)) / 60000;
+                    if (diff > 0) sumWork += diff;
+                }
+                if (sumWork > 0) work = Math.floor(sumWork);
+
+                let sumBreak = 0;
+                for (let i = 0; i < outs.length; i++) {
+                    if (ins[i + 1]) {
+                        const bDiff = (new Date(ins[i + 1].timestamp) - new Date(outs[i].timestamp)) / 60000;
+                        if (bDiff > 0) sumBreak += bDiff;
+                    }
+                }
+                if (sumBreak > 0) brk = Math.floor(sumBreak);
+            }
+
+            if (!work && record.firstClockIn && record.lastClockOut) {
+                const span = (new Date(record.lastClockOut) - new Date(record.firstClockIn)) / 60000;
+                if (span > 0) work = Math.floor(span);
+            }
+
+            if (record.firstClockIn && record.lastClockOut) {
+                const totalSpan = Math.round((new Date(record.lastClockOut) - new Date(record.firstClockIn)) / 60000);
+                if (brk > totalSpan) {
+                    brk = Math.max(0, totalSpan - work);
+                }
+            }
+
+            return { work, brk };
+        };
+
+        for (const r of historyList) {
+            const d = new Date(r.date || r.firstClockIn);
+            const key = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            if (!dateMap.has(key)) {
+                dateMap.set(key, { record: r, isToday: false });
+            }
+        }
+
+        const todayObj = new Date();
+        const todayKey = todayObj.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
+        const processDay = (dateObj, isToday = false) => {
+            const istDateKey = dateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            const dayOfWeek = dateObj.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+            const formattedDate = dateObj.toLocaleDateString("en-US", {
+                timeZone: "Asia/Kolkata",
+                weekday: "short",
+                day: "2-digit",
+                month: "short"
+            });
+
+            const entry = dateMap.get(istDateKey);
+            if (entry && entry.record) {
+                const record = entry.record;
+                const punctuality = calculateMemberPunctuality(record.firstClockIn);
+                const { work, brk } = computeMinutes(record);
+                const effectiveHours = formatMinutes(work);
+                const breakTaken = formatMinutes(brk);
+                const grossHours = formatMinutes(work + brk);
+
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: isToday || entry.isToday,
+                    isWeekend,
+                    status: record.workMode === "Work From Home" ? "wfh" : (record.status || "present"),
+                    effectiveHours,
+                    breakTaken,
+                    grossHours,
+                    arrival: punctuality.tag || (record.firstClockIn ? "Present" : "—"),
+                    isLate: punctuality.isLate,
+                    timeStr: punctuality.timeStr,
+                    logs: record.logs || [],
+                    logType: "success"
+                };
+            }
+
+            if (isToday) {
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: true,
+                    isWeekend,
+                    status: isWeekend ? "week_off" : "absent",
+                    effectiveHours: "0m",
+                    breakTaken: "0m",
+                    grossHours: "0m",
+                    arrival: isWeekend ? "Weekend" : "Not Clocked In",
+                    isLate: false,
+                    timeStr: "—",
+                    logs: [],
+                    logType: isWeekend ? "info" : "warning"
+                };
+            }
+
+            if (isWeekend) {
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: false,
+                    isWeekend: true,
+                    status: "week_off",
+                    effectiveHours: "—",
+                    breakTaken: "—",
+                    grossHours: "—",
+                    arrival: "Week Off",
+                    isLate: false,
+                    timeStr: "—",
+                    logs: [],
+                    logType: "info"
+                };
+            }
+
+            return {
+                date: formattedDate,
+                rawDate: dateObj,
+                isToday: false,
+                isWeekend: false,
+                status: "absent",
+                effectiveHours: "0m",
+                breakTaken: "0m",
+                grossHours: "0m",
+                arrival: "Absent",
+                isLate: false,
+                timeStr: "—",
+                logs: [],
+                logType: "warning"
+            };
+        };
+
+        if (activePeriod === "all") {
+            const sortedDates = Array.from(dateMap.keys()).sort().reverse();
+            for (const k of sortedDates) {
+                const item = dateMap.get(k);
+                const d = new Date(item.record.date || item.record.firstClockIn);
+                list.push(processDay(d, item.isToday));
+            }
+        } else if (activePeriod === "30") {
+            for (let i = 0; i < 30; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                list.push(processDay(d, k === todayKey));
+            }
+        } else {
+            const found = periods.find(p => p.key === activePeriod);
+            if (found && found.month !== undefined) {
+                const { month, year } = found;
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const isCurrentMonth = todayObj.getFullYear() === year && todayObj.getMonth() === month;
+                const maxDay = isCurrentMonth ? todayObj.getDate() : daysInMonth;
+
+                for (let day = maxDay; day >= 1; day--) {
+                    const d = new Date(year, month, day);
+                    const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                    list.push(processDay(d, k === todayKey));
+                }
+            } else {
+                for (let i = 0; i < 30; i++) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                    list.push(processDay(d, k === todayKey));
+                }
+            }
+        }
+
+        return list;
+    }, [historyList, activePeriod, periods]);
+
+    const filteredLogs = logsData.filter(log => 
+        log.date.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.arrival.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.status.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const statsSummary = useMemo(() => {
+        let presentDays = 0;
+        let lateDays = 0;
+        let wfhDays = 0;
+        logsData.forEach(l => {
+            if (l.status === "present" || l.status === "half_day") {
+                presentDays++;
+                if (l.isLate) lateDays++;
+            } else if (l.status === "wfh") {
+                wfhDays++;
+            }
+        });
+        return { presentDays, lateDays, wfhDays, totalLogged: logsData.length };
+    }, [logsData]);
+
+    return (
+        <div className="space-y-5 animate-fadeIn select-none">
+            {/* Top Navigation & Member Profile Card */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-[#EBF3FC] text-slate-700 hover:text-[#2D79C7] rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 hover:border-blue-200 shrink-0"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back to Team Overview</span>
+                    </button>
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+                    <div className="flex items-center gap-3">
+                        <Avatar name={member.name} src={member.profilePicture} size="w-11 h-11" />
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-bold text-slate-900">{member.name}</h2>
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-[#2D79C7] border border-blue-200">
+                                    {member.dept}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium">
+                                Individual Attendance History &amp; Movement Audit
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Quick stats badges */}
+                <div className="flex items-center gap-2.5 overflow-x-auto">
+                    <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
+                        <span className="text-[9.5px] font-bold text-emerald-600 uppercase block">Present</span>
+                        <span className="text-xs font-black text-emerald-800 font-mono">{statsSummary.presentDays} Days</span>
+                    </div>
+                    <div className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-center">
+                        <span className="text-[9.5px] font-bold text-amber-600 uppercase block">Late</span>
+                        <span className="text-xs font-black text-amber-800 font-mono">{statsSummary.lateDays} Days</span>
+                    </div>
+                    {statsSummary.wfhDays > 0 && (
+                        <div className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-center">
+                            <span className="text-[9.5px] font-bold text-blue-600 uppercase block">WFH</span>
+                            <span className="text-xs font-black text-[#2D79C7] font-mono">{statsSummary.wfhDays} Days</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Attendance History Card (Exact same UI as Me tab) */}
+            <div className="premium-3d-card select-none">
+                <TeamLogAuditModal
+                    isOpen={!!selectedAuditRow}
+                    onClose={() => setSelectedAuditRow(null)}
+                    row={selectedAuditRow}
+                    memberName={member.name}
+                />
+
+                {/* Header Controls */}
+                <div className="border-b border-slate-200/80 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-[10px] bg-blue-50 flex items-center justify-center border border-blue-100/50">
+                            <Clock className="w-3.5 h-3.5 text-[#2D79C7]" strokeWidth={2.5} />
+                        </div>
+                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                            {member.name}'s Attendance Log
+                        </h3>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <input
+                                type="text"
+                                placeholder="Filter log..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 pr-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#2D79C7] w-36 sm:w-44"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                            <span>24 HOUR FORMAT</span>
+                            <button
+                                type="button"
+                                onClick={() => setIs24Hour(!is24Hour)}
+                                className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer ${
+                                    is24Hour ? "bg-[#2D79C7]" : "bg-slate-300"
+                                }`}
+                            >
+                                <div className={`w-4 h-4 rounded-full bg-white transition-transform ${is24Hour ? "translate-x-4" : "translate-x-0"}`} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Timeframe Filter Tabs */}
+                <div className="px-6 py-2.5 border-b border-slate-100 flex items-center justify-between overflow-x-auto gap-2 bg-white">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Timeframe:</span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                        {periods.map((p) => {
+                            const isActive = activePeriod === p.key;
+                            return (
+                                <button
+                                    key={p.key}
+                                    type="button"
+                                    onClick={() => setActivePeriod(p.key)}
+                                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer shrink-0 ${
+                                        isActive
+                                            ? "bg-[#2D79C7] text-white shadow-xs"
+                                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                    }`}
+                                >
+                                    {p.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* History Table */}
+                <div className="overflow-x-auto">
+                    {loadingHistory ? (
+                        <div className="py-16 text-center text-slate-400 font-semibold select-none flex flex-col items-center justify-center gap-2">
+                            <div className="w-6 h-6 border-2 border-[#2D79C7] border-t-transparent rounded-full animate-spin" />
+                            <span className="text-xs text-slate-500">Loading attendance records...</span>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                    <th className="py-3 px-6">Date</th>
+                                    <th className="py-3 px-6">Status / Arrival</th>
+                                    <th className="py-3 px-6">Effective Hours</th>
+                                    <th className="py-3 px-6">Break Taken</th>
+                                    <th className="py-3 px-6">Gross Hours</th>
+                                    <th className="py-3 px-6 text-center">Movement Logs</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                                {filteredLogs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-12 text-center text-slate-400 font-semibold select-none">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <Clock className="w-8 h-8 text-slate-300 stroke-[1.5]" />
+                                                <span className="text-xs font-semibold text-slate-500">No time entries logged for this period.</span>
+                                                <span className="text-[11px] font-medium text-slate-400">Punches from biometric machine will appear here automatically.</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredLogs.map((row, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                                            {/* Date */}
+                                            <td className="py-3.5 px-6 font-bold text-slate-800">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{row.date}</span>
+                                                    {row.isToday && (
+                                                        <span className="text-[9.5px] font-extrabold uppercase bg-blue-100 text-[#2D79C7] px-1.5 py-0.2 rounded font-sans">
+                                                            Today
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Status & Arrival */}
+                                            <td className="py-3.5 px-6">
+                                                <div className="flex items-center gap-2">
+                                                    {row.status === "wfh" ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                            <Home className="w-3 h-3" />
+                                                            <span>WFH</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
+                                                            row.isLate
+                                                                ? "bg-amber-50 text-amber-800 border-amber-200"
+                                                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        }`}>
+                                                            <CheckCircle2 className={`w-3 h-3 ${row.isLate ? "text-amber-600" : "text-emerald-600"}`} />
+                                                            <span>{row.arrival}</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Effective Hours */}
+                                            <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                                                    <span>{row.effectiveHours}</span>
+                                                </div>
+                                            </td>
+
+                                            {/* Break Taken */}
+                                            <td className="py-3.5 px-6 font-mono text-amber-700 font-semibold">
+                                                {row.breakTaken}
+                                            </td>
+
+                                            {/* Gross Hours */}
+                                            <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                                                {row.grossHours}
+                                            </td>
+
+                                            {/* Log Audit Trigger */}
+                                            <td className="py-3.5 px-6 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedAuditRow(row)}
+                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-[#EBF3FC] text-slate-600 hover:text-[#2D79C7] border border-slate-200 hover:border-blue-200 transition-all cursor-pointer font-sans font-bold text-[11px]"
+                                                    title="View Detailed Punch Audit"
+                                                >
+                                                    <span>🔍</span>
+                                                    <span>View Logs</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const TeamAttendanceTab = () => {
     const [loading, setLoading] = useState(true);
     const [attendanceData, setAttendanceData] = useState({ stats: null, logs: [] });
@@ -701,6 +1408,7 @@ const TeamAttendanceTab = () => {
     const itemsPerPage = useResponsivePageSize(view);
     const [expandedLogs, setExpandedLogs] = useState([]);
     const [attendanceMenuAnchor, setAttendanceMenuAnchor] = useState(null);
+    const [selectedMember, setSelectedMember] = useState(null);
 
     const toggleLogExpand = (id) => {
         setExpandedLogs(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -771,6 +1479,16 @@ const TeamAttendanceTab = () => {
 
     const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+    // If an individual team member is selected, display their detailed Me-tab style attendance history
+    if (selectedMember) {
+        return (
+            <TeamMemberAttendanceHistory
+                member={selectedMember}
+                onBack={() => setSelectedMember(null)}
+            />
+        );
+    }
+
     if (error) {
         return <ErrorAlert message={error} onRetry={fetchAttendance} />;
     }
@@ -805,10 +1523,14 @@ const TeamAttendanceTab = () => {
                             <Card key={idx} className="p-5 flex flex-col justify-between">
                                 <div>
                                     <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-3">
+                                        <div 
+                                            onClick={() => setSelectedMember(log)}
+                                            className="flex items-center gap-3 cursor-pointer group"
+                                            title="Click to view full attendance history"
+                                        >
                                             <Avatar name={log.name} src={log.profilePicture} size="w-10 h-10" />
                                             <div className="flex flex-col text-left">
-                                                <h4 className="text-[#1E1E1E] text-xs font-black block truncate max-w-[130px]">{log.name}</h4>
+                                                <h4 className="text-[#1E1E1E] group-hover:text-[#2D79C7] transition-colors text-xs font-black block truncate max-w-[130px]">{log.name}</h4>
                                                 <span className="text-gray-400 text-[10px] font-bold block">{log.dept}</span>
                                             </div>
                                         </div>
@@ -831,21 +1553,32 @@ const TeamAttendanceTab = () => {
                                     <span className="text-gray-400">{log.mode} Mode</span>
                                     <span className="text-[#2D79C7] font-extrabold font-mono">{log.hours}</span>
                                 </div>
-                                {/* View Logs Toggle */}
+
+                                {/* Full Attendance History Trigger Button */}
+                                <button
+                                    onClick={() => setSelectedMember(log)}
+                                    className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold text-white bg-[#2D79C7] hover:bg-[#2367ac] rounded-[10px] shadow-xs transition-colors cursor-pointer"
+                                    title="View Full Attendance History"
+                                >
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>View Attendance History</span>
+                                </button>
+
+                                {/* View Movement Logs Toggle */}
                                 <button
                                     onClick={() => toggleLogExpand(log.userId || log.name)}
-                                    className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-[#2D79C7] bg-blue-50/60 hover:bg-blue-100/60 rounded-[10px] border border-blue-100/60 transition-colors cursor-pointer"
+                                    className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-[#2D79C7] bg-blue-50/60 hover:bg-blue-100/60 rounded-[10px] border border-blue-100/60 transition-colors cursor-pointer"
                                 >
                                     <Activity className="w-3 h-3" />
-                                    {expandedLogs.includes(log.userId || log.name) ? "Hide Movement Logs" : "View Movement Logs"}
+                                    {expandedLogs.includes(log.userId || log.name) ? "Hide Movement Timeline" : "Today's Movement Timeline"}
                                     {expandedLogs.includes(log.userId || log.name) ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                 </button>
                                 {/* Expanded Movement Logs */}
                                 {expandedLogs.includes(log.userId || log.name) && (
                                     <div className="mt-2.5 py-2.5 px-3 bg-gray-50 rounded-[12px] border border-gray-100 animate-fadeIn">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block mb-2">Movement Timeline</span>
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block mb-2">Today's Punch Timeline</span>
                                         {(!log.movementLogs || log.movementLogs.length === 0) ? (
-                                            <span className="text-[10px] text-gray-400 italic">No movement logs recorded.</span>
+                                            <span className="text-[10px] text-gray-400 italic">No movement logs recorded today.</span>
                                         ) : (
                                             <div className="flex flex-wrap gap-1.5">
                                                 {log.movementLogs.map((m, mIdx) => (
@@ -881,7 +1614,7 @@ const TeamAttendanceTab = () => {
                                         <SortHeader label="Employee Name" field="name" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                                     </th>
                                     <th className="px-6 py-4">
-                                        <SortHeader label="Department" field="dept" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        <SortHeader label="Department" field="dept" sortField={sortDir} onSort={handleSort} />
                                     </th>
                                     <th className="px-6 py-4">
                                         <SortHeader label="Clock In" field="checkIn" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
@@ -909,9 +1642,13 @@ const TeamAttendanceTab = () => {
                                         <React.Fragment key={idx}>
                                             <tr className={`hover:bg-gray-50/50 transition-colors ${isExpanded ? "bg-blue-50/30" : ""}`}>
                                                 <td className="px-6 py-3.5">
-                                                    <div className="flex items-center gap-3">
+                                                    <div 
+                                                        onClick={() => setSelectedMember(log)}
+                                                        className="flex items-center gap-3 cursor-pointer group"
+                                                        title="Click to view full attendance history"
+                                                    >
                                                         <Avatar name={log.name} src={log.profilePicture} size="w-8 h-8" />
-                                                        <span className="text-[#1E1E1E] font-bold block">{log.name}</span>
+                                                        <span className="text-[#1E1E1E] group-hover:text-[#2D79C7] transition-colors font-bold block">{log.name}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-3.5">{log.dept}</td>
@@ -925,26 +1662,37 @@ const TeamAttendanceTab = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-3.5 text-center">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (attendanceMenuAnchor && attendanceMenuAnchor.id === logId) {
-                                                                setAttendanceMenuAnchor(null);
-                                                            } else {
-                                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                                setAttendanceMenuAnchor({
-                                                                    id: logId,
-                                                                    rect: {
-                                                                        top: rect.bottom + window.scrollY,
-                                                                        left: rect.right - 180 + window.scrollX,
-                                                                    }
-                                                                });
-                                                            }
-                                                        }}
-                                                        className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors cursor-pointer shrink-0 focus:outline-none"
-                                                    >
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => setSelectedMember(log)}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-[#2D79C7] text-[#2D79C7] hover:text-white transition-all text-[11px] font-bold cursor-pointer border border-blue-200/80 shadow-2xs"
+                                                            title="View Complete Attendance History"
+                                                        >
+                                                            <Clock className="w-3.5 h-3.5" />
+                                                            <span>History</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (attendanceMenuAnchor && attendanceMenuAnchor.id === logId) {
+                                                                    setAttendanceMenuAnchor(null);
+                                                                } else {
+                                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                                    setAttendanceMenuAnchor({
+                                                                        id: logId,
+                                                                        rect: {
+                                                                            top: rect.bottom + window.scrollY,
+                                                                            left: rect.right - 180 + window.scrollX,
+                                                                        }
+                                                                    });
+                                                                }
+                                                            }}
+                                                            className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors cursor-pointer shrink-0 focus:outline-none"
+                                                        >
+                                                            <MoreVertical className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             {/* Expanded Movement Logs Row */}
@@ -954,7 +1702,7 @@ const TeamAttendanceTab = () => {
                                                         <div className="py-2.5 px-4 bg-gray-50 rounded-[14px] border border-gray-100 animate-fadeIn">
                                                             <div className="flex items-center gap-2 mb-2">
                                                                 <Activity className="w-3.5 h-3.5 text-[#2D79C7]" />
-                                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Movement Timeline</span>
+                                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Today's Movement Timeline</span>
                                                             </div>
                                                             {(!log.movementLogs || log.movementLogs.length === 0) ? (
                                                                 <span className="text-xs text-gray-400 italic">No movement logs recorded for today.</span>
@@ -996,17 +1744,28 @@ const TeamAttendanceTab = () => {
                         top: `${attendanceMenuAnchor.rect.top}px`,
                         left: `${attendanceMenuAnchor.rect.left}px`,
                     }}
-                    className="w-[180px] bg-white border border-gray-100 rounded-[12px] shadow-xl py-1 z-50 text-left animate-in fade-in slide-in-from-top-1 duration-150"
+                    className="w-[190px] bg-white border border-gray-100 rounded-[12px] shadow-xl py-1 z-50 text-left animate-in fade-in slide-in-from-top-1 duration-150"
                 >
+                    <button
+                        onClick={() => {
+                            const memberObj = attendanceData.logs.find(l => (l.userId || l.name) === attendanceMenuAnchor.id);
+                            if (memberObj) setSelectedMember(memberObj);
+                            setAttendanceMenuAnchor(null);
+                        }}
+                        className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-blue-50/50 hover:text-[#2D79C7] transition-all text-left flex items-center gap-2 focus:outline-none cursor-pointer"
+                    >
+                        <Clock className="w-3.5 h-3.5 text-[#2D79C7]" />
+                        <span>View Full History</span>
+                    </button>
                     <button
                         onClick={() => {
                             toggleLogExpand(attendanceMenuAnchor.id);
                             setAttendanceMenuAnchor(null);
                         }}
-                        className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-blue-50/50 hover:text-[#2D79C7] transition-all text-left flex items-center gap-2 focus:outline-none cursor-pointer"
+                        className="w-full px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-blue-50/50 hover:text-[#2D79C7] transition-all text-left flex items-center gap-2 focus:outline-none cursor-pointer border-t border-gray-50"
                     >
                         <Activity className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{expandedLogs.includes(attendanceMenuAnchor.id) ? "Hide Movement Logs" : "View Movement Logs"}</span>
+                        <span>{expandedLogs.includes(attendanceMenuAnchor.id) ? "Hide Timeline" : "Today's Timeline"}</span>
                     </button>
                 </div>,
                 document.body
