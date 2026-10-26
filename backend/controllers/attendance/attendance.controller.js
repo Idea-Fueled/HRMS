@@ -696,14 +696,20 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
             const pastDate = new Date();
             pastDate.setDate(pastDate.getDate() - d);
             pastDate.setHours(0, 0, 0, 0);
-            dateFilter.date = { $gte: pastDate };
+            dateFilter.$or = [
+                { date: { $gte: pastDate } },
+                { firstClockIn: { $gte: pastDate } }
+            ];
         } else if (month !== undefined && year !== undefined && month !== "" && year !== "") {
             const m = parseInt(month, 10);
             const y = parseInt(year, 10);
             // 24 hour buffer to absorb all UTC vs IST timezone midnight shifts
             const startOfMonth = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0) - 24 * 3600 * 1000);
             const endOfMonth = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999) + 24 * 3600 * 1000);
-            dateFilter.date = { $gte: startOfMonth, $lte: endOfMonth };
+            dateFilter.$or = [
+                { date: { $gte: startOfMonth, $lte: endOfMonth } },
+                { firstClockIn: { $gte: startOfMonth, $lte: endOfMonth } }
+            ];
         }
 
         const attendances = await Attendance.find(dateFilter)
