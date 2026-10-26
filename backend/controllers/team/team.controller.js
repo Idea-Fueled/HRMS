@@ -223,11 +223,14 @@ export const getTeamAttendance = async (req, res) => {
             let mode = "--";
 
             if (att) {
-                status = att.status === "present" ? "Present" : att.status === "half_day" ? "Half Day" : "Present";
+                const deptLower = (user.department || "").trim().toLowerCase();
+                const isSales = deptLower.includes("sales");
+
                 if (att.workMode && att.workMode.toLowerCase().includes("home")) {
                     status = "WFH";
                     wfhCount++;
                 } else {
+                    status = "On Time";
                     presentCount++;
                 }
 
@@ -241,14 +244,29 @@ export const getTeamAttendance = async (req, res) => {
                 }
                 mode = att.workMode || "Office";
 
-                // Count late if clock-in is after 9:15 AM IST
+                // Punctuality check:
+                // 1. Sales team employees NEVER show as Late (always On Time)
+                // 2. Others: Late ONLY if clock-in is strictly after 10:00 AM IST
                 if (att.firstClockIn) {
-                    const istParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(new Date(att.firstClockIn));
-                    const istHour = Number(istParts.find(p => p.type === "hour")?.value || 0);
-                    const istMin = Number(istParts.find(p => p.type === "minute")?.value || 0);
-                    if (istHour > 9 || (istHour === 9 && istMin > 15)) {
-                        status = "Late";
-                        lateCount++;
+                    if (isSales) {
+                        status = "On Time";
+                    } else {
+                        const istParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(new Date(att.firstClockIn));
+                        const istHour = Number(istParts.find(p => p.type === "hour")?.value || 0);
+                        const istMin = Number(istParts.find(p => p.type === "minute")?.value || 0);
+                        const totalMins = istHour * 60 + istMin;
+                        const tenAM = 10 * 60; // 600 mins
+
+                        if (totalMins > tenAM) {
+                            const lateDiff = totalMins - tenAM;
+                            const lateH = Math.floor(lateDiff / 60);
+                            const lateM = lateDiff % 60;
+                            const lateStr = lateH > 0 ? `${lateH}h ${lateM}m` : `${lateM}m`;
+                            status = `Late by ${lateStr}`;
+                            lateCount++;
+                        } else {
+                            status = "On Time";
+                        }
                     }
                 }
             } else if (onLeave) {

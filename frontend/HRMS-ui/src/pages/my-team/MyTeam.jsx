@@ -694,7 +694,7 @@ const TeamMembersTab = () => {
    3. TEAM ATTENDANCE TAB & MEMBER HISTORY VIEW
 ───────────────────────────────────────────── */
 
-const calculateMemberPunctuality = (clockInTime) => {
+const calculateMemberPunctuality = (clockInTime, dept = "") => {
     if (!clockInTime) return { status: "off", label: "", tag: "", isLate: false };
     const dateObj = new Date(clockInTime);
     
@@ -704,7 +704,6 @@ const calculateMemberPunctuality = (clockInTime) => {
     const minutes = Number(istParts.find(p => p.type === "minute")?.value || 0);
     const totalMinutes = hours * 60 + minutes;
 
-    const nineAM = 9 * 60; // 540
     const tenAM = 10 * 60; // 600
 
     const formattedTime = dateObj.toLocaleTimeString("en-US", {
@@ -714,7 +713,8 @@ const calculateMemberPunctuality = (clockInTime) => {
         hour12: true
     });
 
-    if (totalMinutes >= nineAM && totalMinutes <= tenAM) {
+    const isSales = (dept || "").trim().toLowerCase().includes("sales");
+    if (isSales) {
         return {
             status: "on_time",
             label: "On Time",
@@ -722,21 +722,28 @@ const calculateMemberPunctuality = (clockInTime) => {
             timeStr: formattedTime,
             isLate: false
         };
-    } else if (totalMinutes > tenAM) {
+    }
+
+    if (totalMinutes <= tenAM) {
         return {
-            status: "late",
-            label: "Late Arrival",
-            tag: `Late (${formattedTime})`,
-            timeStr: formattedTime,
-            isLate: true
-        };
-    } else {
-        return {
-            status: "early",
-            label: "Early Check-in",
-            tag: `Early (${formattedTime})`,
+            status: "on_time",
+            label: "On Time",
+            tag: "On Time",
             timeStr: formattedTime,
             isLate: false
+        };
+    } else {
+        const lateMinsTotal = totalMinutes - tenAM;
+        const lateH = Math.floor(lateMinsTotal / 60);
+        const lateM = lateMinsTotal % 60;
+        const diffStr = lateH > 0 ? `${lateH}h ${lateM}m` : `${lateM}m`;
+        return {
+            status: "late",
+            label: `Late by ${diffStr}`,
+            tag: `Late by ${diffStr}`,
+            timeStr: formattedTime,
+            isLate: true,
+            lateMinutes: lateMinsTotal
         };
     }
 };
@@ -1030,7 +1037,7 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
             const entry = dateMap.get(istDateKey);
             if (entry && entry.record) {
                 const record = entry.record;
-                const punctuality = calculateMemberPunctuality(record.firstClockIn);
+                const punctuality = calculateMemberPunctuality(record.firstClockIn, member?.dept);
                 const { work, brk } = computeMinutes(record);
                 const effectiveHours = formatMinutes(work);
                 const breakTaken = formatMinutes(brk);
@@ -1415,12 +1422,36 @@ const TeamAttendanceTab = () => {
     };
 
     const statusColors = {
+        "On Time": "bg-emerald-50 text-emerald-700 border-emerald-100",
         "Present": "bg-emerald-50 text-emerald-700 border-emerald-100",
         "WFH": "bg-blue-50 text-[#2D79C7] border-blue-100",
         "Late": "bg-amber-50 text-amber-700 border-amber-100",
         "Half Day": "bg-violet-50 text-violet-700 border-violet-100",
         "Absent": "bg-rose-50 text-rose-700 border-rose-100",
         "On Leave": "bg-indigo-50 text-indigo-700 border-indigo-100",
+    };
+
+    const getStatusBadgeClass = (statusStr) => {
+        if (!statusStr) return "bg-gray-50 text-gray-600 border-gray-100";
+        if (statusStr === "On Time" || statusStr === "Present") {
+            return "bg-emerald-50 text-emerald-700 border-emerald-100";
+        }
+        if (typeof statusStr === "string" && statusStr.startsWith("Late")) {
+            return "bg-amber-50 text-amber-700 border-amber-100";
+        }
+        if (statusStr === "WFH") {
+            return "bg-blue-50 text-[#2D79C7] border-blue-100";
+        }
+        if (statusStr === "Half Day") {
+            return "bg-violet-50 text-violet-700 border-violet-100";
+        }
+        if (statusStr === "Absent") {
+            return "bg-rose-50 text-rose-700 border-rose-100";
+        }
+        if (statusStr === "On Leave") {
+            return "bg-indigo-50 text-indigo-700 border-indigo-100";
+        }
+        return statusColors[statusStr] || "bg-gray-50 text-gray-600 border-gray-100";
     };
 
     const fetchAttendance = async () => {
@@ -1534,7 +1565,7 @@ const TeamAttendanceTab = () => {
                                                 <span className="text-gray-400 text-[10px] font-bold block">{log.dept}</span>
                                             </div>
                                         </div>
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none ${statusColors[log.status] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none ${getStatusBadgeClass(log.status)}`}>
                                             {log.status}
                                         </span>
                                     </div>
@@ -1657,7 +1688,7 @@ const TeamAttendanceTab = () => {
                                                 <td className="px-6 py-3.5 font-mono text-gray-500 font-bold">{log.hours}</td>
                                                 <td className="px-6 py-3.5 font-medium">{log.mode}</td>
                                                 <td className="px-6 py-3.5">
-                                                    <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${statusColors[log.status] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
+                                                    <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${getStatusBadgeClass(log.status)}`}>
                                                         {log.status}
                                                     </span>
                                                 </td>

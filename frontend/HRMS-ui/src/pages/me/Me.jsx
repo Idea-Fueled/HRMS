@@ -161,31 +161,45 @@ const AnalogClock = () => {
     );
 };
 
-const calculatePunctualityStatus = (clockInTime) => {
+const calculatePunctualityStatus = (clockInTime, dept = "") => {
     if (!clockInTime) return { status: "off", label: "", tag: "", isLate: false };
     const dateObj = new Date(clockInTime);
-    const hours = dateObj.getHours();
-    const minutes = dateObj.getMinutes();
+    
+    // Parse in IST
+    const istParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(dateObj);
+    const hours = Number(istParts.find(p => p.type === "hour")?.value || 0);
+    const minutes = Number(istParts.find(p => p.type === "minute")?.value || 0);
     const totalMinutes = hours * 60 + minutes;
 
-    const nineAM = 9 * 60; // 540
     const tenAM = 10 * 60; // 600
 
     const formattedTime = dateObj.toLocaleTimeString("en-US", {
+        timeZone: "Asia/Kolkata",
         hour: "2-digit",
         minute: "2-digit",
         hour12: true
     });
 
-    if (totalMinutes >= nineAM && totalMinutes <= tenAM) {
+    const isSales = (dept || "").trim().toLowerCase().includes("sales");
+    if (isSales) {
         return {
             status: "on_time",
             label: "On Time",
-            tag: `On Time (${formattedTime})`,
+            tag: "On Time",
             timeStr: formattedTime,
             isLate: false
         };
-    } else if (totalMinutes > tenAM) {
+    }
+
+    if (totalMinutes <= tenAM) {
+        return {
+            status: "on_time",
+            label: "On Time",
+            tag: "On Time",
+            timeStr: formattedTime,
+            isLate: false
+        };
+    } else {
         const lateMinsTotal = totalMinutes - tenAM;
         const lateHrs = Math.floor(lateMinsTotal / 60);
         const lateMins = lateMinsTotal % 60;
@@ -201,19 +215,11 @@ const calculatePunctualityStatus = (clockInTime) => {
 
         return {
             status: "late",
-            label: `Late (${lateStr})`,
-            tag: `Late (${lateStr}) - ${formattedTime}`,
+            label: `Late by ${lateStr}`,
+            tag: `Late by ${lateStr}`,
             lateDurationStr: lateStr,
             timeStr: formattedTime,
             isLate: true
-        };
-    } else {
-        return {
-            status: "on_time",
-            label: "On Time",
-            tag: `On Time (${formattedTime})`,
-            timeStr: formattedTime,
-            isLate: false
         };
     }
 };
@@ -3127,7 +3133,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
             const entry = dateMap.get(istDateKey);
             if (entry && entry.record) {
                 const record = entry.record;
-                const punctuality = calculatePunctualityStatus(record.firstClockIn);
+                const punctuality = calculatePunctualityStatus(record.firstClockIn, user?.department);
                 const { work, brk } = computeMinutes(record);
                 const effectiveHours = formatMinutes(work);
                 const breakTaken = formatMinutes(brk);
