@@ -619,25 +619,22 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
         const { employeeId } = req.params;
         const { month, year, days } = req.query;
 
-        let user;
+        let userObjId = null;
         if (mongoose.Types.ObjectId.isValid(employeeId)) {
-            user = await User.findById(employeeId);
-        }
-        if (!user) {
-            user = await User.findOne({ employeeId });
+            userObjId = new mongoose.Types.ObjectId(employeeId);
+        } else {
+            const user = await User.findOne({ employeeId });
+            if (user) userObjId = user._id;
         }
 
-        const idsToMatch = [];
-        if (mongoose.Types.ObjectId.isValid(employeeId)) {
-            idsToMatch.push(new mongoose.Types.ObjectId(employeeId));
-        }
-        idsToMatch.push(employeeId);
-        if (user) {
-            idsToMatch.push(user._id);
-            if (user.employeeId) idsToMatch.push(user.employeeId);
+        if (!userObjId) {
+            return res.status(200).json({
+                success: true,
+                attendances: []
+            });
         }
 
-        let dateFilter = { employeeId: { $in: idsToMatch } };
+        let dateFilter = { employeeId: userObjId };
 
         if (days && days !== "all") {
             const d = parseInt(days, 10) || 30;
