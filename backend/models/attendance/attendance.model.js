@@ -10,6 +10,11 @@ const attendanceLogSchema = new mongoose.Schema({
         type: Date,
         required: true,
         default: Date.now
+    },
+    source: {
+        type: String,
+        enum: ["web", "biometric", "manual", "wfh"],
+        default: "web"
     }
 }, { _id: false })
 
@@ -27,6 +32,10 @@ const attendaceSchema = new mongoose.Schema({
         type: String,
         enum: ["present", "absent", "half_day", "week_off", "holiday"],
         default: "present"
+    },
+    isWebClockedIn: {
+        type: Boolean,
+        default: false
     },
     logs: [attendanceLogSchema],
     firstClockIn: {

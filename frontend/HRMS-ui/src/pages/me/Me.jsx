@@ -234,7 +234,7 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!workPlan.trim()) {
-            toast.error("Adding comment is made mandatory by your HR Manager.");
+            toast.error("Please enter your daily work plan before clocking in.");
             return;
         }
         setSubmitting(true);
@@ -255,7 +255,12 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
                 
                 {/* Header */}
                 <div className="px-6 py-4.5 border-b border-slate-150 flex items-center justify-between bg-white">
-                    <h3 className="text-base font-bold text-slate-800 tracking-tight">Web Clock &quot;In&quot; Request</h3>
+                    <div>
+                        <h3 className="text-base font-bold text-slate-800 tracking-tight">Web Clock &quot;In&quot; Request</h3>
+                        <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                            An automated email with your plan will be sent to your Reporting Manager and Global Admins.
+                        </p>
+                    </div>
                     <button
                         type="button"
                         onClick={onClose}
@@ -267,12 +272,16 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
 
                 {/* Body Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 block">
+                            Daily Work Plan / Comments <span className="text-rose-500">*</span>
+                        </label>
                         <textarea
                             rows={4}
                             maxLength={1024}
                             value={workPlan}
                             onChange={(e) => setWorkPlan(e.target.value)}
+                            placeholder="What tasks or projects will you work on today? (e.g. client deliveries, bug fixes, features...)"
                             className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium p-3.5 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all resize-none shadow-2xs"
                         />
                         <div className="text-right">
@@ -296,7 +305,7 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
                             disabled={submitting}
                             className="px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-sm transition-all cursor-pointer disabled:opacity-50"
                         >
-                            {submitting ? "Submitting..." : "Confirm"}
+                            {submitting ? "Submitting..." : "Clock In & Send Plan"}
                         </button>
                     </div>
                 </form>
@@ -612,18 +621,87 @@ const WfhRequestModal = ({ isOpen, onClose, onSubmitSuccess }) => {
     );
 };
 
-const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal, onClockOut, onOpenWfhModal }) => {
+const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal, onDirectClockIn, onClockOut, onOpenWfhModal }) => {
     const { user } = useAuth();
     const userName = user?.firstName || user?.name || "Prashant";
     
-    // Determine if currently clocked in from logs
-    const isClockedIn = !!(
-        todayAttendance?.logs &&
-        todayAttendance.logs.length > 0 &&
-        todayAttendance.logs[todayAttendance.logs.length - 1].action === "clock_in"
+    // Determine if currently clocked in from web specifically (NOT biometric)
+    const webLogs = (todayAttendance?.logs || []).filter(l => l.source === "web");
+    const isClockedIn = todayAttendance?.isWebClockedIn !== undefined 
+        ? !!todayAttendance.isWebClockedIn 
+        : (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in");
+
+    // Has employee already submitted their first daily work plan today?
+    const hasWebClockedInToday = !!(
+        todayAttendance?.dailyWorkPlan ||
+        (todayAttendance?.logs || []).some(l => l.source === "web")
     );
 
     const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn);
+
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const { effectiveMinutes, breakMinutes, grossMinutes } = useMemo(() => {
+        const logs = todayAttendance?.logs || [];
+        if (logs.length === 0 && !todayAttendance?.firstClockIn) {
+            return { effectiveMinutes: 0, breakMinutes: 0, grossMinutes: 0 };
+        }
+
+        const clockIns = logs.filter(l => l.action === "clock_in");
+        const clockOuts = logs.filter(l => l.action === "clock_out");
+
+        let work = 0;
+        for (let i = 0; i < Math.min(clockIns.length, clockOuts.length); i++) {
+            const diff = (new Date(clockOuts[i].timestamp) - new Date(clockIns[i].timestamp)) / 60000;
+            if (diff > 0) work += diff;
+        }
+
+        if (isClockedIn && clockIns.length > 0) {
+            const lastIn = clockIns[clockIns.length - 1];
+            const liveDiff = (currentTime - new Date(lastIn.timestamp)) / 60000;
+            if (liveDiff > 0) work += liveDiff;
+        }
+
+        let brk = 0;
+        for (let i = 0; i < clockOuts.length; i++) {
+            if (clockIns[i + 1]) {
+                const bDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / 60000;
+                if (bDiff > 0) brk += bDiff;
+            }
+        }
+
+        if (!isClockedIn && clockOuts.length > 0 && clockIns.length > 0) {
+            const lastOut = clockOuts[clockOuts.length - 1];
+            const liveBreak = (currentTime - new Date(lastOut.timestamp)) / 60000;
+            if (liveBreak > 0) brk += liveBreak;
+        }
+
+        let gross = 0;
+        const firstIn = todayAttendance?.firstClockIn || (clockIns.length > 0 ? clockIns[0].timestamp : null);
+        if (firstIn) {
+            gross = Math.max(0, Math.round((currentTime - new Date(firstIn)) / 60000));
+        }
+
+        return {
+            effectiveMinutes: Math.floor(work),
+            breakMinutes: Math.floor(brk),
+            grossMinutes: Math.floor(gross)
+        };
+    }, [todayAttendance, isClockedIn, currentTime]);
+
+    const formatMins = (mins) => {
+        if (!mins || mins <= 0) return "0m";
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
 
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
@@ -636,7 +714,12 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         if (isClockedIn) {
             onClockOut();
         } else {
-            onOpenClockInModal();
+            if (!hasWebClockedInToday) {
+                onOpenClockInModal();
+            } else {
+                if (onDirectClockIn) onDirectClockIn();
+                else onOpenClockInModal();
+            }
         }
     };
 
@@ -664,7 +747,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                                 <div className="flex items-center gap-2">
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span>Clocked In</span>
+                                        <span>Web Clocked In</span>
                                     </span>
                                     {punctuality.label && (
                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
@@ -679,7 +762,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                             ) : (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                     <span className="w-2 h-2 rounded-full bg-slate-400" />
-                                    <span>Clocked Out</span>
+                                    <span>Web Clocked Out</span>
                                 </span>
                             )}
                         </div>
@@ -720,6 +803,25 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                     </button>
                 </div>
 
+            </div>
+
+            {/* Live Hours Ticker */}
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100 flex-wrap">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200">
+                    <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wide">Effective Hours</span>
+                    <span className="text-xs font-black text-teal-900 font-mono">{formatMins(effectiveMinutes)}</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">Break Taken</span>
+                    <span className="text-xs font-black text-amber-900 font-mono">{formatMins(breakMinutes)}</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Gross Hours</span>
+                    <span className="text-xs font-black text-slate-900 font-mono">{formatMins(grossMinutes)}</span>
+                </div>
             </div>
         </div>
     );
@@ -4129,6 +4231,7 @@ const Me = () => {
                         onOpenPartialLeave={handleOpenPartialLeaveModal}
                         todayAttendance={todayAttendance}
                         onOpenClockInModal={() => setIsWebClockInModalOpen(true)}
+                        onDirectClockIn={() => handleClockInSubmit("")}
                         onClockOut={handleClockOutSubmit}
                         onOpenWfhModal={() => setIsWfhModalOpen(true)}
                     />

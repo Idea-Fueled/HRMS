@@ -12,24 +12,37 @@ import XLSX from "xlsx";
  */
 export const clockIn = async (req, res) => {
     try {
-        const { employeeId, workMode, wfhMessage, dailyWorkPlan, fromDate, toDate, notifyEmployees } = req.body;
+        const { employeeId, workMode, wfhMessage, dailyWorkPlan, fromDate, toDate, notifyEmployees, source = "web" } = req.body;
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const [y, m, d] = istDateStr.split("-").map(Number);
+        const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+
+        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
+        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
 
         let attendance = await Attendance.findOne({
             employeeId,
-            date: today,
-        });
+            $or: [
+                { date: todayUtc },
+                { date: todayLocal },
+                { date: { $gte: startOfDay, $lte: endOfDay } },
+                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+            ]
+        }).sort({ date: -1, updatedAt: -1 });
 
+        const isFirstWebClockIn = !attendance || !attendance.dailyWorkPlan || !(attendance.logs || []).some(l => l.source === "web");
         const currentTime = new Date();
 
         if (!attendance) {
             attendance = await Attendance.create({
                 employeeId,
-                date: today,
+                date: todayUtc,
                 status: "present",
                 firstClockIn: currentTime,
+                isWebClockedIn: source === "web",
                 workMode: workMode || "Office",
                 wfhMessage: workMode === "Work From Home" ? (wfhMessage || "") : "",
                 dailyWorkPlan: dailyWorkPlan || "",
@@ -37,23 +50,34 @@ export const clockIn = async (req, res) => {
                     {
                         action: "clock_in",
                         timestamp: currentTime,
+                        source: source || "web"
                     },
                 ],
             });
         } else {
             // Calculate break time if there was a previous clock_out
-            if (attendance.lastClockOut) {
-                const breakDiff = (currentTime - new Date(attendance.lastClockOut)) / (1000 * 60);
+            const lastOut = attendance.lastClockOut || (attendance.logs.length > 0 && attendance.logs[attendance.logs.length - 1].action === "clock_out" ? attendance.logs[attendance.logs.length - 1].timestamp : null);
+            if (lastOut) {
+                const breakDiff = (currentTime - new Date(lastOut)) / (1000 * 60);
                 if (breakDiff > 0) {
                     attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + Math.floor(breakDiff);
                 }
             }
 
+            if (!attendance.firstClockIn) {
+                attendance.firstClockIn = currentTime;
+            }
+
             attendance.logs.push({
                 action: "clock_in",
                 timestamp: currentTime,
+                source: source || "web"
             });
             
+            if (source === "web") {
+                attendance.isWebClockedIn = true;
+            }
+
             if (workMode) {
                 attendance.workMode = workMode;
             }
@@ -62,7 +86,7 @@ export const clockIn = async (req, res) => {
                 attendance.wfhMessage = wfhMessage;
             }
 
-            if (dailyWorkPlan) {
+            if (dailyWorkPlan && !attendance.dailyWorkPlan) {
                 attendance.dailyWorkPlan = dailyWorkPlan;
             }
 
@@ -207,8 +231,124 @@ export const clockIn = async (req, res) => {
                         }
                     }
                 }
-            } catch (wfhErr) {
-                console.error("Error dispatching WFH notification emails:", wfhErr);
+        // If Web Clock In with Daily Work Plan on first clock in of the day, dispatch email to Manager & Global Admins
+        if (source === "web" && dailyWorkPlan && workMode !== "Work From Home" && isFirstWebClockIn) {
+            try {
+                const applicant = await User.findById(employeeId).populate("department").populate("managerId");
+                if (applicant) {
+                    const applicantName = applicant.fullName || `${applicant.firstName || ''} ${applicant.lastName || ''}`.trim() || "Employee";
+                    const applicantEmpId = applicant.employeeId || "—";
+                    const applicantDept = applicant.department?.name || applicant.department || "General";
+                    const applicantDesignation = applicant.designation || "Employee";
+
+                    const recipientUserIds = new Set();
+                    if (applicant?.managerId?._id) {
+                        recipientUserIds.add(applicant.managerId._id.toString());
+                    } else if (applicant?.managerId) {
+                        recipientUserIds.add(applicant.managerId.toString());
+                    }
+                    const globalAdmins = await User.find({ role: { $in: ["global_admin", "admin"] } }).select("_id email fullName role");
+                    globalAdmins.forEach(ga => recipientUserIds.add(ga._id.toString()));
+
+                    recipientUserIds.delete(employeeId.toString());
+
+                    const recipients = await User.find({ _id: { $in: Array.from(recipientUserIds) } });
+
+                    const timeStr = currentTime.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
+                    const dateStr = currentTime.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+
+                    const subject = `Web Clock-In: ${applicantName} (${applicantEmpId}) - Daily Work Plan`;
+                    const snippet = `${applicantName} has Web Clocked-In today (${dateStr} at ${timeStr}) and submitted daily work plan.`;
+
+                    const emailHtml = `
+                        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+                            <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 24px; color: #ffffff;">
+                                <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Web Clock-In &amp; Daily Work Plan</h2>
+                                <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px;">Employee has clocked in via Web Portal.</p>
+                            </div>
+                            
+                            <div style="padding: 24px;">
+                                <p style="font-size: 14px; color: #374151; margin-top: 0;">
+                                    Hello,
+                                </p>
+                                <p style="font-size: 14px; color: #374151;">
+                                    <strong>${applicantName}</strong> has Web Clocked-In today at <strong>${timeStr}</strong> (${dateStr}).
+                                </p>
+
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600; width: 140px;">Employee Name:</td>
+                                            <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${applicantName}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Employee ID:</td>
+                                            <td style="padding: 6px 0; color: #1E293B;">${applicantEmpId}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Department:</td>
+                                            <td style="padding: 6px 0; color: #1E293B;">${applicantDept}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Designation:</td>
+                                            <td style="padding: 6px 0; color: #1E293B;">${applicantDesignation}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Clock-In Time:</td>
+                                            <td style="padding: 6px 0; color: #2D79C7; font-weight: 700;">${timeStr}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600; vertical-align: top;">Daily Work Plan:</td>
+                                            <td style="padding: 6px 0; color: #1E293B; white-space: pre-line; font-weight: 500;">${dailyWorkPlan}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div style="text-align: center; margin-top: 20px;">
+                                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/me" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
+                                        View in Attendance
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div style="background: #F1F5F9; padding: 12px 24px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
+                                Idea-Fueled HRMS Automated Notification
+                            </div>
+                        </div>
+                    `;
+
+                    for (const recipient of recipients) {
+                        const recEmail = recipient.email;
+                        if (!recEmail) continue;
+
+                        try {
+                            await Email.create({
+                                sender: applicant._id,
+                                recipient: recipient._id,
+                                subject,
+                                body: emailHtml,
+                                category: "attendance",
+                                status: "sent",
+                                source: "attendance_web_clock_in",
+                                snippet: snippet.substring(0, 160)
+                            });
+                        } catch (internalMailErr) {
+                            console.error("Error creating internal email doc for Web Clock In:", internalMailErr);
+                        }
+
+                        try {
+                            await dispatchExternalEmail({
+                                to: recEmail,
+                                subject,
+                                body: emailHtml
+                            });
+                        } catch (externalMailErr) {
+                            console.warn("External email delivery for Web Clock In skipped/failed:", externalMailErr);
+                        }
+                    }
+                }
+            } catch (clockInMailErr) {
+                console.error("Error dispatching Web Clock In notification emails:", clockInMailErr);
             }
         }
 
@@ -230,15 +370,26 @@ export const clockIn = async (req, res) => {
  */
 export const clockOut = async (req, res) => {
     try {
-        const { employeeId } = req.body;
+        const { employeeId, source = "web" } = req.body;
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const [y, m, d] = istDateStr.split("-").map(Number);
+        const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+
+        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
+        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
 
         const attendance = await Attendance.findOne({
             employeeId,
-            date: today,
-        });
+            $or: [
+                { date: todayUtc },
+                { date: todayLocal },
+                { date: { $gte: startOfDay, $lte: endOfDay } },
+                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+            ]
+        }).sort({ date: -1, updatedAt: -1 });
 
         if (!attendance) {
             return res.status(404).json({
@@ -252,9 +403,13 @@ export const clockOut = async (req, res) => {
         attendance.logs.push({
             action: "clock_out",
             timestamp: currentTime,
+            source: source || "web"
         });
 
         attendance.lastClockOut = currentTime;
+        if (source === "web") {
+            attendance.isWebClockedIn = false;
+        }
 
         const clockIns = attendance.logs.filter(
             (log) => log.action === "clock_in"
@@ -279,12 +434,17 @@ export const clockOut = async (req, res) => {
             totalMinutes += diff;
         }
 
-        attendance.totalWorkMinutes = Math.floor(totalMinutes);
-        attendance.totalSessions = clockOuts.length;
+        let totalBreak = 0;
+        for (let i = 0; i < clockOuts.length; i++) {
+            if (clockIns[i + 1]) {
+                const bDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / (1000 * 60);
+                if (bDiff > 0) totalBreak += bDiff;
+            }
+        }
 
-        console.log("Clock Ins:", clockIns);
-        console.log("Clock Outs:", clockOuts);
-        console.log("Total Minutes:", totalMinutes);
+        attendance.totalWorkMinutes = Math.floor(totalMinutes);
+        attendance.totalBreakMinutes = Math.floor(totalBreak);
+        attendance.totalSessions = clockIns.length;
 
         await attendance.save();
 
@@ -1135,7 +1295,8 @@ export const syncBiometricPunches = async (req, res) => {
             for (let i = 0; i < filteredPunches.length; i++) {
                 logs.push({
                     action: i % 2 === 0 ? "clock_in" : "clock_out",
-                    timestamp: filteredPunches[i]
+                    timestamp: filteredPunches[i],
+                    source: "biometric"
                 });
             }
 
@@ -1200,6 +1361,9 @@ export const syncBiometricPunches = async (req, res) => {
                             totalSessions: clockIns.length,
                             workMode: "Office",
                             logs
+                        },
+                        $setOnInsert: {
+                            isWebClockedIn: false
                         }
                     },
                     upsert: true
