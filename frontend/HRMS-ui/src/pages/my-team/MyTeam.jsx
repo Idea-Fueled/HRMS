@@ -38,6 +38,7 @@ import {
     updateLeaveStatus 
 } from "../../services/team.service";
 import { getEmployeeAttendanceHistory } from "../../services/attendance.service";
+import { getAllHolidays, getLeaveHistory } from "../../services/dashboard.service";
 import { getEmployeeById } from "../../services/employee.service";
 import { ViewEmployeeDrawer } from "../employees/Employees";
 import { useAuth } from "../../context/AuthContext";
@@ -925,6 +926,8 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
     const [activePeriod, setActivePeriod] = useState("30");
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [historyList, setHistoryList] = useState([]);
+    const [holidaysList, setHolidaysList] = useState([]);
+    const [leavesList, setLeavesList] = useState([]);
     const [selectedAuditRow, setSelectedAuditRow] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [is24Hour, setIs24Hour] = useState(false);
@@ -969,11 +972,28 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                     }
                 }
 
-                const res = await getEmployeeAttendanceHistory(memberId, params);
-                if (res.data?.success && Array.isArray(res.data.attendances)) {
-                    setHistoryList(res.data.attendances);
+                const [attRes, holRes, leaveRes] = await Promise.allSettled([
+                    getEmployeeAttendanceHistory(memberId, params),
+                    getAllHolidays(),
+                    getLeaveHistory(memberId)
+                ]);
+
+                if (attRes.status === "fulfilled" && attRes.value?.data?.success && Array.isArray(attRes.value.data.attendances)) {
+                    setHistoryList(attRes.value.data.attendances);
                 } else {
                     setHistoryList([]);
+                }
+
+                if (holRes.status === "fulfilled" && holRes.value?.data?.success && Array.isArray(holRes.value.data.holidays)) {
+                    setHolidaysList(holRes.value.data.holidays);
+                } else {
+                    setHolidaysList([]);
+                }
+
+                if (leaveRes.status === "fulfilled" && leaveRes.value?.data?.success && Array.isArray(leaveRes.value.data.leaves)) {
+                    setLeavesList(leaveRes.value.data.leaves);
+                } else {
+                    setLeavesList([]);
                 }
             } catch (err) {
                 console.error("Failed to load attendance history for member:", err);
@@ -989,6 +1009,38 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
     const logsData = useMemo(() => {
         const list = [];
         const dateMap = new Map();
+        const holidayMap = new Map();
+        const leaveMap = new Map();
+
+        // Index holidays by IST date key YYYY-MM-DD
+        (holidaysList || []).forEach(h => {
+            if (h && h.date) {
+                const d = new Date(h.date);
+                const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                holidayMap.set(k, h);
+                const rawIso = String(h.date).split("T")[0];
+                if (rawIso && !holidayMap.has(rawIso)) {
+                    holidayMap.set(rawIso, h);
+                }
+            }
+        });
+
+        // Index leaves by IST date key YYYY-MM-DD
+        (leavesList || []).forEach(l => {
+            if (!l || l.status === "rejected" || !l.startDate) return;
+            const s = new Date(l.startDate);
+            const e = new Date(l.endDate || l.startDate);
+            let curr = new Date(s);
+            let safety = 0;
+            while (curr <= e && safety < 60) {
+                const k = curr.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                leaveMap.set(k, l);
+                const rawIso = curr.toISOString().split("T")[0];
+                if (!leaveMap.has(rawIso)) leaveMap.set(rawIso, l);
+                curr.setDate(curr.getDate() + 1);
+                safety++;
+            }
+        });
 
         const formatMinutes = (totalMins) => {
             const hrs = Math.floor((totalMins || 0) / 60);
@@ -1059,81 +1111,187 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
             });
 
             const entry = dateMap.get(istDateKey);
-            if (entry && entry.record) {
-                const record = entry.record;
-                const punctuality = calculateMemberPunctuality(record.firstClockIn, member?.dept);
-                const { work, brk } = computeMinutes(record);
-                const effectiveHours = formatMinutes(work);
-                const breakTaken = formatMinutes(brk);
-                const grossHours = formatMinutes(work + brk);
+            const record = entry?.record;
+            const holiday = holidayMap.get(istDateKey);
+            const leave = leaveMap.get(istDateKey);
 
+            const hasPunches = record && (
+                !!record.firstClockIn || 
+                (Array.isArray(record.logs) && record.logs.length > 0)
+            );
+
+            const isPartialLeave = leave && (
+                leave.leaveType === "partial_leave" || 
+                leave.partialMinutes > 0 || 
+                Number(leave.totalDays) === 0.5
+            );
+
+            const isPartialDay = isPartialLeave || record?.status === "half_day";
+            const isFullDayLeave = !!leave && !isPartialDay;
+            const isHoliday = !!holiday;
+
+            let effectiveHours = "—";
+            let breakTaken = "—";
+            let grossHours = "—";
+            let punctuality = { tag: "", isLate: false, timeStr: "" };
+
+            if (record) {
+                const { work, brk } = computeMinutes(record);
+                if (hasPunches) {
+                    effectiveHours = formatMinutes(work);
+                    breakTaken = formatMinutes(brk);
+                    grossHours = formatMinutes(work + brk);
+                    punctuality = calculateMemberPunctuality(record.firstClockIn, member?.dept);
+                }
+            }
+
+            // 1. Partial Day
+            if (isPartialDay) {
                 return {
                     date: formattedDate,
                     rawDate: dateObj,
-                    isToday: isToday || entry.isToday,
+                    isToday: isToday || entry?.isToday,
                     isWeekend,
-                    status: record.workMode === "Work From Home" ? "wfh" : (record.status || "present"),
-                    effectiveHours,
-                    breakTaken,
-                    grossHours,
-                    arrival: punctuality.tag || (record.firstClockIn ? "Present" : "—"),
+                    dayType: "partial_day",
+                    badgeType: "partial",
+                    rowStyle: "bg-white hover:bg-slate-50/80",
+                    statusText: punctuality.tag || (record?.firstClockIn ? "Present" : "Partial Day"),
+                    arrival: punctuality.tag || (record?.firstClockIn ? "Present" : "Partial Day"),
                     isLate: punctuality.isLate,
-                    timeStr: punctuality.timeStr,
-                    logs: record.logs || [],
-                    logType: "success"
+                    effectiveHours: effectiveHours === "—" ? "0m" : effectiveHours,
+                    breakTaken: breakTaken === "—" ? "0m" : breakTaken,
+                    grossHours: grossHours === "—" ? "0m" : grossHours,
+                    logs: record?.logs || [],
+                    hasLogs: hasPunches
                 };
             }
 
+            // 2. Holiday (from Holidays collection)
+            if (isHoliday) {
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: isToday || entry?.isToday,
+                    isWeekend,
+                    dayType: "holiday",
+                    badgeType: "holiday",
+                    holidayTitle: holiday.title || "Holiday",
+                    rowStyle: "bg-[#F4F8EE]/90 hover:bg-[#ECF3E3] border-b border-[#E3EDD5]",
+                    statusText: "Holiday",
+                    arrival: "Holiday",
+                    isLate: false,
+                    effectiveHours: hasPunches ? effectiveHours : "—",
+                    breakTaken: hasPunches ? breakTaken : "—",
+                    grossHours: hasPunches ? grossHours : "—",
+                    logs: record?.logs || [],
+                    hasLogs: hasPunches
+                };
+            }
+
+            // 3. Weekly Off (Saturday & Sunday)
+            if (isWeekend) {
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: isToday || entry?.isToday,
+                    isWeekend: true,
+                    dayType: "week_off",
+                    badgeType: "week_off",
+                    rowStyle: "bg-[#F8F6F0]/90 hover:bg-[#F2EFE8] border-b border-[#EDE8DE]",
+                    statusText: "Full day Weekly-off",
+                    arrival: "Full day Weekly-off",
+                    isLate: false,
+                    effectiveHours: hasPunches ? effectiveHours : "—",
+                    breakTaken: hasPunches ? breakTaken : "—",
+                    grossHours: hasPunches ? grossHours : "—",
+                    logs: record?.logs || [],
+                    hasLogs: hasPunches
+                };
+            }
+
+            // 4. Full Day Leave
+            if (isFullDayLeave) {
+                const leaveName = leave.leaveType ? leave.leaveType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Leave";
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: isToday || entry?.isToday,
+                    isWeekend: false,
+                    dayType: "leave",
+                    badgeType: "leave",
+                    leaveTitle: leaveName,
+                    rowStyle: "bg-[#FFFBEB]/90 hover:bg-[#FEF3C7] border-b border-[#FDE68A]",
+                    statusText: "Leave",
+                    arrival: "Leave",
+                    isLate: false,
+                    effectiveHours: hasPunches ? effectiveHours : "—",
+                    breakTaken: hasPunches ? breakTaken : "—",
+                    grossHours: hasPunches ? grossHours : "—",
+                    logs: record?.logs || [],
+                    hasLogs: hasPunches
+                };
+            }
+
+            // 5. Workday with Punch
+            if (hasPunches) {
+                return {
+                    date: formattedDate,
+                    rawDate: dateObj,
+                    isToday: isToday || entry?.isToday,
+                    isWeekend: false,
+                    dayType: "present",
+                    badgeType: "",
+                    rowStyle: "bg-white hover:bg-slate-50/80",
+                    statusText: record.workMode === "Work From Home" ? "WFH" : (punctuality.tag || "Present"),
+                    isWfh: record.workMode === "Work From Home",
+                    arrival: punctuality.tag || "Present",
+                    isLate: punctuality.isLate,
+                    effectiveHours,
+                    breakTaken,
+                    grossHours,
+                    logs: record?.logs || [],
+                    hasLogs: true
+                };
+            }
+
+            // 6. Today without punch
             if (isToday) {
                 return {
                     date: formattedDate,
                     rawDate: dateObj,
                     isToday: true,
-                    isWeekend,
-                    status: isWeekend ? "week_off" : "absent",
+                    isWeekend: false,
+                    dayType: "not_clocked",
+                    badgeType: "",
+                    rowStyle: "bg-white hover:bg-slate-50/80",
+                    statusText: "Not Clocked In",
+                    arrival: "Not Clocked In",
+                    isLate: false,
                     effectiveHours: "0m",
                     breakTaken: "0m",
                     grossHours: "0m",
-                    arrival: isWeekend ? "Weekend" : "Not Clocked In",
-                    isLate: false,
-                    timeStr: "—",
                     logs: [],
-                    logType: isWeekend ? "info" : "warning"
+                    hasLogs: false
                 };
             }
 
-            if (isWeekend) {
-                return {
-                    date: formattedDate,
-                    rawDate: dateObj,
-                    isToday: false,
-                    isWeekend: true,
-                    status: "week_off",
-                    effectiveHours: "—",
-                    breakTaken: "—",
-                    grossHours: "—",
-                    arrival: "Week Off",
-                    isLate: false,
-                    timeStr: "—",
-                    logs: [],
-                    logType: "info"
-                };
-            }
-
+            // 7. Past weekday without punch = Absent
             return {
                 date: formattedDate,
                 rawDate: dateObj,
                 isToday: false,
                 isWeekend: false,
-                status: "absent",
+                dayType: "absent",
+                badgeType: "",
+                rowStyle: "bg-white hover:bg-slate-50/80",
+                statusText: "Absent",
+                arrival: "Absent",
+                isLate: false,
                 effectiveHours: "0m",
                 breakTaken: "0m",
                 grossHours: "0m",
-                arrival: "Absent",
-                isLate: false,
-                timeStr: "—",
                 logs: [],
-                logType: "warning"
+                hasLogs: false
             };
         };
 
@@ -1175,12 +1333,13 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
         }
 
         return list;
-    }, [historyList, activePeriod, periods]);
+    }, [historyList, holidaysList, leavesList, activePeriod, periods]);
 
     const filteredLogs = logsData.filter(log => 
         log.date.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.arrival.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.status.toLowerCase().includes(searchQuery.toLowerCase())
+        (log.arrival || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (log.statusText || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (log.badgeType || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const statsSummary = useMemo(() => {
@@ -1349,27 +1508,77 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredLogs.map((row, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                                            {/* Date */}
-                                            <td className="py-3.5 px-6 font-bold text-slate-800">
-                                                <div className="flex items-center gap-2">
-                                                    <span>{row.date}</span>
-                                                    {row.isToday && (
-                                                        <span className="text-[9.5px] font-extrabold uppercase bg-blue-100 text-[#2D79C7] px-1.5 py-0.2 rounded font-sans">
-                                                            Today
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
+                                    filteredLogs.map((row, idx) => {
+                                        return (
+                                            <tr key={idx} className={`${row.rowStyle} transition-colors`}>
+                                                {/* Date */}
+                                                <td className="py-3.5 px-6 font-bold text-slate-800">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span>{row.date}</span>
 
-                                            {/* Status & Arrival */}
-                                            <td className="py-3.5 px-6">
-                                                <div className="flex items-center gap-2">
-                                                    {row.status === "wfh" ? (
+                                                        {/* Today badge */}
+                                                        {row.isToday && (
+                                                            <span className="text-[9.5px] font-extrabold uppercase bg-blue-100 text-[#2D79C7] px-1.5 py-0.5 rounded font-sans">
+                                                                Today
+                                                            </span>
+                                                        )}
+
+                                                        {/* W-OFF Badge (Weekly-off) */}
+                                                        {row.badgeType === "week_off" && (
+                                                            <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-wider bg-[#C4B396] text-white select-none shadow-2xs font-sans">
+                                                                W-OFF
+                                                            </span>
+                                                        )}
+
+                                                        {/* HLDY Badge (Holiday) */}
+                                                        {row.badgeType === "holiday" && (
+                                                            <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-wider bg-[#94AE64] text-white select-none shadow-2xs font-sans">
+                                                                HLDY
+                                                            </span>
+                                                        )}
+
+                                                        {/* LEAVE Badge */}
+                                                        {row.badgeType === "leave" && (
+                                                            <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white select-none shadow-2xs font-sans">
+                                                                LEAVE
+                                                            </span>
+                                                        )}
+
+                                                        {/* Partial Day Badge */}
+                                                        {row.badgeType === "partial" && (
+                                                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-[4px] text-[10px] font-extrabold tracking-wide bg-amber-100 text-amber-800 border border-amber-300 select-none shadow-2xs font-sans">
+                                                                Partial Day
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                {/* Status & Arrival */}
+                                                <td className="py-3.5 px-6">
+                                                    {row.dayType === "week_off" ? (
+                                                        <span className="text-xs font-semibold text-[#5A5245]">
+                                                            Full day Weekly-off
+                                                        </span>
+                                                    ) : row.dayType === "holiday" ? (
+                                                        <span className="text-xs font-semibold text-[#325E28]">
+                                                            Holiday
+                                                        </span>
+                                                    ) : row.dayType === "leave" ? (
+                                                        <span className="text-xs font-semibold text-amber-800">
+                                                            Leave
+                                                        </span>
+                                                    ) : row.isWfh ? (
                                                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                                                             <Home className="w-3 h-3" />
                                                             <span>WFH</span>
+                                                        </span>
+                                                    ) : row.dayType === "absent" ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                                                            <span>Absent</span>
+                                                        </span>
+                                                    ) : row.dayType === "not_clocked" ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                                            <span>Not Clocked In</span>
                                                         </span>
                                                     ) : (
                                                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
@@ -1381,41 +1590,57 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                                                             <span>{row.arrival}</span>
                                                         </span>
                                                     )}
-                                                </div>
-                                            </td>
+                                                </td>
 
-                                            {/* Effective Hours */}
-                                            <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-                                                    <span>{row.effectiveHours}</span>
-                                                </div>
-                                            </td>
+                                                {/* Effective Hours */}
+                                                <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                                                    {row.effectiveHours === "—" ? (
+                                                        <span className="text-slate-400 font-normal">—</span>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                                                            <span>{row.effectiveHours}</span>
+                                                        </div>
+                                                    )}
+                                                </td>
 
-                                            {/* Break Taken */}
-                                            <td className="py-3.5 px-6 font-mono text-amber-700 font-semibold">
-                                                {row.breakTaken}
-                                            </td>
+                                                {/* Break Taken */}
+                                                <td className="py-3.5 px-6 font-mono font-semibold">
+                                                    {row.breakTaken === "—" ? (
+                                                        <span className="text-slate-400 font-normal">—</span>
+                                                    ) : (
+                                                        <span className="text-amber-700">{row.breakTaken}</span>
+                                                    )}
+                                                </td>
 
-                                            {/* Gross Hours */}
-                                            <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
-                                                {row.grossHours}
-                                            </td>
+                                                {/* Gross Hours */}
+                                                <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                                                    {row.grossHours === "—" ? (
+                                                        <span className="text-slate-400 font-normal">—</span>
+                                                    ) : (
+                                                        <span>{row.grossHours}</span>
+                                                    )}
+                                                </td>
 
-                                            {/* Log Audit Trigger */}
-                                            <td className="py-3.5 px-6 text-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setSelectedAuditRow(row)}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-[#EBF3FC] text-slate-600 hover:text-[#2D79C7] border border-slate-200 hover:border-blue-200 transition-all cursor-pointer font-sans font-bold text-[11px]"
-                                                    title="View Detailed Punch Audit"
-                                                >
-                                                    <span>🔍</span>
-                                                    <span>View Logs</span>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                {/* Log Audit Trigger */}
+                                                <td className="py-3.5 px-6 text-center">
+                                                    {row.hasLogs ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedAuditRow(row)}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-[#EBF3FC] text-slate-600 hover:text-[#2D79C7] border border-slate-200 hover:border-blue-200 transition-all cursor-pointer font-sans font-bold text-[11px]"
+                                                            title="View Detailed Punch Audit"
+                                                        >
+                                                            <span>🔍</span>
+                                                            <span>View Logs</span>
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-slate-300 font-mono">—</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
