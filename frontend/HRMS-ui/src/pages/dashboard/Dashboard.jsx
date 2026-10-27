@@ -771,7 +771,15 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const dropRef = useRef(null);
 
     const logs = attendance?.logs || [];
-    const checkedIn = logs.length > 0 && logs[logs.length - 1].action === "clock_in";
+    const webLogs = logs.filter(l => l.source === "web");
+    const checkedIn = attendance?.isWebClockedIn !== undefined 
+        ? !!attendance.isWebClockedIn 
+        : (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in");
+
+    const hasClockedInToday = !!(
+        attendance?.dailyWorkPlan ||
+        (attendance?.logs || []).some(l => l.source === "web")
+    );
 
     const fmtTime = (date) => {
         if (!date) return "—";
@@ -830,7 +838,11 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         if (checkedIn) {
             onClockOut();
         } else {
-            setWebClockInOpen(true);
+            if (!hasClockedInToday) {
+                setWebClockInOpen(true);
+            } else {
+                onClockIn("Office", "", "");
+            }
         }
     };
 

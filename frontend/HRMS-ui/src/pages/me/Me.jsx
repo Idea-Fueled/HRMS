@@ -256,7 +256,7 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
                 {/* Header */}
                 <div className="px-6 py-4.5 border-b border-slate-150 flex items-center justify-between bg-white">
                     <div>
-                        <h3 className="text-base font-bold text-slate-800 tracking-tight">Web Clock &quot;In&quot; Request</h3>
+                        <h3 className="text-base font-bold text-slate-800 tracking-tight">Clock &quot;In&quot; Request</h3>
                         <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
                             An automated email with your plan will be sent to your Reporting Manager and Global Admins.
                         </p>
@@ -747,7 +747,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                                 <div className="flex items-center gap-2">
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span>Web Clocked In</span>
+                                        <span>Clocked In</span>
                                     </span>
                                     {punctuality.label && (
                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
@@ -762,7 +762,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                             ) : (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                     <span className="w-2 h-2 rounded-full bg-slate-400" />
-                                    <span>Web Clocked Out</span>
+                                    <span>Clocked Out</span>
                                 </span>
                             )}
                         </div>
@@ -781,7 +781,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                         }`}
                     >
                         <Clock className="w-4 h-4" />
-                        <span>{isClockedIn ? "Web Clock Out" : "Web Clock In"}</span>
+                        <span>{isClockedIn ? "Clock Out" : "Clock In"}</span>
                     </button>
 
                     <button
@@ -4085,7 +4085,7 @@ const Me = () => {
         try {
             const res = await clockIn(employeeId, "Office", "", dailyWorkPlan);
             if (res.data?.success) {
-                toast.success("Web Clocked in successfully!");
+                toast.success("Clocked in successfully!");
                 if (res.data.attendance) {
                     setTodayAttendance(res.data.attendance);
                 } else {
@@ -4096,7 +4096,7 @@ const Me = () => {
             }
         } catch (err) {
             console.error(err);
-            toast.error("Failed to Web Clock in.");
+            toast.error("Failed to clock in.");
         }
     };
 
@@ -4105,7 +4105,7 @@ const Me = () => {
         try {
             const res = await clockOut(employeeId);
             if (res.data?.success) {
-                toast.success("Web Clocked out successfully!");
+                toast.success("Clocked out successfully!");
                 if (res.data.attendance) {
                     setTodayAttendance(res.data.attendance);
                 } else {
@@ -4116,7 +4116,7 @@ const Me = () => {
             }
         } catch (err) {
             console.error(err);
-            toast.error("Failed to Web Clock out.");
+            toast.error("Failed to clock out.");
         }
     };
 

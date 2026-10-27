@@ -236,124 +236,220 @@ export const clockIn = async (req, res) => {
             }
         }
 
-        // If Web Clock In with Daily Work Plan on first clock in of the day, dispatch email to Manager & Global Admins
-        if (source === "web" && dailyWorkPlan && workMode !== "Work From Home" && isFirstWebClockIn) {
+        // If Daily Work Plan is submitted on clock in, dispatch email to Manager & Global Admins
+        if (dailyWorkPlan && String(dailyWorkPlan).trim().length > 0 && workMode !== "Work From Home") {
             try {
-                const applicant = await User.findById(employeeId).populate("department").populate("managerId");
+                let applicant = null;
+                if (mongoose.Types.ObjectId.isValid(employeeId)) {
+                    applicant = await User.findById(employeeId).populate("department").populate("managerId").populate("dottedManagerId");
+                }
+                if (!applicant) {
+                    applicant = await User.findOne({ employeeId }).populate("department").populate("managerId").populate("dottedManagerId");
+                }
+
                 if (applicant) {
                     const applicantName = applicant.fullName || `${applicant.firstName || ''} ${applicant.lastName || ''}`.trim() || "Employee";
                     const applicantEmpId = applicant.employeeId || "—";
                     const applicantDept = applicant.department?.name || applicant.department || "General";
                     const applicantDesignation = applicant.designation || "Employee";
+                    const applicantEmail = (applicant.email || "system@ideafueled.com").toLowerCase();
 
-                    const recipientUserIds = new Set();
-                    if (applicant?.managerId?._id) {
-                        recipientUserIds.add(applicant.managerId._id.toString());
-                    } else if (applicant?.managerId) {
-                        recipientUserIds.add(applicant.managerId.toString());
+                    // Resolve manager
+                    let managerUser = null;
+                    if (applicant?.managerId) {
+                        if (applicant.managerId._id) {
+                            managerUser = applicant.managerId;
+                        } else {
+                            managerUser = await User.findById(applicant.managerId);
+                        }
                     }
-                    const globalAdmins = await User.find({ role: { $in: ["global_admin", "admin"] } }).select("_id email fullName role");
-                    globalAdmins.forEach(ga => recipientUserIds.add(ga._id.toString()));
 
-                    recipientUserIds.delete(employeeId.toString());
+                    // Resolve dotted manager
+                    let dottedManagerUser = null;
+                    if (applicant?.dottedManagerId) {
+                        if (applicant.dottedManagerId._id) {
+                            dottedManagerUser = applicant.dottedManagerId;
+                        } else {
+                            dottedManagerUser = await User.findById(applicant.dottedManagerId);
+                        }
+                    }
 
-                    const recipients = await User.find({ _id: { $in: Array.from(recipientUserIds) } });
+                    // Global Admins
+                    const globalAdmins = await User.find({
+                        role: { $in: ["global_admin", "admin"] }
+                    });
 
-                    const timeStr = currentTime.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
-                    const dateStr = currentTime.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+                    // Build recipient map by email
+                    const recipientMap = new Map();
 
-                    const subject = `Web Clock-In: ${applicantName} (${applicantEmpId}) - Daily Work Plan`;
-                    const snippet = `${applicantName} has Web Clocked-In today (${dateStr} at ${timeStr}) and submitted daily work plan.`;
+                    if (managerUser && managerUser.email) {
+                        recipientMap.set(managerUser.email.toLowerCase(), managerUser);
+                    }
+                    if (dottedManagerUser && dottedManagerUser.email) {
+                        recipientMap.set(dottedManagerUser.email.toLowerCase(), dottedManagerUser);
+                    }
+                    for (const ga of globalAdmins) {
+                        if (ga.email) {
+                            recipientMap.set(ga.email.toLowerCase(), ga);
+                        }
+                    }
 
-                    const emailHtml = `
-                        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-                            <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 24px; color: #ffffff;">
-                                <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Web Clock-In &amp; Daily Work Plan</h2>
-                                <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px;">Employee has clocked in via Web Portal.</p>
-                            </div>
-                            
-                            <div style="padding: 24px;">
-                                <p style="font-size: 14px; color: #374151; margin-top: 0;">
-                                    Hello,
-                                </p>
-                                <p style="font-size: 14px; color: #374151;">
-                                    <strong>${applicantName}</strong> has Web Clocked-In today at <strong>${timeStr}</strong> (${dateStr}).
-                                </p>
+                    // If notifyEmployees were passed in body
+                    if (Array.isArray(notifyEmployees) && notifyEmployees.length > 0) {
+                        const extraUsers = await User.find({
+                            $or: [
+                                { _id: { $in: notifyEmployees.filter(id => mongoose.Types.ObjectId.isValid(id)) } },
+                                { employeeId: { $in: notifyEmployees } }
+                            ]
+                        });
+                        for (const eu of extraUsers) {
+                            if (eu.email) {
+                                recipientMap.set(eu.email.toLowerCase(), eu);
+                            }
+                        }
+                    }
 
-                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                                        <tr>
-                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600; width: 140px;">Employee Name:</td>
-                                            <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${applicantName}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Employee ID:</td>
-                                            <td style="padding: 6px 0; color: #1E293B;">${applicantEmpId}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Department:</td>
-                                            <td style="padding: 6px 0; color: #1E293B;">${applicantDept}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Designation:</td>
-                                            <td style="padding: 6px 0; color: #1E293B;">${applicantDesignation}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Clock-In Time:</td>
-                                            <td style="padding: 6px 0; color: #2D79C7; font-weight: 700;">${timeStr}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding: 6px 0; color: #64748B; font-weight: 600; vertical-align: top;">Daily Work Plan:</td>
-                                            <td style="padding: 6px 0; color: #1E293B; white-space: pre-line; font-weight: 500;">${dailyWorkPlan}</td>
-                                        </tr>
-                                    </table>
+                    const recipients = Array.from(recipientMap.values());
+                    const toEmails = recipients.map(r => r.email.toLowerCase());
+
+                    if (toEmails.length > 0) {
+                        const timeStr = currentTime.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true });
+                        const dateStr = currentTime.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+
+                        const managerNameStr = managerUser ? (managerUser.fullName || `${managerUser.firstName || ''} ${managerUser.lastName || ''}`.trim()) : "Direct";
+
+                        const subject = `Clock-In: ${applicantName} (${applicantEmpId}) - Daily Work Plan`;
+                        const snippet = `${applicantName} has clocked in today (${dateStr} at ${timeStr}) and submitted their daily work plan.`;
+
+                        const emailHtml = `
+                            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+                                <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 24px; color: #ffffff;">
+                                    <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Daily Clock-In &amp; Work Plan</h2>
+                                    <p style="margin: 6px 0 0 0; opacity: 0.85; font-size: 13px;">Employee has clocked in and submitted their daily work plan.</p>
+                                </div>
+                                
+                                <div style="padding: 24px;">
+                                    <p style="font-size: 14px; color: #374151; margin-top: 0;">
+                                        Hello,
+                                    </p>
+                                    <p style="font-size: 14px; color: #374151;">
+                                        <strong>${applicantName}</strong> has clocked in today at <strong>${timeStr}</strong> (${dateStr}).
+                                    </p>
+
+                                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                            <tr>
+                                                <td style="padding: 6px 0; color: #64748B; font-weight: 600; width: 140px;">Employee Name:</td>
+                                                <td style="padding: 6px 0; color: #1E293B; font-weight: 700;">${applicantName}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Employee ID:</td>
+                                                <td style="padding: 6px 0; color: #1E293B;">${applicantEmpId}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Department:</td>
+                                                <td style="padding: 6px 0; color: #1E293B;">${applicantDept}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Designation:</td>
+                                                <td style="padding: 6px 0; color: #1E293B;">${applicantDesignation}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Reporting Manager:</td>
+                                                <td style="padding: 6px 0; color: #1E293B;">${managerNameStr}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 6px 0; color: #64748B; font-weight: 600;">Clock-In Time:</td>
+                                                <td style="padding: 6px 0; color: #2D79C7; font-weight: 700;">${timeStr}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 6px 0; color: #64748B; font-weight: 600; vertical-align: top;">Daily Work Plan:</td>
+                                                <td style="padding: 6px 0; color: #1E293B; white-space: pre-line; font-weight: 500;">${dailyWorkPlan}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+
+                                    <div style="text-align: center; margin-top: 20px;">
+                                        <a href="${process.env.FRONTEND_URL || 'https://hrms-frontend-eight-wheat.vercel.app'}/me" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
+                                            View in Attendance
+                                        </a>
+                                    </div>
                                 </div>
 
-                                <div style="text-align: center; margin-top: 20px;">
-                                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/me" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
-                                        View in Attendance
-                                    </a>
+                                <div style="background: #F1F5F9; padding: 12px 24px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
+                                    Idea-Fueled HRMS Automated Notification
                                 </div>
                             </div>
+                        `;
 
-                            <div style="background: #F1F5F9; padding: 12px 24px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;">
-                                Idea-Fueled HRMS Automated Notification
-                            </div>
-                        </div>
-                    `;
+                        // Construct userStates for In-App Mailbox
+                        const userStates = [
+                            {
+                                user: applicant._id,
+                                email: applicantEmail,
+                                folder: "sent",
+                                isRead: true,
+                                isStarred: false,
+                                isDeleted: false
+                            }
+                        ];
 
-                    for (const recipient of recipients) {
-                        const recEmail = recipient.email;
-                        if (!recEmail) continue;
-
-                        try {
-                            await Email.create({
-                                sender: applicant._id,
-                                recipient: recipient._id,
-                                subject,
-                                body: emailHtml,
-                                category: "attendance",
-                                status: "sent",
-                                source: "attendance_web_clock_in",
-                                snippet: snippet.substring(0, 160)
+                        for (const rec of recipients) {
+                            userStates.push({
+                                user: rec._id,
+                                email: rec.email.toLowerCase(),
+                                folder: "inbox",
+                                isRead: false,
+                                isStarred: false,
+                                isDeleted: false
                             });
-                        } catch (internalMailErr) {
-                            console.error("Error creating internal email doc for Web Clock In:", internalMailErr);
                         }
 
+                        let emailDoc = null;
+                        try {
+                            emailDoc = new Email({
+                                sender: applicant._id,
+                                senderEmail: applicantEmail,
+                                senderName: applicantName,
+                                senderAvatar: applicant.profilePicture || "",
+                                senderRole: applicant.role || "employee",
+                                to: toEmails,
+                                subject,
+                                body: emailHtml,
+                                snippet,
+                                priority: "high",
+                                labels: ["Attendance", "Clock In", "Notification"],
+                                isDraft: false,
+                                userStates
+                            });
+                            emailDoc.threadId = emailDoc._id;
+                            await emailDoc.save();
+
+                            // Real-time notification via Socket.IO
+                            for (const rec of recipients) {
+                                emitToUser({ userId: rec._id, email: rec.email.toLowerCase() }, "new_email", {
+                                    email: emailDoc,
+                                    unreadCount: 1
+                                });
+                            }
+                        } catch (internalMailErr) {
+                            console.error("Error creating internal email doc for Clock In:", internalMailErr);
+                        }
+
+                        // External email delivery via Nodemailer/SMTP
                         try {
                             await dispatchExternalEmail({
-                                to: recEmail,
+                                to: toEmails,
                                 subject,
                                 body: emailHtml
                             });
                         } catch (externalMailErr) {
-                            console.warn("External email delivery for Web Clock In skipped/failed:", externalMailErr);
+                            console.warn("External email delivery for Clock In skipped/failed:", externalMailErr.message);
                         }
                     }
                 }
             } catch (clockInMailErr) {
-                console.error("Error dispatching Web Clock In notification emails:", clockInMailErr);
+                console.error("Error dispatching Clock In notification emails:", clockInMailErr);
             }
         }
 
@@ -412,9 +508,7 @@ export const clockOut = async (req, res) => {
         });
 
         attendance.lastClockOut = currentTime;
-        if (source === "web") {
-            attendance.isWebClockedIn = false;
-        }
+        attendance.isWebClockedIn = false;
 
         const clockIns = attendance.logs.filter(
             (log) => log.action === "clock_in"
