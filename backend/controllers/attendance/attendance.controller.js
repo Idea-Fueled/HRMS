@@ -231,6 +231,11 @@ export const clockIn = async (req, res) => {
                         }
                     }
                 }
+            } catch (wfhErr) {
+                console.error("Error dispatching WFH notification emails:", wfhErr);
+            }
+        }
+
         // If Web Clock In with Daily Work Plan on first clock in of the day, dispatch email to Manager & Global Admins
         if (source === "web" && dailyWorkPlan && workMode !== "Work From Home" && isFirstWebClockIn) {
             try {
