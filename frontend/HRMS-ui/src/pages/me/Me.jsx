@@ -162,7 +162,7 @@ const AnalogClock = () => {
     );
 };
 
-const calculatePunctualityStatus = (clockInTime, dept = "") => {
+const calculatePunctualityStatus = (clockInTime, dept = "", userObj = null) => {
     if (!clockInTime) return { status: "off", label: "", tag: "", isLate: false };
     const dateObj = new Date(clockInTime);
     
@@ -181,8 +181,19 @@ const calculatePunctualityStatus = (clockInTime, dept = "") => {
         hour12: true
     });
 
-    const isSales = (dept || "").trim().toLowerCase().includes("sales");
-    if (isSales) {
+    let currentTargetUser = userObj;
+    if (!currentTargetUser) {
+        try {
+            currentTargetUser = JSON.parse(localStorage.getItem("user") || "null");
+        } catch (_) {}
+    }
+
+    const userName = `${currentTargetUser?.firstName || ""} ${currentTargetUser?.lastName || ""} ${currentTargetUser?.fullName || ""} ${currentTargetUser?.name || ""}`.toLowerCase();
+    const userEmail = (currentTargetUser?.email || "").toLowerCase();
+    const isPrashant = userName.includes("prashant") || userEmail.includes("prashant");
+
+    const isSales = (dept || currentTargetUser?.department || "").toString().trim().toLowerCase().includes("sales");
+    if (isPrashant || isSales) {
         return {
             status: "on_time",
             label: "On Time",
@@ -637,7 +648,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         (todayAttendance?.logs || []).some(l => l.source === "web")
     );
 
-    const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn);
+    const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn, user?.department, user);
 
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -3324,7 +3335,8 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                 Number(leave.totalDays) === 0.5
             );
 
-            const isPartialDay = isPartialLeave || record?.status === "half_day";
+            // Partial Day badge ONLY when the employee has actually applied for a Partial Leave
+            const isPartialDay = !!isPartialLeave;
             const isFullDayLeave = !!leave && !isPartialDay;
             const isHoliday = !!holiday;
 
@@ -3339,7 +3351,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                     effectiveHours = formatMinutes(work);
                     breakTaken = formatMinutes(brk);
                     grossHours = formatMinutes(work + brk);
-                    punctuality = calculatePunctualityStatus(record.firstClockIn, user?.department);
+                    punctuality = calculatePunctualityStatus(record.firstClockIn, user?.department, user);
                 }
             }
 

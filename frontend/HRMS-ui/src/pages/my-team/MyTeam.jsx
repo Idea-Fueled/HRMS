@@ -695,7 +695,7 @@ const TeamMembersTab = () => {
    3. TEAM ATTENDANCE TAB & MEMBER HISTORY VIEW
 ───────────────────────────────────────────── */
 
-const calculateMemberPunctuality = (clockInTime, dept = "") => {
+const calculateMemberPunctuality = (clockInTime, dept = "", member = null) => {
     if (!clockInTime) return { status: "off", label: "", tag: "", isLate: false };
     const dateObj = new Date(clockInTime);
     
@@ -714,8 +714,12 @@ const calculateMemberPunctuality = (clockInTime, dept = "") => {
         hour12: true
     });
 
-    const isSales = (dept || "").trim().toLowerCase().includes("sales");
-    if (isSales) {
+    const memberName = `${member?.fullName || ""} ${member?.firstName || ""} ${member?.lastName || ""} ${member?.name || ""}`.toLowerCase();
+    const memberEmail = (member?.email || "").toLowerCase();
+    const isPrashant = memberName.includes("prashant") || memberEmail.includes("prashant");
+
+    const isSales = (dept || member?.department || "").toString().trim().toLowerCase().includes("sales");
+    if (isPrashant || isSales) {
         return {
             status: "on_time",
             label: "On Time",
