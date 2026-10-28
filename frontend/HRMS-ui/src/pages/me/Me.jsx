@@ -838,27 +838,235 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     );
 };
 
-const AttendanceKPIStats = () => {
+const AttendanceKPIStats = ({ employeeId, todayAttendance }) => {
+    const { user } = useAuth();
+    const empId = employeeId || user?._id || user?.id || user?.employeeId;
+
+    const [monthlyAttendances, setMonthlyAttendances] = useState([]);
+    const [holidays, setHolidays] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-indexed (9 = Oct)
+    const currentYear = now.getFullYear();
+    const currentDay = now.getDate();
+
+    const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const currentMonthName = monthNames[currentMonth];
+
+    useEffect(() => {
+        const fetchMonthData = async () => {
+            if (!empId) return;
+            setLoading(true);
+            try {
+                const [attRes, holRes] = await Promise.allSettled([
+                    getEmployeeAttendanceHistory(empId, { month: currentMonth, year: currentYear }),
+                    getAllHolidays()
+                ]);
+
+                if (attRes.status === "fulfilled" && attRes.value?.data?.success && Array.isArray(attRes.value.data.attendances)) {
+                    setMonthlyAttendances(attRes.value.data.attendances);
+                } else {
+                    setMonthlyAttendances([]);
+                }
+
+                if (holRes.status === "fulfilled" && holRes.value?.data?.success && Array.isArray(holRes.value.data.holidays)) {
+                    setHolidays(holRes.value.data.holidays);
+                } else {
+                    setHolidays([]);
+                }
+            } catch (err) {
+                console.error("Failed to load monthly KPI stats:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMonthData();
+    }, [empId, currentMonth, currentYear]);
+
+    // Calculate dynamic stats
+    const stats = useMemo(() => {
+        // Map holidays by YYYY-MM-DD
+        const holidaySet = new Set();
+        (holidays || []).forEach(h => {
+            if (h && h.date) {
+                const d = new Date(h.date);
+                const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                holidaySet.add(k);
+                const raw = String(h.date).split("T")[0];
+                if (raw) holidaySet.add(raw);
+            }
+        });
+
+        // Calculate total working days in the entire month (excluding weekends and holidays)
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        let totalWorkingDaysInMonth = 0;
+        let workingDaysUpToToday = 0;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateObj = new Date(currentYear, currentMonth, day);
+            const dayOfWeek = dateObj.getDay();
+            const dateKey = dateObj.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isHoliday = holidaySet.has(dateKey);
+
+            if (!isWeekend && !isHoliday) {
+                totalWorkingDaysInMonth++;
+                if (day <= currentDay) {
+                    workingDaysUpToToday++;
+                }
+            }
+        }
+
+        // Merge todayAttendance if exists into map
+        const dateRecordMap = new Map();
+        (monthlyAttendances || []).forEach(att => {
+            if (att.date || att.firstClockIn) {
+                const d = new Date(att.date || att.firstClockIn);
+                const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                dateRecordMap.set(k, att);
+            }
+        });
+
+        if (todayAttendance && (todayAttendance.date || todayAttendance.firstClockIn)) {
+            const d = new Date(todayAttendance.date || todayAttendance.firstClockIn);
+            const k = d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            dateRecordMap.set(k, todayAttendance);
+        }
+
+        let presentDaysCount = 0;
+        let wfhDaysCount = 0;
+        let totalWorkMinutesSum = 0;
+        let totalBreakMinutesSum = 0;
+        let daysWithWorkCount = 0;
+        let onTimeCount = 0;
+        let totalCheckedArrivals = 0;
+
+        dateRecordMap.forEach((record) => {
+            const hasClockIn = !!record.firstClockIn || (Array.isArray(record.logs) && record.logs.some(l => l.action === "clock_in"));
+            const isWFH = record.workMode === "Work From Home";
+            const isPresent = hasClockIn || isWFH || record.status === "present" || record.status === "half_day";
+
+            if (isPresent) {
+                presentDaysCount++;
+                if (isWFH) wfhDaysCount++;
+            }
+
+            // Calculate work and break minutes
+            let work = record.totalWorkMinutes || 0;
+            let brk = record.totalBreakMinutes || 0;
+
+            if (!work && Array.isArray(record.logs) && record.logs.length > 0) {
+                const ins = record.logs.filter(l => l.action === "clock_in");
+                const outs = record.logs.filter(l => l.action === "clock_out");
+                let sumWork = 0;
+                for (let i = 0; i < Math.min(ins.length, outs.length); i++) {
+                    const diff = (new Date(outs[i].timestamp) - new Date(ins[i].timestamp)) / 60000;
+                    if (diff > 0) sumWork += diff;
+                }
+                if (sumWork > 0) work = Math.floor(sumWork);
+
+                let sumBreak = 0;
+                for (let i = 0; i < outs.length; i++) {
+                    if (ins[i + 1]) {
+                        const bDiff = (new Date(ins[i + 1].timestamp) - new Date(outs[i].timestamp)) / 60000;
+                        if (bDiff > 0) brk += bDiff;
+                    }
+                }
+                if (sumBreak > 0) brk = Math.floor(sumBreak);
+            }
+
+            if (!work && record.firstClockIn && record.lastClockOut) {
+                const span = (new Date(record.lastClockOut) - new Date(record.firstClockIn)) / 60000;
+                if (span > 0) work = Math.floor(span);
+            }
+
+            if (work > 0 || hasClockIn) {
+                daysWithWorkCount++;
+                totalWorkMinutesSum += work;
+                totalBreakMinutesSum += brk;
+            }
+
+            // Check punctuality for on-time arrival rate
+            if (record.firstClockIn) {
+                totalCheckedArrivals++;
+                const p = calculatePunctualityStatus(record.firstClockIn, user?.department, user);
+                if (!p.isLate) {
+                    onTimeCount++;
+                }
+            }
+        });
+
+        // 1. Average Hours / Day
+        const avgWorkMin = daysWithWorkCount > 0 ? Math.round(totalWorkMinutesSum / daysWithWorkCount) : 0;
+        const avgH = Math.floor(avgWorkMin / 60);
+        const avgM = avgWorkMin % 60;
+        const avgHoursStr = daysWithWorkCount > 0 ? `${avgH}h ${avgM.toString().padStart(2, "0")}m` : "0h 00m";
+        let hoursBadge = "Punctual";
+        if (avgWorkMin >= 8 * 60) hoursBadge = "Punctual";
+        else if (avgWorkMin >= 7 * 60) hoursBadge = "Standard";
+        else if (avgWorkMin > 0) hoursBadge = "Below Target";
+        else hoursBadge = "—";
+
+        // 2. On-Time Arrival Rate
+        let onTimeRate = 100;
+        if (totalCheckedArrivals > 0) {
+            onTimeRate = Math.round((onTimeCount / totalCheckedArrivals) * 100);
+        } else {
+            onTimeRate = 100;
+        }
+
+        // 3. Average Break Time
+        const avgBreakMin = daysWithWorkCount > 0 ? Math.round(totalBreakMinutesSum / daysWithWorkCount) : 0;
+        const brkH = Math.floor(avgBreakMin / 60);
+        const brkM = avgBreakMin % 60;
+        const avgBreakStr = brkH > 0 ? `${brkH}h ${brkM}m` : `${brkM}m`;
+        let breakBadge = "Normal";
+        if (avgBreakMin <= 45) breakBadge = "Optimal";
+        else if (avgBreakMin <= 60) breakBadge = "Normal";
+        else if (avgBreakMin > 60) breakBadge = "High";
+        else breakBadge = "Normal";
+
+        // 4. Present Days in Current Month
+        const totalWorkTarget = totalWorkingDaysInMonth || 22;
+        const presentDaysStr = `${presentDaysCount} / ${totalWorkTarget}`;
+        const wfhBadge = wfhDaysCount > 0 ? `${wfhDaysCount} WFH` : `${presentDaysCount} Days`;
+
+        return {
+            avgHoursStr,
+            hoursBadge,
+            onTimeRate: `${onTimeRate}%`,
+            avgBreakStr,
+            breakBadge,
+            presentDaysStr,
+            wfhBadge
+        };
+    }, [monthlyAttendances, holidays, todayAttendance, currentMonth, currentYear, currentDay, user]);
+
     const kpis = [
         {
             title: "Average Hours / Day",
-            value: "8h 22m",
-            badge: "Punctual"
+            value: stats.avgHoursStr,
+            badge: stats.hoursBadge
         },
         {
             title: "On-Time Arrival Rate",
-            value: "92%",
-            badge: "92%"
+            value: stats.onTimeRate,
+            badge: stats.onTimeRate
         },
         {
             title: "Average Break Time",
-            value: "38m",
-            badge: "Normal"
+            value: stats.avgBreakStr,
+            badge: stats.breakBadge
         },
         {
-            title: "Present Days (July)",
-            value: "22 / 24",
-            badge: "2 WFH"
+            title: `Present Days (${currentMonthName})`,
+            value: stats.presentDaysStr,
+            badge: stats.wfhBadge
         }
     ];
 
@@ -878,7 +1086,7 @@ const AttendanceKPIStats = () => {
                         )}
                     </div>
                     <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">
-                        {kpi.value}
+                        {loading && !monthlyAttendances.length ? "..." : kpi.value}
                     </div>
                 </div>
             ))}
@@ -4247,7 +4455,7 @@ const Me = () => {
                         onClockOut={handleClockOutSubmit}
                         onOpenWfhModal={() => setIsWfhModalOpen(true)}
                     />
-                    <AttendanceKPIStats />
+                    <AttendanceKPIStats employeeId={employeeId} todayAttendance={todayAttendance} />
                     <AttendanceLogsAndRequestsHub todayAttendance={todayAttendance} />
                 </div>
             )}
