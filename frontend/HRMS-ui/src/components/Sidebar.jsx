@@ -281,10 +281,18 @@ const Sidebar = ({ onClose }) => {
 
         const role = user.role?.toLowerCase();
 
-        // My Team is strictly visible only to Managers, HR, and Admins
-        // Regular employees and interns do NOT see My Team
+        // My Team visibility: Admins always, Managers/HR by default or if allowed, Employees/Interns if granted access
         if (item.permissionKey === "myTeam" || item.to === "/my-team") {
-            return role === "global_admin" || role === "admin" || role === "hr" || role === "manager" || role === "management";
+            if (role === "global_admin" || role === "admin") return true;
+            const mt = user.permissions?.myTeam;
+            if (typeof mt === "boolean") {
+                if (role === "manager" || role === "hr" || role === "management") return mt !== false;
+                return mt === true;
+            }
+            if (typeof mt === "object" && mt !== null) {
+                return mt.access === true;
+            }
+            return role === "manager" || role === "hr" || role === "management";
         }
 
         // Check role restriction if item explicitly defines roles

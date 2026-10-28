@@ -203,10 +203,18 @@ export const createEmployee = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const isHrOrAdmin = role === "global_admin" || role === "hr";
+        const isManagerOrAdmin = isHrOrAdmin || role === "manager" || role === "management";
         const defaultPermissions = {
             dashboard: true,
             me: true,
-            myTeam: true,
+            myTeam: {
+                access: isManagerOrAdmin,
+                teamSummary: isManagerOrAdmin,
+                teamMembers: isManagerOrAdmin,
+                teamAttendance: isManagerOrAdmin,
+                teamLeaves: isManagerOrAdmin,
+                teamPerformance: isManagerOrAdmin
+            },
             myFinances: true,
             documents: {
                 companyDocuments: true,
@@ -440,6 +448,7 @@ export const updateEmployee = async (req, res) => {
 
         if (permissions !== undefined) {
             employee.permissions = typeof permissions === "string" ? JSON.parse(permissions) : permissions;
+            employee.markModified("permissions");
         }
 
         // Update leave balances if provided

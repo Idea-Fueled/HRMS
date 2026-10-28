@@ -160,7 +160,17 @@ export const AuthProvider = ({ children }) => {
 
         if (normPath === "dashboard" || normPath === "") return user.permissions.dashboard !== false;
         if (normPath === "me") return user.permissions.me !== false;
-        if (normPath === "my-team") return user.permissions.myTeam !== false;
+        if (normPath === "my-team") {
+            const mt = user.permissions.myTeam;
+            if (typeof mt === "boolean") {
+                if (userRole === "manager" || userRole === "hr" || userRole === "management") return mt !== false;
+                return mt === true;
+            }
+            if (typeof mt === "object" && mt !== null) {
+                return mt.access === true;
+            }
+            return userRole === "manager" || userRole === "hr" || userRole === "management";
+        }
         if (normPath === "my-finances") return user.permissions.myFinances !== false;
         if (normPath === "documents") {
             return !!(user.permissions.documents?.companyDocuments || user.permissions.documents?.employeeDocuments);

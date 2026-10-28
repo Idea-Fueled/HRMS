@@ -2537,45 +2537,66 @@ const MyTeam = () => {
     const isManager = userRole === "manager" || userRole === "management";
     const isHr = userRole === "hr";
 
-    // Regular employee / intern protection
-    if (!isGlobalAdmin && !isManager && !isHr) {
+    const mt = user?.permissions?.myTeam;
+    const hasMyTeamAccess = useMemo(() => {
+        if (isGlobalAdmin) return true;
+        if (typeof mt === "boolean") {
+            if (isManager || isHr) return mt !== false;
+            return mt === true;
+        }
+        if (typeof mt === "object" && mt !== null) {
+            return mt.access === true;
+        }
+        return isManager || isHr;
+    }, [isGlobalAdmin, isManager, isHr, mt]);
+
+    // Regular employee / intern protection if access is not granted
+    if (!hasMyTeamAccess) {
         return (
             <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-sm max-w-xl mx-auto mt-8 select-none animate-fadeIn">
                 <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#2D79C7] mx-auto flex items-center justify-center mb-4 border border-blue-100">
                     <Clock className="w-7 h-7" />
                 </div>
-                <h3 className="text-base font-bold text-slate-900 mb-1.5">Team Attendance is Restricted</h3>
+                <h3 className="text-base font-bold text-slate-900 mb-1.5">Team Access is Restricted</h3>
                 <p className="text-xs text-slate-500 leading-relaxed mb-5">
-                    Team Attendance and team management are accessible only to Managers, HR, and Administrators. You can view your personal attendance history in the <strong>Me</strong> tab.
+                    Team management modules are accessible only to authorized personnel. You can view your personal profile and attendance in the <strong>Me</strong> tab.
                 </p>
                 <a
                     href="/me"
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2D79C7] hover:bg-[#2367ac] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
                 >
-                    View My Attendance
+                    View My Profile
                 </a>
             </div>
         );
     }
 
     const tabs = React.useMemo(() => {
-        if (isGlobalAdmin || isHr || isManager) {
-            return [
-                { key: "Team Summary", icon: LayoutDashboard, label: "Team Summary" },
-                { key: "Team Members", icon: Users, label: "Team Members" },
-                { key: "Team Attendance", icon: Clock, label: "Team Attendance" },
-                { key: "Team Leaves", icon: Umbrella, label: "Team Leaves" },
-                { key: "Team Performance", icon: Award, label: "Team Performance" }
-            ];
+        const allTabs = [
+            { key: "Team Summary", permKey: "teamSummary", icon: LayoutDashboard, label: "Team Summary" },
+            { key: "Team Members", permKey: "teamMembers", icon: Users, label: "Team Members" },
+            { key: "Team Attendance", permKey: "teamAttendance", icon: Clock, label: "Team Attendance" },
+            { key: "Team Leaves", permKey: "teamLeaves", icon: Umbrella, label: "Team Leaves" },
+            { key: "Team Performance", permKey: "teamPerformance", icon: Award, label: "Team Performance" }
+        ];
+
+        if (isGlobalAdmin) {
+            return allTabs;
         }
-        return [];
-    }, [isGlobalAdmin, isHr, isManager]);
+
+        if (typeof mt === "object" && mt !== null) {
+            const filtered = allTabs.filter(tab => mt[tab.permKey] === true);
+            return filtered.length > 0 ? filtered : allTabs;
+        }
+
+        return allTabs;
+    }, [isGlobalAdmin, mt]);
 
     const [activeTab, setActiveTab] = useState(tabs[0]?.key || "Team Attendance");
 
     useEffect(() => {
-        if (!tabs.some(t => t.key === activeTab)) {
-            setActiveTab(tabs[0]?.key || "Team Attendance");
+        if (tabs.length > 0 && !tabs.some(t => t.key === activeTab)) {
+            setActiveTab(tabs[0].key);
         }
     }, [tabs, activeTab]);
 

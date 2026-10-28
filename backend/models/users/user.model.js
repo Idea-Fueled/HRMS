@@ -304,7 +304,17 @@ const userScehma = new mongoose.Schema({
         type: {
             dashboard: { type: Boolean, default: true },
             me: { type: Boolean, default: true },
-            myTeam: { type: Boolean, default: true },
+            myTeam: {
+                type: mongoose.Schema.Types.Mixed,
+                default: {
+                    access: true,
+                    teamSummary: true,
+                    teamMembers: true,
+                    teamAttendance: true,
+                    teamLeaves: true,
+                    teamPerformance: true
+                }
+            },
             myFinances: { type: Boolean, default: true },
             documents: {
                 companyDocuments: { type: Boolean, default: true },
@@ -322,7 +332,14 @@ const userScehma = new mongoose.Schema({
         default: {
             dashboard: true,
             me: true,
-            myTeam: true,
+            myTeam: {
+                access: true,
+                teamSummary: true,
+                teamMembers: true,
+                teamAttendance: true,
+                teamLeaves: true,
+                teamPerformance: true
+            },
             myFinances: true,
             documents: {
                 companyDocuments: true,

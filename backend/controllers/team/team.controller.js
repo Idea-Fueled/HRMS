@@ -11,7 +11,7 @@ const seedMockDataIfNeeded = async (currentUserId) => {
 // Helper function to get caller's assigned visible/team employee IDs
 const getHrVisibleFilter = async (currentUserId) => {
     if (!currentUserId) return [];
-    const currentUser = await User.findById(currentUserId).select("role visibleEmployees").lean();
+    const currentUser = await User.findById(currentUserId).select("role visibleEmployees permissions managerId dottedManagerId department").lean();
     if (!currentUser) return [];
 
     // Global Admin / Admin has full company-wide visibility
@@ -27,12 +27,15 @@ const getHrVisibleFilter = async (currentUserId) => {
         return [];
     }
 
-    // Regular Employee or Intern: CANNOT see team attendance
-    if (currentUser.role === "employee" || currentUser.role === "intern") {
+    // Check if user has myTeam permission (if regular employee or intern)
+    const mt = currentUser.permissions?.myTeam;
+    const hasMyTeamPerm = typeof mt === "boolean" ? mt : (typeof mt === "object" && mt !== null ? mt.access === true : false);
+
+    if ((currentUser.role === "employee" || currentUser.role === "intern") && !hasMyTeamPerm) {
         return [];
     }
 
-    // Manager / Management / Team Lead: ONLY see their direct reports
+    // Manager / Management / Team Lead / Permitted Employee: find direct reports
     const directReports = await User.find({
         $or: [
             { managerId: currentUser._id },
@@ -40,7 +43,29 @@ const getHrVisibleFilter = async (currentUserId) => {
         ]
     }).select("_id").lean();
 
-    return directReports.map(d => d._id.toString());
+    if (directReports.length > 0) {
+        return directReports.map(d => d._id.toString());
+    }
+
+    // If no direct reports, show peers under same manager
+    if (currentUser.managerId) {
+        const peers = await User.find({
+            $or: [
+                { managerId: currentUser.managerId },
+                { _id: currentUser._id }
+            ]
+        }).select("_id").lean();
+        if (peers.length > 0) return peers.map(d => d._id.toString());
+    }
+
+    if (currentUser.department) {
+        const deptMembers = await User.find({
+            department: currentUser.department
+        }).select("_id").lean();
+        if (deptMembers.length > 0) return deptMembers.map(d => d._id.toString());
+    }
+
+    return [currentUser._id.toString()];
 };
 
 /* ─────────────────────────────────────────────

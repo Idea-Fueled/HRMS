@@ -88,7 +88,14 @@ const WORK_LOCATIONS = ["Office", "WFH", "Hybrid"];
 const DEFAULT_PERMISSIONS = {
     dashboard: true,
     me: true,
-    myTeam: true,
+    myTeam: {
+        access: false,
+        teamSummary: false,
+        teamMembers: false,
+        teamAttendance: false,
+        teamLeaves: false,
+        teamPerformance: false
+    },
     myFinances: true,
     documents: {
         companyDocuments: true,
@@ -860,10 +867,42 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 compOffLeave: employee.leaveBalance?.compOff?.total ?? 0,
                 password: "",
                 confirmPassword: "",
-                status: employee.status || "active",
                 permissions: {
                     ...DEFAULT_PERMISSIONS,
                     ...(employee.permissions || {}),
+                    myTeam: (() => {
+                        const mt = employee.permissions?.myTeam;
+                        const isMgrOrAdmin = ["global_admin", "admin", "hr", "manager", "management"].includes((employee.role || "").toLowerCase());
+                        if (typeof mt === "boolean") {
+                            const allow = isMgrOrAdmin ? mt : false;
+                            return {
+                                access: allow,
+                                teamSummary: allow,
+                                teamMembers: allow,
+                                teamAttendance: allow,
+                                teamLeaves: allow,
+                                teamPerformance: allow
+                            };
+                        }
+                        if (typeof mt === "object" && mt !== null) {
+                            return {
+                                access: mt.access === true,
+                                teamSummary: mt.teamSummary !== false,
+                                teamMembers: mt.teamMembers !== false,
+                                teamAttendance: mt.teamAttendance !== false,
+                                teamLeaves: mt.teamLeaves !== false,
+                                teamPerformance: mt.teamPerformance !== false
+                            };
+                        }
+                        return {
+                            access: isMgrOrAdmin,
+                            teamSummary: isMgrOrAdmin,
+                            teamMembers: isMgrOrAdmin,
+                            teamAttendance: isMgrOrAdmin,
+                            teamLeaves: isMgrOrAdmin,
+                            teamPerformance: isMgrOrAdmin
+                        };
+                    })(),
                     documents: {
                         ...DEFAULT_PERMISSIONS.documents,
                         ...(employee.permissions?.documents || {})
@@ -875,6 +914,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
             ...EMPTY_FORM, 
             permissions: { 
                 ...DEFAULT_PERMISSIONS,
+                myTeam: { ...DEFAULT_PERMISSIONS.myTeam },
                 documents: { ...DEFAULT_PERMISSIONS.documents }
             } 
         };
@@ -1044,6 +1084,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
         }
         if (field === "role") {
             const isHrOrAdmin = val === "global_admin" || val === "admin" || val === "hr";
+            const isMgrOrAdmin = isHrOrAdmin || val === "manager" || val === "management";
             setForm(prev => ({ 
                 ...prev, 
                 role: val,
@@ -1051,7 +1092,14 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 permissions: {
                     dashboard: true,
                     me: true,
-                    myTeam: true,
+                    myTeam: {
+                        access: isMgrOrAdmin,
+                        teamSummary: isMgrOrAdmin,
+                        teamMembers: isMgrOrAdmin,
+                        teamAttendance: isMgrOrAdmin,
+                        teamLeaves: isMgrOrAdmin,
+                        teamPerformance: isMgrOrAdmin
+                    },
                     myFinances: true,
                     documents: {
                         companyDocuments: true,
@@ -1064,7 +1112,6 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                     hire: isHrOrAdmin,
                     offboardingAndOnboarding: isHrOrAdmin,
                     organization: isHrOrAdmin,
-                    employees: isHrOrAdmin,
                     probation: isHrOrAdmin
                 }
             }));
@@ -1483,14 +1530,160 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                         <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
                                     </div>
 
-                                    {/* My Team (Read Only) */}
-                                    <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none">
-                                        <div>
-                                            <p className="text-xs font-black text-slate-800">My Team</p>
-                                            <p className="text-[10px] text-gray-400 font-bold">Direct reports directory (Always enabled)</p>
-                                        </div>
-                                        <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
-                                    </div>
+                                    {/* My Team (Configurable with Sub-tabs) */}
+                                    {(() => {
+                                        const myTeamPerm = form.permissions?.myTeam;
+                                        const isMyTeamActive = isRoleGlobalAdmin || (
+                                            typeof myTeamPerm === "boolean" 
+                                                ? myTeamPerm 
+                                                : myTeamPerm?.access === true
+                                        );
+                                        const subPerms = typeof myTeamPerm === "object" && myTeamPerm !== null ? myTeamPerm : {};
+
+                                        const handleMasterToggle = (checked) => {
+                                            setForm(prev => {
+                                                const currentSub = typeof prev.permissions?.myTeam === "object" && prev.permissions?.myTeam !== null 
+                                                    ? prev.permissions.myTeam 
+                                                    : {};
+                                                return {
+                                                    ...prev,
+                                                    permissions: {
+                                                        ...prev.permissions,
+                                                        myTeam: {
+                                                            access: checked,
+                                                            teamSummary: checked ? (currentSub.teamSummary ?? true) : false,
+                                                            teamMembers: checked ? (currentSub.teamMembers ?? true) : false,
+                                                            teamAttendance: checked ? (currentSub.teamAttendance ?? true) : false,
+                                                            teamLeaves: checked ? (currentSub.teamLeaves ?? true) : false,
+                                                            teamPerformance: checked ? (currentSub.teamPerformance ?? true) : false,
+                                                        }
+                                                    }
+                                                };
+                                            });
+                                        };
+
+                                        const handleSubToggle = (key, checked) => {
+                                            setForm(prev => {
+                                                const currentSub = typeof prev.permissions?.myTeam === "object" && prev.permissions?.myTeam !== null 
+                                                    ? prev.permissions.myTeam 
+                                                    : {};
+                                                return {
+                                                    ...prev,
+                                                    permissions: {
+                                                        ...prev.permissions,
+                                                        myTeam: {
+                                                            ...currentSub,
+                                                            access: true,
+                                                            [key]: checked
+                                                        }
+                                                    }
+                                                };
+                                            });
+                                        };
+
+                                        return (
+                                            <div className="bg-white border border-gray-150 rounded-[10px] overflow-hidden transition-all shadow-xs">
+                                                {/* Master My Team Switch */}
+                                                <div className={`flex items-center justify-between p-2.5 select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                                    <div>
+                                                        <p className="text-xs font-black text-slate-800">My Team</p>
+                                                        <p className="text-[10px] text-gray-400 font-bold">Team directory, attendance, leaves and performance modules</p>
+                                                    </div>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isRoleGlobalAdmin || isMyTeamActive}
+                                                        disabled={isRoleGlobalAdmin}
+                                                        onChange={(e) => handleMasterToggle(e.target.checked)}
+                                                        className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                    />
+                                                </div>
+
+                                                {/* Sub-tabs configuration (shown when My Team is enabled) */}
+                                                {(isRoleGlobalAdmin || isMyTeamActive) && (
+                                                    <div className="p-3 bg-blue-50/20 border-t border-gray-150 space-y-2">
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                                                            Select Allowed Sub-Tabs:
+                                                        </p>
+                                                        
+                                                        {/* Team Summary */}
+                                                        <div className="flex items-center justify-between py-1.5 px-2.5 bg-white rounded-[8px] border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[11px] font-bold text-slate-700">Team Summary</p>
+                                                                <p className="text-[9.5px] text-gray-400">High-level team overview cards and metrics</p>
+                                                            </div>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isRoleGlobalAdmin || subPerms.teamSummary !== false}
+                                                                disabled={isRoleGlobalAdmin}
+                                                                onChange={(e) => handleSubToggle("teamSummary", e.target.checked)}
+                                                                className="w-3.5 h-3.5 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                            />
+                                                        </div>
+
+                                                        {/* Team Members */}
+                                                        <div className="flex items-center justify-between py-1.5 px-2.5 bg-white rounded-[8px] border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[11px] font-bold text-slate-700">Team Members</p>
+                                                                <p className="text-[9.5px] text-gray-400">Direct reports & team member profile directory</p>
+                                                            </div>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isRoleGlobalAdmin || subPerms.teamMembers !== false}
+                                                                disabled={isRoleGlobalAdmin}
+                                                                onChange={(e) => handleSubToggle("teamMembers", e.target.checked)}
+                                                                className="w-3.5 h-3.5 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                            />
+                                                        </div>
+
+                                                        {/* Team Attendance */}
+                                                        <div className="flex items-center justify-between py-1.5 px-2.5 bg-white rounded-[8px] border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[11px] font-bold text-slate-700">Team Attendance</p>
+                                                                <p className="text-[9.5px] text-gray-400">Team check-in/out logs, work hours & daily attendance</p>
+                                                            </div>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isRoleGlobalAdmin || subPerms.teamAttendance !== false}
+                                                                disabled={isRoleGlobalAdmin}
+                                                                onChange={(e) => handleSubToggle("teamAttendance", e.target.checked)}
+                                                                className="w-3.5 h-3.5 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                            />
+                                                        </div>
+
+                                                        {/* Team Leaves */}
+                                                        <div className="flex items-center justify-between py-1.5 px-2.5 bg-white rounded-[8px] border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[11px] font-bold text-slate-700">Team Leaves</p>
+                                                                <p className="text-[9.5px] text-gray-400">Review and approve subordinate leave applications</p>
+                                                            </div>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isRoleGlobalAdmin || subPerms.teamLeaves !== false}
+                                                                disabled={isRoleGlobalAdmin}
+                                                                onChange={(e) => handleSubToggle("teamLeaves", e.target.checked)}
+                                                                className="w-3.5 h-3.5 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                            />
+                                                        </div>
+
+                                                        {/* Team Performance */}
+                                                        <div className="flex items-center justify-between py-1.5 px-2.5 bg-white rounded-[8px] border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[11px] font-bold text-slate-700">Team Performance</p>
+                                                                <p className="text-[9.5px] text-gray-400">Performance ratings, reviews & goal management</p>
+                                                            </div>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isRoleGlobalAdmin || subPerms.teamPerformance !== false}
+                                                                disabled={isRoleGlobalAdmin}
+                                                                onChange={(e) => handleSubToggle("teamPerformance", e.target.checked)}
+                                                                className="w-3.5 h-3.5 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
 
                                     {/* My Finances (Read Only) */}
                                     <div className="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none">

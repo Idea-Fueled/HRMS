@@ -405,7 +405,13 @@ export const filterRegistryForUser = (user, canAccessRoute) => {
 
         // Check module permission key if user.permissions exists
         if (item.permissionKey && user.permissions) {
-            if (user.permissions[item.permissionKey] === false) return false;
+            if (item.permissionKey === "myTeam") {
+                const mt = user.permissions.myTeam;
+                if (typeof mt === "boolean" && mt === false) return false;
+                if (typeof mt === "object" && mt !== null && mt.access === false) return false;
+            } else if (user.permissions[item.permissionKey] === false) {
+                return false;
+            }
         }
 
         // Check route protection access
