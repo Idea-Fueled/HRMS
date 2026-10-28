@@ -650,70 +650,6 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
 
     const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn, user?.department, user);
 
-    const [currentTime, setCurrentTime] = useState(new Date());
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    const { effectiveMinutes, breakMinutes, grossMinutes } = useMemo(() => {
-        const logs = todayAttendance?.logs || [];
-        if (logs.length === 0 && !todayAttendance?.firstClockIn) {
-            return { effectiveMinutes: 0, breakMinutes: 0, grossMinutes: 0 };
-        }
-
-        const clockIns = logs.filter(l => l.action === "clock_in");
-        const clockOuts = logs.filter(l => l.action === "clock_out");
-
-        let work = 0;
-        for (let i = 0; i < Math.min(clockIns.length, clockOuts.length); i++) {
-            const diff = (new Date(clockOuts[i].timestamp) - new Date(clockIns[i].timestamp)) / 60000;
-            if (diff > 0) work += diff;
-        }
-
-        if (isClockedIn && clockIns.length > 0) {
-            const lastIn = clockIns[clockIns.length - 1];
-            const liveDiff = (currentTime - new Date(lastIn.timestamp)) / 60000;
-            if (liveDiff > 0) work += liveDiff;
-        }
-
-        let brk = 0;
-        for (let i = 0; i < clockOuts.length; i++) {
-            if (clockIns[i + 1]) {
-                const bDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / 60000;
-                if (bDiff > 0) brk += bDiff;
-            }
-        }
-
-        if (!isClockedIn && clockOuts.length > 0 && clockIns.length > 0) {
-            const lastOut = clockOuts[clockOuts.length - 1];
-            const liveBreak = (currentTime - new Date(lastOut.timestamp)) / 60000;
-            if (liveBreak > 0) brk += liveBreak;
-        }
-
-        let gross = 0;
-        const firstIn = todayAttendance?.firstClockIn || (clockIns.length > 0 ? clockIns[0].timestamp : null);
-        if (firstIn) {
-            gross = Math.max(0, Math.round((currentTime - new Date(firstIn)) / 60000));
-        }
-
-        return {
-            effectiveMinutes: Math.floor(work),
-            breakMinutes: Math.floor(brk),
-            grossMinutes: Math.floor(gross)
-        };
-    }, [todayAttendance, isClockedIn, currentTime]);
-
-    const formatMins = (mins) => {
-        if (!mins || mins <= 0) return "0m";
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return h > 0 ? `${h}h ${m}m` : `${m}m`;
-    };
-
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) return "Good Morning";
@@ -814,25 +750,6 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                     </button>
                 </div>
 
-            </div>
-
-            {/* Live Hours Ticker */}
-            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100 flex-wrap">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200">
-                    <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-                    <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wide">Effective Hours</span>
-                    <span className="text-xs font-black text-teal-900 font-mono">{formatMins(effectiveMinutes)}</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">Break Taken</span>
-                    <span className="text-xs font-black text-amber-900 font-mono">{formatMins(breakMinutes)}</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200">
-                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Gross Hours</span>
-                    <span className="text-xs font-black text-slate-900 font-mono">{formatMins(grossMinutes)}</span>
-                </div>
             </div>
         </div>
     );
