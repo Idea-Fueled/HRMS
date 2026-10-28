@@ -1439,11 +1439,6 @@ export const syncBiometricPunches = async (req, res) => {
             }
 
             let status = "present";
-            if (filteredPunches.length === 1) {
-                status = "present";
-            } else if (totalWorkMinutes < 240 && totalWorkMinutes > 0) {
-                status = "half_day";
-            }
 
             bulkOps.push({
                 updateOne: {

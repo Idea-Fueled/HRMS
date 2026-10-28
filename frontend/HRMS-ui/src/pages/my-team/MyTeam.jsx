@@ -1148,7 +1148,8 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                 Number(leave.totalDays) === 0.5
             );
 
-            const isPartialDay = isPartialLeave || record?.status === "half_day";
+            // Partial Day badge ONLY when the employee has actually applied for a Partial Leave
+            const isPartialDay = !!isPartialLeave;
             const isFullDayLeave = !!leave && !isPartialDay;
             const isHoliday = !!holiday;
 
