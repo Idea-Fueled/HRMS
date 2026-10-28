@@ -46,18 +46,22 @@ function Sync-AttendancePunches {
         Write-Output "[OK] Connected to machine! Reading logs from device..."
         $machineNumber = 1
         
+        # Crucial for ZKTeco: flush RAM cache to flash memory so live punches are queryable
+        try { $zk.RefreshData($machineNumber) } catch {}
+
         # Crucial for ZKTeco: pause device UI while reading buffer to prevent socket packet drops
         try { $zk.EnableDevice($machineNumber, $false) } catch {}
 
-        # First try ReadTimeGLogData for current month to avoid reading full multi-year buffer
+        # Read logs from current month up to end of today (avoiding clock-skew cutoffs)
         $readSuccess = $false
         try {
-            $nowStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-            $readSuccess = $zk.ReadTimeGLogData($machineNumber, "2026-10-01 00:00:00", $nowStr)
+            $monthStart = (Get-Date -Format 'yyyy-MM-01 00:00:00')
+            $endOfDay = (Get-Date).Date.AddDays(1).AddSeconds(-1).ToString('yyyy-MM-dd HH:mm:ss')
+            $readSuccess = $zk.ReadTimeGLogData($machineNumber, $monthStart, $endOfDay)
         } catch {}
 
         if (-not $readSuccess) {
-            # Fallback to ReadGeneralLogData
+            # Fallback to ReadGeneralLogData (reads full machine buffer)
             try {
                 $readSuccess = $zk.ReadGeneralLogData($machineNumber)
             } catch {}

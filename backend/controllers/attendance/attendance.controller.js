@@ -1361,6 +1361,24 @@ export const syncBiometricPunches = async (req, res) => {
         const employeeSummary = new Map();
         const bulkOps = [];
 
+        // Pre-fetch any existing attendance records for the matching employee and date pairs to preserve web logs
+        const queryPairs = [];
+        for (const [, group] of groupedMap.entries()) {
+            const [year, month, day] = group.istDateStr.split("-").map(Number);
+            const dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+            queryPairs.push({ employeeId: group.user._id, date: dateObj });
+        }
+
+        const existingRecords = queryPairs.length > 0
+            ? await Attendance.find({ $or: queryPairs }).lean()
+            : [];
+
+        const existingMap = new Map();
+        existingRecords.forEach(rec => {
+            const dateStr = new Date(rec.date).toISOString().split("T")[0];
+            existingMap.set(`${rec.employeeId.toString()}_${dateStr}`, rec);
+        });
+
         for (const [, group] of groupedMap.entries()) {
             const { user, istDateStr, punches } = group;
 
@@ -1385,37 +1403,40 @@ export const syncBiometricPunches = async (req, res) => {
 
             const [year, month, day] = istDateStr.split("-").map(Number);
             const dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+            const dateKey = `${user._id.toString()}_${dateObj.toISOString().split("T")[0]}`;
+            const existing = existingMap.get(dateKey);
 
-            const firstClockIn = filteredPunches[0];
-            const lastClockOut = filteredPunches.length > 1 ? filteredPunches[filteredPunches.length - 1] : null;
-
-            // Generate logs with alternating clock_in and clock_out
-            const logs = [];
+            // Generate biometric logs with alternating clock_in and clock_out
+            const biometricLogs = [];
             for (let i = 0; i < filteredPunches.length; i++) {
-                logs.push({
+                biometricLogs.push({
                     action: i % 2 === 0 ? "clock_in" : "clock_out",
                     timestamp: filteredPunches[i],
                     source: "biometric"
                 });
             }
 
-            // Separate clockIns and clockOuts
-            const clockIns = logs.filter(l => l.action === "clock_in");
-            const clockOuts = logs.filter(l => l.action === "clock_out");
+            // Safely preserve any existing web clock in / remote logs on this date
+            const existingWebLogs = (existing?.logs || []).filter(l => 
+                l.source === "web" || l.source === "wfh" || l.source === "manual"
+            );
 
-            // Calculate work and break minutes strictly within this day
+            // Combine biometric logs + web logs
+            const allLogs = [...biometricLogs, ...existingWebLogs];
+            allLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+            // Separate clockIns and clockOuts
+            const clockIns = allLogs.filter(l => l.action === "clock_in");
+            const clockOuts = allLogs.filter(l => l.action === "clock_out");
+
+            const firstClockIn = allLogs.length > 0 ? new Date(allLogs[0].timestamp) : filteredPunches[0];
+            const lastClockOut = clockOuts.length > 0 ? new Date(clockOuts[clockOuts.length - 1].timestamp) : (filteredPunches.length > 1 ? filteredPunches[filteredPunches.length - 1] : null);
+
+            // Calculate work and break minutes strictly within this day across all combined sessions
             let totalWorkMinutes = 0;
             let totalBreakMinutes = 0;
 
-            if (filteredPunches.length === 1) {
-                totalWorkMinutes = 0;
-                totalBreakMinutes = 0;
-            } else if (filteredPunches.length === 2) {
-                const spanMins = Math.round((lastClockOut.getTime() - firstClockIn.getTime()) / 60000);
-                totalWorkMinutes = Math.max(0, spanMins);
-                totalBreakMinutes = 0;
-            } else {
-
+            if (clockIns.length > 0 && clockOuts.length > 0) {
                 for (let i = 0; i < Math.min(clockIns.length, clockOuts.length); i++) {
                     const diff = (new Date(clockOuts[i].timestamp) - new Date(clockIns[i].timestamp)) / (1000 * 60);
                     if (diff > 0) totalWorkMinutes += diff;
@@ -1432,13 +1453,25 @@ export const syncBiometricPunches = async (req, res) => {
                 totalBreakMinutes = Math.round(totalBreakMinutes);
 
                 // Sanity check: Total break cannot exceed the total day span (lastClockOut - firstClockIn)
-                const totalSpan = Math.round((lastClockOut.getTime() - firstClockIn.getTime()) / 60000);
-                if (totalBreakMinutes > totalSpan) {
-                    totalBreakMinutes = Math.max(0, totalSpan - totalWorkMinutes);
+                if (lastClockOut && firstClockIn) {
+                    const totalSpan = Math.round((lastClockOut.getTime() - firstClockIn.getTime()) / 60000);
+                    if (totalBreakMinutes > totalSpan) {
+                        totalBreakMinutes = Math.max(0, totalSpan - totalWorkMinutes);
+                    }
                 }
+            } else if (filteredPunches.length === 2) {
+                const spanMins = Math.round((filteredPunches[1].getTime() - filteredPunches[0].getTime()) / 60000);
+                totalWorkMinutes = Math.max(0, spanMins);
+                totalBreakMinutes = 0;
             }
 
-            let status = "present";
+            // Determine workMode: Hybrid if both biometric and web logs exist
+            let workMode = "Office";
+            if (biometricLogs.length > 0 && existingWebLogs.length > 0) {
+                workMode = "Hybrid";
+            } else if (existingWebLogs.length > 0 && biometricLogs.length === 0) {
+                workMode = existing?.workMode || "Work From Home";
+            }
 
             bulkOps.push({
                 updateOne: {
@@ -1447,14 +1480,17 @@ export const syncBiometricPunches = async (req, res) => {
                         $set: {
                             employeeId: user._id,
                             date: dateObj,
-                            status,
+                            status: "present",
                             firstClockIn,
                             lastClockOut,
                             totalWorkMinutes: Math.floor(totalWorkMinutes),
                             totalBreakMinutes: Math.floor(totalBreakMinutes),
                             totalSessions: clockIns.length,
-                            workMode: "Office",
-                            logs
+                            workMode,
+                            logs: allLogs,
+                            ...(existing?.dailyWorkPlan ? { dailyWorkPlan: existing.dailyWorkPlan } : {}),
+                            ...(existing?.wfhMessage ? { wfhMessage: existing.wfhMessage } : {}),
+                            ...(existing?.isWebClockedIn !== undefined ? { isWebClockedIn: existing.isWebClockedIn } : {})
                         },
                         $setOnInsert: {
                             isWebClockedIn: false
