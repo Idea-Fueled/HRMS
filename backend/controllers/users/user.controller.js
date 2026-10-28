@@ -191,7 +191,9 @@ export const loginUser = async (req, res) => {
         // Find User
         const user = await User.findOne({
             email: email.toLowerCase(),
-        }).select("+password");
+        }).select("+password")
+          .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
+          .populate("dottedManagerId", "fullName firstName lastName email designation department profilePicture employeeId");
 
         if (!user) {
             return res.status(404).json({
@@ -320,7 +322,10 @@ export const getUpcomingBirthdays = async (req, res) => {
 export const getCurrentUser = async (req, res, next) => {
     try {
         const userId = req.user.userId || req.user.id;
-        const user = await User.findById(userId).select("-password");
+        const user = await User.findById(userId)
+            .select("-password")
+            .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
+            .populate("dottedManagerId", "fullName firstName lastName email designation department profilePicture employeeId");
         if (!user) {
             return res.status(404).json({
                 success: false,

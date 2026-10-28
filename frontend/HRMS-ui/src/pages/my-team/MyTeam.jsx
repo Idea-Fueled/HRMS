@@ -281,6 +281,7 @@ const TeamMembersTab = () => {
 
     const [loading, setLoading] = useState(true);
     const [employees, setEmployees] = useState([]);
+    const [reportingManager, setReportingManager] = useState(null);
     const [error, setError] = useState(null);
     const [view, setView] = useState("card");
     const [search, setSearch] = useState("");
@@ -304,7 +305,10 @@ const TeamMembersTab = () => {
             setError(null);
             const res = await getTeamMembers();
             if (res.data.success) {
-                setEmployees(res.data.members);
+                setEmployees(res.data.members || []);
+                if (res.data.reportingManager) {
+                    setReportingManager(res.data.reportingManager);
+                }
             } else {
                 setError(res.data.message || "Failed to load team members");
             }
@@ -379,25 +383,35 @@ const TeamMembersTab = () => {
     const currentUserDept = (user?.department || "").trim().toLowerCase();
     const currentUserManagerId = typeof user?.managerId === "object" ? user?.managerId?._id?.toString() : user?.managerId?.toString();
 
-    // Resolve reporting manager object if available
-    const rawManager = (typeof user?.managerId === "object" && user?.managerId !== null)
-        ? user.managerId
-        : employees.find(e => e._id === user?.managerId || e.id === user?.managerId);
+    const isObjectId = (val) => typeof val === "string" && /^[0-9a-fA-F]{24}$/.test(val.trim());
+
+    const getCleanName = (name) => {
+        if (!name || typeof name !== "string") return "";
+        const trimmed = name.trim();
+        if (isObjectId(trimmed) || trimmed.toLowerCase() === "none") return "";
+        return trimmed;
+    };
+
+    // Find manager from reportingManager API, user.managerId, or team members
+    const memberWithValidManager = employees.find(e => e.manager && getCleanName(e.manager));
+    const fallbackManagerName = memberWithValidManager ? memberWithValidManager.manager : (userRole !== "global_admin" ? "Rishabh Loomba" : "");
 
     const managerName = isManagementUser(user) ? "" : (
-        rawManager?.name ||
-        rawManager?.fullName ||
-        `${rawManager?.firstName || ''} ${rawManager?.lastName || ''}`.trim() ||
-        (typeof user?.managerId === "string" ? user.managerId : "") ||
-        user?.managerName ||
-        (userRole !== "global_admin" ? "Rishabh Loomba" : "")
-    ).trim();
+        getCleanName(reportingManager?.name) ||
+        getCleanName(reportingManager?.fullName) ||
+        (typeof user?.managerId === "object" && user?.managerId !== null ? (
+            getCleanName(user.managerId.fullName) ||
+            getCleanName(`${user.managerId.firstName || ""} ${user.managerId.lastName || ""}`)
+        ) : "") ||
+        getCleanName(user?.managerName) ||
+        fallbackManagerName
+    );
 
     const managerInfo = managerName ? {
         name: managerName,
-        profilePicture: rawManager?.profilePicture || "",
-        designation: rawManager?.designation || rawManager?.title || "Technical Team Lead",
-        department: rawManager?.department || rawManager?.dept || "Software Development"
+        profilePicture: reportingManager?.profilePicture || (typeof user?.managerId === "object" ? user?.managerId?.profilePicture : "") || "",
+        designation: reportingManager?.designation || (typeof user?.managerId === "object" ? user?.managerId?.designation : "") || "Technical Team Lead",
+        department: reportingManager?.department || (typeof user?.managerId === "object" ? user?.managerId?.department : "") || user?.department || "Software Development"
     } : null;
 
     // Filter
@@ -535,8 +549,10 @@ const TeamMembersTab = () => {
                                             <span className="text-gray-800 font-bold truncate max-w-[110px]" title={emp.title}>{emp.title}</span>
                                         </div>
                                         <div className="flex justify-between items-center text-[11px] font-semibold text-gray-500">
-                                            <span>Manager</span>
-                                            <span className="text-gray-700 font-bold">{emp.manager}</span>
+                                            <span>Reporting Manager</span>
+                                            <span className="text-gray-700 font-bold truncate max-w-[130px]" title={emp.manager && emp.manager !== "None" && !isObjectId(emp.manager) ? emp.manager : (managerInfo?.name || "Rishabh Loomba")}>
+                                                {emp.manager && emp.manager !== "None" && !isObjectId(emp.manager) ? emp.manager : (managerInfo?.name || "Rishabh Loomba")}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -602,7 +618,9 @@ const TeamMembersTab = () => {
                                         </td>
                                         <td className="px-6 py-3.5">{emp.dept}</td>
                                         <td className="px-6 py-3.5">{emp.title}</td>
-                                        <td className="px-6 py-3.5 text-gray-700">{emp.manager}</td>
+                                        <td className="px-6 py-3.5 text-gray-700 font-medium">
+                                            {emp.manager && emp.manager !== "None" && !isObjectId(emp.manager) ? emp.manager : (managerInfo?.name || "Rishabh Loomba")}
+                                        </td>
                                         <td className="px-6 py-3.5 font-medium">{emp.type}</td>
                                         <td className="px-6 py-3.5">
                                             <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${statusBadge(emp.status)}`}>

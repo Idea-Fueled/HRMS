@@ -171,25 +171,73 @@ export const getTeamMembers = async (req, res) => {
         const query = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {};
 
         const members = await User.find(query)
-            .populate("managerId", "fullName email designation department profilePicture")
+            .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
             .sort({ fullName: 1 });
 
-        const formattedMembers = members.map(m => ({
-            _id: m._id,
-            id: m.employeeId || `EMP-${m._id.toString().substring(0, 4).toUpperCase()}`,
-            name: m.fullName || `${m.firstName} ${m.lastName}`,
-            email: m.email,
-            profilePicture: m.profilePicture || "",
-            dept: m.department || "General",
-            title: m.designation || "Employee",
-            managerId: m.managerId ? (m.managerId._id || m.managerId) : null,
-            manager: m.managerId ? (m.managerId.fullName || `${m.managerId.firstName || ""} ${m.managerId.lastName || ""}`) : "None",
-            type: m.employementType === "full_time" ? "Full Time" : m.employementType === "intern" ? "Intern" : m.employementType === "contract" ? "Contract" : "Part Time",
-            status: m.status === "active" ? "Active" : m.status === "on_notice" ? "On Notice" : "Inactive"
-        }));
+        const formattedMembers = members.map(m => {
+            const mgrName = m.managerId 
+                ? (m.managerId.fullName || `${m.managerId.firstName || ""} ${m.managerId.lastName || ""}`.trim())
+                : "";
+            return {
+                _id: m._id,
+                id: m.employeeId || `EMP-${m._id.toString().substring(0, 4).toUpperCase()}`,
+                name: m.fullName || `${m.firstName || ""} ${m.lastName || ""}`.trim(),
+                email: m.email,
+                profilePicture: m.profilePicture || "",
+                dept: m.department || "General",
+                department: m.department || "General",
+                title: m.designation || "Employee",
+                designation: m.designation || "Employee",
+                managerId: m.managerId ? (m.managerId._id || m.managerId) : null,
+                manager: mgrName || "None",
+                managerName: mgrName || "None",
+                type: m.employementType === "full_time" ? "Full Time" : m.employementType === "intern" ? "Intern" : m.employementType === "contract" ? "Contract" : "Part Time",
+                status: m.status === "active" ? "Active" : m.status === "on_notice" ? "On Notice" : "Inactive"
+            };
+        });
+
+        // Resolve reporting manager of the caller
+        let reportingManager = null;
+        const caller = await User.findById(userId)
+            .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
+            .lean();
+
+        if (caller?.managerId && typeof caller.managerId === "object") {
+            const rmName = caller.managerId.fullName || `${caller.managerId.firstName || ""} ${caller.managerId.lastName || ""}`.trim();
+            reportingManager = {
+                _id: caller.managerId._id,
+                id: caller.managerId.employeeId,
+                name: rmName,
+                fullName: rmName,
+                email: caller.managerId.email,
+                designation: caller.managerId.designation || "Technical Team Lead",
+                department: caller.managerId.department || caller.department || "Software Development",
+                profilePicture: caller.managerId.profilePicture || ""
+            };
+        } else if (formattedMembers.length > 0) {
+            // If caller does not have direct managerId, check if team members have a common reporting manager
+            const memberWithMgr = formattedMembers.find(m => m.manager && m.manager !== "None");
+            if (memberWithMgr && memberWithMgr.managerId) {
+                const foundMgr = await User.findById(memberWithMgr.managerId).select("fullName firstName lastName email designation department profilePicture employeeId").lean();
+                if (foundMgr) {
+                    const rmName = foundMgr.fullName || `${foundMgr.firstName || ""} ${foundMgr.lastName || ""}`.trim();
+                    reportingManager = {
+                        _id: foundMgr._id,
+                        id: foundMgr.employeeId,
+                        name: rmName,
+                        fullName: rmName,
+                        email: foundMgr.email,
+                        designation: foundMgr.designation || "Technical Team Lead",
+                        department: foundMgr.department || caller?.department || "Software Development",
+                        profilePicture: foundMgr.profilePicture || ""
+                    };
+                }
+            }
+        }
 
         return res.status(200).json({
             success: true,
+            reportingManager,
             members: formattedMembers
         });
     } catch (err) {
