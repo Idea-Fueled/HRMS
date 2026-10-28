@@ -65,6 +65,13 @@ const useResponsivePageSize = (viewMode) => {
     return 10;
 };
 
+const statusBadge = (status) => {
+    const s = (status || "").toLowerCase();
+    if (s === "active") return "bg-emerald-50 text-emerald-700 border-emerald-100";
+    if (s === "on notice") return "bg-amber-50 text-amber-700 border-amber-100";
+    return "bg-gray-50 text-gray-500 border-gray-100";
+};
+
 /* ─────────────────────────────────────────────
    REUSABLE CONTAINER CARDS
 ───────────────────────────────────────────── */
@@ -364,12 +371,6 @@ const TeamMembersTab = () => {
         } else {
             toast.info(`${action} clicked for ${emp.name || emp}`);
         }
-    };
-
-    const statusBadge = (status) => {
-        if (status === "Active") return "bg-emerald-50 text-emerald-700 border-emerald-100";
-        if (status === "On Notice") return "bg-amber-50 text-amber-700 border-amber-100";
-        return "bg-gray-50 text-gray-500 border-gray-100";
     };
 
     const handleSort = (field) => {
