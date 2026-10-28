@@ -411,41 +411,99 @@ export const getTeamLeaves = async (req, res) => {
 
         const hrVisibleIds = await getHrVisibleFilter(userId);
         const leaveQuery = hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {};
+        const memberQuery = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : { status: "active" };
 
-        const leaves = await Leave.find(leaveQuery)
-            .populate("employeeId", "fullName department profilePicture")
-            .sort({ createdAt: -1 });
+        const [leaves, teamMembers] = await Promise.all([
+            Leave.find(leaveQuery)
+                .populate("employeeId", "fullName firstName lastName employeeId department designation profilePicture")
+                .sort({ createdAt: -1 }),
+            User.find(memberQuery)
+                .select("fullName firstName lastName employeeId department designation profilePicture leaveBalance status")
+                .sort({ fullName: 1 })
+                .lean()
+        ]);
+
+        const memberBalances = teamMembers.map(m => {
+            const cl = m.leaveBalance?.casual || { total: 2.5, used: 0 };
+            const sl = m.leaveBalance?.sick || { total: 6, used: 0 };
+            const el = m.leaveBalance?.earned || { total: 5, used: 0 };
+            const co = m.leaveBalance?.compOff || { total: 0, used: 0 };
+
+            const clRem = Math.max(0, (cl.total ?? 2.5) - (cl.used ?? 0));
+            const slRem = Math.max(0, (sl.total ?? 6) - (sl.used ?? 0));
+            const elRem = Math.max(0, (el.total ?? 5) - (el.used ?? 0));
+            const coRem = Math.max(0, (co.total ?? 0) - (co.used ?? 0));
+
+            const totalAllocated = (cl.total ?? 2.5) + (sl.total ?? 6) + (el.total ?? 5) + (co.total ?? 0);
+            const totalUsed = (cl.used ?? 0) + (sl.used ?? 0) + (el.used ?? 0) + (co.used ?? 0);
+            const totalRemaining = clRem + slRem + elRem + coRem;
+
+            return {
+                _id: m._id,
+                id: m.employeeId || `EMP-${m._id.toString().substring(0, 4).toUpperCase()}`,
+                name: m.fullName || `${m.firstName || ""} ${m.lastName || ""}`.trim(),
+                department: m.department || "General",
+                designation: m.designation || "Staff Member",
+                profilePicture: m.profilePicture || "",
+                status: m.status || "active",
+                casual: { total: cl.total ?? 2.5, used: cl.used ?? 0, remaining: clRem },
+                sick: { total: sl.total ?? 6, used: sl.used ?? 0, remaining: slRem },
+                earned: { total: el.total ?? 5, used: el.used ?? 0, remaining: elRem },
+                compOff: { total: co.total ?? 0, used: co.used ?? 0, remaining: coRem },
+                summary: {
+                    totalAllocated,
+                    totalUsed,
+                    totalRemaining: Math.round(totalRemaining * 10) / 10
+                }
+            };
+        });
 
         const formattedLeaves = leaves.map(l => {
-            const name = l.employeeId ? l.employeeId.fullName : "Unknown Employee";
-            const dept = l.employeeId ? l.employeeId.department : "General";
-            
+            const emp = l.employeeId;
+            const name = emp ? (emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`.trim()) : "Unknown Employee";
+            const code = emp ? emp.employeeId : "";
+            const dept = emp ? emp.department : "General";
+            const designation = emp ? emp.designation : "";
+            const profilePicture = emp ? emp.profilePicture : "";
+
             let displayType = "Casual Leave";
             if (l.leaveType === "sick_leave") displayType = "Sick Leave";
             else if (l.leaveType === "earned_leave") displayType = "Earned Leave";
             else if (l.leaveType === "unpaid_leave") displayType = "Unpaid Leave";
+            else if (l.leaveType === "partial_leave") displayType = "Partial Day";
+            else if (l.leaveType === "comp_off" || l.leaveType === "comp_off_leave") displayType = "Comp Off";
 
-            const startStr = new Date(l.startDate).toISOString().split("T")[0];
-            const endStr = new Date(l.endDate).toISOString().split("T")[0];
+            const startStr = l.startDate ? new Date(l.startDate).toISOString().split("T")[0] : "";
+            const endStr = l.endDate ? new Date(l.endDate).toISOString().split("T")[0] : "";
 
-            const start = new Date(l.startDate);
-            const end = new Date(l.endDate);
-            const diffTime = Math.abs(end - start);
             const days = l.totalDays !== undefined && l.totalDays !== null && !isNaN(l.totalDays)
                 ? l.totalDays
-                : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                : 1;
 
             return {
                 _id: l._id,
+                employeeId: emp?._id,
                 name,
+                code,
                 dept,
-                profilePicture: l.employeeId ? l.employeeId.profilePicture : "",
+                designation,
+                profilePicture,
                 type: displayType,
+                leaveType: displayType,
+                rawType: l.leaveType,
                 start: startStr,
                 end: endStr,
+                startDate: l.startDate,
+                endDate: l.endDate,
+                partialTiming: l.partialTiming || (l.partialMinutes ? `${l.partialMinutes} mins` : ""),
+                totalDays: days,
                 duration: `${days} Day${days !== 1 ? 's' : ''}`,
-                status: l.status.charAt(0).toUpperCase() + l.status.slice(1),
-                reason: l.reason
+                status: l.status.charAt(0).toUpperCase() + l.status.slice(1).toLowerCase(),
+                rawStatus: l.status.toLowerCase(),
+                reason: l.reason || "No reason specified",
+                remarks: l.remarks || "",
+                appliedDate: l.createdAt ? new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" }) : "—",
+                createdAt: l.createdAt
             };
         });
 
@@ -463,6 +521,7 @@ export const getTeamLeaves = async (req, res) => {
         return res.status(200).json({
             success: true,
             stats: { pending, approved, rejected, onLeave },
+            teamBalances: memberBalances,
             leaves: formattedLeaves
         });
     } catch (err) {

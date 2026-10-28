@@ -209,6 +209,23 @@ export const EmployeeProfile = () => {
     const userRole = (currentUser?.role || "employee").toLowerCase();
 
     // Check employee visibility assignment
+    const isReportingManager = useMemo(() => {
+        if (!currentUser || !employee) return false;
+        const currentUserId = (currentUser._id || currentUser.id || "").toString();
+        const currentEmpId = (currentUser.employeeId || "").toString().toLowerCase();
+        const currentUserName = (currentUser.fullName || `${currentUser.firstName || ""} ${currentUser.lastName || ""}`).trim().toLowerCase();
+
+        const empMgrId = (typeof employee.managerId === "object" ? employee.managerId?._id : employee.managerId || "").toString();
+        const empDottedMgrId = (typeof employee.dottedManagerId === "object" ? employee.dottedManagerId?._id : employee.dottedManagerId || "").toString();
+        const empMgrName = (typeof employee.managerId === "object" ? employee.managerId?.fullName : (employee.manager || "")).trim().toLowerCase();
+
+        return (
+            (empMgrId && (empMgrId === currentUserId || empMgrId.toLowerCase() === currentEmpId)) ||
+            (empDottedMgrId && (empDottedMgrId === currentUserId || empDottedMgrId.toLowerCase() === currentEmpId)) ||
+            (empMgrName && currentUserName && (empMgrName === currentUserName || currentUserName.includes(empMgrName) || empMgrName.includes(currentUserName)))
+        );
+    }, [currentUser, employee]);
+
     const isAssigned = useMemo(() => {
         // 1. Global Admin always has full access
         if (userRole === "global_admin" || userRole === "admin") return true;
@@ -216,7 +233,10 @@ export const EmployeeProfile = () => {
         // 2. Own Profile -> full access
         if (isOwnProfile) return true;
 
-        // 3. For HR user:
+        // 3. Manager viewing their team member
+        if ((userRole === "manager" || userRole === "management") && isReportingManager) return true;
+
+        // 4. For HR user:
         if (userRole === "hr") {
             const list = currentUser?.visibleEmployees;
             // If HR has no specific visibleEmployees list configured -> Unrestricted access
@@ -233,14 +253,14 @@ export const EmployeeProfile = () => {
 
         // Regular employees viewing other profiles get public view only
         return false;
-    }, [currentUser, employee, id, isOwnProfile, userRole]);
+    }, [currentUser, employee, id, isOwnProfile, userRole, isReportingManager]);
 
     const canEdit = isOwnProfile || ((userRole === "global_admin" || userRole === "admin" || userRole === "hr") && isAssigned);
     const canDelete = (userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned));
-    const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
-    const canViewAttendanceAndLeaves = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
-    const canEditLeaves = userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
-    const canViewProfileCompletion = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned);
+    const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
+    const canViewAttendanceAndLeaves = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
+    const canEditLeaves = userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
+    const canViewProfileCompletion = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
 
 
     // Fetch employee data from MongoDB

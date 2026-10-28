@@ -25,7 +25,12 @@ import {
     ArrowLeft,
     CheckCircle2,
     Home,
-    ShieldAlert
+    ShieldAlert,
+    PieChart,
+    MessageSquare,
+    AlertCircle,
+    Info,
+    XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { ViewToggle, SkeletonLoader, EmptyState, SearchBar, Pagination, SortHeader, Avatar } from "../../components/SharedComponents";
@@ -689,7 +694,7 @@ const TeamMembersTab = () => {
                     }}
                     className="w-36 bg-white border border-gray-100 rounded-[12px] shadow-xl py-1 z-50 text-left animate-in fade-in slide-in-from-top-1 duration-150"
                 >
-                    {["View Profile", "Edit Employee", "View Attendance", "View Leaves"].map((act) => (
+                    {["View Profile", "Edit Employee"].map((act) => (
                         <button
                             key={act}
                             onClick={() => {
@@ -2080,22 +2085,109 @@ const TeamAttendanceTab = () => {
 /* ─────────────────────────────────────────────
    4. TEAM LEAVES TAB
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   4. TEAM LEAVES TAB (BALANCES & HISTORY)
+───────────────────────────────────────────── */
+
+const MemberLeaveDonut = ({ member }) => {
+    const cl = member?.casual?.remaining || 0;
+    const sl = member?.sick?.remaining || 0;
+    const el = member?.earned?.remaining || 0;
+    const co = member?.compOff?.remaining || 0;
+    const used = member?.summary?.totalUsed || 0;
+    const totalAllocated = member?.summary?.totalAllocated || (cl + sl + el + co + used) || 1;
+    const totalRemaining = member?.summary?.totalRemaining ?? (cl + sl + el + co);
+
+    const radius = 38;
+    const circumference = 2 * Math.PI * radius; // ~238.76
+
+    const segments = [
+        { label: "Casual", value: cl, color: "#3B82F6" },
+        { label: "Sick", value: sl, color: "#F59E0B" },
+        { label: "Earned", value: el, color: "#10B981" },
+        { label: "Comp Off", value: co, color: "#8B5CF6" },
+        { label: "Used", value: used, color: "#E2E8F0" }
+    ].filter(s => s.value > 0);
+
+    let accumulatedOffset = 0;
+
+    return (
+        <div className="relative flex items-center justify-center w-28 h-28 flex-shrink-0">
+            <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                {/* Background Track Ring */}
+                <circle
+                    cx="50"
+                    cy="50"
+                    r={radius}
+                    fill="transparent"
+                    stroke="#F1F5F9"
+                    strokeWidth="9"
+                />
+                {segments.map((seg, idx) => {
+                    const strokeDash = (seg.value / totalAllocated) * circumference;
+                    const offset = accumulatedOffset;
+                    accumulatedOffset += strokeDash;
+                    return (
+                        <circle
+                            key={idx}
+                            cx="50"
+                            cy="50"
+                            r={radius}
+                            fill="transparent"
+                            stroke={seg.color}
+                            strokeWidth="9"
+                            strokeDasharray={`${strokeDash} ${circumference}`}
+                            strokeDashoffset={-offset}
+                            strokeLinecap="round"
+                            className="transition-all duration-500 ease-out"
+                        />
+                    );
+                })}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                <span className="text-[17px] font-black font-mono text-[#1E1E1E] leading-none">
+                    {totalRemaining}
+                </span>
+                <span className="text-[8px] font-extrabold uppercase tracking-wider text-gray-400 mt-0.5">
+                    Days Left
+                </span>
+            </div>
+        </div>
+    );
+};
+
 const TeamLeavesTab = () => {
     const [loading, setLoading] = useState(true);
-    const [leavesData, setLeavesData] = useState({ stats: null, leaves: [] });
+    const [leavesData, setLeavesData] = useState({ stats: null, teamBalances: [], leaves: [] });
     const [error, setError] = useState(null);
+
+    // Member Balances Search
+    const [memberSearch, setMemberSearch] = useState("");
+
+    // Leave History Controls
+    const [historySearch, setHistorySearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [typeFilter, setTypeFilter] = useState("all");
     const [view, setView] = useState("list");
-    const [search, setSearch] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [sortField, setSortField] = useState("name");
-    const [sortDir, setSortDir] = useState("asc");
+    const [sortField, setSortField] = useState("appliedDate");
+    const [sortDir, setSortDir] = useState("desc");
+
+    // Modal state for Approve/Reject with remarks
+    const [actionModal, setActionModal] = useState({
+        isOpen: false,
+        leave: null,
+        status: "",
+        remarks: "",
+        isSubmitting: false
+    });
 
     const itemsPerPage = useResponsivePageSize(view);
 
     const statusColors = {
-        "Pending": "bg-amber-50 text-amber-700 border-amber-100",
-        "Approved": "bg-emerald-50 text-emerald-700 border-emerald-100",
-        "Rejected": "bg-rose-50 text-rose-700 border-rose-100"
+        "Pending": "bg-amber-50 text-amber-700 border-amber-200",
+        "Approved": "bg-emerald-50 text-emerald-700 border-emerald-200",
+        "Rejected": "bg-rose-50 text-rose-700 border-rose-200"
     };
 
     const fetchLeaves = async () => {
@@ -2105,8 +2197,9 @@ const TeamLeavesTab = () => {
             const res = await getTeamLeaves();
             if (res.data.success) {
                 setLeavesData({
-                    stats: res.data.stats,
-                    leaves: res.data.leaves
+                    stats: res.data.stats || null,
+                    teamBalances: res.data.teamBalances || [],
+                    leaves: res.data.leaves || []
                 });
             } else {
                 setError(res.data.message || "Failed to load team leave requests.");
@@ -2123,20 +2216,33 @@ const TeamLeavesTab = () => {
         fetchLeaves();
     }, []);
 
-    const handleAction = async (leaveId, newStatus) => {
+    const openActionDialog = (leave, status) => {
+        setActionModal({
+            isOpen: true,
+            leave,
+            status,
+            remarks: "",
+            isSubmitting: false
+        });
+    };
+
+    const handleConfirmAction = async () => {
+        if (!actionModal.leave) return;
         try {
-            const loadingToast = toast.loading(`Updating leave request to ${newStatus.toLowerCase()}...`);
-            const res = await updateLeaveStatus(leaveId, newStatus);
-            toast.dismiss(loadingToast);
-            if (res.data.success) {
-                toast.success(`Leave request ${newStatus.toLowerCase()} successfully.`);
+            setActionModal(prev => ({ ...prev, isSubmitting: true }));
+            const res = await updateLeaveStatus(actionModal.leave._id, actionModal.status, actionModal.remarks);
+            if (res.data?.success) {
+                toast.success(`Leave request ${actionModal.status} successfully.`);
+                setActionModal({ isOpen: false, leave: null, status: "", remarks: "", isSubmitting: false });
                 fetchLeaves();
             } else {
-                toast.error(res.data.message || `Failed to update leave to ${newStatus}.`);
+                toast.error(res.data?.message || `Failed to update leave to ${actionModal.status}.`);
+                setActionModal(prev => ({ ...prev, isSubmitting: false }));
             }
         } catch (err) {
             console.error(err);
             toast.error(err.response?.data?.message || err.message || "Failed to update leave status.");
+            setActionModal(prev => ({ ...prev, isSubmitting: false }));
         }
     };
 
@@ -2147,188 +2253,618 @@ const TeamLeavesTab = () => {
         setCurrentPage(1);
     };
 
-    const filtered = leavesData.leaves.filter(l => 
-        l.name.toLowerCase().includes(search.toLowerCase()) || 
-        l.type.toLowerCase().includes(search.toLowerCase())
-    );
+    // Filtered Balances
+    const filteredBalances = useMemo(() => {
+        if (!leavesData.teamBalances) return [];
+        if (!memberSearch.trim()) return leavesData.teamBalances;
+        const q = memberSearch.toLowerCase();
+        return leavesData.teamBalances.filter(m =>
+            m.name.toLowerCase().includes(q) ||
+            (m.id && m.id.toLowerCase().includes(q)) ||
+            (m.department && m.department.toLowerCase().includes(q)) ||
+            (m.designation && m.designation.toLowerCase().includes(q))
+        );
+    }, [leavesData.teamBalances, memberSearch]);
 
-    const sorted = [...filtered].sort((a, b) => {
-        let valA = a[sortField];
-        let valB = b[sortField];
-        return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    });
+    // Filtered Leave History
+    const filteredLeaves = useMemo(() => {
+        if (!leavesData.leaves) return [];
+        return leavesData.leaves.filter(l => {
+            const q = historySearch.toLowerCase();
+            const matchesSearch = !historySearch.trim() || 
+                l.name.toLowerCase().includes(q) ||
+                (l.code && l.code.toLowerCase().includes(q)) ||
+                l.type.toLowerCase().includes(q) ||
+                (l.reason && l.reason.toLowerCase().includes(q));
 
-    const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+            const matchesStatus = statusFilter === "all" || l.status.toLowerCase() === statusFilter.toLowerCase();
+            const matchesType = typeFilter === "all" || l.type.toLowerCase() === typeFilter.toLowerCase();
+            return matchesSearch && matchesStatus && matchesType;
+        });
+    }, [leavesData.leaves, historySearch, statusFilter, typeFilter]);
+
+    const sortedLeaves = useMemo(() => {
+        return [...filteredLeaves].sort((a, b) => {
+            let valA = a[sortField] || "";
+            let valB = b[sortField] || "";
+            if (sortField === "appliedDate" || sortField === "createdAt") {
+                valA = new Date(a.createdAt || a.startDate || 0).getTime();
+                valB = new Date(b.createdAt || b.startDate || 0).getTime();
+                return sortDir === "asc" ? valA - valB : valB - valA;
+            }
+            if (typeof valA === "string") {
+                return sortDir === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+            return sortDir === "asc" ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
+        });
+    }, [filteredLeaves, sortField, sortDir]);
+
+    const paginatedLeaves = useMemo(() => {
+        return sortedLeaves.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    }, [sortedLeaves, currentPage, itemsPerPage]);
 
     if (error) {
         return <ErrorAlert message={error} onRetry={fetchLeaves} />;
     }
 
     return (
-        <div className="space-y-6">
-            {/* Stat Cards - Exactly 3 columns on desktop */}
+        <div className="space-y-8 animate-fadeIn">
+            {/* Stat Cards Overview */}
             {leavesData.stats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 animate-fadeIn">
-                    <MiniStatCard title="Pending Requests" value={leavesData.stats.pending} change="Action" isPositive={false} />
-                    <MiniStatCard title="Approved Leaves" value={leavesData.stats.approved} change="Approved" isPositive={true} />
-                    <MiniStatCard title="Rejected Leaves" value={leavesData.stats.rejected} change="Rejected" isPositive={true} />
-                    <MiniStatCard title="Employees On Leave" value={leavesData.stats.onLeave} change="Today" isPositive={false} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5">
+                    <MiniStatCard title="Pending Requests" value={leavesData.stats.pending} change="Requires Action" isPositive={false} />
+                    <MiniStatCard title="Approved Leaves" value={leavesData.stats.approved} change="Approved Total" isPositive={true} />
+                    <MiniStatCard title="Rejected Leaves" value={leavesData.stats.rejected} change="Declined Total" isPositive={false} />
+                    <MiniStatCard title="Employees On Leave" value={leavesData.stats.onLeave} change="Currently Away" isPositive={false} />
                 </div>
             )}
 
-            {/* Controls */}
-            <div className="premium-3d-card-mini flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 animate-fadeIn">
-                <SearchBar value={search} onChange={(val) => { setSearch(val); setCurrentPage(1); }} placeholder="Search name or type..." />
-                <ViewToggle view={view} onViewChange={setView} />
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 1: TEAM LEAVE BALANCES (PIE / DONUT PER MEMBER)
+            ═══════════════════════════════════════════════════════════════ */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <PieChart className="w-4 h-4 text-[#2D79C7]" />
+                            <h3 className="text-[#1E1E1E] text-base font-black tracking-tight">Team Leave Balances</h3>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#2D79C7] border border-blue-100">
+                                {filteredBalances.length} Member{filteredBalances.length !== 1 ? 's' : ''}
+                            </span>
+                        </div>
+                        <p className="text-gray-400 text-xs font-medium mt-0.5">
+                            Visual breakdown of remaining versus allocated leave balances for each team member
+                        </p>
+                    </div>
+
+                    <div className="w-full sm:w-64">
+                        <SearchBar
+                            value={memberSearch}
+                            onChange={(val) => setMemberSearch(val)}
+                            placeholder="Search member, ID, dept..."
+                        />
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <SkeletonLoader type="card" />
+                        <SkeletonLoader type="card" />
+                    </div>
+                ) : filteredBalances.length === 0 ? (
+                    <Card className="p-8 text-center bg-gray-50/50">
+                        <p className="text-gray-400 text-xs font-semibold">No team members match your balance search.</p>
+                    </Card>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4.5">
+                        {filteredBalances.map((m) => {
+                            const totCL = m.casual?.total ?? 2.5;
+                            const remCL = m.casual?.remaining ?? 2.5;
+                            const totSL = m.sick?.total ?? 6;
+                            const remSL = m.sick?.remaining ?? 6;
+                            const totEL = m.earned?.total ?? 5;
+                            const remEL = m.earned?.remaining ?? 5;
+                            const totCO = m.compOff?.total ?? 0;
+                            const remCO = m.compOff?.remaining ?? 0;
+
+                            return (
+                                <Card key={m._id} className="p-5 border border-gray-100 hover:border-blue-200/70 transition-all hover:shadow-md">
+                                    {/* Member Header */}
+                                    <div className="flex items-start justify-between pb-4 border-b border-gray-100/80">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar name={m.name} src={m.profilePicture} size="w-11 h-11" textSize="text-xs" />
+                                            <div className="flex flex-col text-left">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="text-[#1E1E1E] text-sm font-black tracking-tight">{m.name}</h4>
+                                                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                                                        {m.id}
+                                                    </span>
+                                                </div>
+                                                <span className="text-gray-400 text-xs font-semibold mt-0.5">
+                                                    {m.designation || "Staff"} • <span className="text-gray-500">{m.department || "General"}</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusBadge(m.status)}`}>
+                                            {m.status || "Active"}
+                                        </span>
+                                    </div>
+
+                                    {/* Donut Chart & Quota Breakdown */}
+                                    <div className="flex flex-col sm:flex-row items-center gap-5 pt-4">
+                                        {/* Donut Chart */}
+                                        <div className="flex flex-col items-center">
+                                            <MemberLeaveDonut member={m} />
+                                            <span className="text-[10px] font-bold text-gray-500 mt-1.5">
+                                                {m.summary?.totalUsed || 0} Days Consumed
+                                            </span>
+                                        </div>
+
+                                        {/* Detailed Quotas Grid */}
+                                        <div className="flex-1 w-full space-y-2 text-left">
+                                            {/* Casual Leave */}
+                                            <div className="p-2 rounded-lg bg-blue-50/40 border border-blue-100/60 flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                                                    <span className="font-bold text-gray-700">Casual Leave (CL)</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 font-mono">
+                                                    <span className="font-extrabold text-[#1E1E1E]">{remCL}</span>
+                                                    <span className="text-gray-400 text-[10px]">/ {totCL}</span>
+                                                    {m.casual?.used > 0 && (
+                                                        <span className="text-[9px] font-semibold text-gray-400">({m.casual.used} used)</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Sick Leave */}
+                                            <div className="p-2 rounded-lg bg-amber-50/40 border border-amber-100/60 flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+                                                    <span className="font-bold text-gray-700">Sick Leave (SL)</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 font-mono">
+                                                    <span className="font-extrabold text-[#1E1E1E]">{remSL}</span>
+                                                    <span className="text-gray-400 text-[10px]">/ {totSL}</span>
+                                                    {m.sick?.used > 0 && (
+                                                        <span className="text-[9px] font-semibold text-gray-400">({m.sick.used} used)</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Earned Leave */}
+                                            <div className="p-2 rounded-lg bg-emerald-50/40 border border-emerald-100/60 flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+                                                    <span className="font-bold text-gray-700">Earned Leave (EL)</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 font-mono">
+                                                    <span className="font-extrabold text-[#1E1E1E]">{remEL}</span>
+                                                    <span className="text-gray-400 text-[10px]">/ {totEL}</span>
+                                                    {m.earned?.used > 0 && (
+                                                        <span className="text-[9px] font-semibold text-gray-400">({m.earned.used} used)</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Comp Off */}
+                                            <div className="p-2 rounded-lg bg-violet-50/40 border border-violet-100/60 flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-[#8B5CF6]" />
+                                                    <span className="font-bold text-gray-700">Comp Off (CO)</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 font-mono">
+                                                    <span className="font-extrabold text-[#1E1E1E]">{remCO}</span>
+                                                    <span className="text-gray-400 text-[10px]">/ {totCO}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Member Footer Summary */}
+                                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-gray-500">
+                                        <span>Total Quota: <strong className="text-gray-800 font-mono">{m.summary?.totalAllocated || 0}</strong></span>
+                                        <span>Remaining: <strong className="text-[#2D79C7] font-mono">{m.summary?.totalRemaining || 0}</strong></span>
+                                        <span>Used: <strong className="text-rose-600 font-mono">{m.summary?.totalUsed || 0}</strong></span>
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
-            {loading ? (
-                <SkeletonLoader type={view === "card" ? "card" : "table"} />
-            ) : filtered.length === 0 ? (
-                <EmptyState message="No leave requests available" description="There are no leave applications matching your query." />
-            ) : view === "card" ? (
-                // CARD VIEW
-                <div className="space-y-6 animate-fadeIn">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {paginated.map((l) => (
-                            <Card key={l._id} className="p-5 flex flex-col justify-between h-[280px]">
-                                <div>
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar name={l.name} src={l.profilePicture} size="w-10 h-10" />
-                                            <div className="flex flex-col text-left">
-                                                <h4 className="text-[#1E1E1E] text-xs font-black block truncate max-w-[130px]">{l.name}</h4>
-                                                <span className="text-[#2D79C7] text-[10px] font-bold block">{l.type}</span>
-                                            </div>
-                                        </div>
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none ${statusColors[l.status] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
-                                            {l.status}
-                                        </span>
-                                    </div>
-                                    <p className="text-gray-500 text-[11px] leading-relaxed text-left mt-3.5 line-clamp-2 h-[34px]" title={l.reason}>
-                                        "{l.reason}"
-                                    </p>
-                                    <div className="mt-4 space-y-1.5 text-left border-t border-gray-50 pt-3 text-[11px] font-semibold text-gray-500">
-                                        <div className="flex justify-between">
-                                            <span>Duration</span>
-                                            <span className="text-gray-800 font-bold font-mono">{l.duration}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Date range</span>
-                                            <span className="text-gray-800 font-bold font-mono">{l.start} to {l.end}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 pt-3 border-t border-[#F3F4F6]">
-                                    {l.status === "Pending" ? (
-                                        <>
-                                            <button
-                                                onClick={() => handleAction(l._id, "approved")}
-                                                className="flex-1 py-1.5 bg-[#2E7D32]/10 hover:bg-[#2E7D32]/25 text-[#2E7D32] border border-[#2E7D32]/20 rounded-[8px] text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 focus:outline-none"
-                                            >
-                                                <Check className="w-3.5 h-3.5" />
-                                                <span>Approve</span>
-                                            </button>
-                                            <button
-                                                onClick={() => handleAction(l._id, "rejected")}
-                                                className="flex-1 py-1.5 bg-[#C62828]/10 hover:bg-[#C62828]/25 text-[#C62828] border border-[#C62828]/20 rounded-[8px] text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 focus:outline-none"
-                                            >
-                                                <X className="w-3.5 h-3.5" />
-                                                <span>Reject</span>
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <span className="text-[10px] font-extrabold text-gray-400 select-none text-center w-full uppercase tracking-wider">
-                                            Decision logged
-                                        </span>
-                                    )}
-                                </div>
-                            </Card>
-                        ))}
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 2: LEAVES HISTORY & REQUESTS (TABLE VIEW)
+            ═══════════════════════════════════════════════════════════════ */}
+            <div className="space-y-4 pt-4 border-t border-gray-200/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-[#2D79C7]" />
+                            <h3 className="text-[#1E1E1E] text-base font-black tracking-tight">Team Leave Requests & History</h3>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                                {filteredLeaves.length} Application{filteredLeaves.length !== 1 ? 's' : ''}
+                            </span>
+                        </div>
+                        <p className="text-gray-400 text-xs font-medium mt-0.5">
+                            Manage leave requests, review applicant details, reason, date duration, and approve or reject
+                        </p>
                     </div>
-                    <Pagination total={filtered.length} limit={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
+
+                    <ViewToggle view={view} onViewChange={setView} />
                 </div>
-            ) : (
-                // LIST VIEW
-                <Card className="animate-fadeIn">
-                    <div className="overflow-x-auto w-full">
-                        <table className="w-full border-collapse text-left whitespace-nowrap">
-                            <thead>
-                                <tr className="border-b border-[#F3F4F6] text-gray-400 text-[10px] font-extrabold uppercase tracking-wider select-none">
-                                    <th className="px-6 py-4">
-                                        <SortHeader label="Employee" field="name" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    </th>
-                                    <th className="px-6 py-4">
-                                        <SortHeader label="Leave Type" field="type" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    </th>
-                                    <th className="px-6 py-4">
-                                        <SortHeader label="Start Date" field="start" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    </th>
-                                    <th className="px-6 py-4">
-                                        <SortHeader label="End Date" field="end" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    </th>
-                                    <th className="px-6 py-4">
-                                        <SortHeader label="Duration" field="duration" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    </th>
-                                    <th className="px-6 py-4">Reason description</th>
-                                    <th className="px-6 py-4">
-                                        <SortHeader label="Status" field="status" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                                    </th>
-                                    <th className="px-6 py-4 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#F9FAFB] text-xs font-semibold text-gray-600">
-                                {paginated.map((l) => (
-                                    <tr key={l._id} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-3.5">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar name={l.name} src={l.profilePicture} size="w-8 h-8" />
-                                                <span className="text-[#1E1E1E] font-bold block">{l.name}</span>
+
+                {/* Filter and Search Bar */}
+                <div className="premium-3d-card-mini flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between p-3.5">
+                    <div className="flex-1 min-w-[200px]">
+                        <SearchBar
+                            value={historySearch}
+                            onChange={(val) => { setHistorySearch(val); setCurrentPage(1); }}
+                            placeholder="Search applicant name, employee ID, reason..."
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* Status Filter */}
+                        <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200/60 text-xs font-bold text-gray-600">
+                            {["all", "pending", "approved", "rejected"].map((st) => (
+                                <button
+                                    key={st}
+                                    onClick={() => { setStatusFilter(st); setCurrentPage(1); }}
+                                    className={`px-2.5 py-1 rounded-lg capitalize transition-all cursor-pointer ${
+                                        statusFilter === st 
+                                            ? "bg-white text-[#2D79C7] shadow-sm font-extrabold" 
+                                            : "hover:text-gray-900"
+                                    }`}
+                                >
+                                    {st}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Leave Type Filter */}
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
+                            className="bg-white border border-gray-200/80 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2D79C7]/20"
+                        >
+                            <option value="all">All Leave Types</option>
+                            <option value="Casual Leave">Casual Leave</option>
+                            <option value="Sick Leave">Sick Leave</option>
+                            <option value="Earned Leave">Earned Leave</option>
+                            <option value="Partial Day">Partial Day</option>
+                            <option value="Comp Off">Comp Off</option>
+                            <option value="Unpaid Leave">Unpaid Leave</option>
+                        </select>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <SkeletonLoader type={view === "card" ? "card" : "table"} />
+                ) : filteredLeaves.length === 0 ? (
+                    <EmptyState
+                        message="No leave applications found"
+                        description="There are no leave requests matching your current filter criteria."
+                    />
+                ) : view === "card" ? (
+                    // CARD VIEW
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                            {paginatedLeaves.map((l) => (
+                                <Card key={l._id} className="p-4.5 flex flex-col justify-between h-[320px] border border-gray-100 hover:shadow-md transition-all">
+                                    <div>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-2.5">
+                                                <Avatar name={l.name} src={l.profilePicture} size="w-9 h-9" />
+                                                <div className="flex flex-col text-left">
+                                                    <h4 className="text-[#1E1E1E] text-xs font-black truncate max-w-[130px]">{l.name}</h4>
+                                                    <span className="text-gray-400 text-[10px] font-mono">{l.code || "EMP"}</span>
+                                                </div>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-3.5 font-bold text-[#2D79C7]">{l.type}</td>
-                                        <td className="px-6 py-3.5 font-mono text-gray-700">{l.start}</td>
-                                        <td className="px-6 py-3.5 font-mono text-gray-700">{l.end}</td>
-                                        <td className="px-6 py-3.5 font-mono text-gray-500 font-bold">{l.duration}</td>
-                                        <td className="px-6 py-3.5 max-w-xs truncate text-gray-500 font-medium" title={l.reason}>
-                                            {l.reason}
-                                        </td>
-                                        <td className="px-6 py-3.5">
-                                            <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${statusColors[l.status] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none ${statusColors[l.status] || "bg-gray-50 text-gray-600"}`}>
                                                 {l.status}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-3.5 text-center">
-                                            {l.status === "Pending" ? (
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        onClick={() => handleAction(l._id, "approved")}
-                                                        className="p-1.5 bg-[#2E7D32]/10 hover:bg-[#2E7D32]/25 text-[#2E7D32] border border-[#2E7D32]/20 rounded-lg transition-all cursor-pointer focus:outline-none"
-                                                        title="Approve"
-                                                    >
-                                                        <Check className="w-3.5 h-3.5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleAction(l._id, "rejected")}
-                                                        className="p-1.5 bg-[#C62828]/10 hover:bg-[#C62828]/25 text-[#C62828] border border-[#C62828]/20 rounded-lg transition-all cursor-pointer focus:outline-none"
-                                                        title="Reject"
-                                                    >
-                                                        <X className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[10px] font-extrabold text-gray-400 select-none uppercase tracking-wide">
-                                                    Logged
+                                        </div>
+
+                                        <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-[#2D79C7]">
+                                                {l.type}
+                                            </span>
+                                            {l.partialTiming && (
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">
+                                                    {l.partialTiming}
                                                 </span>
                                             )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                        </div>
+
+                                        <p className="text-gray-600 text-[11px] leading-relaxed text-left mt-2.5 line-clamp-2 h-[34px] italic" title={l.reason}>
+                                            "{l.reason}"
+                                        </p>
+
+                                        <div className="mt-3 space-y-1.5 text-left border-t border-gray-50 pt-2.5 text-[11px] font-semibold text-gray-500">
+                                            <div className="flex justify-between">
+                                                <span>Duration</span>
+                                                <span className="text-gray-800 font-bold font-mono">{l.duration}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Dates</span>
+                                                <span className="text-gray-800 font-bold font-mono">{l.start} → {l.end}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[10px]">
+                                                <span className="text-gray-400">Applied On</span>
+                                                <span className="text-gray-600 font-medium">{l.appliedDate || "—"}</span>
+                                            </div>
+                                            {l.remarks && (
+                                                <div className="text-[10px] text-gray-500 truncate pt-1 border-t border-gray-50" title={l.remarks}>
+                                                    <span className="font-bold">Remarks:</span> {l.remarks}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100">
+                                        {l.status === "Pending" ? (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => openActionDialog(l, "approved")}
+                                                    className="flex-1 py-1.5 bg-[#2E7D32]/10 hover:bg-[#2E7D32]/25 text-[#2E7D32] border border-[#2E7D32]/20 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                                                >
+                                                    <Check className="w-3.5 h-3.5" />
+                                                    <span>Approve</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => openActionDialog(l, "rejected")}
+                                                    className="flex-1 py-1.5 bg-[#C62828]/10 hover:bg-[#C62828]/25 text-[#C62828] border border-[#C62828]/20 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                    <span>Reject</span>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-1">
+                                                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${l.status === "Approved" ? "text-emerald-600" : "text-rose-600"}`}>
+                                                    {l.status}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                        <Pagination total={filteredLeaves.length} limit={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
                     </div>
-                    <Pagination total={filtered.length} limit={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
-                </Card>
+                ) : (
+                    // LIST / TABLE VIEW (All applied leave columns except notify)
+                    <Card className="animate-fadeIn border border-gray-100">
+                        <div className="overflow-x-auto w-full">
+                            <table className="w-full border-collapse text-left whitespace-nowrap">
+                                <thead>
+                                    <tr className="border-b border-[#F3F4F6] text-gray-400 text-[10px] font-extrabold uppercase tracking-wider select-none bg-gray-50/50">
+                                        <th className="px-5 py-3.5">
+                                            <SortHeader label="Applicant Employee" field="name" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        </th>
+                                        <th className="px-5 py-3.5">
+                                            <SortHeader label="Leave Type" field="type" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        </th>
+                                        <th className="px-5 py-3.5">
+                                            <SortHeader label="Dates (Start → End)" field="start" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        </th>
+                                        <th className="px-5 py-3.5">
+                                            <SortHeader label="Duration" field="totalDays" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        </th>
+                                        <th className="px-5 py-3.5">
+                                            <SortHeader label="Applied On" field="appliedDate" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        </th>
+                                        <th className="px-5 py-3.5">Reason for Leave</th>
+                                        <th className="px-5 py-3.5">
+                                            <SortHeader label="Status" field="status" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                                        </th>
+                                        <th className="px-5 py-3.5">Manager Remarks</th>
+                                        <th className="px-5 py-3.5 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#F9FAFB] text-xs font-semibold text-gray-600">
+                                    {paginatedLeaves.map((l) => (
+                                        <tr key={l._id} className="hover:bg-blue-50/20 transition-colors">
+                                            {/* Employee info */}
+                                            <td className="px-5 py-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <Avatar name={l.name} src={l.profilePicture} size="w-8 h-8" />
+                                                    <div className="flex flex-col text-left">
+                                                        <span className="text-[#1E1E1E] font-bold block">{l.name}</span>
+                                                        <span className="text-gray-400 text-[10px] font-mono font-bold mt-0.5">
+                                                            {l.code || "EMP"} {l.designation ? `• ${l.designation}` : ""}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Leave type */}
+                                            <td className="px-5 py-3.5">
+                                                <div className="flex flex-col items-start gap-1">
+                                                    <span className="font-bold text-[#2D79C7]">{l.type}</span>
+                                                    {l.partialTiming && (
+                                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-100">
+                                                            {l.partialTiming}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Start and End date */}
+                                            <td className="px-5 py-3.5 font-mono text-gray-700">
+                                                {l.start === l.end ? (
+                                                    <span>{l.start}</span>
+                                                ) : (
+                                                    <span>{l.start} <span className="text-gray-400">→</span> {l.end}</span>
+                                                )}
+                                            </td>
+
+                                            {/* Duration */}
+                                            <td className="px-5 py-3.5 font-mono text-gray-800 font-bold">
+                                                <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-800 text-[11px]">
+                                                    {l.duration}
+                                                </span>
+                                            </td>
+
+                                            {/* Applied Date */}
+                                            <td className="px-5 py-3.5 text-gray-500 font-medium">
+                                                {l.appliedDate || "—"}
+                                            </td>
+
+                                            {/* Reason */}
+                                            <td className="px-5 py-3.5 max-w-[220px] truncate text-gray-600 font-medium" title={l.reason}>
+                                                "{l.reason}"
+                                            </td>
+
+                                            {/* Status */}
+                                            <td className="px-5 py-3.5">
+                                                <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${statusColors[l.status] || "bg-gray-50 text-gray-600"}`}>
+                                                    {l.status}
+                                                </span>
+                                            </td>
+
+                                            {/* Remarks */}
+                                            <td className="px-5 py-3.5 max-w-[150px] truncate text-gray-400 italic text-[11px]" title={l.remarks || ""}>
+                                                {l.remarks || "—"}
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="px-5 py-3.5 text-center">
+                                                {l.status === "Pending" ? (
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <button
+                                                            onClick={() => openActionDialog(l, "approved")}
+                                                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 focus:outline-none"
+                                                            title="Approve leave request"
+                                                        >
+                                                            <Check className="w-3.5 h-3.5" />
+                                                            <span>Approve</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openActionDialog(l, "rejected")}
+                                                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 focus:outline-none"
+                                                            title="Reject leave request"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                            <span>Reject</span>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] font-extrabold text-gray-400 select-none uppercase tracking-wide">
+                                                        {l.status}
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <Pagination total={filteredLeaves.length} limit={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
+                    </Card>
+                )}
+            </div>
+
+            {/* Manager Approve / Reject Confirmation Modal */}
+            {actionModal.isOpen && actionModal.leave && (
+                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+                    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-100 p-6 space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2">
+                                {actionModal.status === "approved" ? (
+                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                        <Check className="w-4 h-4" />
+                                    </div>
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                        <X className="w-4 h-4" />
+                                    </div>
+                                )}
+                                <div>
+                                    <h3 className="text-sm font-black text-[#1E1E1E] capitalize">
+                                        {actionModal.status} Leave Request
+                                    </h3>
+                                    <span className="text-[11px] text-gray-400 font-medium">
+                                        Applicant: {actionModal.leave.name} ({actionModal.leave.code || "EMP"})
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setActionModal({ isOpen: false, leave: null, status: "", remarks: "", isSubmitting: false })}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Leave Details Brief */}
+                        <div className="p-3 bg-gray-50 rounded-xl space-y-1.5 text-xs text-gray-600 font-medium">
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">Leave Type:</span>
+                                <span className="font-bold text-[#1E1E1E]">{actionModal.leave.type}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">Dates:</span>
+                                <span className="font-bold text-[#1E1E1E] font-mono">{actionModal.leave.start} → {actionModal.leave.end}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">Duration:</span>
+                                <span className="font-bold text-[#1E1E1E] font-mono">{actionModal.leave.duration}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-400">Reason:</span>
+                                <span className="font-semibold text-gray-700 italic max-w-[240px] truncate">"{actionModal.leave.reason}"</span>
+                            </div>
+                        </div>
+
+                        {/* Optional Remarks */}
+                        <div className="space-y-1 text-left">
+                            <label className="text-xs font-bold text-gray-700">
+                                Manager Remarks / Comments <span className="text-gray-400 font-normal">(Optional)</span>
+                            </label>
+                            <textarea
+                                value={actionModal.remarks}
+                                onChange={(e) => setActionModal(prev => ({ ...prev, remarks: e.target.value }))}
+                                placeholder={actionModal.status === "rejected" ? "Provide reason for rejection..." : "Add any notes or approval comments..."}
+                                rows={3}
+                                className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D79C7]/20 text-gray-800 resize-none"
+                            />
+                        </div>
+
+                        {/* Modal Action Buttons */}
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                            <button
+                                type="button"
+                                disabled={actionModal.isSubmitting}
+                                onClick={() => setActionModal({ isOpen: false, leave: null, status: "", remarks: "", isSubmitting: false })}
+                                className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actionModal.isSubmitting}
+                                onClick={handleConfirmAction}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                                    actionModal.status === "approved"
+                                        ? "bg-emerald-600 hover:bg-emerald-700"
+                                        : "bg-rose-600 hover:bg-rose-700"
+                                }`}
+                            >
+                                {actionModal.isSubmitting ? (
+                                    <span>Processing...</span>
+                                ) : (
+                                    <>
+                                        {actionModal.status === "approved" ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                                        <span className="capitalize">Confirm {actionModal.status}</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
