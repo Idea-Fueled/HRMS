@@ -21,6 +21,7 @@ import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.se
 import { getAllAssets, getAssignedAssets, acknowledgeAsset, requestNewAsset } from "../../services/asset.service";
 import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
 import { getEmployeeAttendanceHistory, getTodayAttendanceStatus, importEmployeeAttendance } from "../../services/attendance.service";
+import { TeamMemberAttendanceHistory } from "../my-team/MyTeam";
 import * as XLSX from "xlsx";
 
 
@@ -2092,27 +2093,18 @@ export const EmployeeProfile = () => {
             ───────────────────────────────────────────── */}
             {activeTab === "Attendance" && (
                 <div className="space-y-6">
-                    {/* Attendance Controls & Month Selector */}
-                    <div className="premium-3d-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7] shrink-0">
-                                <Clock className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="text-[#1E1E1E] text-sm font-extrabold flex items-center gap-2">
-                                    <span>Monthly Attendance Log</span>
-                                    <span className="text-[11px] font-bold text-[#2D79C7] bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md font-mono">
-                                        {new Date(attendanceYear, attendanceMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                                    </span>
-                                </h3>
-                                <p className="text-gray-400 text-xs font-medium mt-0.5">
-                                    Punch logs, shift tracking, and work hours for {empName}.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                            {userRole === "global_admin" && (
+                    <TeamMemberAttendanceHistory
+                        member={{
+                            userId: employee?._id || id,
+                            name: empName,
+                            dept: employee?.department?.name || employee?.department || "General",
+                            designation: employee?.designation || "Employee",
+                            avatar: employee?.avatar || employee?.profilePicture,
+                            profilePicture: employee?.profilePicture || employee?.avatar
+                        }}
+                        hideBack={true}
+                        extraActions={
+                            userRole === "global_admin" && (
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -2121,263 +2113,15 @@ export const EmployeeProfile = () => {
                                         setImportAttendanceError("");
                                         setShowImportAttendanceModal(true);
                                     }}
-                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl shadow-xs hover:shadow transition-all cursor-pointer"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl shadow-xs hover:shadow transition-all cursor-pointer"
                                     title="Import attendance records from Excel"
                                 >
-                                    <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
                                     <span>Import Excel</span>
                                 </button>
-                            )}
-
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        if (attendanceMonth === 0) {
-                                            setAttendanceMonth(11);
-                                            setAttendanceYear(prev => prev - 1);
-                                        } else {
-                                            setAttendanceMonth(prev => prev - 1);
-                                        }
-                                    }}
-                                    className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
-                                    title="Previous Month"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-
-                                <select
-                                    value={attendanceMonth}
-                                    onChange={(e) => setAttendanceMonth(Number(e.target.value))}
-                                    className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                                >
-                                    {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, idx) => (
-                                        <option key={idx} value={idx}>{m}</option>
-                                    ))}
-                                </select>
-
-                                <select
-                                    value={attendanceYear}
-                                    onChange={(e) => setAttendanceYear(Number(e.target.value))}
-                                    className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                                >
-                                    {[2024, 2025, 2026, 2027].map(y => (
-                                        <option key={y} value={y}>{y}</option>
-                                    ))}
-                                </select>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        if (attendanceMonth === 11) {
-                                            setAttendanceMonth(0);
-                                            setAttendanceYear(prev => prev + 1);
-                                        } else {
-                                            setAttendanceMonth(prev => prev + 1);
-                                        }
-                                    }}
-                                    className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-gray-200 border border-gray-200 text-gray-700 transition-colors cursor-pointer"
-                                    title="Next Month"
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Attendance KPI Cards */}
-                    {(() => {
-                        const totalLogs = attendanceLogs.length;
-                        const presentCount = attendanceLogs.filter(l => l.status === "present" || l.firstClockIn).length;
-                        const wfhCount = attendanceLogs.filter(l => l.workMode === "Work From Home").length;
-                        const totalMins = attendanceLogs.reduce((acc, l) => acc + (l.totalWorkMinutes || 0), 0);
-                        const avgHrsPerDay = presentCount > 0 ? (totalMins / (presentCount * 60)).toFixed(1) : "0.0";
-                        const onTimeCount = attendanceLogs.filter(l => {
-                            if (!l.firstClockIn) return false;
-                            const d = new Date(l.firstClockIn);
-                            const mins = d.getHours() * 60 + d.getMinutes();
-                            return mins <= 10 * 60;
-                        }).length;
-                        const onTimeRate = presentCount > 0 ? Math.round((onTimeCount / presentCount) * 100) : 100;
-
-                        return (
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div className="premium-3d-card p-4.5 space-y-1">
-                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">Avg Hours / Day</span>
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className="text-2xl font-black text-[#1E1E1E]">{avgHrsPerDay}</span>
-                                        <span className="text-xs font-bold text-gray-500">hrs/day</span>
-                                    </div>
-                                    <p className="text-[11px] text-gray-400 font-medium">Standard 8.0h Target</p>
-                                </div>
-
-                                <div className="premium-3d-card p-4.5 space-y-1">
-                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">On-Time Rate</span>
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className="text-2xl font-black text-[#1E1E1E]">{onTimeRate}%</span>
-                                        <span className="text-xs font-bold text-emerald-600">Punctuality</span>
-                                    </div>
-                                    <p className="text-[11px] text-gray-400 font-medium">{onTimeCount} of {presentCount} arrivals on time</p>
-                                </div>
-
-                                <div className="premium-3d-card p-4.5 space-y-1">
-                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">Present Days</span>
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className="text-2xl font-black text-[#2D79C7]">{presentCount}</span>
-                                        <span className="text-xs font-bold text-gray-500">Days</span>
-                                    </div>
-                                    <p className="text-[11px] text-gray-400 font-medium">In selected month</p>
-                                </div>
-
-                                <div className="premium-3d-card p-4.5 space-y-1">
-                                    <span className="text-gray-400 text-[10.5px] font-extrabold uppercase tracking-wider">WFH / Remote</span>
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className="text-2xl font-black text-amber-600">{wfhCount}</span>
-                                        <span className="text-xs font-bold text-gray-500">Days</span>
-                                    </div>
-                                    <p className="text-[11px] text-gray-400 font-medium">Approved Remote work</p>
-                                </div>
-                            </div>
-                        );
-                    })()}
-
-                    {/* Today's Presence Status Card */}
-                    <div className="premium-3d-card p-5 bg-gradient-to-r from-blue-50/50 via-slate-50/40 to-white border border-blue-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h4 className="text-[#1E1E1E] text-xs font-extrabold">Today&apos;s Presence Status</h4>
-                                <span className="text-[10px] font-bold bg-white text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full font-mono">
-                                    {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
-                                </span>
-                            </div>
-                            <p className="text-gray-500 text-[11px] font-medium mt-0.5">
-                                {todayAttendanceRec?.firstClockIn ? (
-                                    <>First Clocked In at <span className="font-bold text-[#1E1E1E]">{new Date(todayAttendanceRec.firstClockIn).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })}</span> • Mode: <span className="font-bold text-[#2D79C7]">{todayAttendanceRec.workMode || "Office"}</span></>
-                                ) : (
-                                    "No clock-in activity recorded for today yet."
-                                )}
-                            </p>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border ${
-                                todayAttendanceRec?.firstClockIn
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : "bg-gray-100 text-gray-500 border-gray-200"
-                            }`}>
-                                {todayAttendanceRec?.firstClockIn ? "● Clocked In" : "○ Not Clocked In"}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Monthly Attendance Table */}
-                    <div className="premium-3d-card p-5 space-y-4">
-                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                            <h4 className="text-[#1E1E1E] text-xs font-extrabold flex items-center gap-2">
-                                <FileSpreadsheet className="w-4 h-4 text-[#2D79C7]" />
-                                <span>Attendance Logs & Work Hours</span>
-                            </h4>
-                            <span className="text-gray-400 text-xs font-bold">
-                                {attendanceLogs.length} Record{attendanceLogs.length !== 1 ? "s" : ""}
-                            </span>
-                        </div>
-
-                        <div className="overflow-x-auto w-full">
-                            <table className="w-full border-collapse text-left min-w-[760px] whitespace-nowrap">
-                                <thead>
-                                    <tr className="border-b border-gray-200 bg-[#F8FAFC] text-gray-500 text-[10px] uppercase font-extrabold tracking-wider select-none">
-                                        <th className="py-3 px-4 font-extrabold">Date</th>
-                                        <th className="py-3 px-4 font-extrabold">Shift</th>
-                                        <th className="py-3 px-4 font-extrabold">Clock In</th>
-                                        <th className="py-3 px-4 font-extrabold">Clock Out</th>
-                                        <th className="py-3 px-4 font-extrabold">Work Hours</th>
-                                        <th className="py-3 px-4 font-extrabold">Break Time</th>
-                                        <th className="py-3 px-4 font-extrabold">Work Mode</th>
-                                        <th className="py-3 px-4 font-extrabold text-center">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 text-xs font-semibold text-gray-700">
-                                    {loadingAttendance ? (
-                                        <tr>
-                                            <td colSpan="8" className="py-10 text-center text-gray-400 font-bold">
-                                                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#2D79C7]" />
-                                                <span>Loading attendance records...</span>
-                                            </td>
-                                        </tr>
-                                    ) : attendanceLogs.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="8" className="py-10 text-center text-gray-400 font-bold select-none">
-                                                <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto mb-2">
-                                                    <Clock className="w-5 h-5" />
-                                                </div>
-                                                <p>No attendance logs recorded for this month.</p>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        attendanceLogs.map((log, idx) => {
-                                            const logDate = new Date(log.date || log.createdAt);
-                                            const formattedDate = logDate.toLocaleDateString("en-IN", {
-                                                weekday: "short",
-                                                day: "2-digit",
-                                                month: "short"
-                                            });
-                                            const clockInStr = log.firstClockIn
-                                                ? new Date(log.firstClockIn).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })
-                                                : "--";
-                                            const clockOutStr = log.lastClockOut
-                                                ? new Date(log.lastClockOut).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })
-                                                : "--";
-                                            const workMins = log.totalWorkMinutes || 0;
-                                            const workHrs = Math.floor(workMins / 60);
-                                            const remMins = workMins % 60;
-                                            const workHoursStr = `${workHrs}h ${remMins.toString().padStart(2, "0")}m`;
-                                            const breakMins = log.totalBreakMinutes || 0;
-                                            const breakHrs = Math.floor(breakMins / 60);
-                                            const remBreakMins = breakMins % 60;
-                                            const breakStr = breakHrs > 0 ? `${breakHrs}h ${remBreakMins}m` : `${remBreakMins}m`;
-
-                                            return (
-                                                <tr key={log._id || idx} className="hover:bg-[#F8FAFC]/70 transition-colors">
-                                                    <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
-                                                        {formattedDate}
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-gray-500 font-medium">
-                                                        Standard (10:00 - 19:00)
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
-                                                        {clockInStr}
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-mono font-bold text-gray-700">
-                                                        {clockOutStr}
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-mono font-bold text-[#2D79C7]">
-                                                        {workHoursStr}
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-mono text-gray-500">
-                                                        {breakStr}
-                                                    </td>
-                                                    <td className="py-3.5 px-4">
-                                                        <span className="text-[11px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                                                            {log.workMode || "Office"}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-center">
-                                                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                                                            log.workMode === "Work From Home"
-                                                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                        }`}>
-                                                            {log.workMode === "Work From Home" ? "WFH" : "Present"}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                            )
+                        }
+                    />
                 </div>
             )}
 

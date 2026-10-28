@@ -795,47 +795,59 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
     if (!isOpen) return null;
 
     const rawLogs = (row?.logs && row.logs.length > 0) ? row.logs : [];
-    const punchPairs = [];
 
-    if (rawLogs.length > 0) {
-        let currentIn = null;
-        for (let i = 0; i < rawLogs.length; i++) {
-            const l = rawLogs[i];
-            const timeStr = new Date(l.timestamp).toLocaleTimeString("en-US", {
-                timeZone: "Asia/Kolkata",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: true
-            });
-
-            if (l.action === "clock_in") {
-                currentIn = timeStr;
-            } else if (l.action === "clock_out") {
-                punchPairs.push({
-                    in: currentIn || "Missing",
-                    out: timeStr,
-                    isWorking: false
+    const buildPairs = (logsList, defaultIn = "10:00 AM", activeLabel = "Active") => {
+        const pairs = [];
+        if (logsList.length > 0) {
+            let currentIn = null;
+            for (let i = 0; i < logsList.length; i++) {
+                const l = logsList[i];
+                const timeStr = new Date(l.timestamp).toLocaleTimeString("en-US", {
+                    timeZone: "Asia/Kolkata",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: true
                 });
-                currentIn = null;
+
+                if (l.action === "clock_in") {
+                    currentIn = timeStr;
+                } else if (l.action === "clock_out") {
+                    pairs.push({
+                        in: currentIn || "Missing",
+                        out: timeStr,
+                        isWorking: false
+                    });
+                    currentIn = null;
+                }
+            }
+            if (currentIn) {
+                pairs.push({
+                    in: currentIn,
+                    out: activeLabel,
+                    isWorking: true
+                });
             }
         }
-        if (currentIn) {
-            punchPairs.push({
-                in: currentIn,
-                out: "Active / In Office",
-                isWorking: true
-            });
-        }
-    }
+        return pairs;
+    };
 
-    if (punchPairs.length === 0) {
-        punchPairs.push({
-            in: row?.timeStr || "-- : --",
-            out: "—",
-            isWorking: false
-        });
-    }
+    const biometricLogs = [];
+    const webLogs = [];
+
+    rawLogs.forEach(l => {
+        const src = (l.source || "").toLowerCase();
+        if (src === "web" || src === "wfh" || src === "manual") {
+            webLogs.push(l);
+        } else {
+            biometricLogs.push(l);
+        }
+    });
+
+    const biometricPairs = buildPairs(biometricLogs, row?.timeStr || "10:00 AM", "Active / In Office");
+    const webPairs = buildPairs(webLogs, "—", "Active / Working Remotely");
+
+    const workPlanText = row?.dailyWorkPlan || row?.wfhMessage || "";
 
     const modalContent = (
         <div 
@@ -845,11 +857,11 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
             }}
         >
             <div 
-                className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-scaleUp"
+                className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-scaleUp max-h-[90vh] flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}
-                <div className="bg-slate-50/90 border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+                <div className="bg-slate-50/90 border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
                     <div>
                         <div className="flex items-center gap-2">
                             <h3 className="text-sm font-bold text-slate-900">
@@ -858,6 +870,11 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EBF3FC] text-[#2D79C7] border border-blue-200">
                                 {row?.date || "Today"}
                             </span>
+                            {row?.workMode && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200">
+                                    {row.workMode}
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs font-semibold text-slate-500 mt-0.5">
                             Employee: <span className="text-[#2D79C7] font-bold">{memberName}</span> • Shift: <span className="text-slate-700 font-mono font-bold">10:00 AM – 07:00 PM</span>
@@ -873,7 +890,7 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
                 </div>
 
                 {/* Modal Body */}
-                <div className="p-6 space-y-5">
+                <div className="p-6 space-y-5 overflow-y-auto flex-1">
                     {/* Metrics Summary Strip */}
                     <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
                         <div>
@@ -890,55 +907,124 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
                         </div>
                     </div>
 
-                    {/* Punch Details Section */}
-                    <div>
-                        <div className="flex items-center justify-between mb-2.5">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                Office Biometric Punch History
-                            </span>
-                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                {punchPairs.length} Session{punchPairs.length > 1 ? "s" : ""}
-                            </span>
-                        </div>
+                    {/* Section 1: Office Biometric Punch History */}
+                    {biometricPairs.length > 0 && (
+                        <div>
+                            <div className="flex items-center justify-between mb-2.5">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        Office Biometric Punch History
+                                    </span>
+                                </div>
+                                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                    {biometricPairs.length} Session{biometricPairs.length > 1 ? "s" : ""}
+                                </span>
+                            </div>
 
-                        <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto pr-1">
-                            {punchPairs.map((pair, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-slate-800 bg-slate-50/80 hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 transition-colors">
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-xs shrink-0">
-                                            ↙
-                                        </span>
-                                        <div>
-                                            <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock In</span>
-                                            <span className="font-bold text-slate-800">{pair.in}</span>
+                            <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto pr-1">
+                                {biometricPairs.map((pair, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-slate-800 bg-slate-50/80 hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 transition-colors">
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-xs shrink-0">
+                                                ↙
+                                            </span>
+                                            <div>
+                                                <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock In</span>
+                                                <span className="font-bold text-slate-800">{pair.in}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2.5 text-right">
-                                        <div>
-                                            <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock Out</span>
-                                            <span className={`font-bold ${pair.isWorking ? "text-emerald-600 font-sans text-[11px]" : "text-slate-800"}`}>
-                                                {pair.out}
+                                        
+                                        <div className="flex items-center gap-2.5 text-right">
+                                            <div>
+                                                <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Clock Out</span>
+                                                <span className={`font-bold ${pair.isWorking ? "text-emerald-600 font-sans text-[11px]" : "text-slate-800"}`}>
+                                                    {pair.out}
+                                                </span>
+                                            </div>
+                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 ${
+                                                pair.isWorking ? "bg-emerald-100 text-emerald-600 animate-pulse" : "bg-slate-200 text-slate-600"
+                                            }`}>
+                                                {pair.isWorking ? "●" : "↗"}
                                             </span>
                                         </div>
-                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 ${
-                                            pair.isWorking ? "bg-emerald-100 text-emerald-600 animate-pulse" : "bg-slate-200 text-slate-600"
-                                        }`}>
-                                            {pair.isWorking ? "●" : "↗"}
-                                        </span>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Section 2: Web Clock-In / Remote Sessions */}
+                    {webPairs.length > 0 && (
+                        <div className={biometricPairs.length > 0 ? "pt-3 border-t border-slate-200" : ""}>
+                            <div className="flex items-center justify-between mb-2.5">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-[#2D79C7]" />
+                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        Web Clock-In / Remote Sessions
+                                    </span>
+                                </div>
+                                <span className="text-[11px] font-semibold text-[#2D79C7] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                                    {webPairs.length} Session{webPairs.length > 1 ? "s" : ""}
+                                </span>
+                            </div>
+
+                            <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto pr-1">
+                                {webPairs.map((pair, idx) => (
+                                    <div key={idx} className="text-slate-800 bg-blue-50/40 hover:bg-blue-50/60 p-3 rounded-xl border border-blue-100 transition-colors">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="w-6 h-6 rounded-full bg-blue-100 text-[#2D79C7] flex items-center justify-center font-extrabold text-xs shrink-0">
+                                                    ↙
+                                                </span>
+                                                <div>
+                                                    <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Web Clock In</span>
+                                                    <span className="font-bold text-slate-800">{pair.in}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2.5 text-right">
+                                                <div>
+                                                    <span className="text-[9.5px] text-slate-400 block font-sans uppercase font-bold">Web Clock Out</span>
+                                                    <span className={`font-bold ${pair.isWorking ? "text-[#2D79C7] font-sans text-[11px]" : "text-slate-800"}`}>
+                                                        {pair.out}
+                                                    </span>
+                                                </div>
+                                                <span className={`w-6 h-6 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 ${
+                                                    pair.isWorking ? "bg-blue-100 text-[#2D79C7] animate-pulse" : "bg-slate-200 text-slate-600"
+                                                }`}>
+                                                    {pair.isWorking ? "●" : "↗"}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Optional Work Plan or Note */}
+                                        {workPlanText && idx === 0 && (
+                                            <div className="mt-2.5 pt-2 border-t border-blue-100/80 text-[11px] font-sans text-slate-600">
+                                                <span className="font-bold text-[#2D79C7] block text-[10px] uppercase tracking-wide">Work Plan / Message</span>
+                                                <p className="italic mt-0.5 text-slate-700">"{workPlanText}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Fallback if no logs recorded */}
+                    {biometricPairs.length === 0 && webPairs.length === 0 && (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500 font-medium">
+                            No punch or web clock-in logs recorded for this day.
+                        </div>
+                    )}
                 </div>
 
                 {/* Modal Footer */}
-                <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+                <div className="bg-slate-50/60 border-t border-slate-100 px-6 py-3 text-right shrink-0">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                        className="px-4 py-2 text-xs font-bold bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer shadow-2xs"
                     >
                         Close
                     </button>
@@ -950,7 +1036,7 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
     return createPortal(modalContent, document.body);
 };
 
-const TeamMemberAttendanceHistory = ({ member, onBack }) => {
+export const TeamMemberAttendanceHistory = ({ member, onBack, hideBack = false, extraActions = null }) => {
     const [activePeriod, setActivePeriod] = useState("30");
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [historyList, setHistoryList] = useState([]);
@@ -962,8 +1048,7 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
 
     const periods = useMemo(() => {
         const list = [
-            { key: "30", label: "30 DAYS" },
-            { key: "all", label: "ALL HISTORY" }
+            { key: "30", label: "30 DAYS" }
         ];
         const now = new Date();
         for (let i = 0; i < 6; i++) {
@@ -1191,7 +1276,10 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                     breakTaken: breakTaken === "—" ? "0m" : breakTaken,
                     grossHours: grossHours === "—" ? "0m" : grossHours,
                     logs: record?.logs || [],
-                    hasLogs: hasPunches
+                    hasLogs: hasPunches,
+                    workMode: record?.workMode || "Office",
+                    dailyWorkPlan: record?.dailyWorkPlan || "",
+                    wfhMessage: record?.wfhMessage || ""
                 };
             }
 
@@ -1213,7 +1301,10 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                     breakTaken: hasPunches ? breakTaken : "—",
                     grossHours: hasPunches ? grossHours : "—",
                     logs: record?.logs || [],
-                    hasLogs: hasPunches
+                    hasLogs: hasPunches,
+                    workMode: record?.workMode || "Office",
+                    dailyWorkPlan: record?.dailyWorkPlan || "",
+                    wfhMessage: record?.wfhMessage || ""
                 };
             }
 
@@ -1234,7 +1325,10 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                     breakTaken: hasPunches ? breakTaken : "—",
                     grossHours: hasPunches ? grossHours : "—",
                     logs: record?.logs || [],
-                    hasLogs: hasPunches
+                    hasLogs: hasPunches,
+                    workMode: record?.workMode || "Office",
+                    dailyWorkPlan: record?.dailyWorkPlan || "",
+                    wfhMessage: record?.wfhMessage || ""
                 };
             }
 
@@ -1257,7 +1351,10 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                     breakTaken: hasPunches ? breakTaken : "—",
                     grossHours: hasPunches ? grossHours : "—",
                     logs: record?.logs || [],
-                    hasLogs: hasPunches
+                    hasLogs: hasPunches,
+                    workMode: record?.workMode || "Office",
+                    dailyWorkPlan: record?.dailyWorkPlan || "",
+                    wfhMessage: record?.wfhMessage || ""
                 };
             }
 
@@ -1271,7 +1368,7 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                     dayType: "present",
                     badgeType: "",
                     rowStyle: "bg-white hover:bg-slate-50/80",
-                    statusText: record.workMode === "Work From Home" ? "WFH" : (punctuality.tag || "Present"),
+                    statusText: record.workMode === "Work From Home" ? "WFH" : (record.workMode === "Hybrid" ? "Hybrid" : (punctuality.tag || "Present")),
                     isWfh: record.workMode === "Work From Home",
                     arrival: punctuality.tag || "Present",
                     isLate: punctuality.isLate,
@@ -1279,7 +1376,10 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                     breakTaken,
                     grossHours,
                     logs: record?.logs || [],
-                    hasLogs: true
+                    hasLogs: true,
+                    workMode: record?.workMode || "Office",
+                    dailyWorkPlan: record?.dailyWorkPlan || "",
+                    wfhMessage: record?.wfhMessage || ""
                 };
             }
 
@@ -1391,15 +1491,19 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
             {/* Top Navigation & Member Profile Card */}
             <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-[#EBF3FC] text-slate-700 hover:text-[#2D79C7] rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 hover:border-blue-200 shrink-0"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        <span>Back to Team Overview</span>
-                    </button>
-                    <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+                    {!hideBack && onBack && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onBack}
+                                className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-[#EBF3FC] text-slate-700 hover:text-[#2D79C7] rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200 hover:border-blue-200 shrink-0"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                <span>Back to Team Overview</span>
+                            </button>
+                            <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+                        </>
+                    )}
                     <div className="flex items-center gap-3">
                         <Avatar name={member.name} src={member.profilePicture} size="w-11 h-11" />
                         <div>
@@ -1455,7 +1559,8 @@ const TeamMemberAttendanceHistory = ({ member, onBack }) => {
                         </h3>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                        {extraActions}
                         <div className="relative">
                             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                             <input

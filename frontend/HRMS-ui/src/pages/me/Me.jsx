@@ -3343,11 +3343,10 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
     const [leavesList, setLeavesList] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
-    // Dynamically generate the timeframe tabs (ALL HISTORY, 30 DAYS, plus calendar months)
+    // Dynamically generate the timeframe tabs (30 DAYS plus calendar months)
     const periods = useMemo(() => {
         const list = [
-            { key: "30", label: "30 DAYS" },
-            { key: "all", label: "ALL HISTORY" }
+            { key: "30", label: "30 DAYS" }
         ];
         const now = new Date();
         const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
