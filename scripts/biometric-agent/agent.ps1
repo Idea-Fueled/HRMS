@@ -139,8 +139,9 @@ function Sync-AttendancePunches {
     }
 
     if ($punches.Count -gt 0) {
-        $batchSize = 2500
+        $batchSize = 1000
         $totalBatches = [Math]::Ceiling($punches.Count / $batchSize)
+        $hasErrors = $false
 
         for ($b = 0; $b -lt $totalBatches; $b++) {
             $start = $b * $batchSize
@@ -162,10 +163,15 @@ function Sync-AttendancePunches {
                 $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 120
                 Write-Output "Batch $($b + 1) Status: $($response.message)"
             } catch {
+                $hasErrors = $true
                 Write-Output "[ERROR] Upload failed for batch $($b + 1): $($_.Exception.Message)"
             }
         }
-        Write-Output "[SUCCESS] All biometric punches synced to HRMS at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')!"
+        if (-not $hasErrors) {
+            Write-Output "[SUCCESS] All biometric punches synced to HRMS at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')!"
+        } else {
+            Write-Output "[WARN] Biometric sync completed with errors in some batches at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')."
+        }
     } else {
         Write-Output "[WARN] No punches found to sync."
     }

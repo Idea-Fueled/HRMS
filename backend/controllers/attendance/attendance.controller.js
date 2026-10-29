@@ -1490,10 +1490,7 @@ export const syncBiometricPunches = async (req, res) => {
                             logs: allLogs,
                             ...(existing?.dailyWorkPlan ? { dailyWorkPlan: existing.dailyWorkPlan } : {}),
                             ...(existing?.wfhMessage ? { wfhMessage: existing.wfhMessage } : {}),
-                            ...(existing?.isWebClockedIn !== undefined ? { isWebClockedIn: existing.isWebClockedIn } : {})
-                        },
-                        $setOnInsert: {
-                            isWebClockedIn: false
+                            isWebClockedIn: existing?.isWebClockedIn ?? false
                         }
                     },
                     upsert: true
