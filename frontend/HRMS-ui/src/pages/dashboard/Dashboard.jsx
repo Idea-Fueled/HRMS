@@ -1246,7 +1246,11 @@ const BuzzFeedCard = ({ feed = [], currentUser, onVote, onPost, onCreatePoll }) 
 
     const renderPoll = (poll) => {
         const totalVotes = poll.votes?.length || 0;
-        const userVote = poll.votes?.find(v => v.user.toString() === currentUser?._id.toString());
+        const currentUserIdStr = (currentUser?._id || currentUser?.id || "").toString();
+        const userVote = poll.votes?.find(v => {
+            const voterId = (v?.user && typeof v.user === "object" ? v.user._id : v?.user || "").toString();
+            return voterId && voterId === currentUserIdStr;
+        });
         const hasVoted = !!userVote;
 
         return (

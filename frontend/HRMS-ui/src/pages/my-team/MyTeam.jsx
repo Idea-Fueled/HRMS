@@ -429,10 +429,10 @@ const TeamMembersTab = () => {
 
         if (isManagerRole) {
             // Manager role: ONLY show employees reporting to this logged-in manager
-            const empManagerId = typeof e.managerId === "object" ? e.managerId?._id : (e.managerId || e._id);
+            const empManagerId = (e.managerId && typeof e.managerId === "object") ? e.managerId?._id : (e.managerId || e._id);
             const empManagerName = (e.manager || "").trim().toLowerCase();
             
-            const matchesId = empManagerId && currentUserId && empManagerId.toString() === currentUserId.toString();
+            const matchesId = empManagerId && currentUserId && String(empManagerId) === String(currentUserId);
             const matchesName = currentUserName && empManagerName && (empManagerName === currentUserName || currentUserName.includes(empManagerName) || empManagerName.includes(currentUserName));
             
             if (!matchesId && !matchesName) {

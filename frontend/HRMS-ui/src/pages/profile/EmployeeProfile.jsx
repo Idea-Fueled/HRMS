@@ -216,9 +216,23 @@ export const EmployeeProfile = () => {
         const currentEmpId = (currentUser.employeeId || "").toString().toLowerCase();
         const currentUserName = (currentUser.fullName || `${currentUser.firstName || ""} ${currentUser.lastName || ""}`).trim().toLowerCase();
 
-        const empMgrId = (typeof employee.managerId === "object" ? employee.managerId?._id : employee.managerId || "").toString();
-        const empDottedMgrId = (typeof employee.dottedManagerId === "object" ? employee.dottedManagerId?._id : employee.dottedManagerId || "").toString();
-        const empMgrName = (typeof employee.managerId === "object" ? employee.managerId?.fullName : (employee.manager || "")).trim().toLowerCase();
+        const empMgrId = (
+            employee.managerId && typeof employee.managerId === "object"
+                ? (employee.managerId._id || "")
+                : (employee.managerId || "")
+        ).toString();
+
+        const empDottedMgrId = (
+            employee.dottedManagerId && typeof employee.dottedManagerId === "object"
+                ? (employee.dottedManagerId._id || "")
+                : (employee.dottedManagerId || "")
+        ).toString();
+
+        const empMgrName = (
+            employee.managerId && typeof employee.managerId === "object"
+                ? (employee.managerId.fullName || "")
+                : (employee.manager || "")
+        ).toString().trim().toLowerCase();
 
         return (
             (empMgrId && (empMgrId === currentUserId || empMgrId.toLowerCase() === currentEmpId)) ||
@@ -247,8 +261,9 @@ export const EmployeeProfile = () => {
             const targetEmpCode = (employee?.employeeId || "").toString();
 
             return list.some(v => {
-                const vId = (typeof v === "object" && v?._id) ? v._id.toString() : v?.toString();
-                return vId === targetMongoId || vId === targetEmpCode;
+                if (!v) return false;
+                const vId = (typeof v === "object" && v !== null && v?._id) ? v._id.toString() : (v?.toString() || "");
+                return vId && (vId === targetMongoId || vId === targetEmpCode);
             });
         }
 
