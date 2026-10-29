@@ -142,7 +142,7 @@ const Login = () => {
                                     Email Address
                                 </label>
                                 <div className="relative flex items-center group">
-                                    <Mail className="w-4.5 h-4.5 text-slate-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
+                                    <Mail className="w-4.5 h-4.5 text-slate-400 absolute left-4 z-10 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
                                     <input
                                         type="email"
                                         value={email}
@@ -174,7 +174,7 @@ const Login = () => {
                                     </a>
                                 </div>
                                 <div className="relative flex items-center group">
-                                    <Lock className="w-4.5 h-4.5 text-slate-400 absolute left-4 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
+                                    <Lock className="w-4.5 h-4.5 text-slate-400 absolute left-4 z-10 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
                                     <input
                                         type={showPassword ? "text" : "password"}
                                         value={password}
@@ -189,7 +189,7 @@ const Login = () => {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                                        className="absolute right-4 z-10 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
                                     >
                                         {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                                     </button>
