@@ -11,11 +11,19 @@ const SocketContext = createContext(null);
 export const useSocket = () => useContext(SocketContext);
 
 const getSocketUrl = () => {
-    const base = import.meta.env.VITE_BASE_URL;
-    if (base) {
-        return base.replace(/\/api\/?$/, "");
+    let base = import.meta.env.VITE_BASE_URL;
+    const isLocalhost = typeof window !== "undefined" && 
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+    if (!base || typeof base !== "string" || !base.trim()) {
+        return isLocalhost ? "http://localhost:5000" : "https://backend.ideafueled.com";
     }
-    return "http://localhost:5000";
+
+    let url = base.trim().replace(/\/api\/?$/, "").replace(/\/+$/, "");
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && url.startsWith("http://backend.ideafueled.com")) {
+        url = url.replace(/^http:\/\//i, "https://");
+    }
+    return url;
 };
 
 export const SocketProvider = ({ children }) => {

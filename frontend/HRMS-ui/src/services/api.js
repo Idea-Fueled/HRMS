@@ -1,14 +1,26 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+export const getApiBaseUrl = () => {
+    let url = import.meta.env.VITE_BASE_URL;
 
-if (!API_BASE_URL && typeof window !== "undefined") {
-    console.error(
-        "⚠️ VITE_BASE_URL is not defined. API requests will fail.\n" +
-        "Add VITE_BASE_URL to your .env file, e.g.:\n" +
-        "VITE_BASE_URL=http://localhost:5000/api"
-    );
-}
+    const isLocalhost = typeof window !== "undefined" && 
+        (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+    if (!url || typeof url !== "string" || !url.trim()) {
+        url = isLocalhost ? "http://localhost:5000/api" : "https://backend.ideafueled.com/api";
+    }
+
+    url = url.trim().replace(/\/+$/, "");
+
+    // Upgrade http to https when loaded over https to prevent Mixed Content errors
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && url.startsWith("http://backend.ideafueled.com")) {
+        url = url.replace(/^http:\/\//i, "https://");
+    }
+
+    return url.endsWith("/api") ? url : `${url}/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const API = axios.create({
     baseURL: API_BASE_URL,
@@ -35,11 +47,9 @@ API.interceptors.request.use(
 API.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (!API_BASE_URL) {
-            console.error("API configuration error: VITE_BASE_URL environment variable is missing.");
-        }
         return Promise.reject(error);
     }
 );
 
+export { API_BASE_URL };
 export default API;

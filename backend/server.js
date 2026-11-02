@@ -36,16 +36,25 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser());
 
-// Dynamic CORS — supports local dev and production via FRONTEND_URL env var
+// Dynamic CORS — supports local dev and production
 const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-    "http://localhost:5176"
+    "http://localhost:5176",
+    "https://hrms.ideafueled.com",
+    "http://hrms.ideafueled.com"
 ];
+
 if (process.env.FRONTEND_URL) {
-    const url = process.env.FRONTEND_URL.replace(/\/+$/, ""); // strip trailing slash
-    allowedOrigins.push(url);
+    const configuredOrigins = process.env.FRONTEND_URL.split(",")
+        .map((u) => u.trim().replace(/\/+$/, ""))
+        .filter(Boolean);
+    for (const origin of configuredOrigins) {
+        if (!allowedOrigins.includes(origin)) {
+            allowedOrigins.push(origin);
+        }
+    }
 }
 
 app.use(cors({
