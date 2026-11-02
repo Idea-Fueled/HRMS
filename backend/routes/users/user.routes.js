@@ -13,15 +13,21 @@ import {
     uploadDocument,
     changePassword,
     updateUserPreferences,
-    sendCelebrationWish
+    sendCelebrationWish,
+    forgotPassword,
+    verifyResetToken,
+    resetPassword
 } from "../../controllers/users/user.controller.js";
 import { isAuthenticated } from "../../middlewares/auth.middleware.js";
 import { upload, uploadDoc } from "../../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
-router.post("/register", registerUser)
+router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/forgot-password", forgotPassword);
+router.get("/verify-reset-token", verifyResetToken);
+router.post("/reset-password", resetPassword);
 router.get("/upcoming-birthdays", getUpcomingBirthdays);
 router.post("/logout", logoutUser)
 router.get("/me", isAuthenticated, getCurrentUser);

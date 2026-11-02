@@ -44,4 +44,18 @@ export const updateUserPreferences = async (preferences) => {
     return API.put("/users/preferences", { preferences });
 };
 
+export const forgotPasswordRequest = async (email) => {
+    return API.post("/users/forgot-password", { email });
+};
+
+export const verifyResetToken = async (token, email) => {
+    return API.get("/users/verify-reset-token", {
+        params: { token, email }
+    });
+};
+
+export const resetUserPassword = async ({ token, email, password }) => {
+    return API.post("/users/reset-password", { token, email, password });
+};
+
 export default API;

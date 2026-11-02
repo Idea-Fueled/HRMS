@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { loginUser, getCurrentUser } from "../../services/auth.service";
+import { loginUser, getCurrentUser, forgotPasswordRequest } from "../../services/auth.service";
 import { useAuth } from "../../context/AuthContext";
 import ideaFueledLogo from "../../assets/IF-black.png";
-import { Mail, Lock, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, CheckCircle2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { unlockAudio } from "../../utils/audioChime";
 
@@ -14,6 +14,13 @@ const Login = () => {
     const [errors, setErrors] = useState({ email: "", password: "" });
     const [loading, setLoading] = useState(false);
 
+    // Forgot password states
+    const [isForgotOpen, setIsForgotOpen] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState("");
+    const [forgotLoading, setForgotLoading] = useState(false);
+    const [forgotSuccess, setForgotSuccess] = useState(false);
+    const [forgotError, setForgotError] = useState("");
+
     const { user, setUser } = useAuth();
     const navigate = useNavigate();
 
@@ -21,6 +28,38 @@ const Login = () => {
     if (user) {
         return <Navigate to="/dashboard" replace />;
     }
+
+    const handleForgotPasswordSubmit = async (e) => {
+        e.preventDefault();
+        setForgotError("");
+
+        if (!forgotEmail.trim()) {
+            setForgotError("Please enter your email address.");
+            return;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+            setForgotError("Please enter a valid email address.");
+            return;
+        }
+
+        try {
+            setForgotLoading(true);
+            const res = await forgotPasswordRequest(forgotEmail.trim());
+
+            if (res.data && res.data.success) {
+                setForgotSuccess(true);
+                toast.success(res.data.message || "Password reset link sent!");
+            } else {
+                setForgotError(res.data?.message || "Failed to send reset link.");
+            }
+        } catch (err) {
+            console.error("Forgot password error:", err);
+            setForgotError(err.response?.data?.message || "Failed to send reset link. Please check your email.");
+        } finally {
+            setForgotLoading(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -124,105 +163,233 @@ const Login = () => {
                             />
                         </div>
 
-                        {/* Heading & Tagline */}
-                        <div className="text-center mb-7">
-                            <h2 className="text-[#1E1E1E] text-2xl sm:text-[26px] font-bold tracking-tight">
-                                Access your workspace
-                            </h2>
-                            <p className="text-slate-500 text-[13px] font-medium mt-1.5 leading-normal">
-                                Sign in to manage your workday, attendance, and team.
-                            </p>
-                        </div>
-
-                        {/* Login Form */}
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            {/* Email Address */}
-                            <div className="space-y-2">
-                                <label className="text-slate-600 text-[11.5px] font-bold uppercase tracking-wider block">
-                                    Email Address
-                                </label>
-                                <div className="relative flex items-center group">
-                                    <Mail className="w-4.5 h-4.5 text-slate-400 absolute left-4 z-10 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
-                                    <input
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => {
-                                            setEmail(e.target.value);
-                                            if (errors.email) setErrors(prev => ({ ...prev, email: "" }));
-                                        }}
-                                        placeholder="Enter your email"
-                                        disabled={loading}
-                                        className={`w-full pl-11 pr-4 py-3.5 bg-white/80 backdrop-blur-xs border ${errors.email ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
-                                    />
-                                </div>
-                                {errors.email && (
-                                    <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                        <span>{errors.email}</span>
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Password */}
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-slate-600 text-[11.5px] font-bold uppercase tracking-wider">
-                                        Password
-                                    </label>
-                                    <a href="#forgot" className="text-[#2D79C7] hover:text-[#1F5EA8] hover:underline text-[12px] font-bold transition-all">
-                                        Forgot password?
-                                    </a>
-                                </div>
-                                <div className="relative flex items-center group">
-                                    <Lock className="w-4.5 h-4.5 text-slate-400 absolute left-4 z-10 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        value={password}
-                                        onChange={(e) => {
-                                            setPassword(e.target.value);
-                                            if (errors.password) setErrors(prev => ({ ...prev, password: "" }));
-                                        }}
-                                        placeholder="••••••••"
-                                        disabled={loading}
-                                        className={`w-full pl-11 pr-11 py-3.5 bg-white/80 backdrop-blur-xs border ${errors.password ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 z-10 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
-                                    >
-                                        {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                                    </button>
-                                </div>
-                                {errors.password && (
-                                    <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                        <span>{errors.password}</span>
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Sign In Button */}
-                            <div className="pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] active:scale-[0.99] disabled:bg-[#4B8FD8] disabled:opacity-90 disabled:cursor-not-allowed text-white font-bold text-[14px] py-3.5 rounded-[14px] flex items-center justify-center gap-2.5 shadow-[0_4px_14px_rgba(45,121,199,0.25)] hover:shadow-[0_6px_20px_rgba(45,121,199,0.35)] transition-all duration-200 cursor-pointer"
-                                >
-                                    {loading ? (
-                                        <div className="flex items-center gap-2.5 text-white">
-                                            <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            <span>Signing in...</span>
+                        {/* FORGOT PASSWORD VIEW */}
+                        {isForgotOpen ? (
+                            <div className="space-y-6 animate-fadeIn">
+                                {forgotSuccess ? (
+                                    <div className="text-center py-3 space-y-4">
+                                        <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto text-emerald-500 shadow-sm animate-bounce">
+                                            <CheckCircle2 className="w-8 h-8" />
                                         </div>
-                                    ) : (
-                                        <>
-                                            <span>Sign In</span>
-                                            <ArrowRight className="w-4.5 h-4.5 stroke-[2.5]" />
-                                        </>
-                                    )}
-                                </button>
+                                        <div>
+                                            <h2 className="text-[#1E1E1E] text-2xl font-bold tracking-tight">
+                                                Check your email
+                                            </h2>
+                                            <p className="text-slate-600 text-[13px] font-medium mt-2 leading-relaxed">
+                                                We've sent a password reset link to <strong className="text-slate-800">{forgotEmail}</strong>. Please check your inbox and follow the instructions.
+                                            </p>
+                                        </div>
+                                        <div className="pt-3 space-y-2.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsForgotOpen(false);
+                                                    setForgotSuccess(false);
+                                                }}
+                                                className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold text-[13.5px] py-3.5 rounded-[14px] shadow-md shadow-[#2D79C7]/20 transition-all cursor-pointer"
+                                            >
+                                                Back to Sign In
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setForgotSuccess(false)}
+                                                className="text-[#2D79C7] hover:text-[#1F5EA8] text-[12px] font-semibold hover:underline cursor-pointer"
+                                            >
+                                                Didn't receive email? Try another address
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="text-center mb-5">
+                                            <div className="w-11 h-11 rounded-2xl bg-[#2D79C7]/10 border border-[#2D79C7]/20 flex items-center justify-center mx-auto text-[#2D79C7] mb-3">
+                                                <KeyRound className="w-5 h-5" />
+                                            </div>
+                                            <h2 className="text-[#1E1E1E] text-2xl font-bold tracking-tight">
+                                                Reset Password
+                                            </h2>
+                                            <p className="text-slate-500 text-[13px] font-medium mt-1 leading-normal">
+                                                Enter your registered email and we'll send you a link to reset your password.
+                                            </p>
+                                        </div>
+
+                                        <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-slate-600 text-[11.5px] font-bold uppercase tracking-wider block">
+                                                    Your Work Email
+                                                </label>
+                                                <div className="relative flex items-center group">
+                                                    <Mail className="w-4.5 h-4.5 text-slate-400 absolute left-4 z-10 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
+                                                    <input
+                                                        type="email"
+                                                        value={forgotEmail}
+                                                        onChange={(e) => {
+                                                            setForgotEmail(e.target.value);
+                                                            if (forgotError) setForgotError("");
+                                                        }}
+                                                        placeholder="Enter your registered email"
+                                                        disabled={forgotLoading}
+                                                        className={`w-full pl-11 pr-4 py-3.5 bg-white/80 backdrop-blur-xs border ${forgotError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
+                                                    />
+                                                </div>
+                                                {forgotError && (
+                                                    <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                        <span>{forgotError}</span>
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="pt-2">
+                                                <button
+                                                    type="submit"
+                                                    disabled={forgotLoading}
+                                                    className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] active:scale-[0.99] disabled:bg-[#4B8FD8] text-white font-bold text-[14px] py-3.5 rounded-[14px] flex items-center justify-center gap-2.5 shadow-[0_4px_14px_rgba(45,121,199,0.25)] hover:shadow-[0_6px_20px_rgba(45,121,199,0.35)] transition-all duration-200 cursor-pointer"
+                                                >
+                                                    {forgotLoading ? (
+                                                        <div className="flex items-center gap-2 text-white">
+                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            <span>Sending link...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <span>Send Reset Link</span>
+                                                            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            <div className="text-center pt-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsForgotOpen(false);
+                                                        setForgotError("");
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-[12.5px] font-semibold transition-colors cursor-pointer"
+                                                >
+                                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                                    <span>Back to sign in</span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </>
+                                )}
                             </div>
-                        </form>
+                        ) : (
+                            /* STANDARD LOGIN VIEW */
+                            <>
+                                {/* Heading & Tagline */}
+                                <div className="text-center mb-7">
+                                    <h2 className="text-[#1E1E1E] text-2xl sm:text-[26px] font-bold tracking-tight">
+                                        Access your workspace
+                                    </h2>
+                                    <p className="text-slate-500 text-[13px] font-medium mt-1.5 leading-normal">
+                                        Sign in to manage your workday, attendance, and team.
+                                    </p>
+                                </div>
+
+                                {/* Login Form */}
+                                <form onSubmit={handleSubmit} className="space-y-5">
+                                    {/* Email Address */}
+                                    <div className="space-y-2">
+                                        <label className="text-slate-600 text-[11.5px] font-bold uppercase tracking-wider block">
+                                            Email Address
+                                        </label>
+                                        <div className="relative flex items-center group">
+                                            <Mail className="w-4.5 h-4.5 text-slate-400 absolute left-4 z-10 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
+                                            <input
+                                                type="email"
+                                                value={email}
+                                                onChange={(e) => {
+                                                    setEmail(e.target.value);
+                                                    if (errors.email) setErrors(prev => ({ ...prev, email: "" }));
+                                                }}
+                                                placeholder="Enter your email"
+                                                disabled={loading}
+                                                className={`w-full pl-11 pr-4 py-3.5 bg-white/80 backdrop-blur-xs border ${errors.email ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
+                                            />
+                                        </div>
+                                        {errors.email && (
+                                            <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                <span>{errors.email}</span>
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Password */}
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-slate-600 text-[11.5px] font-bold uppercase tracking-wider">
+                                                Password
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsForgotOpen(true);
+                                                    setForgotEmail(email);
+                                                    setForgotError("");
+                                                    setForgotSuccess(false);
+                                                }}
+                                                className="text-[#2D79C7] hover:text-[#1F5EA8] hover:underline text-[12px] font-bold transition-all cursor-pointer bg-transparent border-0 p-0"
+                                            >
+                                                Forgot password?
+                                            </button>
+                                        </div>
+                                        <div className="relative flex items-center group">
+                                            <Lock className="w-4.5 h-4.5 text-slate-400 absolute left-4 z-10 group-focus-within:text-[#2D79C7] transition-colors pointer-events-none" />
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                value={password}
+                                                onChange={(e) => {
+                                                    setPassword(e.target.value);
+                                                    if (errors.password) setErrors(prev => ({ ...prev, password: "" }));
+                                                }}
+                                                placeholder="••••••••"
+                                                disabled={loading}
+                                                className={`w-full pl-11 pr-11 py-3.5 bg-white/80 backdrop-blur-xs border ${errors.password ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-4 z-10 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                                            >
+                                                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                                            </button>
+                                        </div>
+                                        {errors.password && (
+                                            <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                <span>{errors.password}</span>
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Sign In Button */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] active:scale-[0.99] disabled:bg-[#4B8FD8] disabled:opacity-90 disabled:cursor-not-allowed text-white font-bold text-[14px] py-3.5 rounded-[14px] flex items-center justify-center gap-2.5 shadow-[0_4px_14px_rgba(45,121,199,0.25)] hover:shadow-[0_6px_20px_rgba(45,121,199,0.35)] transition-all duration-200 cursor-pointer"
+                                        >
+                                            {loading ? (
+                                                <div className="flex items-center gap-2.5 text-white">
+                                                    <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    <span>Signing in...</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <span>Sign In</span>
+                                                    <ArrowRight className="w-4.5 h-4.5 stroke-[2.5]" />
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

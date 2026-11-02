@@ -4,6 +4,7 @@ import "./index.css";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Login from "./pages/auth/Login";
+import ResetPassword from "./pages/auth/ResetPassword";
 import Me from "./pages/me/Me";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
@@ -40,6 +41,10 @@ const router = createBrowserRouter([
     {
         path: "/login",
         element: <Login />,
+    },
+    {
+        path: "/reset-password",
+        element: <ResetPassword />,
     },
     {
         path: "/unauthorized",

@@ -366,8 +366,17 @@ const userScehma = new mongoose.Schema({
         desktopNotifications: { type: Boolean, default: true },
         dateFormat: { type: String, default: "DD/MM/YYYY" },
         compactMode: { type: Boolean, default: false }
+    },
+    resetPasswordToken: {
+        type: String,
+        default: null,
+        select: false
+    },
+    resetPasswordExpires: {
+        type: Date,
+        default: null,
+        select: false
     }
-
 },
     { timestamps: true }
 )

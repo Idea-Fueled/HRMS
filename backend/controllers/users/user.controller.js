@@ -4,8 +4,9 @@ import Attendance from "../../models/attendance/attendance.model.js";
 import Email from "../../models/emails/email.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinary.service.js";
-import { dispatchExternalEmail } from "../../services/email.service.js";
+import { dispatchExternalEmail, sendPasswordResetEmail, sendAccountWelcomeEmail } from "../../services/email.service.js";
 import { emitToUser } from "../../socket/socket.js";
 
 const resolveUserPermissions = (user) => {
@@ -160,6 +161,32 @@ export const registerUser = async (req, res) => {
                 organization: isHrOrAdmin
             }
         });
+
+        // Send Welcome & Password Setup Email
+        try {
+            const resetToken = crypto.randomBytes(32).toString("hex");
+            const tokenExpiry = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
+            await User.findByIdAndUpdate(user._id, {
+                resetPasswordToken: resetToken,
+                resetPasswordExpires: tokenExpiry
+            });
+
+            const frontendBase = process.env.FRONTEND_URL || "https://hrms-lyart-three-62.vercel.app";
+            const resetUrl = `${frontendBase.replace(/\/+$/, "")}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+
+            sendAccountWelcomeEmail({
+                to: user.email,
+                name: user.fullName || user.firstName,
+                employeeId: user.employeeId,
+                email: user.email,
+                role: user.role,
+                department: user.department,
+                resetUrl
+            }).catch(err => console.warn("Welcome email async dispatch failed:", err.message));
+        } catch (mailErr) {
+            console.warn("Failed to generate welcome email token:", mailErr.message);
+        }
 
         return res.status(201).json({
             success: true,
@@ -1029,5 +1056,137 @@ export const sendCelebrationWish = async (req, res) => {
     } catch (error) {
         console.error("Send celebration wish error:", error);
         return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * Initiates Forgot Password flow by generating a token and sending a reset email
+ */
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Please enter your email address." });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "No user account was found with that email address."
+            });
+        }
+
+        // Generate 32-byte hex token (64 characters)
+        const resetToken = crypto.randomBytes(32).toString("hex");
+        const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = tokenExpiry;
+        await user.save();
+
+        const frontendBase = process.env.FRONTEND_URL || "https://hrms-lyart-three-62.vercel.app";
+        const resetUrl = `${frontendBase.replace(/\/+$/, "")}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+
+        const mailResult = await sendPasswordResetEmail({
+            to: user.email,
+            name: user.fullName || user.firstName,
+            resetUrl
+        });
+
+        if (!mailResult.delivered) {
+            console.warn("Forgot password email delivery warning:", mailResult.error || mailResult.reason);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Password reset link sent to ${user.email}. Please check your inbox.`,
+            delivered: mailResult.delivered
+        });
+    } catch (error) {
+        console.error("Forgot Password Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to process forgot password request." });
+    }
+};
+
+/**
+ * Validates a reset token and email before showing the reset form
+ */
+export const verifyResetToken = async (req, res) => {
+    try {
+        const { token, email } = req.query;
+        if (!token || !email) {
+            return res.status(400).json({ success: false, message: "Missing reset token or email address." });
+        }
+
+        const user = await User.findOne({
+            email: email.toLowerCase().trim(),
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() }
+        }).select("+resetPasswordToken +resetPasswordExpires");
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "This password reset link is invalid or has expired. Please request a new one."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Token is valid.",
+            user: {
+                email: user.email,
+                name: user.fullName || user.firstName
+            }
+        });
+    } catch (error) {
+        console.error("Verify Reset Token Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * Resets user password using the token
+ */
+export const resetPassword = async (req, res) => {
+    try {
+        const { token, email, password } = req.body;
+        if (!token || !email || !password) {
+            return res.status(400).json({ success: false, message: "Token, email, and new password are required." });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, message: "Password must be at least 8 characters long." });
+        }
+
+        const user = await User.findOne({
+            email: email.toLowerCase().trim(),
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() }
+        }).select("+password +resetPasswordToken +resetPasswordExpires");
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "This reset link is invalid or has expired. Please request a new link."
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.password = hashedPassword;
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password has been successfully updated! You can now log in."
+        });
+    } catch (error) {
+        console.error("Reset Password Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to reset password." });
     }
 };

@@ -1,7 +1,9 @@
 import User from "../../models/users/user.model.js";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import Department from "../../models/departments/department.model.js";
 import ProbationPolicy from "../../models/probation/probationPolicy.model.js";
+import { sendAccountWelcomeEmail } from "../../services/email.service.js";
 
 /* ─────────────────────────────────────────────
    GET ALL EMPLOYEES (with summary stats)
@@ -293,6 +295,32 @@ export const createEmployee = async (req, res) => {
             status: status || "active",
             permissions: resolvedPermissions
         });
+
+        // Generate password setup token and dispatch welcome email to the newly created employee
+        try {
+            const resetToken = crypto.randomBytes(32).toString("hex");
+            const tokenExpiry = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
+            await User.findByIdAndUpdate(employee._id, {
+                resetPasswordToken: resetToken,
+                resetPasswordExpires: tokenExpiry
+            });
+
+            const frontendBase = process.env.FRONTEND_URL || "https://hrms-lyart-three-62.vercel.app";
+            const resetUrl = `${frontendBase.replace(/\/+$/, "")}/reset-password?token=${resetToken}&email=${encodeURIComponent(employee.email)}`;
+
+            sendAccountWelcomeEmail({
+                to: employee.email,
+                name: employee.fullName || employee.firstName,
+                employeeId: employee.employeeId,
+                email: employee.email,
+                role: employee.role,
+                department: employee.department,
+                resetUrl
+            }).catch(err => console.warn("Welcome email async dispatch failed:", err.message));
+        } catch (mailErr) {
+            console.warn("Failed to generate welcome email token:", mailErr.message);
+        }
 
         const populated = await User.findById(employee._id)
             .populate("managerId", "fullName employeeId")
