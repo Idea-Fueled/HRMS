@@ -1,4 +1,31 @@
 import nodemailer from "nodemailer";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const LOCAL_LOGO_PATH = path.resolve(__dirname, "../assets/IF-black.png");
+const REMOTE_LOGO_URL = "https://hrms.ideafueled.com/assets/IF-black-Bsefr2U2.png";
+
+const getLogoConfig = () => {
+    if (fs.existsSync(LOCAL_LOGO_PATH)) {
+        return {
+            src: "cid:ideafueled_logo",
+            attachments: [
+                {
+                    filename: "IF-logo.png",
+                    path: LOCAL_LOGO_PATH,
+                    cid: "ideafueled_logo",
+                },
+            ],
+        };
+    }
+    return {
+        src: REMOTE_LOGO_URL,
+        attachments: [],
+    };
+};
 
 let transporter = null;
 
@@ -45,12 +72,14 @@ export const dispatchExternalEmail = async ({ to, cc, bcc, subject, body, attach
                     return {
                         filename: att.filename || att.name,
                         content: att.content,
-                        contentType: att.type || "text/csv"
+                        contentType: att.type || "text/csv",
+                        cid: att.cid,
                     };
                 }
                 return {
                     filename: att.name || att.filename,
                     path: att.url || att.path,
+                    cid: att.cid,
                 };
             }),
         };
@@ -68,6 +97,8 @@ export const dispatchExternalEmail = async ({ to, cc, bcc, subject, body, attach
  */
 export const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
     const subject = "Password Reset Request - Idea Fueled HRMS";
+    const logoConfig = getLogoConfig();
+
     const body = `
     <!DOCTYPE html>
     <html lang="en">
@@ -81,16 +112,15 @@ export const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
             <tr>
                 <td align="center">
                     <table width="100%" max-width="580" style="max-width: 580px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03); border: 1px solid #E2E8F0;">
-                        <!-- Header banner -->
+                        <!-- Logo Header -->
                         <tr>
-                            <td style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 36px 32px; text-align: center;">
-                                <h1 style="margin: 0; color: #FFFFFF; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Idea Fueled HRMS</h1>
-                                <p style="margin: 6px 0 0; color: rgba(255, 255, 255, 0.85); font-size: 14px;">Secure Account Service</p>
+                            <td align="center" style="padding: 36px 32px 20px; text-align: center; background-color: #FFFFFF; border-bottom: 1px solid #F1F5F9;">
+                                <img src="${logoConfig.src}" alt="Idea Fueled" style="height: 44px; max-height: 48px; width: auto; max-width: 220px; display: block; margin: 0 auto; border: 0;" />
                             </td>
                         </tr>
                         <!-- Content -->
                         <tr>
-                            <td style="padding: 36px 32px;">
+                            <td style="padding: 32px 32px;">
                                 <h2 style="margin: 0 0 16px; font-size: 19px; font-weight: 600; color: #0F172A;">Hi ${name || "there"},</h2>
                                 <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #475569;">
                                     We received a request to reset the password for your Idea Fueled HRMS account. Click the button below to set a new password:
@@ -129,7 +159,7 @@ export const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
     </html>
     `;
 
-    return dispatchExternalEmail({ to, subject, body });
+    return dispatchExternalEmail({ to, subject, body, attachments: logoConfig.attachments });
 };
 
 /**
@@ -137,6 +167,8 @@ export const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
  */
 export const sendAccountWelcomeEmail = async ({ to, name, employeeId, email, role, department, resetUrl }) => {
     const subject = "Welcome to Idea Fueled HRMS - Set Your Password";
+    const logoConfig = getLogoConfig();
+
     const body = `
     <!DOCTYPE html>
     <html lang="en">
@@ -150,16 +182,15 @@ export const sendAccountWelcomeEmail = async ({ to, name, employeeId, email, rol
             <tr>
                 <td align="center">
                     <table width="100%" max-width="580" style="max-width: 580px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03); border: 1px solid #E2E8F0;">
-                        <!-- Header banner -->
+                        <!-- Logo Header -->
                         <tr>
-                            <td style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 40px 32px; text-align: center;">
-                                <h1 style="margin: 0; color: #FFFFFF; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">Welcome to Idea Fueled!</h1>
-                                <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.88); font-size: 14.5px;">Your HRMS Employee Account is Ready</p>
+                            <td align="center" style="padding: 36px 32px 20px; text-align: center; background-color: #FFFFFF; border-bottom: 1px solid #F1F5F9;">
+                                <img src="${logoConfig.src}" alt="Idea Fueled" style="height: 44px; max-height: 48px; width: auto; max-width: 220px; display: block; margin: 0 auto; border: 0;" />
                             </td>
                         </tr>
                         <!-- Content -->
                         <tr>
-                            <td style="padding: 36px 32px;">
+                            <td style="padding: 32px 32px;">
                                 <h2 style="margin: 0 0 16px; font-size: 19px; font-weight: 600; color: #0F172A;">Hello ${name || "Colleague"},</h2>
                                 <p style="margin: 0 0 20px; font-size: 14.5px; line-height: 1.6; color: #475569;">
                                     Your account on the <strong>Idea Fueled HRMS Portal</strong> has been created by the Administrator. Below are your official account details:
@@ -228,6 +259,6 @@ export const sendAccountWelcomeEmail = async ({ to, name, employeeId, email, rol
     </html>
     `;
 
-    return dispatchExternalEmail({ to, subject, body });
+    return dispatchExternalEmail({ to, subject, body, attachments: logoConfig.attachments });
 };
 
