@@ -15,6 +15,12 @@ const getSocketUrl = () => {
     const isLocalhost = typeof window !== "undefined" && 
         (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
+    if (!isLocalhost && typeof window !== "undefined") {
+        if (!base || typeof base !== "string" || base.includes("localhost") || base.includes("127.0.0.1")) {
+            return "https://backend.ideafueled.com";
+        }
+    }
+
     if (!base || typeof base !== "string" || !base.trim()) {
         return isLocalhost ? "http://localhost:5000" : "https://backend.ideafueled.com";
     }

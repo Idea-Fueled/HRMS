@@ -6,6 +6,13 @@ export const getApiBaseUrl = () => {
     const isLocalhost = typeof window !== "undefined" && 
         (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
+    // In production browser environments (e.g. hrms.ideafueled.com), ensure we never hit localhost or empty
+    if (!isLocalhost && typeof window !== "undefined") {
+        if (!url || typeof url !== "string" || url.includes("localhost") || url.includes("127.0.0.1")) {
+            url = "https://backend.ideafueled.com/api";
+        }
+    }
+
     if (!url || typeof url !== "string" || !url.trim()) {
         url = isLocalhost ? "http://localhost:5000/api" : "https://backend.ideafueled.com/api";
     }
