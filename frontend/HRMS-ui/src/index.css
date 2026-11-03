@@ -7,18 +7,33 @@
 
 /* ─────────────────────────────────────────────
    GLOBAL TYPOGRAPHY & ROOT FONT SIZING
-   Scaled to compact enterprise density so 100% zoom
-   looks as crisp and spacious as 75% zoom.
+   Calibrated to 15px (sweet spot) for crisp, balanced SaaS density.
+   Text is never bloated, yet small text stays comfortable & readable.
 ───────────────────────────────────────────── */
 html {
-    font-size: 13.5px;
+    font-size: 15px;
     scroll-behavior: smooth;
 }
 
 @media (min-width: 1536px) {
     html {
-        font-size: 14px;
+        font-size: 15.5px;
     }
+}
+
+/* Micro-text floor: keeps badges, tags, and timestamps crisp & readable */
+.text-\[9px\],
+.text-\[9\.5px\],
+.text-\[10px\],
+.text-\[10\.5px\] {
+    font-size: 0.77rem !important; /* ~11.5px */
+    line-height: 1.25 !important;
+}
+
+.text-\[11px\],
+.text-\[11\.5px\] {
+    font-size: 0.81rem !important; /* ~12.2px */
+    line-height: 1.3 !important;
 }
 
 body,
