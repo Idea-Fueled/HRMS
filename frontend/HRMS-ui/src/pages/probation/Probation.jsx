@@ -45,12 +45,12 @@ const Probation = () => {
     const [confirmRemoveEmp, setConfirmRemoveEmp] = useState(null);
     const [showExtendModal, setShowExtendModal] = useState(false);
     const [extendingEmp, setExtendingEmp] = useState(null);
-    const [extendDays, setExtendDays] = useState(30);
+    const [extendMonths, setExtendMonths] = useState(1);
     const [extendRemarks, setExtendRemarks] = useState("");
 
     // Form states
-    const [policyForm, setPolicyForm] = useState({ name: "", days: 0, description: "" });
-    const [editForm, setEditForm] = useState({ name: "", days: 0, description: "", syncEnrolledEmployees: true });
+    const [policyForm, setPolicyForm] = useState({ name: "", months: 3, description: "" });
+    const [editForm, setEditForm] = useState({ name: "", months: 3, description: "", syncEnrolledEmployees: true });
     const [submitting, setSubmitting] = useState(false);
 
     // Assign modal state
@@ -112,13 +112,13 @@ const Probation = () => {
             setSubmitting(true);
             const res = await createProbationPolicy({
                 name: policyForm.name.trim(),
-                days: Number(policyForm.days) || 0,
+                months: Number(policyForm.months) || 0,
                 description: policyForm.description.trim()
             });
             if (res.data?.success) {
                 toast.success(res.data.message || "Probation policy created.");
                 setShowCreateModal(false);
-                setPolicyForm({ name: "", days: 0, description: "" });
+                setPolicyForm({ name: "", months: 3, description: "" });
                 await fetchPolicies();
             }
         } catch (err) {
@@ -131,9 +131,10 @@ const Probation = () => {
     // Handle Edit Policy
     const handleTriggerEdit = (policy) => {
         setEditingPolicy(policy);
+        const curMonths = policy.months || (policy.days ? Math.round(policy.days / 30) : 0);
         setEditForm({
             name: policy.name,
-            days: policy.days || 0,
+            months: curMonths,
             description: policy.description || "",
             syncEnrolledEmployees: true
         });
@@ -151,7 +152,7 @@ const Probation = () => {
             setSubmitting(true);
             const res = await updateProbationPolicy(editingPolicy._id, {
                 name: editForm.name.trim(),
-                days: Number(editForm.days) || 0,
+                months: Number(editForm.months) || 0,
                 description: editForm.description.trim(),
                 syncEnrolledEmployees: editForm.syncEnrolledEmployees
             });
@@ -263,7 +264,7 @@ const Probation = () => {
     // Trigger Extend Probation
     const handleTriggerExtend = (emp) => {
         setExtendingEmp(emp);
-        setExtendDays(30);
+        setExtendMonths(1);
         setExtendRemarks("");
         setShowExtendModal(true);
     };
@@ -272,16 +273,16 @@ const Probation = () => {
     const handleExtendProbation = async (e) => {
         e.preventDefault();
         if (!extendingEmp) return;
-        const days = Number(extendDays);
-        if (!days || days <= 0) {
-            toast.error("Please enter a valid number of days to extend.");
+        const months = Number(extendMonths);
+        if (!months || months <= 0) {
+            toast.error("Please enter a valid number of months to extend.");
             return;
         }
         try {
             setSubmitting(true);
-            const res = await extendEmployeeProbation(extendingEmp._id, days, extendRemarks);
+            const res = await extendEmployeeProbation(extendingEmp._id, months, extendRemarks);
             if (res.data?.success) {
-                toast.success(res.data.message || `Probation extended by ${days} days.`);
+                toast.success(res.data.message || `Probation extended by ${months} month(s).`);
                 setShowExtendModal(false);
                 setExtendingEmp(null);
                 await fetchPolicies();
@@ -332,7 +333,7 @@ const Probation = () => {
                         </div>
                         <div>
                             <h1 className="text-xl font-black text-[#1E1E1E] tracking-tight">Probation Management</h1>
-                            <p className="text-xs text-gray-500 font-medium">Configure probation policies, set duration in days, and manage employee tracks</p>
+                            <p className="text-xs text-gray-500 font-medium">Configure probation policies, set duration in months, and manage employee tracks</p>
                         </div>
                     </div>
                 </div>
@@ -457,7 +458,8 @@ const Probation = () => {
                     {/* Individual policy cards */}
                     {policies.map(policy => {
                         const isSelected = selectedPolicyId === policy._id;
-                        const daysSet = policy.days > 0;
+                        const durationMonths = policy.months || (policy.days ? Math.round(policy.days / 30) : 0);
+                        const monthsSet = durationMonths > 0;
                         return (
                             <div
                                 key={policy._id}
@@ -471,17 +473,17 @@ const Probation = () => {
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-md ${
-                                            daysSet
+                                            monthsSet
                                                 ? "bg-blue-50 text-[#2D79C7] border border-blue-100/60"
                                                 : "bg-slate-100 text-slate-500"
                                         }`}>
-                                            {daysSet ? `${policy.days} Days` : "Days not set"}
+                                            {monthsSet ? `${durationMonths} Month${durationMonths > 1 ? "s" : ""}` : "Months not set"}
                                         </span>
                                         <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                                             <button
                                                 type="button"
                                                 onClick={() => handleTriggerEdit(policy)}
-                                                title="Edit Policy & Days"
+                                                title="Edit Policy & Duration"
                                                 className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                                             >
                                                 <Edit3 className="w-3.5 h-3.5" />
@@ -671,9 +673,9 @@ const Probation = () => {
                                                 {formatDate(emp.joiningDate)}
                                             </td>
 
-                                            {/* Duration in Days */}
+                                            {/* Duration in Months */}
                                             <td className="py-3 px-4 font-mono font-bold text-gray-800">
-                                                {emp.probationDays} Days
+                                                {emp.probationMonths || (emp.probationDays ? Math.round(emp.probationDays / 30) : 0)} Month{((emp.probationMonths || (emp.probationDays ? Math.round(emp.probationDays / 30) : 0)) > 1) ? "s" : ""}
                                             </td>
 
                                             {/* End Date */}
@@ -772,19 +774,36 @@ const Probation = () => {
 
                             <div>
                                 <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
-                                    Probation Duration (Days) <span className="text-rose-500">*</span>
+                                    Probation Duration (Months) <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="number"
-                                    min="0"
+                                    min="1"
+                                    max="36"
                                     step="1"
                                     required
-                                    placeholder="e.g. 90, 180"
-                                    value={policyForm.days}
-                                    onChange={(e) => setPolicyForm(prev => ({ ...prev, days: e.target.value }))}
+                                    placeholder="e.g. 1, 3, 6"
+                                    value={policyForm.months}
+                                    onChange={(e) => setPolicyForm(prev => ({ ...prev, months: e.target.value }))}
                                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-[#2D79C7]"
                                 />
-                                <p className="text-[10.5px] text-gray-400 mt-1">Admin can enter how many days this probation period lasts.</p>
+                                <div className="flex items-center gap-1.5 mt-2">
+                                    {[1, 2, 3, 6, 9, 12].map(m => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setPolicyForm(prev => ({ ...prev, months: m }))}
+                                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
+                                                Number(policyForm.months) === m
+                                                    ? "bg-[#2D79C7] text-white"
+                                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                            }`}
+                                        >
+                                            {m}m
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[10.5px] text-gray-400 mt-1">Admin can enter how many months this probation period lasts (e.g. 1, 3, 6 months).</p>
                             </div>
 
                             <div>
@@ -857,17 +876,34 @@ const Probation = () => {
 
                             <div>
                                 <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1">
-                                    Duration in Days <span className="text-rose-500">*</span>
+                                    Duration in Months <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="number"
-                                    min="0"
+                                    min="1"
+                                    max="36"
                                     step="1"
                                     required
-                                    value={editForm.days}
-                                    onChange={(e) => setEditForm(prev => ({ ...prev, days: e.target.value }))}
+                                    value={editForm.months}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, months: e.target.value }))}
                                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-[#2D79C7]"
                                 />
+                                <div className="flex items-center gap-1.5 mt-2">
+                                    {[1, 2, 3, 6, 9, 12].map(m => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setEditForm(prev => ({ ...prev, months: m }))}
+                                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
+                                                Number(editForm.months) === m
+                                                    ? "bg-[#2D79C7] text-white"
+                                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                            }`}
+                                        >
+                                            {m}m
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div>
@@ -891,7 +927,7 @@ const Probation = () => {
                                     className="rounded border-gray-300 text-[#2D79C7] focus:ring-[#2D79C7] cursor-pointer"
                                 />
                                 <label htmlFor="syncDays" className="text-gray-600 font-medium select-none cursor-pointer">
-                                    Sync updated days with all currently enrolled employees
+                                    Sync updated duration with all currently enrolled employees
                                 </label>
                             </div>
 
@@ -949,7 +985,7 @@ const Probation = () => {
                                 >
                                     {policies.map(p => (
                                         <option key={p._id} value={p._id}>
-                                            {p.name} ({p.days} Days)
+                                            {p.name} ({p.months || (p.days ? Math.round(p.days / 30) : 0)} Months)
                                         </option>
                                     ))}
                                 </select>
@@ -1088,7 +1124,9 @@ const Probation = () => {
                             <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3.5 space-y-2">
                                 <div className="flex items-center justify-between text-gray-600">
                                     <span className="font-medium">Current Duration:</span>
-                                    <span className="font-bold font-mono text-gray-800">{extendingEmp.probationDays || 0} Days</span>
+                                    <span className="font-bold font-mono text-gray-800">
+                                        {extendingEmp.probationMonths || (extendingEmp.probationDays ? Math.round(extendingEmp.probationDays / 30) : 0)} Month{((extendingEmp.probationMonths || (extendingEmp.probationDays ? Math.round(extendingEmp.probationDays / 30) : 0)) > 1) ? "s" : ""}
+                                    </span>
                                 </div>
                                 <div className="flex items-center justify-between text-gray-600">
                                     <span className="font-medium">Current End Date:</span>
@@ -1097,49 +1135,54 @@ const Probation = () => {
                                 <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between text-[#2D79C7]">
                                     <span className="font-bold">Projected Total Duration:</span>
                                     <span className="font-black font-mono text-[13px]">
-                                        {(extendingEmp.probationDays || 0) + (Number(extendDays) || 0)} Days
+                                        {(extendingEmp.probationMonths || (extendingEmp.probationDays ? Math.round(extendingEmp.probationDays / 30) : 0)) + (Number(extendMonths) || 0)} Month{((extendingEmp.probationMonths || (extendingEmp.probationDays ? Math.round(extendingEmp.probationDays / 30) : 0)) + (Number(extendMonths) || 0) > 1) ? "s" : ""}
                                     </span>
                                 </div>
                                 {extendingEmp.probationEndDate && (
                                     <div className="flex items-center justify-between text-[#2D79C7] text-[11px]">
                                         <span className="font-semibold">New End Date:</span>
                                         <span className="font-bold font-mono">
-                                            {formatDate(new Date(new Date(extendingEmp.probationEndDate).getTime() + (Number(extendDays) || 0) * 86400000))}
+                                            {(() => {
+                                                const d = new Date(extendingEmp.probationEndDate);
+                                                d.setMonth(d.getMonth() + (Number(extendMonths) || 0));
+                                                return formatDate(d);
+                                            })()}
                                         </span>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Additional Days Input & Quick Chips */}
+                            {/* Additional Months Input & Quick Chips */}
                             <div>
                                 <label className="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                                    Additional Days to Extend <span className="text-rose-500">*</span>
+                                    Additional Months to Extend <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="number"
                                     min="1"
+                                    max="24"
                                     step="1"
                                     required
-                                    value={extendDays}
-                                    onChange={(e) => setExtendDays(e.target.value)}
-                                    placeholder="e.g. 30"
+                                    value={extendMonths}
+                                    onChange={(e) => setExtendMonths(e.target.value)}
+                                    placeholder="e.g. 1, 3"
                                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-[#2D79C7]"
                                 />
                                 
                                 {/* Quick chips */}
                                 <div className="flex items-center gap-1.5 mt-2">
-                                    {[15, 30, 45, 60, 90].map(days => (
+                                    {[1, 2, 3, 6].map(m => (
                                         <button
-                                            key={days}
+                                            key={m}
                                             type="button"
-                                            onClick={() => setExtendDays(days)}
+                                            onClick={() => setExtendMonths(m)}
                                             className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
-                                                Number(extendDays) === days
+                                                Number(extendMonths) === m
                                                     ? "bg-[#2D79C7] text-white"
                                                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                             }`}
                                         >
-                                            +{days}d
+                                            +{m}m
                                         </button>
                                     ))}
                                 </div>

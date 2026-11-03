@@ -28,6 +28,6 @@ export const removeEmployeeFromPolicy = async (employeeId) => {
     return API.post("/probation/remove", { employeeId });
 };
 
-export const extendEmployeeProbation = async (employeeId, additionalDays, remarks) => {
-    return API.post("/probation/extend", { employeeId, additionalDays, remarks });
+export const extendEmployeeProbation = async (employeeId, additionalMonths, remarks) => {
+    return API.post("/probation/extend", { employeeId, additionalMonths, remarks });
 };

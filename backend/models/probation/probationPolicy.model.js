@@ -8,9 +8,13 @@ const probationPolicySchema = new mongoose.Schema(
             unique: true,
             trim: true
         },
+        months: {
+            type: Number,
+            default: 0,
+            min: [0, "Months cannot be negative"]
+        },
         days: {
             type: Number,
-            required: [true, "Probation period in days is required"],
             default: 0,
             min: [0, "Days cannot be negative"]
         },

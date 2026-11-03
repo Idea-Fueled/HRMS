@@ -68,7 +68,7 @@ export const getProbationPolicies = async (req, res) => {
  */
 export const createProbationPolicy = async (req, res) => {
     try {
-        const { name, days, description } = req.body;
+        const { name, months, days, description } = req.body;
 
         if (!name || !name.trim()) {
             return res.status(400).json({ success: false, message: "Policy name is required." });
@@ -80,9 +80,13 @@ export const createProbationPolicy = async (req, res) => {
             return res.status(400).json({ success: false, message: "A policy with this name already exists." });
         }
 
+        const numMonths = months !== undefined && months !== "" ? Number(months) : (days ? Math.round(Number(days) / 30) : 0);
+        const numDays = days !== undefined && days !== "" ? Number(days) : numMonths * 30;
+
         const policy = await ProbationPolicy.create({
             name: cleanName,
-            days: Number(days) || 0,
+            months: numMonths,
+            days: numDays,
             description: (description || "").trim(),
             createdBy: req.user?._id || null
         });
@@ -108,7 +112,7 @@ export const createProbationPolicy = async (req, res) => {
 export const updateProbationPolicy = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, days, description, syncEnrolledEmployees } = req.body;
+        const { name, months, days, description, syncEnrolledEmployees } = req.body;
 
         const policy = await ProbationPolicy.findById(id);
         if (!policy) {
@@ -127,9 +131,20 @@ export const updateProbationPolicy = async (req, res) => {
             policy.name = cleanName;
         }
 
-        const newDays = days !== undefined && days !== "" ? Number(days) : policy.days;
-        const daysChanged = newDays !== policy.days;
-        policy.days = newDays;
+        let daysChanged = false;
+        if (months !== undefined && months !== "") {
+            const numMonths = Number(months);
+            const numDays = numMonths * 30;
+            daysChanged = policy.days !== numDays || policy.months !== numMonths;
+            policy.months = numMonths;
+            policy.days = numDays;
+        } else if (days !== undefined && days !== "") {
+            const numDays = Number(days);
+            const numMonths = Math.round(numDays / 30);
+            daysChanged = policy.days !== numDays || policy.months !== numMonths;
+            policy.days = numDays;
+            policy.months = numMonths;
+        }
 
         if (description !== undefined) {
             policy.description = description.trim();
@@ -137,7 +152,7 @@ export const updateProbationPolicy = async (req, res) => {
 
         await policy.save();
 
-        // Optionally update all enrolled active employees if policy days were updated
+        // Optionally update all enrolled active employees if policy duration was updated
         if (daysChanged || syncEnrolledEmployees) {
             await User.updateMany(
                 { probationPolicy: policy._id },
@@ -221,7 +236,7 @@ export const getPolicyEmployees = async (req, res) => {
         }
 
         const employees = await User.find(query)
-            .populate("probationPolicy", "name days")
+            .populate("probationPolicy", "name days months")
             .populate("managerId", "fullName firstName lastName employeeId designation")
             .select("fullName firstName lastName employeeId designation department joiningDate probationPeriod probationPolicy profilePicture email phoneNumber status")
             .sort({ joiningDate: -1 })
@@ -234,7 +249,9 @@ export const getPolicyEmployees = async (req, res) => {
             const name = emp.fullName || `${emp.firstName || ""} ${emp.lastName || ""}`.trim() || "Employee";
             const days = (emp.probationPeriod !== undefined && emp.probationPeriod !== null && Number(emp.probationPeriod) > 0)
                 ? Number(emp.probationPeriod)
-                : (emp.probationPolicy?.days || 0);
+                : (emp.probationPolicy?.days || (Number(emp.probationPolicy?.months || 0) * 30) || 0);
+            
+            const months = emp.probationPolicy?.months || (days >= 28 ? Math.round(days / 30) : (days > 0 ? 1 : 0));
             
             let probationEndDate = null;
             let daysRemaining = null;
@@ -269,6 +286,7 @@ export const getPolicyEmployees = async (req, res) => {
                 ...emp,
                 displayName: name,
                 probationDays: days,
+                probationMonths: months,
                 probationEndDate,
                 daysRemaining,
                 isCompleted,
@@ -362,15 +380,19 @@ export const removeEmployeeFromPolicy = async (req, res) => {
  */
 export const extendEmployeeProbation = async (req, res) => {
     try {
-        const { employeeId, additionalDays, remarks } = req.body;
+        const { employeeId, additionalMonths, additionalDays, remarks } = req.body;
 
         if (!employeeId) {
             return res.status(400).json({ success: false, message: "Employee ID is required." });
         }
 
-        const daysToAdd = Number(additionalDays);
+        const monthsToAdd = additionalMonths !== undefined && additionalMonths !== "" ? Number(additionalMonths) : 0;
+        const daysToAdd = additionalDays !== undefined && additionalDays !== "" 
+            ? Number(additionalDays) 
+            : (monthsToAdd > 0 ? monthsToAdd * 30 : 0);
+
         if (!daysToAdd || daysToAdd <= 0) {
-            return res.status(400).json({ success: false, message: "Please enter a valid number of days to extend." });
+            return res.status(400).json({ success: false, message: "Please enter a valid duration to extend." });
         }
 
         const employee = await User.findById(employeeId);
@@ -384,16 +406,17 @@ export const extendEmployeeProbation = async (req, res) => {
 
         if (!currentDays && employee.probationPolicy) {
             const policy = await ProbationPolicy.findById(employee.probationPolicy);
-            if (policy) currentDays = Number(policy.days) || 0;
+            if (policy) currentDays = Number(policy.days) || (Number(policy.months || 0) * 30) || 0;
         }
 
         const newDays = currentDays + daysToAdd;
         employee.probationPeriod = newDays;
 
         if (!employee.activities) employee.activities = [];
+        const durationText = monthsToAdd > 0 ? `${monthsToAdd} month(s)` : `${daysToAdd} days`;
         employee.activities.push({
             title: "Probation Extended",
-            description: `Probation extended by ${daysToAdd} days (New total: ${newDays} days). Reason: ${remarks || "No remarks"}`,
+            description: `Probation extended by ${durationText} (New total: ${newDays} days). Reason: ${remarks || "No remarks"}`,
             timestamp: new Date(),
             type: "general"
         });
@@ -402,7 +425,7 @@ export const extendEmployeeProbation = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: `Probation extended by ${daysToAdd} days successfully (New total: ${newDays} days).`,
+            message: `Probation extended by ${durationText} successfully (New total: ${newDays} days).`,
             employee: {
                 _id: employee._id,
                 probationPeriod: newDays

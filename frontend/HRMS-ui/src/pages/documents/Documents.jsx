@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
     Plus, FileText, FileSpreadsheet, Archive, Image as ImageIcon,
     File, Trash2, Edit3, ExternalLink, X, ChevronDown, Folder,
-    Calendar, User, Download, Info, Loader2, ArrowUpRight, ShieldAlert
+    Calendar, User, Download, Info, Loader2, ArrowUpRight, ShieldAlert, Eye
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
@@ -278,6 +278,39 @@ export const Documents = () => {
         }
     };
 
+    // Open document in a new tab with clean document title
+    const handleOpenDocument = (doc) => {
+        if (!doc || !doc.url) return;
+        const title = doc.title || "Document";
+        const extension = doc.fileType ? `.${doc.fileType.toLowerCase()}` : "";
+        const fullTitle = title.toLowerCase().endsWith(extension) ? title : `${title}${extension}`;
+
+        const viewerWindow = window.open("", "_blank");
+        if (viewerWindow) {
+            viewerWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>${fullTitle}</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        html, body { width: 100%; height: 100%; overflow: hidden; background-color: #323639; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+                        iframe { width: 100%; height: 100%; border: none; display: block; }
+                    </style>
+                </head>
+                <body>
+                    <iframe src="${doc.url}" title="${fullTitle}" allow="fullscreen"></iframe>
+                </body>
+                </html>
+            `);
+            viewerWindow.document.close();
+        } else {
+            window.open(doc.url, "_blank");
+        }
+    };
+
     // Get file details visual support
     const getFileVisuals = (fileType, title = "") => {
         const type = (fileType || title.split(".").pop() || "FILE").toUpperCase();
@@ -489,11 +522,19 @@ export const Documents = () => {
 
                                     {/* Icon + Title */}
                                     <div className="flex items-start gap-3">
-                                        <div className={`p-2.5 rounded-[12px] border ${iconColor} shrink-0 shadow-2xs`}>
+                                        <div 
+                                            onClick={() => handleOpenDocument(doc)}
+                                            className={`p-2.5 rounded-[12px] border ${iconColor} shrink-0 shadow-2xs cursor-pointer hover:opacity-90 transition-opacity`}
+                                            title="Click to view document"
+                                        >
                                             <FileIcon className="w-5 h-5 stroke-[2]" />
                                         </div>
                                         <div className="space-y-0.5 min-w-0">
-                                            <h4 className="text-[#1E1E1E] text-xs font-black break-all group-hover:text-[#2D79C7] transition-colors leading-tight">
+                                            <h4 
+                                                onClick={() => handleOpenDocument(doc)}
+                                                className="text-[#1E1E1E] text-xs font-black break-all group-hover:text-[#2D79C7] transition-colors leading-tight cursor-pointer"
+                                                title="Click to view document"
+                                            >
                                                 {doc.title}
                                             </h4>
                                             <p className="text-gray-400 text-[10px] font-bold">
@@ -529,11 +570,11 @@ export const Documents = () => {
 
                                         <div className="flex items-center gap-1.5 shrink-0">
                                             <button
-                                                onClick={() => window.open(doc.url, "_blank")}
-                                                title="View / Download File"
+                                                onClick={() => handleOpenDocument(doc)}
+                                                title="View Document"
                                                 className="p-1.5 text-slate-500 hover:text-[#2D79C7] bg-slate-50 hover:bg-[#F0F7FF] border border-slate-150 rounded-[8px] transition-all cursor-pointer hover:shadow-2xs"
                                             >
-                                                <Download className="w-3.5 h-3.5" />
+                                                <Eye className="w-3.5 h-3.5" />
                                             </button>
 
                                             {isHrOrAdmin && (

@@ -120,7 +120,14 @@ export const createDocument = async (req, res) => {
         // If file is uploaded, upload to Cloudinary
         if (req.file) {
             try {
-                const uploadResult = await uploadToCloudinary(req.file.buffer, "hrms_documents", "auto");
+                const baseName = (title || req.file.originalname || "document")
+                    .trim()
+                    .replace(/\.[^/.]+$/, "")
+                    .replace(/[^a-zA-Z0-9_\-\s]/g, "")
+                    .replace(/\s+/g, "_");
+                const publicId = `${baseName || "document"}_${Date.now()}`;
+
+                const uploadResult = await uploadToCloudinary(req.file.buffer, "hrms_documents", "auto", publicId);
                 documentUrl = uploadResult.secure_url;
                 fileSizeStr = formatBytes(req.file.size);
                 fileTypeStr = req.file.mimetype.split("/")[1]?.toUpperCase() || "FILE";
@@ -206,7 +213,14 @@ export const updateDocument = async (req, res) => {
                     await deleteFromCloudinary(document.url);
                 }
                 // Upload new
-                const uploadResult = await uploadToCloudinary(req.file.buffer, "hrms_documents", "auto");
+                const baseName = (title || document.title || req.file.originalname || "document")
+                    .trim()
+                    .replace(/\.[^/.]+$/, "")
+                    .replace(/[^a-zA-Z0-9_\-\s]/g, "")
+                    .replace(/\s+/g, "_");
+                const publicId = `${baseName || "document"}_${Date.now()}`;
+
+                const uploadResult = await uploadToCloudinary(req.file.buffer, "hrms_documents", "auto", publicId);
                 document.url = uploadResult.secure_url;
                 document.fileSize = formatBytes(req.file.size);
                 document.fileType = req.file.mimetype.split("/")[1]?.toUpperCase() || "FILE";
