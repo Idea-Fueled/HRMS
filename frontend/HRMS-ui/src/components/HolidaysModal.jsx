@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
-import { X, CalendarDays, Loader2, AlertCircle, Calendar, Edit3, Trash2 } from "lucide-react";
+import { X, CalendarDays, Loader2, AlertCircle, Calendar, Edit3, Trash2, Upload, Image as ImageIcon, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { getAllHolidays, updateHoliday, deleteHoliday } from "../services/dashboard.service";
 import { useAuth } from "../context/AuthContext";
@@ -85,8 +85,10 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
     const [date, setDate] = useState(holiday.date ? holiday.date.split("T")[0] : "");
     const [day, setDay] = useState(holiday.day || "");
     const [type, setType] = useState(holiday.type || "public_holiday");
-    const [description, setDescription] = useState(holiday.description || "");
+    const [photoFile, setPhotoFile] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(holiday.image || "");
     const [submitting, setSubmitting] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         if (date) {
@@ -95,12 +97,30 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
         }
     }, [date]);
 
+    const handlePhotoChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPhotoFile(file);
+            setPhotoPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title.trim() || !date) { toast.error("Title and Date are required."); return; }
         try {
             setSubmitting(true);
-            const res = await updateHoliday(holiday._id, { title: title.trim(), date, day, type, description: description.trim() });
+            const formData = new FormData();
+            formData.append("title", title.trim());
+            formData.append("date", date);
+            formData.append("day", day);
+            formData.append("type", type);
+            if (photoFile) {
+                formData.append("image", photoFile);
+            } else if (photoPreview === "") {
+                formData.append("image", "");
+            }
+            const res = await updateHoliday(holiday._id, formData);
             if (res.data?.success) {
                 toast.success("Holiday updated successfully.");
                 onSuccess();
@@ -149,17 +169,64 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
                     </div>
                     <div>
                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Type</label>
-                        <select value={type} onChange={e => setType(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm focus:outline-none focus:bg-white focus:border-[#2D79C7] transition-all cursor-pointer">
-                            <option value="public_holiday">Public Holiday</option>
-                            <option value="optional_holiday">Optional Holiday</option>
-                            <option value="company_holiday">Company Holiday</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={type}
+                                onChange={e => setType(e.target.value)}
+                                className="w-full px-4 py-2.5 pr-10 bg-gray-50 border border-gray-200 rounded-[14px] text-sm text-[#1E1E1E] font-medium focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all cursor-pointer appearance-none -webkit-appearance-none shadow-inner"
+                            >
+                                <option value="public_holiday">Public Holiday</option>
+                                <option value="optional_holiday">Optional Holiday</option>
+                                <option value="company_holiday">Company Holiday</option>
+                            </select>
+                            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                                <ChevronDown className="w-4 h-4 stroke-[2.5]" />
+                            </div>
+                        </div>
                     </div>
                     <div>
-                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Description</label>
-                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Add brief description..."
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] transition-all h-20 resize-none shadow-inner" />
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
+                            Holiday Image / Banner
+                        </label>
+                        <div className="flex items-center gap-3">
+                            {photoPreview ? (
+                                <div className="relative w-16 h-16 rounded-[14px] overflow-hidden border border-gray-200 shrink-0 bg-gray-50 shadow-2xs">
+                                    <img src={photoPreview} alt="Holiday preview" className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPhotoFile(null);
+                                            setPhotoPreview("");
+                                        }}
+                                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="w-16 h-16 rounded-[14px] border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 bg-gray-50 shrink-0">
+                                    <ImageIcon className="w-6 h-6 stroke-[1.5]" />
+                                </div>
+                            )}
+                            <div className="flex-1">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    accept="image/*"
+                                    onChange={handlePhotoChange}
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-[10px] border border-gray-300 shadow-2xs transition-all cursor-pointer"
+                                >
+                                    <Upload className="w-3.5 h-3.5 text-[#2D79C7]" />
+                                    <span>{photoPreview ? "Change Photo" : "Upload Photo"}</span>
+                                </button>
+                                <p className="text-[11px] text-gray-400 mt-1">PNG, JPG, or WEBP up to 5MB</p>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#F3F4F6]">
                         <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-bold text-gray-500 hover:bg-gray-50 border border-gray-200 rounded-[12px] transition-all cursor-pointer">

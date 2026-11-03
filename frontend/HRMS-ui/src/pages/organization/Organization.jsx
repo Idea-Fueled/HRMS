@@ -53,11 +53,13 @@ const OrgNodeCard = ({ emp, reportCount = "-", onSelect, isMe = false }) => {
 const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer, currentUserId }) => {
     const [expanded, setExpanded] = useState(true);
 
-    // Find direct reports
+    // Find direct reports - only active employees
     const directReports = allEmployees.filter(e => {
         if (!e.managerId) return false;
         const mId = typeof e.managerId === 'object' ? e.managerId._id : e.managerId;
-        return mId && String(mId) === String(emp._id);
+        const isChildOfThisEmp = mId && String(mId) === String(emp._id);
+        const isActive = (e.status || "active").toLowerCase() === "active";
+        return isChildOfThisEmp && isActive;
     });
 
     const reportCount = directReports.length > 0 ? directReports.length : "-";
@@ -88,30 +90,46 @@ const RecursiveOrgNode = ({ emp, allEmployees, onSelectDrawer, currentUserId }) 
                 )}
             </div>
 
-            {/* Direct Reports Sub-Branch with Line Animations */}
+            {/* Direct Reports Sub-Branch with seamless Connector Lines */}
             {directReports.length > 0 && expanded && (
                 <div className="flex flex-col items-center pt-3 w-full animate-fadeIn">
-                    {/* Vertical connector line from parent */}
-                    <div className="w-0.5 h-6 bg-gray-300/90 animate-line-grow" />
+                    {/* Vertical connector line from parent badge down to the horizontal branch */}
+                    <div className="w-0.5 h-6 bg-gray-300/90" />
 
-                    {/* Horizontal connector line across children */}
-                    {directReports.length > 1 && (
-                        <div className="w-[88%] h-0.5 bg-gray-300/90 animate-fadeIn" />
-                    )}
+                    {/* Children row with seamless connected lines */}
+                    <div className="flex items-start justify-center pt-0">
+                        {directReports.map((child, index) => {
+                            const isFirst = index === 0;
+                            const isLast = index === directReports.length - 1;
+                            const isOnly = directReports.length === 1;
 
-                    {/* Vertical lines to child nodes */}
-                    <div className="flex gap-6 sm:gap-10 items-start justify-center pt-0">
-                        {directReports.map((child) => (
-                            <div key={child._id} className="flex flex-col items-center">
-                                <div className="w-0.5 h-6 bg-gray-300/90 animate-line-grow" />
-                                <RecursiveOrgNode 
-                                    emp={child} 
-                                    allEmployees={allEmployees} 
-                                    onSelectDrawer={onSelectDrawer} 
-                                    currentUserId={currentUserId}
-                                />
-                            </div>
-                        ))}
+                            return (
+                                <div key={child._id} className="relative flex flex-col items-center px-4 sm:px-6">
+                                    {/* Seamless horizontal branch line segment */}
+                                    {!isOnly && (
+                                        <div
+                                            className={`absolute top-0 h-0.5 bg-gray-300/90 ${
+                                                isFirst
+                                                    ? "left-1/2 right-0"
+                                                    : isLast
+                                                    ? "left-0 right-1/2"
+                                                    : "left-0 right-0"
+                                            }`}
+                                        />
+                                    )}
+
+                                    {/* Vertical line connecting from the branch line into this child card */}
+                                    <div className="w-0.5 h-6 bg-gray-300/90 relative z-10" />
+
+                                    <RecursiveOrgNode 
+                                        emp={child} 
+                                        allEmployees={allEmployees} 
+                                        onSelectDrawer={onSelectDrawer} 
+                                        currentUserId={currentUserId}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -145,7 +163,8 @@ export default function Organization() {
             const res = await getAllEmployees();
             if (res.data?.success) {
                 const list = res.data.employees || res.data.users || [];
-                const processed = enrichHierarchy(list);
+                const activeList = list.filter(e => (e.status || "").toLowerCase() === "active");
+                const processed = enrichHierarchy(activeList);
                 setEmployees(processed);
             }
         } catch (err) {

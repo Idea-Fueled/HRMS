@@ -24,6 +24,10 @@ const holidaySchema = new mongoose.Schema({
         trim: true,
         default: ""
     },
+    image: {
+        type: String,
+        default: ""
+    },
     isActive: {
         type: Boolean,
         default: true

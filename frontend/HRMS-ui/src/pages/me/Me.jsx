@@ -384,9 +384,14 @@ const NotifyEmployeeSelector = ({ selectedEmployees, setSelectedEmployees }) => 
 
     return (
         <div className="space-y-1.5 text-left relative" ref={containerRef}>
-            <label className="text-slate-700 text-xs font-bold block">
-                Notify
-            </label>
+            <div className="flex items-center justify-between">
+                <label className="text-slate-700 text-xs font-bold block">
+                    Notify Colleagues
+                </label>
+                <span className="text-[10px] text-slate-400 font-medium">
+                    (Manager &amp; Global Admins auto-notified)
+                </span>
+            </div>
 
             {/* Selected Employee Pills */}
             {selectedEmployees.length > 0 && (
@@ -1265,15 +1270,14 @@ const ConsumedLeaveTypesCard = ({ leaves = [], leaveSummary }) => {
                 else if (type.includes("sick")) sickUsed += days;
             }
         });
-    } else if (Array.isArray(leaves)) {
-        casualUsed = 0;
-        earnedUsed = 0;
-        sickUsed = 0;
-    } else {
-        const balance = leaveSummary?.leaveBalance || {};
-        casualUsed = balance.casual?.used ?? 0;
-        earnedUsed = balance.earned?.used ?? 0;
-        sickUsed = balance.sick?.used ?? 0;
+    }
+
+    // If history has 0 or empty, pull from user balance summary
+    if (casualUsed === 0 && earnedUsed === 0 && sickUsed === 0 && leaveSummary?.leaveBalance) {
+        const balance = leaveSummary.leaveBalance || {};
+        casualUsed = Number(balance.casual?.used) || 0;
+        earnedUsed = Number(balance.earned?.used) || 0;
+        sickUsed = Number(balance.sick?.used) || 0;
     }
 
     const totalUsed = casualUsed + earnedUsed + sickUsed;
@@ -1502,10 +1506,13 @@ const LeaveBalanceCard = ({
     const radius = 66;
     const strokeWidth = 14;
     const circumference = 2 * Math.PI * radius; // ~414.69
-    const quotaDenominator = totalQuotaNum !== undefined ? totalQuotaNum : (typeof annualQuota === 'number' ? annualQuota : 1);
+    const quotaDenominator = totalQuotaNum !== undefined && totalQuotaNum > 0 ? totalQuotaNum : (typeof annualQuota === 'number' && annualQuota > 0 ? annualQuota : 1);
     const availNum = typeof available === 'number' ? available : parseFloat(available) || 0;
-    const pct = isInfinity ? circumference : (quotaDenominator > 0 ? Math.min(1, availNum / quotaDenominator) * circumference : 0);
-    const strokeDashoffset = circumference - pct;
+    const consumedNum = typeof consumed === 'number' ? consumed : parseFloat(consumed) || 0;
+
+    const effectiveTotal = isInfinity ? 1 : Math.max(quotaDenominator, availNum + consumedNum, 0.1);
+    const availDash = isInfinity ? circumference : Math.max(0, Math.min(circumference, (availNum / effectiveTotal) * circumference));
+    const consumedDash = isInfinity ? 0 : Math.max(0, Math.min(circumference - availDash, (consumedNum / effectiveTotal) * circumference));
 
     const availableLabel = isInfinity ? "∞ Days" : `${available} Day${available !== 1 ? 's' : ''}`;
     const consumedLabel = `${consumed} Day${consumed !== 1 ? 's' : ''}`;
@@ -1535,17 +1542,31 @@ const LeaveBalanceCard = ({
 
                             <div className="relative w-40 h-40 flex items-center justify-center shrink-0">
                                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
-                                    {/* Available/Remaining Stroke Segment */}
+                                    {/* Neutral Background Ring */}
                                     <circle
                                         cx="80"
                                         cy="80"
                                         r={radius}
-                                        className="stroke-gray-100 fill-none cursor-pointer hover:stroke-gray-200 transition-colors"
+                                        className="stroke-gray-100 fill-none"
                                         strokeWidth={strokeWidth}
-                                        onMouseEnter={() => setHoverText(`Consumed: ${consumedLabel}`)}
-                                        onMouseLeave={() => setHoverText(null)}
                                     />
-                                    {/* Consumed Stroke Segment */}
+                                    {/* Consumed Segment */}
+                                    {consumedDash > 0 && !isInfinity && (
+                                        <circle
+                                            cx="80"
+                                            cy="80"
+                                            r={radius}
+                                            fill="none"
+                                            stroke="#F59E0B"
+                                            strokeWidth={strokeWidth}
+                                            strokeDasharray={`${consumedDash} ${circumference}`}
+                                            strokeDashoffset={-availDash}
+                                            className="transition-all duration-700 ease-out cursor-pointer hover:stroke-amber-600"
+                                            onMouseEnter={() => setHoverText(`Consumed: ${consumedLabel} (${((consumedNum / effectiveTotal) * 100).toFixed(0)}%)`)}
+                                            onMouseLeave={() => setHoverText(null)}
+                                        />
+                                    )}
+                                    {/* Available Segment */}
                                     <circle
                                         cx="80"
                                         cy="80"
@@ -1553,11 +1574,11 @@ const LeaveBalanceCard = ({
                                         fill="none"
                                         stroke={color}
                                         strokeWidth={strokeWidth}
-                                        strokeDasharray={circumference}
-                                        strokeDashoffset={strokeDashoffset}
+                                        strokeDasharray={`${availDash} ${circumference}`}
+                                        strokeDashoffset="0"
                                         strokeLinecap="round"
                                         className="transition-all duration-700 ease-out cursor-pointer hover:opacity-85"
-                                        onMouseEnter={() => setHoverText(`Available: ${availableLabel}`)}
+                                        onMouseEnter={() => setHoverText(`Available: ${availableLabel} (${((availNum / effectiveTotal) * 100).toFixed(0)}%)`)}
                                         onMouseLeave={() => setHoverText(null)}
                                     />
                                 </svg>
@@ -2032,6 +2053,7 @@ const LeaveTab = ({
                             consumed={casualUsed}
                             accrued={casualAccrued}
                             annualQuota={casualAnnualQuota}
+                            totalQuotaNum={casualAnnualQuota}
                             color="#38BDF8"
                         />
                         <LeaveBalanceCard
@@ -2040,6 +2062,7 @@ const LeaveTab = ({
                             consumed={earnedUsed}
                             accrued={earnedAccrued}
                             annualQuota={earnedAnnualQuota}
+                            totalQuotaNum={earnedAnnualQuota}
                             color="#10B981"
                         />
                         <LeaveBalanceCard
@@ -2048,6 +2071,7 @@ const LeaveTab = ({
                             consumed={sickUsed}
                             accrued={sickAccrued}
                             annualQuota={sickAnnualQuota}
+                            totalQuotaNum={sickAnnualQuota}
                             color="#F59E0B"
                         />
                         <LeaveBalanceCard

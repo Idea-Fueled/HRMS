@@ -58,7 +58,7 @@ const useResponsivePageSize = (viewMode) => {
     }, []);
 
     if (viewMode === "card") {
-        if (windowWidth >= 1024) return 10;
+        if (windowWidth >= 1024) return 12;
         if (windowWidth >= 640) return 6;
         return 4;
     }
@@ -95,8 +95,13 @@ const CardHeader = ({ icon: Icon, title, action }) => (
     </div>
 );
 
-const MiniStatCard = ({ title, value, change, isPositive }) => (
-    <div className="premium-3d-card-mini p-4.5 flex flex-col justify-between">
+const MiniStatCard = ({ title, value, change, isPositive, onClick, isSelected }) => (
+    <div
+        onClick={onClick}
+        className={`premium-3d-card-mini p-4.5 flex flex-col justify-between transition-all select-none ${
+            onClick ? "cursor-pointer hover:shadow-md hover:border-[#2D79C7]/50 active:scale-[0.99]" : ""
+        } ${isSelected ? "ring-2 ring-[#2D79C7] bg-blue-50/25 border-[#2D79C7]" : ""}`}
+    >
         <div className="flex justify-between items-start">
             <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider leading-none">{title}</span>
             {change && (
@@ -105,11 +110,68 @@ const MiniStatCard = ({ title, value, change, isPositive }) => (
                 </span>
             )}
         </div>
-        <div className="mt-3.5 flex items-baseline gap-1.5">
+        <div className="mt-3.5 flex items-baseline justify-between gap-1.5">
             <span className="text-[#1E1E1E] text-[20px] font-black leading-none">{value}</span>
+            {onClick && (
+                <span className={`text-[10px] font-bold transition-all ${isSelected ? "text-[#2D79C7]" : "text-gray-400"}`}>
+                    {isSelected ? "● Filtered" : "Click to view"}
+                </span>
+            )}
         </div>
     </div>
 );
+
+const StatEmployeesModal = ({ isOpen, onClose, title, employees = [] }) => {
+    if (!isOpen) return null;
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 select-none animate-fadeIn" onClick={onClose}>
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+                <div className="bg-slate-50/90 border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center border border-blue-100 font-bold">
+                            <Users className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+                            <p className="text-[11px] text-slate-500 font-medium">{employees.length} employee{employees.length !== 1 ? 's' : ''} in this list</p>
+                        </div>
+                    </div>
+                    <button type="button" onClick={onClose} className="w-7 h-7 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all cursor-pointer">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="p-5 overflow-y-auto space-y-2.5 flex-1 divide-y divide-slate-100">
+                    {employees.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-slate-400 font-medium">No employees found for this category today.</div>
+                    ) : (
+                        employees.map((emp, i) => (
+                            <div key={i} className="flex items-center justify-between pt-2.5 first:pt-0">
+                                <div className="flex items-center gap-3">
+                                    <Avatar name={emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}` || emp.name} src={emp.profilePicture} size="w-9 h-9" />
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-900">{emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}` || emp.name || "Employee"}</h4>
+                                        <p className="text-[11px] text-slate-400">{emp.department || emp.dept || "—"} • {emp.designation || "—"}</p>
+                                    </div>
+                                </div>
+                                {(emp.leaveType || emp.workMode || emp.status) && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#2D79C7] border border-blue-100 uppercase">
+                                        {emp.leaveType || emp.workMode || emp.status}
+                                    </span>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+                <div className="bg-slate-50/60 border-t border-slate-100 px-6 py-3 text-right shrink-0">
+                    <button type="button" onClick={onClose} className="px-4 py-1.5 text-xs font-bold bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
 // Error state display element
 const ErrorAlert = ({ message, onRetry }) => (
     <div className="bg-rose-50/50 border border-rose-100 rounded-[20px] p-6 text-center text-rose-700 select-none animate-fadeIn">
@@ -133,6 +195,7 @@ const TeamSummaryTab = () => {
     const [loading, setLoading] = useState(true);
     const [summary, setSummary] = useState(null);
     const [error, setError] = useState(null);
+    const [activeModal, setActiveModal] = useState(null);
 
     const fetchSummary = async () => {
         try {
@@ -197,13 +260,74 @@ const TeamSummaryTab = () => {
         <div className="space-y-6 animate-fadeIn">
             {/* Stat Cards Grid - Exactly 3 columns on desktop */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <MiniStatCard title="Total Employees" value={summary.totalEmployees} change="Count" isPositive={true} />
-                <MiniStatCard title="Active Employees" value={summary.activeEmployees} change="Active" isPositive={true} />
-                <MiniStatCard title="On Leave Today" value={summary.onLeaveToday} change="Leave" isPositive={false} />
-                <MiniStatCard title="WFH Today" value={summary.wfhToday} change="WFH" isPositive={true} />
-                <MiniStatCard title="New Joiners" value={summary.newJoiners} change="30 Days" isPositive={true} />
-                <MiniStatCard title="Pending Approvals" value={summary.pendingApprovals} change="Action" isPositive={false} />
+                <MiniStatCard
+                    title="Total Employees"
+                    value={summary.totalEmployees}
+                    change="Count"
+                    isPositive={true}
+                    onClick={() => setActiveModal({
+                        title: "All Employees",
+                        employees: summary.details?.newJoiners || []
+                    })}
+                />
+                <MiniStatCard
+                    title="Active Employees"
+                    value={summary.activeEmployees}
+                    change="Active"
+                    isPositive={true}
+                    onClick={() => setActiveModal({
+                        title: "Active Employees",
+                        employees: (summary.details?.newJoiners || []).filter(e => e.status === "active")
+                    })}
+                />
+                <MiniStatCard
+                    title="On Leave Today"
+                    value={summary.onLeaveToday}
+                    change="Leave"
+                    isPositive={false}
+                    onClick={() => setActiveModal({
+                        title: "Employees On Leave Today",
+                        employees: summary.details?.onLeave || []
+                    })}
+                />
+                <MiniStatCard
+                    title="WFH Today"
+                    value={summary.wfhToday}
+                    change="WFH"
+                    isPositive={true}
+                    onClick={() => setActiveModal({
+                        title: "Employees Working From Home Today",
+                        employees: summary.details?.wfh || []
+                    })}
+                />
+                <MiniStatCard
+                    title="New Joiners"
+                    value={summary.newJoiners}
+                    change="30 Days"
+                    isPositive={true}
+                    onClick={() => setActiveModal({
+                        title: "New Joiners (Last 30 Days)",
+                        employees: summary.details?.newJoiners || []
+                    })}
+                />
+                <MiniStatCard
+                    title="Pending Approvals"
+                    value={summary.pendingApprovals}
+                    change="Action"
+                    isPositive={false}
+                    onClick={() => setActiveModal({
+                        title: "Pending Leave Approvals",
+                        employees: summary.details?.pendingApprovals || []
+                    })}
+                />
             </div>
+
+            <StatEmployeesModal
+                isOpen={!!activeModal}
+                onClose={() => setActiveModal(null)}
+                title={activeModal?.title || ""}
+                employees={activeModal?.employees || []}
+            />
 
             {/* Full Width Department Distribution Chart */}
             <Card className="w-full">
@@ -496,6 +620,42 @@ const TeamMembersTab = () => {
                     </div>
                 </div>
             )}
+
+            {/* Stat Cards Row for Team Members */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fadeIn">
+                <MiniStatCard
+                    title="Total Members"
+                    value={employees.length}
+                    change="All"
+                    isPositive={true}
+                    onClick={() => { setSelectedStatus("All"); setCurrentPage(1); }}
+                    isSelected={selectedStatus === "All"}
+                />
+                <MiniStatCard
+                    title="Active"
+                    value={employees.filter(e => (e.status || "").toLowerCase() === "active").length}
+                    change="Active"
+                    isPositive={true}
+                    onClick={() => { setSelectedStatus(selectedStatus === "Active" ? "All" : "Active"); setCurrentPage(1); }}
+                    isSelected={selectedStatus === "Active"}
+                />
+                <MiniStatCard
+                    title="On Notice"
+                    value={employees.filter(e => (e.status || "").toLowerCase() === "on notice").length}
+                    change="Notice"
+                    isPositive={false}
+                    onClick={() => { setSelectedStatus(selectedStatus === "On Notice" ? "All" : "On Notice"); setCurrentPage(1); }}
+                    isSelected={selectedStatus === "On Notice"}
+                />
+                <MiniStatCard
+                    title="Inactive"
+                    value={employees.filter(e => (e.status || "").toLowerCase() === "inactive").length}
+                    change="Inactive"
+                    isPositive={false}
+                    onClick={() => { setSelectedStatus(selectedStatus === "Inactive" ? "All" : "Inactive"); setCurrentPage(1); }}
+                    isSelected={selectedStatus === "Inactive"}
+                />
+            </div>
 
             {/* Filter and toggle control row */}
             <div className="premium-3d-card-mini flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between p-4.5 animate-fadeIn">
@@ -1794,6 +1954,7 @@ const TeamAttendanceTab = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortField, setSortField] = useState("name");
     const [sortDir, setSortDir] = useState("asc");
+    const [statusFilter, setStatusFilter] = useState("all");
 
     const itemsPerPage = useResponsivePageSize(view);
     const [expandedLogs, setExpandedLogs] = useState([]);
@@ -1880,10 +2041,26 @@ const TeamAttendanceTab = () => {
         setCurrentPage(1);
     };
 
-    const filtered = attendanceData.logs.filter(a => 
-        a.name.toLowerCase().includes(search.toLowerCase()) || 
-        a.dept.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = attendanceData.logs.filter(a => {
+        const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase()) || 
+            a.dept.toLowerCase().includes(search.toLowerCase());
+        if (!matchesSearch) return false;
+
+        const s = (a.status || "").toLowerCase();
+        if (statusFilter === "present") {
+            return s.includes("present") || s.includes("on time") || (a.clockIn && !s.includes("absent"));
+        }
+        if (statusFilter === "absent") {
+            return s.includes("absent") || s.includes("leave");
+        }
+        if (statusFilter === "wfh") {
+            return s.includes("wfh") || (a.workMode && a.workMode.toLowerCase().includes("wfh"));
+        }
+        if (statusFilter === "late") {
+            return s.includes("late") || a.isLate;
+        }
+        return true;
+    });
 
     const sorted = [...filtered].sort((a, b) => {
         let valA = a[sortField];
@@ -1909,13 +2086,41 @@ const TeamAttendanceTab = () => {
 
     return (
         <div className="space-y-6">
-            {/* Stats Summary - Exactly 3 columns on desktop */}
+            {/* Stats Summary - Exactly 4 columns on desktop */}
             {attendanceData.stats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 animate-fadeIn">
-                    <MiniStatCard title="Present Today" value={attendanceData.stats.present} change="Office" isPositive={true} />
-                    <MiniStatCard title="Absent / Leave" value={attendanceData.stats.absent} change="Offline" isPositive={false} />
-                    <MiniStatCard title="WFH Employees" value={attendanceData.stats.wfh} change="Remote" isPositive={true} />
-                    <MiniStatCard title="Late Arrivals" value={attendanceData.stats.late} change="Action" isPositive={false} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-fadeIn">
+                    <MiniStatCard
+                        title="Present Today"
+                        value={attendanceData.stats.present}
+                        change="Office"
+                        isPositive={true}
+                        onClick={() => { setStatusFilter(prev => prev === "present" ? "all" : "present"); setCurrentPage(1); }}
+                        isSelected={statusFilter === "present"}
+                    />
+                    <MiniStatCard
+                        title="Absent / Leave"
+                        value={attendanceData.stats.absent}
+                        change="Offline"
+                        isPositive={false}
+                        onClick={() => { setStatusFilter(prev => prev === "absent" ? "all" : "absent"); setCurrentPage(1); }}
+                        isSelected={statusFilter === "absent"}
+                    />
+                    <MiniStatCard
+                        title="WFH Employees"
+                        value={attendanceData.stats.wfh}
+                        change="Remote"
+                        isPositive={true}
+                        onClick={() => { setStatusFilter(prev => prev === "wfh" ? "all" : "wfh"); setCurrentPage(1); }}
+                        isSelected={statusFilter === "wfh"}
+                    />
+                    <MiniStatCard
+                        title="Late Arrivals"
+                        value={attendanceData.stats.late}
+                        change="Action"
+                        isPositive={false}
+                        onClick={() => { setStatusFilter(prev => prev === "late" ? "all" : "late"); setCurrentPage(1); }}
+                        isSelected={statusFilter === "late"}
+                    />
                 </div>
             )}
 

@@ -42,7 +42,7 @@ const useResponsivePageSize = (viewMode) => {
     }, []);
 
     if (viewMode === "card") {
-        if (windowWidth >= 1024) return 10;
+        if (windowWidth >= 1024) return 12;
         if (windowWidth >= 640) return 6;
         return 4;
     }

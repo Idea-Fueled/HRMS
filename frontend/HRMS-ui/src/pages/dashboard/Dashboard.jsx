@@ -27,6 +27,8 @@ import {
     FileText,
     Edit3,
     Trash2,
+    Upload,
+    Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
@@ -449,8 +451,10 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
     const [date, setDate] = useState(holiday.date ? holiday.date.split("T")[0] : "");
     const [day, setDay] = useState(holiday.day || "");
     const [type, setType] = useState(holiday.type || "public_holiday");
-    const [description, setDescription] = useState(holiday.description || "");
+    const [photoFile, setPhotoFile] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(holiday.image || "");
     const [submitting, setSubmitting] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         if (date) {
@@ -459,12 +463,30 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
         }
     }, [date]);
 
+    const handlePhotoChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPhotoFile(file);
+            setPhotoPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title.trim() || !date) { toast.error("Title and Date are required."); return; }
         try {
             setSubmitting(true);
-            const res = await updateHoliday(holiday._id, { title: title.trim(), date, day, type, description: description.trim() });
+            const formData = new FormData();
+            formData.append("title", title.trim());
+            formData.append("date", date);
+            formData.append("day", day);
+            formData.append("type", type);
+            if (photoFile) {
+                formData.append("image", photoFile);
+            } else if (photoPreview === "") {
+                formData.append("image", "");
+            }
+            const res = await updateHoliday(holiday._id, formData);
             if (res.data?.success) {
                 toast.success("Holiday updated successfully.");
                 onSuccess();
@@ -512,15 +534,64 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
                     </div>
                     <div>
                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Type</label>
-                        <select value={type} onChange={e => setType(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm focus:outline-none focus:bg-white focus:border-[#2D79C7] transition-all cursor-pointer">
-                            <option value="public_holiday">Public Holiday</option>
-                            <option value="optional_holiday">Optional Holiday</option>
-                            <option value="company_holiday">Company Holiday</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={type}
+                                onChange={e => setType(e.target.value)}
+                                className="w-full px-4 py-2.5 pr-10 bg-gray-50 border border-gray-200 rounded-[14px] text-sm text-[#1E1E1E] font-medium focus:outline-none focus:bg-white focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all cursor-pointer appearance-none -webkit-appearance-none shadow-inner"
+                            >
+                                <option value="public_holiday">Public Holiday</option>
+                                <option value="optional_holiday">Optional Holiday</option>
+                                <option value="company_holiday">Company Holiday</option>
+                            </select>
+                            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                                <ChevronDown className="w-4 h-4 stroke-[2.5]" />
+                            </div>
+                        </div>
                     </div>
                     <div>
-                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Description</label>
-                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Add brief description..." className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-[14px] text-sm placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#2D79C7] transition-all h-20 resize-none shadow-inner" />
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
+                            Holiday Image / Banner
+                        </label>
+                        <div className="flex items-center gap-3">
+                            {photoPreview ? (
+                                <div className="relative w-16 h-16 rounded-[14px] overflow-hidden border border-gray-200 shrink-0 bg-gray-50 shadow-2xs">
+                                    <img src={photoPreview} alt="Holiday preview" className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPhotoFile(null);
+                                            setPhotoPreview("");
+                                        }}
+                                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="w-16 h-16 rounded-[14px] border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 bg-gray-50 shrink-0">
+                                    <ImageIcon className="w-6 h-6 stroke-[1.5]" />
+                                </div>
+                            )}
+                            <div className="flex-1">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    accept="image/*"
+                                    onChange={handlePhotoChange}
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-[10px] border border-gray-300 shadow-2xs transition-all cursor-pointer"
+                                >
+                                    <Upload className="w-3.5 h-3.5 text-[#2D79C7]" />
+                                    <span>{photoPreview ? "Change Photo" : "Upload Photo"}</span>
+                                </button>
+                                <p className="text-[11px] text-gray-400 mt-1">PNG, JPG, or WEBP up to 5MB</p>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#F3F4F6] mt-4">
                         <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-bold text-gray-500 hover:bg-gray-50 border border-gray-200 rounded-[12px] transition-all cursor-pointer">Cancel</button>
@@ -777,9 +848,24 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         : (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in");
 
     const hasClockedInToday = !!(
+        attendance?.firstClockIn ||
         attendance?.dailyWorkPlan ||
-        (attendance?.logs || []).some(l => l.source === "web")
+        (attendance?.logs || []).some(l => l.source === "web" || l.action === "clock_in")
     );
+
+    let statusLabel = "Absent";
+    let statusColor = "text-gray-500";
+    let dotColor = "bg-gray-400";
+
+    if (checkedIn) {
+        statusLabel = "Present (IN)";
+        statusColor = "text-emerald-600";
+        dotColor = "bg-emerald-500 animate-pulse";
+    } else if (hasClockedInToday) {
+        statusLabel = "OUT";
+        statusColor = "text-amber-600";
+        dotColor = "bg-amber-500";
+    }
 
     const fmtTime = (date) => {
         if (!date) return "—";
@@ -979,9 +1065,9 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                         <div className="bg-[#F8FAFC] border border-[#F0F2F5] rounded-[14px] p-3 flex flex-col gap-1">
                             <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Status</span>
-                            <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold ${checkedIn ? "text-emerald-600" : "text-gray-500"}`}>
-                                <span className={`w-2 h-2 rounded-full ${checkedIn ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
-                                {checkedIn ? "Present" : "Absent"}
+                            <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold ${statusColor}`}>
+                                <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                                {statusLabel}
                             </span>
                         </div>
                         <div className="bg-[#F8FAFC] border border-[#F0F2F5] rounded-[14px] p-3 flex flex-col gap-1">
@@ -1715,27 +1801,27 @@ const WelcomeBanner = ({ user }) => {
 
     return (
         <section
-            className="relative overflow-hidden rounded-[24px] shadow-[0_25px_70px_rgba(37,99,235,0.28)] border border-white/10 px-8 py-0 flex flex-col sm:flex-row justify-between items-center h-[130px] shadow-xl select-none border border-blue-600/20"
+            className="relative overflow-hidden rounded-[20px] shadow-[0_15px_40px_rgba(37,99,235,0.18)] border border-blue-600/20 px-6 sm:px-8 py-4 sm:py-5 flex flex-col sm:flex-row justify-between items-center gap-3 select-none"
             style={{
                 background: "linear-gradient(125deg, #2D79C7 0%, #3A88D8 40%, #1F5EA8 100%)",
             }}
         >
-            <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[24px]">
+            <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[20px]">
                 <div className="absolute -top-10 -right-10 w-52 h-52 bg-white/5 rounded-full" />
                 <div className="absolute top-0 right-32 w-24 h-24 bg-white/5 rounded-full" />
                 <div className="absolute -bottom-12 left-1/4 w-44 h-44 bg-white/4 rounded-full" />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
             </div>
 
-            <div className="flex flex-col text-left relative z-10 gap-1">
-                <h1 className="text-white text-[22px] font-bold tracking-tight leading-tight">
+            <div className="flex flex-col text-left relative z-10">
+                <h1 className="text-white text-[19px] sm:text-[21px] font-bold tracking-tight leading-tight">
                     {firstName ? `Hi ${firstName}, ${personalMessage} 👋` : "Welcome back! 👋"}
                 </h1>
             </div>
 
-            <div className="mt-0 relative z-10 shrink-0">
-                <div className="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/25 rounded-[16px] px-5 py-2.5 text-[13px] text-white font-semibold tracking-wide shadow-sm">
-                    <Calendar className="w-4 h-4 text-[#FFEA00] shrink-0" />
+            <div className="relative z-10 shrink-0">
+                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/25 rounded-[14px] px-4 py-2 text-[12.5px] text-white font-semibold tracking-wide shadow-xs">
+                    <Calendar className="w-3.5 h-3.5 text-[#FFEA00] shrink-0" />
                     <span>{formattedDate}</span>
                 </div>
             </div>

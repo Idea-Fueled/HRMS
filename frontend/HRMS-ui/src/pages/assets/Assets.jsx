@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
     Laptop, Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap, Box, UserCheck, CheckCircle2, AlertTriangle, Plus, Search,
     Edit3, Trash2, UserPlus, UserMinus, RefreshCw, X, ChevronDown,
-    Building2, Shield, Calendar, Info, Layers, Tag, HardDrive, Check, Loader2, ArrowRight, Mail
+    Building2, Shield, Calendar, Info, Layers, Tag, HardDrive, Check, Loader2, ArrowRight, Mail, BatteryCharging, Battery
 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -68,25 +68,30 @@ const statusBadge = (s) => ({
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 const getCategoryIcon = (category, className = "w-5 h-5") => {
-    switch (category) {
-        case "Screen":
+    const cat = (category || "").trim().toLowerCase();
+    switch (cat) {
+        case "screen":
+        case "monitor":
             return <Monitor className={className} />;
-        case "Keyboard":
+        case "keyboard":
             return <KeyboardIcon className={className} />;
-        case "Mouse":
+        case "mouse":
             return <MouseIcon className={className} />;
-        case "Mobile":
+        case "mobile":
             return <Smartphone className={className} />;
-        case "Tablet":
+        case "tablet":
             return <TabletIcon className={className} />;
-        case "CPU":
+        case "cpu":
             return <Cpu className={className} />;
-        case "UPS":
-            return <Zap className={className} />;
-        case "Desktop":
+        case "ups":
+            return <BatteryCharging className={className} />;
+        case "desktop":
             return <Monitor className={className} />;
-        case "Laptop":
+        case "laptop":
+            return <Laptop className={className} />;
         default:
+            if (cat.includes("cpu")) return <Cpu className={className} />;
+            if (cat.includes("ups") || cat.includes("battery")) return <BatteryCharging className={className} />;
             return <Laptop className={className} />;
     }
 };

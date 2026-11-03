@@ -1,4 +1,5 @@
 import Holiday from "../../models/holidays/holidays.model.js";
+import { uploadToCloudinary } from "../../services/cloudinary.service.js";
 
 export const createHoliday = async (req, res, next) => {
     try {
@@ -10,12 +11,19 @@ export const createHoliday = async (req, res, next) => {
             })
         }
 
+        let imageUrl = req.body.image || "";
+        if (req.file) {
+            const uploadResult = await uploadToCloudinary(req.file.buffer, "hrms_holidays");
+            imageUrl = uploadResult?.secure_url || "";
+        }
+
         const holiday = await Holiday.create({
             title,
             date,
             day,
             type,
-            description
+            description,
+            image: imageUrl
         })
 
         return res.status(201).json({
@@ -121,12 +129,21 @@ export const updateHoliday = async (req, res) => {
             return res.status(404).json({ success: false, message: "Holiday not found." });
         }
 
-        const { title, date, day, type, description } = req.body;
+        const { title, date, day, type, description, image } = req.body;
         if (title !== undefined) holiday.title = title;
         if (date !== undefined) holiday.date = date;
         if (day !== undefined) holiday.day = day;
         if (type !== undefined) holiday.type = type;
         if (description !== undefined) holiday.description = description;
+
+        if (req.file) {
+            const uploadResult = await uploadToCloudinary(req.file.buffer, "hrms_holidays");
+            if (uploadResult?.secure_url) {
+                holiday.image = uploadResult.secure_url;
+            }
+        } else if (image !== undefined) {
+            holiday.image = image;
+        }
 
         await holiday.save();
 

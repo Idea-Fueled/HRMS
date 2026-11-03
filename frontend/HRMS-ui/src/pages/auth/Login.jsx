@@ -159,7 +159,7 @@ const Login = () => {
                             <img
                                 src={ideaFueledLogo}
                                 alt="Idea Fueled logo"
-                                className="h-11 sm:h-12 object-contain drop-shadow-xs"
+                                className="h-7 sm:h-8 object-contain drop-shadow-xs"
                             />
                         </div>
 
@@ -179,7 +179,7 @@ const Login = () => {
                                                 We've sent a password reset link to <strong className="text-slate-800">{forgotEmail}</strong>. Please check your inbox and follow the instructions.
                                             </p>
                                         </div>
-                                        <div className="pt-3 space-y-2.5">
+                                        <div className="pt-3">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -189,13 +189,6 @@ const Login = () => {
                                                 className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] text-white font-bold text-[13.5px] py-3.5 rounded-[14px] shadow-md shadow-[#2D79C7]/20 transition-all cursor-pointer"
                                             >
                                                 Back to Sign In
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setForgotSuccess(false)}
-                                                className="text-[#2D79C7] hover:text-[#1F5EA8] text-[12px] font-semibold hover:underline cursor-pointer"
-                                            >
-                                                Didn't receive email? Try another address
                                             </button>
                                         </div>
                                     </div>

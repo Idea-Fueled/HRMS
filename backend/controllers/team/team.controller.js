@@ -93,14 +93,33 @@ export const getTeamSummary = async (req, res) => {
             onLeaveToday,
             wfhToday,
             newJoiners,
-            pendingApprovals
+            pendingApprovals,
+            onLeaveList,
+            wfhList,
+            newJoinersList,
+            pendingApprovalsList
         ] = await Promise.all([
             User.countDocuments(userFilter),
             User.countDocuments(activeUserFilter),
             Leave.countDocuments({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
             Attendance.countDocuments({ date: today, workMode: { $regex: /work from home|wfh/i }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
             User.countDocuments({ joiningDate: { $gte: thirtyDaysAgo }, ...userFilter }),
-            Leave.countDocuments({ status: "pending", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
+            Leave.countDocuments({ status: "pending", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            Leave.find({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
+                .populate("employeeId", "firstName lastName fullName email department designation profilePicture employeeId")
+                .limit(50)
+                .lean(),
+            Attendance.find({ date: today, workMode: { $regex: /work from home|wfh/i }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
+                .populate("employeeId", "firstName lastName fullName email department designation profilePicture employeeId")
+                .limit(50)
+                .lean(),
+            User.find({ joiningDate: { $gte: thirtyDaysAgo }, ...userFilter }, "firstName lastName fullName email department designation profilePicture employeeId status joiningDate")
+                .limit(50)
+                .lean(),
+            Leave.find({ status: "pending", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
+                .populate("employeeId", "firstName lastName fullName email department designation profilePicture employeeId")
+                .limit(50)
+                .lean()
         ]);
 
         // Aggregate Department distribution
@@ -150,7 +169,27 @@ export const getTeamSummary = async (req, res) => {
                 newJoiners,
                 pendingApprovals,
                 departments: formattedDepts,
-                statuses: formattedStatuses
+                statuses: formattedStatuses,
+                details: {
+                    onLeave: onLeaveList.map(l => ({
+                        ...((l.employeeId && typeof l.employeeId === 'object') ? l.employeeId : {}),
+                        leaveType: l.type,
+                        startDate: l.startDate,
+                        endDate: l.endDate
+                    })),
+                    wfh: wfhList.map(a => ({
+                        ...((a.employeeId && typeof a.employeeId === 'object') ? a.employeeId : {}),
+                        workMode: a.workMode
+                    })),
+                    newJoiners: newJoinersList,
+                    pendingApprovals: pendingApprovalsList.map(l => ({
+                        ...((l.employeeId && typeof l.employeeId === 'object') ? l.employeeId : {}),
+                        leaveType: l.type,
+                        startDate: l.startDate,
+                        endDate: l.endDate,
+                        appliedDate: l.createdAt
+                    }))
+                }
             }
         });
     } catch (err) {

@@ -38,6 +38,7 @@ const Reports = () => {
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1); // 1-12
     const [selectedDepartment, setSelectedDepartment] = useState("All");
+    const [attendanceCategory, setAttendanceCategory] = useState("all"); // "all" | "late" | "overtime" | "early" | "absent"
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -97,7 +98,7 @@ const Reports = () => {
     // Reset pagination when mode or filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [viewMode, selectedDepartment, searchQuery, selectedDate, selectedMonth, selectedYear]);
+    }, [viewMode, selectedDepartment, attendanceCategory, searchQuery, selectedDate, selectedMonth, selectedYear]);
 
     // Navigate Weeks
     const handlePrevWeek = () => {
@@ -151,11 +152,50 @@ const Reports = () => {
         }
     };
 
-    // Filter employees by search query
+    // Filter employees by attendance category and search query
     const filteredEmployees = useMemo(() => {
-        const list = viewMode === "weekly" 
+        let list = viewMode === "weekly" 
             ? (weeklyData?.employees || [])
             : (monthlyData?.employees || []);
+
+        if (attendanceCategory !== "all") {
+            list = list.filter(e => {
+                if (viewMode === "weekly") {
+                    const daysArr = Object.values(e.days || {});
+                    if (attendanceCategory === "late") {
+                        return daysArr.some(d => {
+                            if (!d.firstClockIn) return false;
+                            const dt = new Date(d.firstClockIn);
+                            const h = dt.getHours();
+                            const m = dt.getMinutes();
+                            return h > 10 || (h === 10 && m > 0);
+                        });
+                    }
+                    if (attendanceCategory === "overtime") {
+                        return (e.totalOvertimeMinutes || 0) > 0;
+                    }
+                    if (attendanceCategory === "early") {
+                        return daysArr.some(d => {
+                            if (!d.lastClockOut) return false;
+                            const dt = new Date(d.lastClockOut);
+                            return dt.getHours() < 19;
+                        });
+                    }
+                    if (attendanceCategory === "absent") {
+                        return (e.daysPresent || 0) < 5 || daysArr.some(d => d.status === "absent");
+                    }
+                } else {
+                    // monthly
+                    if (attendanceCategory === "overtime") {
+                        return (e.totalOvertimeMinutes || 0) > 0;
+                    }
+                    if (attendanceCategory === "absent") {
+                        return (e.totalWorkMinutes || 0) === 0;
+                    }
+                }
+                return true;
+            });
+        }
 
         if (!searchQuery.trim()) return list;
         const q = searchQuery.toLowerCase().trim();
@@ -164,7 +204,7 @@ const Reports = () => {
             e.employeeId?.toLowerCase().includes(q) ||
             e.department?.toLowerCase().includes(q)
         );
-    }, [viewMode, weeklyData, monthlyData, searchQuery]);
+    }, [viewMode, weeklyData, monthlyData, searchQuery, attendanceCategory]);
 
     // Paginated slice
     const paginatedEmployees = useMemo(() => {
@@ -387,6 +427,19 @@ const Reports = () => {
                                     {d === "All" ? "All Departments" : d}
                                 </option>
                             ))}
+                        </select>
+
+                        {/* Targeted Attendance Category Filter */}
+                        <select
+                            value={attendanceCategory}
+                            onChange={(e) => setAttendanceCategory(e.target.value)}
+                            className="h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
+                        >
+                            <option value="all">All Employees</option>
+                            <option value="late">Late Comers (After 10:00 AM)</option>
+                            <option value="overtime">Overtime</option>
+                            <option value="early">Early Leavers (Before 7:00 PM)</option>
+                            <option value="absent">Absent</option>
                         </select>
 
                         {/* Search Input */}

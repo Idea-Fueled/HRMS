@@ -244,7 +244,7 @@ export const applyLeave = async (req, res) => {
                         </div>
 
                         <div style="text-align: center; margin-top: 20px;">
-                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/me" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
+                            <a href="${(process.env.FRONTEND_URL || 'https://hrms.ideafueled.com').replace(/\/$/, '')}/inbox?tab=approvals&leaveId=${leave._id}" style="background: #2D79C7; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 6px; display: inline-block;">
                                 Review &amp; Approve in HRMS
                             </a>
                         </div>
@@ -271,7 +271,7 @@ export const applyLeave = async (req, res) => {
                     body: emailHtml,
                     snippet,
                     priority: "high",
-                    labels: ["Leave", "Notification"],
+                    labels: ["Leave", "Notification", "Leave-Request", `LeaveId:${leave._id}`],
                     userStates: [{
                         user: rec._id,
                         email: recEmail,

@@ -1065,15 +1065,20 @@ export const ShiftSchedule = () => {
 
                             <div className="space-y-1">
                                 <label className="text-gray-600 text-xs font-bold">Holiday Type</label>
-                                <select
-                                    value={holidayForm.type}
-                                    onChange={(e) => setHolidayForm(prev => ({ ...prev, type: e.target.value }))}
-                                    className="w-full bg-[#F8FAFC] border border-[#E5E7EB] text-gray-700 text-xs p-2.5 rounded-xl focus:outline-none focus:border-[#2D79C7] cursor-pointer"
-                                >
-                                    <option value="public_holiday">Public Holiday</option>
-                                    <option value="company_holiday">Company Holiday</option>
-                                    <option value="optional_holiday">Optional Holiday</option>
-                                </select>
+                                <div className="relative">
+                                    <select
+                                        value={holidayForm.type}
+                                        onChange={(e) => setHolidayForm(prev => ({ ...prev, type: e.target.value }))}
+                                        className="w-full bg-[#F8FAFC] border border-[#E5E7EB] text-gray-700 text-xs p-2.5 pr-8 rounded-xl focus:outline-none focus:border-[#2D79C7] cursor-pointer appearance-none -webkit-appearance-none"
+                                    >
+                                        <option value="public_holiday">Public Holiday</option>
+                                        <option value="company_holiday">Company Holiday</option>
+                                        <option value="optional_holiday">Optional Holiday</option>
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <ChevronDown className="w-3.5 h-3.5" />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="space-y-1">

@@ -83,6 +83,14 @@ const router = createBrowserRouter([
                 ),
             },
             {
+                path: "approvals",
+                element: (
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
+                        <Inbox initialFolder="approvals" />
+                    </ProtectedRoute>
+                ),
+            },
+            {
                 path: "profile",
                 element: (
                     <ProtectedRoute allowedRoles={ALL_ROLES}>

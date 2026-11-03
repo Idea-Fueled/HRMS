@@ -30,6 +30,9 @@ import {
     Eye,
     EyeOff,
     RotateCcw,
+    CheckCircle2,
+    XCircle,
+    Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
@@ -44,6 +47,8 @@ import {
     batchEmailAction,
     fetchCompanyContacts,
 } from "../../services/email.service";
+import { getTeamLeaves, updateLeaveStatus } from "../../services/team.service";
+import { Avatar } from "../../components/SharedComponents";
 import RichTextEditor from "../../components/RichTextEditor";
 
 /* ─────────────────────────────────────────────
@@ -101,14 +106,74 @@ const getPriorityBadge = (priority) => {
 /* ─────────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────────── */
-const Inbox = () => {
+const Inbox = ({ initialFolder = "inbox" }) => {
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Navigation / folder state
-    const [currentFolder, setCurrentFolder] = useState("inbox"); // inbox, starred, sent, drafts, trash, all
+    const [currentFolder, setCurrentFolder] = useState(() => {
+        const tab = searchParams.get("tab") || searchParams.get("folder");
+        if (tab === "approvals") return "approvals";
+        return initialFolder || "inbox";
+    });
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("all"); // all, unread, starred
+
+    // Approvals Hub state
+    const [leaves, setLeaves] = useState([]);
+    const [leaveStats, setLeaveStats] = useState({ pending: 0, approved: 0, rejected: 0 });
+    const [loadingLeaves, setLoadingLeaves] = useState(false);
+    const [approvalFilter, setApprovalFilter] = useState("pending"); // "all" | "pending" | "approved" | "rejected"
+    const [approvalSearch, setApprovalSearch] = useState("");
+    const [processingLeaveId, setProcessingLeaveId] = useState(null);
+
+    const loadApprovals = useCallback(async () => {
+        try {
+            setLoadingLeaves(true);
+            const res = await getTeamLeaves();
+            if (res.data?.success) {
+                const list = res.data.leaves || [];
+                setLeaves(list);
+                const pending = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === "pending").length;
+                const approved = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === "approved").length;
+                const rejected = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === "rejected").length;
+                setLeaveStats({ pending, approved, rejected });
+            }
+        } catch (err) {
+            console.error("Failed to load leave approvals:", err);
+        } finally {
+            setLoadingLeaves(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadApprovals();
+    }, [loadApprovals]);
+
+    useEffect(() => {
+        const tab = searchParams.get("tab") || searchParams.get("folder");
+        if (tab === "approvals" && currentFolder !== "approvals") {
+            setCurrentFolder("approvals");
+        }
+    }, [searchParams]);
+
+    const handleLeaveAction = async (leaveId, status, remarks = "") => {
+        try {
+            setProcessingLeaveId(leaveId);
+            const res = await updateLeaveStatus(leaveId, status, remarks);
+            if (res.data?.success) {
+                toast.success(`Leave request ${status} successfully.`);
+                await loadApprovals();
+            } else {
+                toast.error(res.data?.message || `Failed to update status.`);
+            }
+        } catch (err) {
+            console.error("Leave update failed:", err);
+            toast.error(err.response?.data?.message || "Failed to update leave status.");
+        } finally {
+            setProcessingLeaveId(null);
+        }
+    };
 
     // Email data
     const [emails, setEmails] = useState([]);
@@ -666,6 +731,25 @@ const Inbox = () => {
             .slice(0, 6);
     }, [contacts, toInput]);
 
+    // Filtered team leave requests for Approvals Hub
+    const filteredLeaves = useMemo(() => {
+        let list = leaves;
+        if (approvalFilter !== "all") {
+            list = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === approvalFilter.toLowerCase());
+        }
+        if (approvalSearch.trim()) {
+            const q = approvalSearch.toLowerCase().trim();
+            list = list.filter(l =>
+                (l.name && l.name.toLowerCase().includes(q)) ||
+                (l.code && l.code.toLowerCase().includes(q)) ||
+                (l.dept && l.dept.toLowerCase().includes(q)) ||
+                (l.type && l.type.toLowerCase().includes(q)) ||
+                (l.reason && l.reason.toLowerCase().includes(q))
+            );
+        }
+        return list;
+    }, [leaves, approvalFilter, approvalSearch]);
+
     return (
         <div className="flex flex-col h-full w-full bg-white overflow-hidden select-none">
             {/* ─────────────────────────────────────────────
@@ -775,6 +859,34 @@ const Inbox = () => {
                                         }`}
                                     >
                                         {stats.unreadInbox}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Approvals Hub */}
+                            <button
+                                onClick={() => {
+                                    setCurrentFolder("approvals");
+                                    setSelectedEmailId(null);
+                                    setActiveEmail(null);
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                    currentFolder === "approvals"
+                                        ? "bg-[#225FA3] text-white shadow-sm"
+                                        : "text-slate-700 hover:bg-slate-100/80"
+                                }`}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <CheckSquare className="w-4 h-4 shrink-0" />
+                                    <span>Approvals</span>
+                                </div>
+                                {leaveStats.pending > 0 && (
+                                    <span
+                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ml-2 ${
+                                            currentFolder === "approvals" ? "bg-white text-[#225FA3]" : "bg-amber-100 text-amber-800 border border-amber-200"
+                                        }`}
+                                    >
+                                        {leaveStats.pending}
                                     </span>
                                 )}
                             </button>
@@ -909,12 +1021,285 @@ const Inbox = () => {
                     </div>
                 </div>
 
-                {/* ── MIDDLE PANE: EMAIL LIST (WIDTH: ~380px - 440px or full on mobile) ── */}
-                <div
-                    className={`${
-                        selectedEmailId ? "hidden md:flex" : "flex"
-                    } w-full md:w-[380px] lg:w-[420px] shrink-0 border-r border-slate-200/80 flex-col bg-white overflow-hidden`}
-                >
+                {currentFolder === "approvals" ? (
+                    <div className="flex-1 flex flex-col bg-slate-50/50 overflow-hidden min-h-0">
+                        {/* Approvals Hub Header */}
+                        <div className="p-6 pb-4 bg-white border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center font-bold shrink-0">
+                                    <CheckSquare className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-extrabold text-slate-900 leading-tight">
+                                        Leave Approvals Hub
+                                    </h2>
+                                    <p className="text-xs text-slate-500 font-medium">
+                                        Review and take instant action on team member leave requests
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => loadApprovals()}
+                                disabled={loadingLeaves}
+                                title="Refresh Requests"
+                                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer shadow-2xs self-start sm:self-auto"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${loadingLeaves ? "animate-spin text-[#2D79C7]" : "text-slate-500"}`} />
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+
+                        {/* Top Metric Cards */}
+                        <div className="p-6 pb-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+                            <div
+                                onClick={() => setApprovalFilter("pending")}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                                    approvalFilter === "pending"
+                                        ? "bg-amber-500/10 border-amber-300 ring-2 ring-amber-400/20"
+                                        : "bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs"
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pending Review</span>
+                                    <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                                        <Clock className="w-4 h-4" />
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-black font-mono text-slate-900 mt-2">{leaveStats.pending}</div>
+                                <span className="text-[11px] text-slate-400 font-medium">Awaiting manager action</span>
+                            </div>
+
+                            <div
+                                onClick={() => setApprovalFilter("approved")}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                                    approvalFilter === "approved"
+                                        ? "bg-emerald-500/10 border-emerald-300 ring-2 ring-emerald-400/20"
+                                        : "bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs"
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Approved</span>
+                                    <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                                        <CheckCircle2 className="w-4 h-4" />
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-black font-mono text-slate-900 mt-2">{leaveStats.approved}</div>
+                                <span className="text-[11px] text-slate-400 font-medium">Approved requests</span>
+                            </div>
+
+                            <div
+                                onClick={() => setApprovalFilter("rejected")}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                                    approvalFilter === "rejected"
+                                        ? "bg-rose-500/10 border-rose-300 ring-2 ring-rose-400/20"
+                                        : "bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs"
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Rejected</span>
+                                    <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
+                                        <XCircle className="w-4 h-4" />
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-black font-mono text-slate-900 mt-2">{leaveStats.rejected}</div>
+                                <span className="text-[11px] text-slate-400 font-medium">Declined applications</span>
+                            </div>
+
+                            <div
+                                onClick={() => setApprovalFilter("all")}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                                    approvalFilter === "all"
+                                        ? "bg-blue-500/10 border-blue-300 ring-2 ring-blue-400/20"
+                                        : "bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs"
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Applications</span>
+                                    <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2D79C7]">
+                                        <Calendar className="w-4 h-4" />
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-black font-mono text-[#2D79C7] mt-2">{leaves.length}</div>
+                                <span className="text-[11px] text-slate-400 font-medium">All applications</span>
+                            </div>
+                        </div>
+
+                        {/* Filter & Search Bar */}
+                        <div className="px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                            <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                                {["pending", "approved", "rejected", "all"].map((f) => (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        onClick={() => setApprovalFilter(f)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
+                                            approvalFilter === f
+                                                ? "bg-[#225FA3] text-white shadow-xs"
+                                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                        }`}
+                                    >
+                                        {f === "pending"
+                                            ? `Pending (${leaveStats.pending})`
+                                            : f === "approved"
+                                            ? `Approved (${leaveStats.approved})`
+                                            : f === "rejected"
+                                            ? `Rejected (${leaveStats.rejected})`
+                                            : `All (${leaves.length})`}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative w-full sm:w-72">
+                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                    type="text"
+                                    value={approvalSearch}
+                                    onChange={(e) => setApprovalSearch(e.target.value)}
+                                    placeholder="Search by employee, dept, reason..."
+                                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2D79C7] shadow-2xs"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Requests List */}
+                        <div className="flex-1 overflow-y-auto px-6 pb-8 space-y-3.5">
+                            {loadingLeaves ? (
+                                <div className="text-center py-16 text-slate-400">
+                                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#2D79C7] mb-2" />
+                                    <p className="text-xs font-bold">Loading leave requests...</p>
+                                </div>
+                            ) : filteredLeaves.length === 0 ? (
+                                <div className="bg-white border border-slate-200/80 rounded-2xl p-12 text-center text-slate-400 shadow-2xs">
+                                    <CheckSquare className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                                    <h3 className="text-sm font-bold text-slate-700">No leave requests found</h3>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        {approvalSearch ? "Try adjusting your search query." : "No records matching this status filter."}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    {filteredLeaves.map((req) => {
+                                        const isPending = (req.rawStatus || req.status || "").toLowerCase() === "pending";
+                                        const isApproved = (req.rawStatus || req.status || "").toLowerCase() === "approved";
+                                        const isRejected = (req.rawStatus || req.status || "").toLowerCase() === "rejected";
+                                        const isTarget = searchParams.get("leaveId") === req._id;
+
+                                        return (
+                                            <div
+                                                key={req._id}
+                                                className={`bg-white border rounded-2xl p-5 shadow-2xs flex flex-col justify-between transition-all ${
+                                                    isTarget
+                                                        ? "border-amber-400 ring-2 ring-amber-300/40"
+                                                        : "border-slate-200/90 hover:border-slate-300"
+                                                }`}
+                                            >
+                                                <div className="space-y-3">
+                                                    {/* Employee Header */}
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar
+                                                                src={req.profilePicture}
+                                                                name={req.name}
+                                                                size="w-10 h-10 text-xs font-bold"
+                                                            />
+                                                            <div>
+                                                                <h4 className="text-sm font-bold text-slate-900 leading-tight">
+                                                                    {req.name}
+                                                                </h4>
+                                                                <p className="text-[11px] text-slate-500 font-medium">
+                                                                    {req.designation ? `${req.designation} • ` : ""}{req.dept || "General"}
+                                                                    {req.code ? ` • ${req.code}` : ""}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Status Badge */}
+                                                        {isPending ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                                                                ● Pending
+                                                            </span>
+                                                        ) : isApproved ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                                                                ✓ Approved
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                                                                ✕ Rejected
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Details Pill Row */}
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold bg-blue-50 text-[#2D79C7] border border-blue-100">
+                                                            {req.type || req.leaveType || "Leave"}
+                                                        </span>
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                                            <Calendar className="w-3 h-3 text-slate-400" />
+                                                            {req.start}{req.end && req.end !== req.start ? ` → ${req.end}` : ""}
+                                                        </span>
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold bg-slate-100 text-slate-800 border border-slate-200">
+                                                            <Clock className="w-3 h-3 text-slate-400" />
+                                                            {req.duration || `${req.totalDays} Day(s)`}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Reason Box */}
+                                                    <div className="p-3 bg-slate-50 border border-slate-150 rounded-xl text-xs text-slate-700 font-medium leading-relaxed">
+                                                        <span className="text-slate-400 font-bold block text-[10px] uppercase tracking-wider mb-0.5">Reason:</span>
+                                                        {req.reason || "No reason specified"}
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-3">
+                                                    <span className="text-[10px] text-slate-400 font-medium">
+                                                        Applied: {req.appliedDate || "Recently"}
+                                                    </span>
+
+                                                    {isPending ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleLeaveAction(req._id, "approved")}
+                                                                disabled={processingLeaveId === req._id}
+                                                                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                                <span>{processingLeaveId === req._id ? "Processing..." : "Approve 🟢"}</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleLeaveAction(req._id, "rejected")}
+                                                                disabled={processingLeaveId === req._id}
+                                                                className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                                <span>Reject 🔴</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-slate-500">
+                                                            {isApproved ? "Approved by Management" : "Declined"}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* ── MIDDLE PANE: EMAIL LIST (WIDTH: ~380px - 440px or full on mobile) ── */}
+                        <div
+                            className={`${
+                                selectedEmailId ? "hidden md:flex" : "flex"
+                            } w-full md:w-[380px] lg:w-[420px] shrink-0 border-r border-slate-200/80 flex-col bg-white overflow-hidden`}
+                        >
                     {/* List Toolbar */}
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-200/80 bg-slate-50/50">
                         <div className="flex items-center gap-2">
@@ -1274,6 +1659,87 @@ const Inbox = () => {
                                     </div>
                                 )}
 
+                                {/* Quick Action Banner for Leave Application Emails */}
+                                {(activeEmail.labels?.some(l => l.toLowerCase().includes("leave")) ||
+                                    activeEmail.subject?.toLowerCase().includes("leave application") ||
+                                    activeEmail.subject?.toLowerCase().includes("partial leave")) && (() => {
+                                    const leaveIdLabel = activeEmail.labels?.find(l => l.startsWith("LeaveId:"));
+                                    const extractedLeaveId = leaveIdLabel ? leaveIdLabel.replace("LeaveId:", "") : null;
+                                    const matchingLeave = leaves.find(l => 
+                                        (extractedLeaveId && l._id === extractedLeaveId) ||
+                                        (l.name && activeEmail.senderName && l.name.toLowerCase() === activeEmail.senderName.toLowerCase()) ||
+                                        (l.code && activeEmail.snippet && activeEmail.snippet.includes(l.code))
+                                    );
+
+                                    if (!matchingLeave) return null;
+                                    const isPending = (matchingLeave.rawStatus || matchingLeave.status || "").toLowerCase() === "pending";
+                                    const isApproved = (matchingLeave.rawStatus || matchingLeave.status || "").toLowerCase() === "approved";
+                                    const isRejected = (matchingLeave.rawStatus || matchingLeave.status || "").toLowerCase() === "rejected";
+
+                                    return (
+                                        <div className="bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-blue-50/90 border border-emerald-200/80 rounded-2xl p-4 shadow-2xs space-y-3 animate-fadeIn">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                                        <CheckSquare className="w-5 h-5" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-xs font-extrabold text-slate-900 leading-tight">
+                                                                {matchingLeave.type || "Leave Application"} Review
+                                                            </h4>
+                                                            {isPending ? (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                                                                    ● Pending Review
+                                                                </span>
+                                                            ) : isApproved ? (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                                    ✓ Approved
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                                                                    ✕ Rejected
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-600 mt-0.5">
+                                                            <span className="font-bold text-slate-800">{matchingLeave.name}</span> ({matchingLeave.dept}) • {matchingLeave.duration || `${matchingLeave.totalDays} Days`} ({matchingLeave.start}{matchingLeave.end && matchingLeave.end !== matchingLeave.start ? ` to ${matchingLeave.end}` : ''})
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Direct Action Buttons */}
+                                                {isPending ? (
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleLeaveAction(matchingLeave._id, "approved")}
+                                                            disabled={processingLeaveId === matchingLeave._id}
+                                                            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+                                                        >
+                                                            <Check className="w-3.5 h-3.5" />
+                                                            <span>{processingLeaveId === matchingLeave._id ? "Processing..." : "Approve 🟢"}</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleLeaveAction(matchingLeave._id, "rejected")}
+                                                            disabled={processingLeaveId === matchingLeave._id}
+                                                            className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold disabled:opacity-50 transition-all cursor-pointer"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                            <span>Reject 🔴</span>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-slate-500">
+                                                        {isApproved ? "Approved by Management" : "Application declined"}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
                                 {/* Main Email Message Card */}
                                 <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
                                     {/* Sender & Recipient Bar */}
@@ -1433,7 +1899,9 @@ const Inbox = () => {
                         </div>
                     )}
                 </div>
-            </div>
+            </>
+        )}
+    </div>
 
             {/* ─────────────────────────────────────────────
                COMPOSE EMAIL MODAL
