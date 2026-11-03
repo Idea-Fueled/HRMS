@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
     Laptop, Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap, Box, UserCheck, CheckCircle2, AlertTriangle, Plus, Search,
     Edit3, Trash2, UserPlus, UserMinus, RefreshCw, X, ChevronDown,
-    Building2, Shield, Calendar, Info, Layers, Tag, HardDrive, Check, Loader2, ArrowRight
+    Building2, Shield, Calendar, Info, Layers, Tag, HardDrive, Check, Loader2, ArrowRight, Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -17,7 +17,8 @@ import {
     assignAsset,
     unassignAsset,
     updateAssetStatus,
-    deleteAsset
+    deleteAsset,
+    sendAssetEmail
 } from "../../services/asset.service";
 import { getManagers } from "../../services/employee.service";
 
@@ -148,6 +149,7 @@ const Assets = () => {
     const [assetForStatus, setAssetForStatus] = useState(null);
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: "", asset: null });
+    const [emailSendingId, setEmailSendingId] = useState(null);
 
     // Fetch All Assets
     const fetchAssetsData = useCallback(async () => {
@@ -227,6 +229,27 @@ const Assets = () => {
             }
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to delete asset.");
+        }
+    };
+
+    // Send asset allocation email handler
+    const handleSendAssetEmail = async (asset) => {
+        if (!asset || !asset.assignedTo) {
+            toast.error("Asset is not assigned to any employee.");
+            return;
+        }
+        try {
+            setEmailSendingId(asset._id);
+            const res = await sendAssetEmail(asset._id);
+            if (res.data?.success) {
+                toast.success(res.data.message || "Asset allocation email sent successfully!");
+            } else {
+                toast.error(res.data?.message || "Failed to send asset email.");
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to send asset allocation email.");
+        } finally {
+            setEmailSendingId(null);
         }
     };
 
@@ -456,9 +479,25 @@ const Assets = () => {
                                                                 {getCategoryIcon(asset.category, "w-5 h-5")}
                                                             </div>
                                                             <div>
-                                                                <h4 className="font-extrabold text-sm text-slate-900 leading-tight">
-                                                                    {asset.brandModel || asset.category}
-                                                                </h4>
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-extrabold text-sm text-slate-900 leading-tight">
+                                                                        {asset.brandModel || asset.category}
+                                                                    </h4>
+                                                                    {asset.assignedTo && (
+                                                                        <span
+                                                                            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                                                                asset.acknowledgmentStatus === "Acknowledged"
+                                                                                    ? "bg-emerald-500 ring-2 ring-emerald-200"
+                                                                                    : "bg-rose-500 ring-2 ring-rose-200 animate-pulse"
+                                                                            }`}
+                                                                            title={
+                                                                                asset.acknowledgmentStatus === "Acknowledged"
+                                                                                    ? `Acknowledged${asset.acknowledgedAt ? ` on ${formatDate(asset.acknowledgedAt)}` : ""}`
+                                                                                    : "Acknowledgment Pending"
+                                                                            }
+                                                                        />
+                                                                    )}
+                                                                </div>
                                                                 <p className="text-xs font-bold text-slate-500 mt-1 inline-flex items-center gap-1.5">
                                                                     <span>Asset Code:</span>
                                                                     <span className="font-mono font-extrabold text-[#2D79C7] bg-blue-50/90 px-1.5 py-0.2 rounded border border-blue-100/80">
@@ -521,6 +560,22 @@ const Assets = () => {
                                                     {/* Actions */}
                                                     <td className="px-4 py-3.5 text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
+                                                            {/* Send Allocation Email Button */}
+                                                            {asset.assignedTo && (
+                                                                <button
+                                                                    onClick={() => handleSendAssetEmail(asset)}
+                                                                    title="Send Allocation Email to Employee"
+                                                                    disabled={emailSendingId === asset._id}
+                                                                    className="p-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-[10px] transition-all cursor-pointer border border-indigo-100 shadow-2xs disabled:opacity-50"
+                                                                >
+                                                                    {emailSendingId === asset._id ? (
+                                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                                    ) : (
+                                                                        <Mail className="w-3.5 h-3.5" />
+                                                                    )}
+                                                                </button>
+                                                            )}
+
                                                             {/* Assign / Unassign Quick Button */}
                                                             {asset.assignedTo ? (
                                                                 <button
@@ -604,7 +659,23 @@ const Assets = () => {
                                                     {asset.status}
                                                 </span>
                                             </div>
-                                            <h3 className="font-extrabold text-sm text-slate-800 truncate">{asset.brandModel || asset.category}</h3>
+                                            <div className="flex items-center justify-between gap-1.5">
+                                                <h3 className="font-extrabold text-sm text-slate-800 truncate">{asset.brandModel || asset.category}</h3>
+                                                {asset.assignedTo && (
+                                                    <span
+                                                        className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                                            asset.acknowledgmentStatus === "Acknowledged"
+                                                                ? "bg-emerald-500 ring-2 ring-emerald-200"
+                                                                : "bg-rose-500 ring-2 ring-rose-200 animate-pulse"
+                                                        }`}
+                                                        title={
+                                                            asset.acknowledgmentStatus === "Acknowledged"
+                                                                ? `Acknowledged${asset.acknowledgedAt ? ` on ${formatDate(asset.acknowledgedAt)}` : ""}`
+                                                                : "Acknowledgment Pending"
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
                                             <p className="text-xs text-slate-500 font-semibold mt-0.5">{asset.category}</p>
                                         </div>
 
@@ -652,6 +723,21 @@ const Assets = () => {
                                                     className="flex-1 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-[10px] border border-emerald-100 transition-all flex items-center justify-center gap-1 cursor-pointer"
                                                 >
                                                     <UserPlus className="w-3.5 h-3.5" /> Assign
+                                                </button>
+                                            )}
+
+                                            {asset.assignedTo && (
+                                                <button
+                                                    onClick={() => handleSendAssetEmail(asset)}
+                                                    disabled={emailSendingId === asset._id}
+                                                    className="p-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-[10px] border border-indigo-100 transition-all cursor-pointer disabled:opacity-50"
+                                                    title="Send Allocation Email to Employee"
+                                                >
+                                                    {emailSendingId === asset._id ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Mail className="w-3.5 h-3.5" />
+                                                    )}
                                                 </button>
                                             )}
 
@@ -750,6 +836,18 @@ const Assets = () => {
                                                                     {asset.assetId}
                                                                 </span>
                                                                 <span className="font-extrabold text-xs text-slate-800">{asset.brandModel || asset.category}</span>
+                                                                <span
+                                                                    className={`w-2 h-2 rounded-full shrink-0 ${
+                                                                        asset.acknowledgmentStatus === "Acknowledged"
+                                                                            ? "bg-emerald-500 ring-2 ring-emerald-200"
+                                                                            : "bg-rose-500 ring-2 ring-rose-200 animate-pulse"
+                                                                    }`}
+                                                                    title={
+                                                                        asset.acknowledgmentStatus === "Acknowledged"
+                                                                            ? `Acknowledged${asset.acknowledgedAt ? ` on ${formatDate(asset.acknowledgedAt)}` : ""}`
+                                                                            : "Acknowledgment Pending"
+                                                                    }
+                                                                />
                                                             </div>
                                                             <p className="text-[11px] text-slate-500 font-medium mt-1 inline-flex items-center gap-1">
                                                                 <span>{asset.category}</span>
@@ -764,6 +862,18 @@ const Assets = () => {
                                                         <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border shadow-2xs ${conditionBadge(asset.condition)}`}>
                                                             {asset.condition}
                                                         </span>
+                                                        <button
+                                                            onClick={() => handleSendAssetEmail({ ...asset, assignedTo: emp })}
+                                                            disabled={emailSendingId === asset._id}
+                                                            className="p-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-[8px] border border-indigo-100 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                                                            title="Send Allocation Email to Employee"
+                                                        >
+                                                            {emailSendingId === asset._id ? (
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                            ) : (
+                                                                <Mail className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}

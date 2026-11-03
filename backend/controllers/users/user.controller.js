@@ -2,11 +2,12 @@ import User from "../../models/users/user.model.js";
 import Leave from "../../models/leaves/leave.model.js";
 import Attendance from "../../models/attendance/attendance.model.js";
 import Email from "../../models/emails/email.model.js";
+import ActivityLog from "../../models/logs/activityLog.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinary.service.js";
-import { dispatchExternalEmail, sendPasswordResetEmail, sendAccountWelcomeEmail } from "../../services/email.service.js";
+import { dispatchExternalEmail, sendPasswordResetEmail, sendAccountWelcomeEmail, sendAdminPasswordResetNotification } from "../../services/email.service.js";
 import { emitToUser } from "../../socket/socket.js";
 
 const resolveUserPermissions = (user) => {
@@ -263,6 +264,37 @@ export const loginUser = async (req, res) => {
         // Update Last Login
         user.lastLogin = new Date();
         await user.save();
+
+        // Record Login Activity in System Logs with Client IP
+        const clientIp = (req.headers["x-forwarded-for"] || "")
+            .split(",")[0]
+            .trim() || req.socket?.remoteAddress || req.ip || "";
+        const userAgent = req.headers["user-agent"] || "";
+
+        try {
+            await ActivityLog.create({
+                user: user._id,
+                employeeId: user.employeeId || "N/A",
+                userName: user.fullName || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+                userEmail: user.email,
+                userRole: user.role,
+                userDepartment: user.department || "General",
+                actionType: "CUSTOM_ACTION",
+                page: "/login",
+                pageTitle: "User Authentication",
+                action: `User logged in successfully (IP: ${clientIp || "N/A"})`,
+                details: {
+                    loginTime: new Date(),
+                    ipAddress: clientIp,
+                    userAgent: userAgent
+                },
+                ipAddress: clientIp,
+                userAgent: userAgent,
+                timestamp: new Date()
+            });
+        } catch (logErr) {
+            console.warn("Failed to record login activity log:", logErr.message);
+        }
 
         // Remove Password
         user.password = undefined;
@@ -1180,6 +1212,57 @@ export const resetPassword = async (req, res) => {
         user.resetPasswordToken = null;
         user.resetPasswordExpires = null;
         await user.save();
+
+        const clientIp = (req.headers["x-forwarded-for"] || "")
+            .split(",")[0]
+            .trim() || req.socket?.remoteAddress || req.ip || "";
+        const userAgent = req.headers["user-agent"] || "";
+
+        // 1. Record activity in system logs
+        try {
+            await ActivityLog.create({
+                user: user._id,
+                employeeId: user.employeeId || "N/A",
+                userName: user.fullName || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+                userEmail: user.email,
+                userRole: user.role,
+                userDepartment: user.department || "General",
+                actionType: "CUSTOM_ACTION",
+                page: "/reset-password",
+                pageTitle: "Password Reset",
+                action: `User successfully reset account password (IP: ${clientIp || "N/A"})`,
+                details: {
+                    ipAddress: clientIp,
+                    userAgent: userAgent,
+                    resetAt: new Date()
+                },
+                ipAddress: clientIp,
+                userAgent: userAgent,
+                timestamp: new Date()
+            });
+        } catch (logErr) {
+            console.warn("ActivityLog creation failed on resetPassword:", logErr.message);
+        }
+
+        // 2. Notify all global admins via email
+        try {
+            const globalAdmins = await User.find({
+                role: { $in: ["global_admin", "admin"] }
+            }).select("email");
+            const adminEmails = globalAdmins.map(a => a.email).filter(Boolean);
+
+            if (adminEmails.length > 0) {
+                sendAdminPasswordResetNotification({
+                    adminEmails,
+                    user,
+                    clientIp,
+                    userAgent,
+                    resetTime: new Date()
+                }).catch(err => console.warn("Admin reset notification email failed:", err.message));
+            }
+        } catch (adminErr) {
+            console.warn("Failed to notify admins of password reset:", adminErr.message);
+        }
 
         return res.status(200).json({
             success: true,

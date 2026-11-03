@@ -11,7 +11,8 @@ import {
     deleteAsset,
     acknowledgeAssetByToken,
     acknowledgeAsset,
-    requestNewAsset
+    requestNewAsset,
+    sendAssetEmail
 } from "../../controllers/assets/asset.controller.js";
 
 const router = express.Router();
@@ -46,6 +47,7 @@ router.post("/", isAuthenticated, isGlobalAdmin, createAsset);
 router.put("/:id", isAuthenticated, isGlobalAdmin, updateAsset);
 router.post("/:id/assign", isAuthenticated, isGlobalAdmin, assignAsset);
 router.post("/:id/unassign", isAuthenticated, isGlobalAdmin, unassignAsset);
+router.post("/:id/send-email", isAuthenticated, isGlobalAdmin, sendAssetEmail);
 router.patch("/:id/status", isAuthenticated, isGlobalAdmin, updateAssetStatusCondition);
 router.delete("/:id", isAuthenticated, isGlobalAdmin, deleteAsset);
 

@@ -224,14 +224,20 @@ const Login = () => {
                                                         type="email"
                                                         value={forgotEmail}
                                                         onChange={(e) => {
-                                                            setForgotEmail(e.target.value);
+                                                            if (!email) setForgotEmail(e.target.value);
                                                             if (forgotError) setForgotError("");
                                                         }}
+                                                        readOnly={Boolean(email)}
                                                         placeholder="Enter your registered email"
                                                         disabled={forgotLoading}
-                                                        className={`w-full pl-11 pr-4 py-3.5 bg-white/80 backdrop-blur-xs border ${forgotError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} rounded-[14px] text-[13.5px] text-[#1E1E1E] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs`}
+                                                        className={`w-full pl-11 pr-4 py-3.5 ${Boolean(email) ? "bg-slate-100/90 text-slate-700 cursor-not-allowed border-slate-200/90" : "bg-white/80 text-[#1E1E1E] border-slate-200/90 hover:border-slate-300 focus:border-[#2D79C7] focus:ring-[#2D79C7]/15"} backdrop-blur-xs border ${forgotError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : ""} rounded-[14px] text-[13.5px] placeholder-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 shadow-2xs font-medium`}
                                                     />
                                                 </div>
+                                                {email && (
+                                                    <p className="text-slate-400 text-[11px] font-medium mt-1">
+                                                        Using email entered on the sign in screen.
+                                                    </p>
+                                                )}
                                                 {forgotError && (
                                                     <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
                                                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />

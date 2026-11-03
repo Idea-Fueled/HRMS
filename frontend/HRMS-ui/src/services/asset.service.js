@@ -40,5 +40,9 @@ export const requestNewAsset = async (data) => {
     return API.post("/assets/request", data);
 };
 
+export const sendAssetEmail = async (id) => {
+    return API.post(`/assets/${id}/send-email`);
+};
+
 export default API;
 

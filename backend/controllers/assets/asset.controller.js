@@ -34,15 +34,23 @@ export const sendAssetAssignedNotification = async ({ asset, employee, assignedB
             });
         }
 
-        const backendBaseUrl = process.env.BACKEND_URL || "http://localhost:5000";
+        const backendBaseUrl = (
+            process.env.BACKEND_URL || 
+            (process.env.NODE_ENV === "production" ? "https://backend.ideafueled.com" : "http://localhost:5000")
+        ).replace(/\/+$/, "");
         const ackUrl = `${backendBaseUrl}/api/assets/${asset._id}/acknowledge?token=${token}`;
 
         const subject = `Company Asset Assigned: ${asset.brandModel || asset.name || asset.category} (${asset.assetId})`;
         const snippet = `Corporate asset ${asset.assetId} (${asset.brandModel || asset.name}) has been assigned to you. Please acknowledge receipt.`;
 
         const emailHtml = `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 4px;">
-    <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); border-radius: 14px; padding: 22px 24px; color: #ffffff; margin-bottom: 20px;">
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 12px 4px;">
+    <!-- Logo Header -->
+    <div style="background-color: #ffffff; text-align: center; padding: 20px 0 16px 0; border-bottom: 1px solid #f1f5f9; border-radius: 14px 14px 0 0;">
+        <img src="https://hrms.ideafueled.com/assets/IF-black-Bsefr2U2.png" alt="Idea Fueled" style="height: 42px; display: block; margin: 0 auto; border: 0;" />
+    </div>
+
+    <div style="background: linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%); padding: 22px 24px; color: #ffffff;">
         <span style="background: rgba(255,255,255,0.2); color: #ffffff; font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.6px; display: inline-block; margin-bottom: 8px;">
             IT Asset Allocation
         </span>
@@ -1056,3 +1064,36 @@ export const requestNewAsset = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+/**
+ * On-demand dispatch of asset assignment email by Global Admin
+ */
+export const sendAssetEmail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const asset = await Asset.findById(id).populate("assignedTo");
+
+        if (!asset) {
+            return res.status(404).json({ success: false, message: "Asset not found." });
+        }
+
+        if (!asset.assignedTo) {
+            return res.status(400).json({ success: false, message: "This asset is not currently assigned to any employee." });
+        }
+
+        await sendAssetAssignedNotification({
+            asset,
+            employee: asset.assignedTo,
+            assignedByUser: req.user
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: `Asset assignment email sent successfully to ${asset.assignedTo.email}.`
+        });
+    } catch (err) {
+        console.error("sendAssetEmail error:", err);
+        return res.status(500).json({ success: false, message: err.message || "Failed to send asset email." });
+    }
+};
+

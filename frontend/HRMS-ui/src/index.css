@@ -3,42 +3,21 @@
 
 @theme {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    --text-2xs: 0.75rem; /* 12px */
-    --text-xs: 0.84375rem; /* 13.5px */
-    --text-xs--line-height: 1.25rem;
-    --text-sm: 0.9375rem; /* 15px */
-    --text-sm--line-height: 1.4rem;
-    --text-base: 1.0625rem; /* 17px */
-    --text-base--line-height: 1.625rem;
-    --text-lg: 1.1875rem; /* 19px */
-    --text-xl: 1.375rem; /* 22px */
-    --text-2xl: 1.625rem; /* 26px */
-    --text-3xl: 2rem; /* 32px */
 }
 
 /* ─────────────────────────────────────────────
    GLOBAL TYPOGRAPHY & ROOT FONT SIZING
+   Scaled to compact enterprise density so 100% zoom
+   looks as crisp and spacious as 75% zoom.
 ───────────────────────────────────────────── */
 html {
-    font-size: 16.5px;
+    font-size: 13.5px;
     scroll-behavior: smooth;
-}
-
-@media (min-width: 768px) {
-    html {
-        font-size: 17.5px;
-    }
-}
-
-@media (min-width: 1280px) {
-    html {
-        font-size: 18px;
-    }
 }
 
 @media (min-width: 1536px) {
     html {
-        font-size: 18.5px;
+        font-size: 14px;
     }
 }
 
@@ -49,7 +28,7 @@ select,
 textarea {
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-weight: 500;
-    line-height: 1.6;
+    line-height: 1.5;
 
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -83,7 +62,7 @@ input[type="number"] {
 }
 
 /* ─────────────────────────────────────────────
-   READABLE HEADINGS & TEXT HIERARCHY
+   HEADINGS & TEXT HIERARCHY
 ───────────────────────────────────────────── */
 h1 {
     font-weight: 800;
@@ -116,67 +95,14 @@ label,
 td,
 th,
 li {
-    line-height: 1.55;
+    line-height: 1.5;
 }
 
-/* ─────────────────────────────────────────────
-   GLOBAL FORMS & INPUT READABILITY
-───────────────────────────────────────────── */
-input,
-select,
-textarea {
-    font-size: 0.925rem !important;
-    font-weight: 500;
-}
-
+/* Forms & Inputs */
 input::placeholder,
 textarea::placeholder {
     font-weight: 400;
     color: #9CA3AF;
-}
-
-label {
-    font-size: 0.825rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.01em;
-}
-
-/* ─────────────────────────────────────────────
-   TABLES & DATA GRIDS
-───────────────────────────────────────────── */
-table:not(#payslip-pdf-container table) {
-    font-size: 0.925rem;
-}
-
-table:not(#payslip-pdf-container table) th {
-    font-weight: 700 !important;
-    letter-spacing: 0.03em !important;
-    font-size: 0.825rem !important;
-}
-
-table:not(#payslip-pdf-container table) td {
-    font-weight: 500;
-    font-size: 0.9rem !important;
-}
-
-/* ─────────────────────────────────────────────
-   TINY TEXT AUTOMATIC PROMOTION (ACCESSIBILITY)
-   Ensures hardcoded 9px, 10px, 11px classes scale
-   to comfortable, legible 12.5px - 13.5px.
-───────────────────────────────────────────── */
-.text-\[9px\], 
-.text-\[9\.5px\], 
-.text-\[10px\], 
-.text-\[10\.5px\], 
-.text-\[11px\] {
-    font-size: 0.8125rem !important; /* ~13px */
-    line-height: 1.25rem !important;
-}
-
-.text-\[12px\],
-.text-xs {
-    font-size: 0.875rem !important; /* ~14px */
-    line-height: 1.35rem !important;
 }
 
 /* Buttons - Premium 3D Hover & Click Animation */

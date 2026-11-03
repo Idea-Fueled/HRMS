@@ -425,9 +425,17 @@ const ActivityLogs = () => {
 
                                             {/* Action / Event Description */}
                                             <td className="py-3 px-4">
-                                                <span className="font-bold text-slate-800 text-xs">
-                                                    {log.action}
-                                                </span>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="font-bold text-slate-800 text-xs">
+                                                        {log.action}
+                                                    </span>
+                                                    {log.ipAddress && (
+                                                        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-0.5">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                            IP: <span className="font-bold text-slate-700">{log.ipAddress}</span>
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
 
                                             {/* Location / Page */}

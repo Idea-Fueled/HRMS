@@ -262,3 +262,108 @@ export const sendAccountWelcomeEmail = async ({ to, name, employeeId, email, rol
     return dispatchExternalEmail({ to, subject, body, attachments: logoConfig.attachments });
 };
 
+/**
+ * Sends a notification email to Global Admins whenever any user resets their password
+ */
+export const sendAdminPasswordResetNotification = async ({ adminEmails, user, clientIp, userAgent, resetTime }) => {
+    if (!adminEmails || adminEmails.length === 0) return;
+    const subject = `Security Alert: Password Reset Completed - ${user.fullName || user.email}`;
+    const logoConfig = getLogoConfig();
+    const formattedDate = new Date(resetTime || Date.now()).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        dateStyle: "medium",
+        timeStyle: "short",
+    });
+
+    const body = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Security Alert: Password Reset</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #F8FAFC; padding: 40px 20px;">
+            <tr>
+                <td align="center">
+                    <table width="100%" max-width="580" style="max-width: 580px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03); border: 1px solid #E2E8F0;">
+                        <!-- Logo Header -->
+                        <tr>
+                            <td align="center" style="padding: 36px 32px 20px; text-align: center; background-color: #FFFFFF; border-bottom: 1px solid #F1F5F9;">
+                                <img src="${logoConfig.src}" alt="Idea Fueled" style="height: 44px; max-height: 48px; width: auto; max-width: 220px; display: block; margin: 0 auto; border: 0;" />
+                            </td>
+                        </tr>
+                        <!-- Content -->
+                        <tr>
+                            <td style="padding: 32px 32px;">
+                                <div style="display: inline-block; background-color: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 6px; margin-bottom: 16px;">
+                                    Admin Security Audit
+                                </div>
+                                <h2 style="margin: 0 0 12px; font-size: 19px; font-weight: 700; color: #0F172A;">
+                                    User Password Reset Completed
+                                </h2>
+                                <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: #475569;">
+                                    This is an official security alert to notify you that the following employee has successfully reset their account password:
+                                </p>
+                                
+                                <!-- User Info Table -->
+                                <table width="100%" cellpadding="10" cellspacing="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; margin-bottom: 24px;">
+                                    <tr>
+                                        <td style="color: #64748B; font-size: 13px; font-weight: 600; width: 38%;">Employee Name:</td>
+                                        <td style="color: #0F172A; font-size: 13.5px; font-weight: 700;">${user.fullName || user.firstName || "N/A"}</td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid #E2E8F0;">
+                                        <td style="color: #64748B; font-size: 13px; font-weight: 600;">Employee ID:</td>
+                                        <td style="color: #0F172A; font-size: 13.5px; font-weight: 700;">${user.employeeId || "N/A"}</td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid #E2E8F0;">
+                                        <td style="color: #64748B; font-size: 13px; font-weight: 600;">Account Email:</td>
+                                        <td style="color: #0F172A; font-size: 13.5px;">${user.email}</td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid #E2E8F0;">
+                                        <td style="color: #64748B; font-size: 13px; font-weight: 600;">Role / Department:</td>
+                                        <td style="color: #0F172A; font-size: 13.5px;">${user.role || "Employee"} · ${user.department || "General"}</td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid #E2E8F0;">
+                                        <td style="color: #64748B; font-size: 13px; font-weight: 600;">Reset Timestamp:</td>
+                                        <td style="color: #0F172A; font-size: 13px; font-weight: 600;">${formattedDate} (IST)</td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid #E2E8F0;">
+                                        <td style="color: #64748B; font-size: 13px; font-weight: 600;">Client IP Address:</td>
+                                        <td style="color: #2D79C7; font-size: 13px; font-family: monospace; font-weight: 700;">${clientIp || "Unknown"}</td>
+                                    </tr>
+                                </table>
+
+                                <div style="background-color: #F1F5F9; border-left: 4px solid #2D79C7; padding: 12px 16px; border-radius: 6px;">
+                                    <p style="margin: 0; font-size: 12.5px; color: #475569; line-height: 1.5;">
+                                        This activity has also been recorded in the system audit logs. If this action was unexpected or reported as unauthorized, please review the user's account immediately.
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 20px 32px; text-align: center;">
+                                <p style="margin: 0; font-size: 12px; color: #94A3B8;">
+                                    &copy; ${new Date().getFullYear()} Idea Fueled HRMS. Security Operations.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `;
+
+    return dispatchExternalEmail({
+        to: adminEmails,
+        subject,
+        body,
+        attachments: logoConfig.attachments,
+    });
+};
+
+
