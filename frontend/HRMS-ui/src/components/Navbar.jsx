@@ -6,7 +6,6 @@ import { useAuth } from "../context/AuthContext";
 import { toast } from "sonner";
 import {
     Search,
-    Bell,
     User,
     Settings,
     LogOut,
@@ -641,14 +640,6 @@ const Navbar = ({ onToggleSidebar }) => {
                         <span className="whitespace-nowrap font-bold text-xs">{ROLE_CONFIG[user.role?.toLowerCase()]?.label || user.role}</span>
                     </div>
                 )}
-
-                {/* Notifications */}
-                <button className="relative w-9 h-9 flex items-center justify-center text-gray-500 hover:text-[#2D79C7] hover:bg-gray-100/80 rounded-[12px] border border-gray-200/60 transition-all duration-200 cursor-pointer shadow-2xs">
-                    <Bell className="w-4 h-4" />
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-[#FFEA00] border-2 border-white rounded-full shadow-2xs animate-pulse" />
-                </button>
-
-                <div className="h-6 w-px bg-gray-200 mx-0.5" />
 
                 {/* Profile dropdown */}
                 <div className="relative" ref={profileRef}>
