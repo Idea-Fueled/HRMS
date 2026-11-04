@@ -94,7 +94,16 @@ export const EmployeeProfile = () => {
             setInvitingEmployee(true);
             const res = await inviteEmployee(employee._id);
             if (res.data?.success) {
-                toast.success(`Welcome invitation sent to ${employee.email || "employee"}!`);
+                if (res.data?.emailDelivered === false) {
+                    toast.error(res.data?.message || "Email delivery failed due to SMTP error.", { duration: 6000 });
+                    if (res.data?.setPasswordUrl && navigator?.clipboard) {
+                        navigator.clipboard.writeText(res.data.setPasswordUrl).then(() => {
+                            toast.info("Password setup link copied to clipboard!", { duration: 5000 });
+                        }).catch(() => {});
+                    }
+                } else {
+                    toast.success(`Welcome invitation sent to ${employee.email || "employee"}!`);
+                }
                 setEmployee(prev => ({ ...prev, invitationSent: true, invitationSentAt: new Date() }));
             } else {
                 toast.error(res.data?.message || "Failed to send invitation.");

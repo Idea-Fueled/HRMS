@@ -54,7 +54,8 @@ export const clockIn = async (req, res) => {
             const lastOut = attendance.lastClockOut || (attendance.logs.length > 0 && attendance.logs[attendance.logs.length - 1].action === "clock_out" ? attendance.logs[attendance.logs.length - 1].timestamp : null);
             if (lastOut) {
                 const breakDiff = (currentTime - new Date(lastOut)) / (1000 * 60);
-                if (breakDiff > 0) {
+                // Sanity check: break must be positive and within a single shift (< 300 mins / 5 hours)
+                if (breakDiff > 0 && breakDiff < 300) {
                     attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + Math.floor(breakDiff);
                 }
             }
@@ -542,7 +543,7 @@ export const clockOut = async (req, res) => {
         for (let i = 0; i < clockOuts.length; i++) {
             if (clockIns[i + 1]) {
                 const bDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / (1000 * 60);
-                if (bDiff > 0) totalBreak += bDiff;
+                if (bDiff > 0 && bDiff < 300) totalBreak += bDiff;
             }
         }
 
@@ -1480,10 +1481,13 @@ export const syncBiometricPunches = async (req, res) => {
                 });
             }
 
-            // Safely preserve any existing web clock in / remote logs on this date
-            const existingWebLogs = (existing?.logs || []).filter(l => 
-                l.source === "web" || l.source === "wfh" || l.source === "manual"
-            );
+            // Safely preserve any existing web clock in / remote logs that strictly belong to this date
+            const existingWebLogs = (existing?.logs || []).filter(l => {
+                if (l.source !== "web" && l.source !== "wfh" && l.source !== "manual") return false;
+                if (!l.timestamp) return false;
+                const logIstDate = new Date(l.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                return logIstDate === istDateStr;
+            });
 
             // Combine biometric logs + web logs
             const allLogs = [...biometricLogs, ...existingWebLogs];
@@ -1509,14 +1513,15 @@ export const syncBiometricPunches = async (req, res) => {
                 for (let i = 0; i < clockOuts.length; i++) {
                     if (clockIns[i + 1]) {
                         const breakDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / (1000 * 60);
-                        if (breakDiff > 0) totalBreakMinutes += breakDiff;
+                        // Sanity check: break must be positive and within a single shift (< 300 mins / 5 hours)
+                        if (breakDiff > 0 && breakDiff < 300) totalBreakMinutes += breakDiff;
                     }
                 }
 
                 totalWorkMinutes = Math.round(totalWorkMinutes);
                 totalBreakMinutes = Math.round(totalBreakMinutes);
 
-                // Sanity check: Total break cannot exceed the total day span (lastClockOut - firstClockIn)
+                // Sanity check: Total break cannot exceed the total day span (lastClockOut - firstClockIn) or normal maximum
                 if (lastClockOut && firstClockIn) {
                     const totalSpan = Math.round((lastClockOut.getTime() - firstClockIn.getTime()) / 60000);
                     if (totalBreakMinutes > totalSpan) {

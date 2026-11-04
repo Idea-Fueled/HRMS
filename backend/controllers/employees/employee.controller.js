@@ -787,18 +787,46 @@ export const inviteEmployee = async (req, res) => {
         const frontendBase = process.env.FRONTEND_URL || "https://hrms.ideafueled.com";
         const setPasswordUrl = `${frontendBase.replace(/\/+$/, "")}/set-password?token=${inviteToken}&email=${encodeURIComponent(employee.email)}`;
 
-        sendAccountWelcomeEmail({
-            to: employee.email,
-            name: employee.fullName || `${employee.firstName} ${employee.lastName || ''}`.trim(),
-            employeeId: employee.employeeId,
-            email: employee.email,
-            role: employee.role,
-            department: employee.department,
-            resetUrl: setPasswordUrl
-        }).catch(err => console.warn("Invite email delivery failed:", err.message));
+        let emailDelivered = true;
+        let emailError = null;
+
+        try {
+            const emailResult = await sendAccountWelcomeEmail({
+                to: employee.email,
+                name: employee.fullName || `${employee.firstName} ${employee.lastName || ''}`.trim(),
+                employeeId: employee.employeeId,
+                email: employee.email,
+                role: employee.role,
+                department: employee.department,
+                resetUrl: setPasswordUrl
+            });
+
+            if (emailResult && emailResult.delivered === false) {
+                emailDelivered = false;
+                emailError = emailResult.error || "SMTP delivery failed";
+            }
+        } catch (err) {
+            console.error("Invite email delivery failed:", err);
+            emailDelivered = false;
+            emailError = err.message || "Failed to send email via SMTP";
+        }
+
+        if (!emailDelivered) {
+            return res.status(200).json({
+                success: true,
+                emailDelivered: false,
+                warning: true,
+                setPasswordUrl,
+                message: `Invitation generated, but email delivery failed (${emailError}). Please update your Gmail SMTP App Password or share the setup link directly.`,
+                invitationSent: true,
+                invitationSentAt: employee.invitationSentAt
+            });
+        }
 
         return res.status(200).json({
             success: true,
+            emailDelivered: true,
+            setPasswordUrl,
             message: `Invitation email sent successfully to ${employee.email}`,
             invitationSent: true,
             invitationSentAt: employee.invitationSentAt

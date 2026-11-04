@@ -995,7 +995,16 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
     const biometricLogs = [];
     const webLogs = [];
 
+    const targetDateStr = row?.rawDate
+        ? new Date(row.rawDate).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+        : null;
+
     rawLogs.forEach(l => {
+        if (!l.timestamp) return;
+        if (targetDateStr) {
+            const logDateStr = new Date(l.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            if (logDateStr !== targetDateStr) return;
+        }
         const src = (l.source || "").toLowerCase();
         if (src === "web" || src === "wfh" || src === "manual") {
             webLogs.push(l);
@@ -1325,9 +1334,21 @@ export const TeamMemberAttendanceHistory = ({ member, onBack, hideBack = false, 
             let work = record.totalWorkMinutes || 0;
             let brk = record.totalBreakMinutes || 0;
 
-            if (!work && Array.isArray(record.logs) && record.logs.length > 0) {
-                const ins = record.logs.filter(l => l.action === "clock_in");
-                const outs = record.logs.filter(l => l.action === "clock_out");
+            const targetDateStr = record.date
+                ? new Date(record.date).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+                : null;
+
+            const validLogs = (Array.isArray(record.logs) ? record.logs : []).filter(l => {
+                if (!l.timestamp) return false;
+                if (!targetDateStr) return true;
+                const logDateStr = new Date(l.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                return logDateStr === targetDateStr;
+            });
+
+            // If break is abnormally large (> 300 mins / 5 hrs) or if work is missing, recompute strictly from same-day logs
+            if ((brk > 300 || !work) && validLogs.length > 0) {
+                const ins = validLogs.filter(l => l.action === "clock_in");
+                const outs = validLogs.filter(l => l.action === "clock_out");
                 let sumWork = 0;
                 for (let i = 0; i < Math.min(ins.length, outs.length); i++) {
                     const diff = (new Date(outs[i].timestamp) - new Date(ins[i].timestamp)) / 60000;
@@ -1339,23 +1360,25 @@ export const TeamMemberAttendanceHistory = ({ member, onBack, hideBack = false, 
                 for (let i = 0; i < outs.length; i++) {
                     if (ins[i + 1]) {
                         const bDiff = (new Date(ins[i + 1].timestamp) - new Date(outs[i].timestamp)) / 60000;
-                        if (bDiff > 0) sumBreak += bDiff;
+                        if (bDiff > 0 && bDiff < 300) sumBreak += bDiff;
                     }
                 }
-                if (sumBreak > 0) brk = Math.floor(sumBreak);
+                brk = Math.floor(sumBreak);
             }
 
             if (!work && record.firstClockIn && record.lastClockOut) {
                 const span = (new Date(record.lastClockOut) - new Date(record.firstClockIn)) / 60000;
-                if (span > 0) work = Math.floor(span);
+                if (span > 0 && span < 960) work = Math.floor(span);
             }
 
             if (record.firstClockIn && record.lastClockOut) {
                 const totalSpan = Math.round((new Date(record.lastClockOut) - new Date(record.firstClockIn)) / 60000);
-                if (brk > totalSpan) {
+                if (totalSpan > 0 && totalSpan < 960 && brk > totalSpan) {
                     brk = Math.max(0, totalSpan - work);
                 }
             }
+
+            if (brk > 300) brk = 60; // Cap any runaway edge-case breaks to reasonable limit
 
             return { work, brk };
         };

@@ -2573,7 +2573,16 @@ const Employees = () => {
             setInvitingId(emp._id);
             const res = await inviteEmployee(emp._id);
             if (res.data?.success) {
-                toast.success(`Welcome invitation email sent to ${emp.email || "employee"}!`);
+                if (res.data?.emailDelivered === false) {
+                    toast.error(res.data?.message || "Email delivery failed due to SMTP error.", { duration: 6000 });
+                    if (res.data?.setPasswordUrl && navigator?.clipboard) {
+                        navigator.clipboard.writeText(res.data.setPasswordUrl).then(() => {
+                            toast.info("Password setup link copied to clipboard!", { duration: 5000 });
+                        }).catch(() => {});
+                    }
+                } else {
+                    toast.success(`Welcome invitation email sent to ${emp.email || "employee"}!`);
+                }
                 setData(prev => ({
                     ...prev,
                     employees: prev.employees.map(e => e._id === emp._id ? { ...e, invitationSent: true, invitationSentAt: new Date() } : e)
