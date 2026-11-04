@@ -23,6 +23,7 @@ import SessionTimeoutManager from "./components/SessionTimeoutModal";
 import Hire from "./pages/hire/Hire";
 import Assets from "./pages/assets/Assets";
 import Inbox from "./pages/inbox/Inbox";
+import Approvals from "./pages/approvals/Approvals";
 import Reports from "./pages/reports/Reports";
 import ActivityLogs from "./pages/activity-logs/ActivityLogs";
 import Probation from "./pages/probation/Probation";
@@ -76,17 +77,13 @@ const router = createBrowserRouter([
             },
             {
                 path: "inbox",
-                element: (
-                    <ProtectedRoute allowedRoles={ALL_ROLES}>
-                        <Inbox />
-                    </ProtectedRoute>
-                ),
+                element: <Navigate to="/approvals" replace />,
             },
             {
                 path: "approvals",
                 element: (
                     <ProtectedRoute allowedRoles={ALL_ROLES}>
-                        <Inbox initialFolder="approvals" />
+                        <Approvals />
                     </ProtectedRoute>
                 ),
             },

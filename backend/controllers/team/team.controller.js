@@ -97,7 +97,9 @@ export const getTeamSummary = async (req, res) => {
             onLeaveList,
             wfhList,
             newJoinersList,
-            pendingApprovalsList
+            pendingApprovalsList,
+            allEmployeesList,
+            activeEmployeesList
         ] = await Promise.all([
             User.countDocuments(userFilter),
             User.countDocuments(activeUserFilter),
@@ -119,6 +121,12 @@ export const getTeamSummary = async (req, res) => {
             Leave.find({ status: "pending", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
                 .populate("employeeId", "firstName lastName fullName email department designation profilePicture employeeId")
                 .limit(50)
+                .lean(),
+            User.find(userFilter, "firstName lastName fullName email department designation profilePicture employeeId status joiningDate")
+                .limit(200)
+                .lean(),
+            User.find(activeUserFilter, "firstName lastName fullName email department designation profilePicture employeeId status joiningDate")
+                .limit(200)
                 .lean()
         ]);
 
@@ -171,6 +179,8 @@ export const getTeamSummary = async (req, res) => {
                 departments: formattedDepts,
                 statuses: formattedStatuses,
                 details: {
+                    allEmployees: allEmployeesList,
+                    activeEmployees: activeEmployeesList,
                     onLeave: onLeaveList.map(l => ({
                         ...((l.employeeId && typeof l.employeeId === 'object') ? l.employeeId : {}),
                         leaveType: l.type,
