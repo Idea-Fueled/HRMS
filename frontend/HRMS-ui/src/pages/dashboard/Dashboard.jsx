@@ -29,6 +29,7 @@ import {
     Trash2,
     Upload,
     Image as ImageIcon,
+    Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import userAvatar from "../../assets/user_avatar.png";
@@ -336,6 +337,29 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
         return type || "Public Holiday";
     };
 
+    const handleDownloadHolidayImage = async (url, title) => {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            const cleanTitle = (title || "Holiday").replace(/[^a-zA-Z0-9_-]/g, "_");
+            a.download = `${cleanTitle}_Holiday.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+            toast.success(`Downloaded ${cleanTitle} image`);
+        } catch (err) {
+            const a = document.createElement("a");
+            a.href = url;
+            a.target = "_blank";
+            a.download = `${(title || "Holiday").replace(/[^a-zA-Z0-9_-]/g, "_")}_Holiday.png`;
+            a.click();
+        }
+    };
+
     if (holidays.length === 0) {
         return (
             <div className="py-8 text-center text-gray-400 text-xs bg-slate-50 border border-dashed border-gray-200 rounded-[16px] flex items-center justify-center gap-2 select-none">
@@ -386,34 +410,43 @@ const HolidayList = ({ holidays, canEdit, onEdit, onDelete }) => {
                             </div>
                         </div>
 
-                        {/* Type badge — top right (hidden when canEdit actions appear) */}
-                        {!canEdit && (
-                            <div className="absolute top-3 right-3 z-10">
+                        {/* Top right actions: Download for all + Edit/Delete for HR/Admin */}
+                        <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadHolidayImage(bannerImg, h.title);
+                                }}
+                                title="Download Holiday Image"
+                                className="p-1.5 rounded-lg bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 shadow-md transition-all cursor-pointer flex items-center gap-1 text-[10px] font-bold"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                            </button>
+
+                            {!canEdit ? (
                                 <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-md text-[#1E1E1E] shadow-sm">
                                     {formattedType}
                                 </span>
-                            </div>
-                        )}
-
-                        {/* HR Edit / Delete — top right, visible on hover */}
-                        {canEdit && (
-                            <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <button
-                                    onClick={() => onEdit(h)}
-                                    title="Edit holiday"
-                                    className="p-1.5 rounded-lg bg-white/85 backdrop-blur-md text-gray-600 hover:text-[#2D79C7] shadow-sm transition-colors cursor-pointer"
-                                >
-                                    <Edit3 className="w-3 h-3" />
-                                </button>
-                                <button
-                                    onClick={() => onDelete(h)}
-                                    title="Delete holiday"
-                                    className="p-1.5 rounded-lg bg-white/85 backdrop-blur-md text-gray-600 hover:text-rose-600 shadow-sm transition-colors cursor-pointer"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                </button>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <button
+                                        onClick={() => onEdit(h)}
+                                        title="Edit holiday"
+                                        className="p-1.5 rounded-lg bg-white/85 backdrop-blur-md text-gray-600 hover:text-[#2D79C7] shadow-sm transition-colors cursor-pointer"
+                                    >
+                                        <Edit3 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(h)}
+                                        title="Delete holiday"
+                                        className="p-1.5 rounded-lg bg-white/85 backdrop-blur-md text-gray-600 hover:text-rose-600 shadow-sm transition-colors cursor-pointer"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Bottom — title + day name overlaid on image */}
                         <div className="absolute bottom-0 left-0 right-0 px-3.5 pb-3 pt-6 z-10">

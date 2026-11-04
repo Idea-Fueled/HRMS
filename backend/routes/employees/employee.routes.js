@@ -12,13 +12,18 @@ import {
     deleteDepartment,
     getManagers,
     getHRVisibility,
-    updateHRVisibility
+    updateHRVisibility,
+    inviteEmployee,
+    setPasswordViaInvite
 } from "../../controllers/employees/employee.controller.js";
 import { isAuthenticated } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// All routes are protected
+// Public invitation password setup route
+router.post("/set-password-invite", setPasswordViaInvite);
+
+// Protected routes
 router.get("/", isAuthenticated, getAllEmployees);
 router.get("/departments", isAuthenticated, getDepartments);
 router.post("/departments", isAuthenticated, createDepartment);
@@ -28,6 +33,7 @@ router.get("/managers/all", isAuthenticated, getManagers);
 router.get("/check-id", isAuthenticated, checkEmployeeId);
 router.get("/hr-visibility/:hrId", isAuthenticated, getHRVisibility);
 router.put("/hr-visibility/:hrId", isAuthenticated, updateHRVisibility);
+router.post("/:id/invite", isAuthenticated, inviteEmployee);
 router.get("/:id", isAuthenticated, getEmployeeById);
 router.post("/", isAuthenticated, createEmployee);
 router.put("/:id", isAuthenticated, updateEmployee);

@@ -267,7 +267,7 @@ const TeamSummaryTab = () => {
                     isPositive={true}
                     onClick={() => setActiveModal({
                         title: "All Employees",
-                        employees: summary.details?.allEmployees || summary.details?.newJoiners || []
+                        employees: summary.details?.allEmployees || []
                     })}
                 />
                 <MiniStatCard

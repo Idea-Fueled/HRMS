@@ -17,19 +17,14 @@ export const clockIn = async (req, res) => {
         const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         const [y, m, d] = istDateStr.split("-").map(Number);
         const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-        const todayLocal = new Date();
-        todayLocal.setHours(0, 0, 0, 0);
-
-        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
-        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
+        const istDayStart = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - (5.5 * 3600 * 1000));
+        const istDayEnd = new Date(istDayStart.getTime() + 24 * 3600 * 1000 - 1);
 
         let attendance = await Attendance.findOne({
             employeeId,
             $or: [
                 { date: todayUtc },
-                { date: todayLocal },
-                { date: { $gte: startOfDay, $lte: endOfDay } },
-                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+                { date: { $gte: istDayStart, $lte: istDayEnd } }
             ]
         }).sort({ date: -1, updatedAt: -1 });
 
@@ -476,21 +471,31 @@ export const clockOut = async (req, res) => {
         const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         const [y, m, d] = istDateStr.split("-").map(Number);
         const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-        const todayLocal = new Date();
-        todayLocal.setHours(0, 0, 0, 0);
+        const istDayStart = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - (5.5 * 3600 * 1000));
+        const istDayEnd = new Date(istDayStart.getTime() + 24 * 3600 * 1000 - 1);
 
-        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
-        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
-
-        const attendance = await Attendance.findOne({
+        let attendance = await Attendance.findOne({
             employeeId,
             $or: [
                 { date: todayUtc },
-                { date: todayLocal },
-                { date: { $gte: startOfDay, $lte: endOfDay } },
-                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+                { date: { $gte: istDayStart, $lte: istDayEnd } }
             ]
         }).sort({ date: -1, updatedAt: -1 });
+
+        // Fallback for cross-midnight night-shift: check if yesterday has an unclosed clock-in within last 14 hours
+        if (!attendance) {
+            const yesterdayDate = new Date(Date.now() - 24 * 3600 * 1000);
+            const yesterdayStr = yesterdayDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+            const [yy, ym, yd] = yesterdayStr.split("-").map(Number);
+            const yesterdayUtc = new Date(Date.UTC(yy, ym - 1, yd, 0, 0, 0, 0));
+            const candidate = await Attendance.findOne({
+                employeeId,
+                date: yesterdayUtc
+            }).sort({ updatedAt: -1 });
+            if (candidate && candidate.isWebClockedIn) {
+                attendance = candidate;
+            }
+        }
 
         if (!attendance) {
             return res.status(404).json({
@@ -570,11 +575,8 @@ export const getTodayAttendance = async (req, res) => {
         const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         const [y, m, d] = istDateStr.split("-").map(Number);
         const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-        const todayLocal = new Date();
-        todayLocal.setHours(0, 0, 0, 0);
-
-        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
-        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
+        const istDayStart = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - (5.5 * 3600 * 1000));
+        const istDayEnd = new Date(istDayStart.getTime() + 24 * 3600 * 1000 - 1);
 
         let userObjId = employeeId;
         if (!mongoose.Types.ObjectId.isValid(employeeId)) {
@@ -582,15 +584,30 @@ export const getTodayAttendance = async (req, res) => {
             if (user) userObjId = user._id;
         }
 
-        const attendance = await Attendance.findOne({
+        // Clean up any stale web clock-in flags from previous days for this user
+        await Attendance.updateMany(
+            { employeeId: userObjId, date: { $lt: todayUtc }, isWebClockedIn: true },
+            { $set: { isWebClockedIn: false } }
+        ).catch(() => {});
+
+        let attendance = await Attendance.findOne({
             employeeId: userObjId,
             $or: [
                 { date: todayUtc },
-                { date: todayLocal },
-                { date: { $gte: startOfDay, $lte: endOfDay } },
-                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+                { date: { $gte: istDayStart, $lte: istDayEnd } }
             ]
         }).sort({ date: -1, updatedAt: -1 });
+
+        // Auto-close stale web clock-in (> 14h elapsed without clocking out)
+        if (attendance && attendance.isWebClockedIn) {
+            const lastLog = attendance.logs && attendance.logs.length > 0 ? attendance.logs[attendance.logs.length - 1] : null;
+            const lastTime = lastLog?.timestamp ? new Date(lastLog.timestamp).getTime() : new Date(attendance.firstClockIn || attendance.updatedAt).getTime();
+            const hoursElapsed = (Date.now() - lastTime) / (1000 * 3600);
+            if (hoursElapsed > 14) {
+                attendance.isWebClockedIn = false;
+                await attendance.save().catch(() => {});
+            }
+        }
 
         return res.status(200).json({
             success: true,
@@ -614,11 +631,8 @@ export const getTodayLogs = async (req, res) => {
         const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         const [y, m, d] = istDateStr.split("-").map(Number);
         const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-        const todayLocal = new Date();
-        todayLocal.setHours(0, 0, 0, 0);
-
-        const startOfDay = new Date(todayUtc.getTime() - 6 * 3600 * 1000);
-        const endOfDay = new Date(todayUtc.getTime() + 24 * 3600 * 1000);
+        const istDayStart = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - (5.5 * 3600 * 1000));
+        const istDayEnd = new Date(istDayStart.getTime() + 24 * 3600 * 1000 - 1);
 
         let userObjId = employeeId;
         if (!mongoose.Types.ObjectId.isValid(employeeId)) {
@@ -630,9 +644,7 @@ export const getTodayLogs = async (req, res) => {
             employeeId: userObjId,
             $or: [
                 { date: todayUtc },
-                { date: todayLocal },
-                { date: { $gte: startOfDay, $lte: endOfDay } },
-                { firstClockIn: { $gte: startOfDay, $lte: endOfDay } }
+                { date: { $gte: istDayStart, $lte: istDayEnd } }
             ]
         }).sort({ date: -1, updatedAt: -1 });
 
@@ -655,19 +667,19 @@ export const getAttendanceDashboardSummary = async (req, res) => {
     try {
         const { role = "hr", department = "All", employeeId, date } = req.query;
 
-        let targetDate = new Date();
+        let targetDateStr;
         if (date) {
             const parsed = new Date(date);
-            if (!isNaN(parsed.getTime())) {
-                targetDate = parsed;
-            }
+            targetDateStr = !isNaN(parsed.getTime())
+                ? parsed.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+                : new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        } else {
+            targetDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         }
-
-        const startOfDay = new Date(targetDate);
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const endOfDay = new Date(targetDate);
-        endOfDay.setHours(23, 59, 59, 999);
+        const [y, m, d] = targetDateStr.split("-").map(Number);
+        const targetDateUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const startOfDay = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - (5.5 * 3600 * 1000));
+        const endOfDay = new Date(startOfDay.getTime() + 24 * 3600 * 1000 - 1);
 
         let userFilter = { status: "active" };
 
@@ -692,7 +704,10 @@ export const getAttendanceDashboardSummary = async (req, res) => {
         }
 
         const attendances = await Attendance.find({
-            date: { $gte: startOfDay, $lte: endOfDay }
+            $or: [
+                { date: targetDateUtc },
+                { date: { $gte: startOfDay, $lte: endOfDay } }
+            ]
         }).populate("employeeId", "firstName lastName fullName employeeId department designation profilePicture role");
 
         const leaves = await Leave.find({
@@ -1310,13 +1325,12 @@ export const syncBiometricPunches = async (req, res) => {
             }
         });
 
-        // Group punches by user._id and date (IST: Asia/Kolkata)
-        // Key format: `${userId}_${istDateStr}`
-        const groupedMap = new Map();
+        // Group punches by user first, then organize into logical shifts
+        const userPunchesMap = new Map();
         let skippedUnknownUsers = 0;
 
         for (const item of rawPunches) {
-            const rawId = item.enrollNumber ?? item.userId ?? item.employeeId ?? item.employeeCode;
+            const rawId = item.enrollNumber ?? item.userId ?? item.employeeId ?? item.employeeCode ?? item.empCode ?? item.empId ?? item.id ?? item.EnrollNumber;
             if (rawId === undefined || rawId === null) continue;
 
             const cleanKey = String(rawId).trim();
@@ -1343,18 +1357,68 @@ export const syncBiometricPunches = async (req, res) => {
             }
             if (isNaN(punchDate.getTime())) continue;
 
-            const istDateStr = punchDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // "YYYY-MM-DD"
-            const groupKey = `${user._id.toString()}_${istDateStr}`;
-
-            if (!groupedMap.has(groupKey)) {
-                groupedMap.set(groupKey, {
-                    user,
-                    istDateStr,
-                    punches: []
-                });
+            const uid = user._id.toString();
+            if (!userPunchesMap.has(uid)) {
+                userPunchesMap.set(uid, { user, punches: [] });
             }
+            userPunchesMap.get(uid).punches.push(punchDate);
+        }
 
-            groupedMap.get(groupKey).punches.push(punchDate);
+        // Group punches per employee into logical shifts.
+        // For night shifts (e.g. Sales team punching at 11 PM, 1 AM, 3 AM):
+        // Punches before 07:00 AM IST belong to yesterday's evening shift if within 14 hours.
+        const groupedMap = new Map();
+
+        for (const [, { user, punches }] of userPunchesMap.entries()) {
+            punches.sort((a, b) => a.getTime() - b.getTime());
+
+            for (const punchDate of punches) {
+                const istTimeStr = punchDate.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour12: false });
+                const istHour = parseInt(istTimeStr.split(":")[0], 10);
+                const currentIstDateStr = punchDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // YYYY-MM-DD
+
+                let assignedDateStr = currentIstDateStr;
+
+                if (istHour < 7) {
+                    const prevDate = new Date(punchDate.getTime() - 24 * 3600 * 1000);
+                    const prevIstDateStr = prevDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+                    const prevGroupKey = `${user._id.toString()}_${prevIstDateStr}`;
+
+                    // Check if user has an evening punch in current batch on the previous day within 14 hours
+                    const hasBatchEveningPunch = groupedMap.has(prevGroupKey) && 
+                        groupedMap.get(prevGroupKey).punches.some(p => {
+                            const diffHours = (punchDate.getTime() - p.getTime()) / (3600 * 1000);
+                            return diffHours > 0 && diffHours <= 14;
+                        });
+
+                    if (hasBatchEveningPunch) {
+                        assignedDateStr = prevIstDateStr;
+                    } else {
+                        // Check DB for yesterday's attendance record
+                        const [py, pm, pd] = prevIstDateStr.split("-").map(Number);
+                        const prevDateObj = new Date(Date.UTC(py, pm - 1, pd, 0, 0, 0, 0));
+                        const prevRecord = await Attendance.findOne({ employeeId: user._id, date: prevDateObj }).lean();
+                        if (prevRecord && prevRecord.logs && prevRecord.logs.length > 0) {
+                            const lastPrevLog = prevRecord.logs[prevRecord.logs.length - 1];
+                            const lastPrevTime = new Date(lastPrevLog.timestamp).getTime();
+                            const diffHours = (punchDate.getTime() - lastPrevTime) / (3600 * 1000);
+                            if (diffHours > 0 && diffHours <= 14) {
+                                assignedDateStr = prevIstDateStr;
+                            }
+                        }
+                    }
+                }
+
+                const groupKey = `${user._id.toString()}_${assignedDateStr}`;
+                if (!groupedMap.has(groupKey)) {
+                    groupedMap.set(groupKey, {
+                        user,
+                        istDateStr: assignedDateStr,
+                        punches: []
+                    });
+                }
+                groupedMap.get(groupKey).punches.push(punchDate);
+            }
         }
 
         let updatedDaysCount = 0;

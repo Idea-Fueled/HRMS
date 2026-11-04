@@ -4,7 +4,7 @@ import {
     Users, UserCheck, UserX, UserPlus, Briefcase, FileText,
     Plus, Eye, EyeOff, Edit3, X, ChevronDown, Trash2,
     Phone, Mail, Calendar, Building2, Shield, Upload,
-    Check, Loader2, Lock, User as UserIcon, Search, LogOut
+    Check, Loader2, Lock, User as UserIcon, Search, LogOut, Send
 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -26,7 +26,8 @@ import {
     getManagers,
     deactivateEmployee,
     getHRVisibility,
-    updateHRVisibility
+    updateHRVisibility,
+    inviteEmployee
 } from "../../services/employee.service";
 import { useAuth } from "../../context/AuthContext";
 import { uploadProfilePicture } from "../../services/auth.service";
@@ -328,31 +329,48 @@ const DepartmentSelectField = ({ value, onChange, departments, onEdit, onDelete,
 /* ─────────────────────────────────────────────
    SUMMARY CARDS
 ───────────────────────────────────────────── */
-const SummaryCards = ({ summary, loading }) => {
+const SummaryCards = ({ summary, loading, onCardClick, activeFilter }) => {
     const cards = [
-        { label: "Total Employees", value: summary?.total ?? 0, icon: Users, color: "bg-blue-50 text-[#2D79C7] border-blue-100" },
-        { label: "Active Employees", value: summary?.active ?? 0, icon: UserCheck, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-        { label: "Inactive Employees", value: summary?.inactive ?? 0, icon: UserX, color: "bg-gray-100 text-gray-500 border-gray-200" },
-        { label: "New Joiners", value: summary?.newJoiners ?? 0, icon: UserPlus, color: "bg-violet-50 text-violet-700 border-violet-100" },
-        { label: "Full Time", value: summary?.fullTime ?? 0, icon: Briefcase, color: "bg-indigo-50 text-indigo-700 border-indigo-100" },
-        { label: "Intern", value: summary?.intern ?? 0, icon: FileText, color: "bg-amber-50 text-amber-700 border-amber-100" },
+        { id: "all", label: "Total Employees", value: summary?.total ?? 0, icon: Users, color: "bg-blue-50 text-[#2D79C7] border-blue-100" },
+        { id: "active", label: "Active Employees", value: summary?.active ?? 0, icon: UserCheck, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+        { id: "inactive", label: "Inactive Employees", value: summary?.inactive ?? 0, icon: UserX, color: "bg-gray-100 text-gray-500 border-gray-200" },
+        { id: "newJoiners", label: "New Joiners", value: summary?.newJoiners ?? 0, icon: UserPlus, color: "bg-violet-50 text-violet-700 border-violet-100" },
+        { id: "full_time", label: "Full Time", value: summary?.fullTime ?? 0, icon: Briefcase, color: "bg-indigo-50 text-indigo-700 border-indigo-100" },
+        { id: "intern", label: "Intern", value: summary?.intern ?? 0, icon: FileText, color: "bg-amber-50 text-amber-700 border-amber-100" },
     ];
 
     if (loading) return <SkeletonLoader type="stat" />;
 
     return (
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-            {cards.map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className="premium-3d-card-mini p-4 flex flex-col gap-3">
-                    <div className={`w-8 h-8 rounded-[10px] border flex items-center justify-center ${color}`}>
-                        <Icon className="w-4 h-4" strokeWidth={2} />
+            {cards.map(({ id, label, value, icon: Icon, color }) => {
+                const isSelected = activeFilter === id;
+                return (
+                    <div 
+                        key={label} 
+                        onClick={() => onCardClick && onCardClick(id)}
+                        className={`premium-3d-card-mini p-4 flex flex-col gap-3 cursor-pointer select-none transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
+                            isSelected ? "ring-2 ring-[#2D79C7] bg-blue-50/30 border-[#2D79C7]" : ""
+                        }`}
+                        title={`Click to filter by ${label}`}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className={`w-8 h-8 rounded-[10px] border flex items-center justify-center ${color}`}>
+                                <Icon className="w-4 h-4" strokeWidth={2} />
+                            </div>
+                            {isSelected && (
+                                <span className="text-[10px] font-bold text-[#2D79C7] bg-blue-100/60 px-2 py-0.5 rounded-full">
+                                    Filtered
+                                </span>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-[26px] font-black text-[#1E1E1E] leading-none">{value}</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{label}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[26px] font-black text-[#1E1E1E] leading-none">{value}</p>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{label}</p>
-                    </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 };
@@ -421,9 +439,10 @@ const FilterBar = ({ filters, onChange, employees, departments }) => {
 /* ─────────────────────────────────────────────
    LIST VIEW
 ───────────────────────────────────────────── */
-const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, sortDir, onSort }) => {
+const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, onInvite, invitingId, sortField, sortDir, onSort }) => {
     const { user } = useAuth();
     const isHrOrAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin" || (user?.role || "").toLowerCase() === "hr";
+    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin";
 
     if (!employees.length) return <EmptyState message="No employees found" description="Try adjusting your filters or add a new employee." />;
 
@@ -523,6 +542,21 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
                                             )}
                                         </>
                                     )}
+                                    {isGlobalAdmin && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onInvite && onInvite(emp); }}
+                                            disabled={invitingId === emp._id}
+                                            title={emp.invitationSent ? "Resend Welcome Invitation Email" : "Send Welcome Invitation Email"}
+                                            className={`p-1.5 rounded-[8px] transition-colors cursor-pointer border flex items-center gap-1 text-xs font-bold ${
+                                                emp.invitationSent
+                                                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                                    : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+                                            }`}
+                                        >
+                                            {invitingId === emp._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                            <span className="text-[11px] font-bold hidden sm:inline">{emp.invitationSent ? "Re-invite" : "Invite"}</span>
+                                        </button>
+                                    )}
                                 </div>
                             </td>
                         </tr>
@@ -536,9 +570,10 @@ const EmployeeListView = ({ employees, onView, onEdit, onDeactivate, sortField, 
 /* ─────────────────────────────────────────────
    CARD VIEW
 ───────────────────────────────────────────── */
-const EmployeeCardView = ({ employees, onView, onEdit }) => {
+const EmployeeCardView = ({ employees, onView, onEdit, onInvite, invitingId }) => {
     const { user } = useAuth();
     const isHrOrAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin" || (user?.role || "").toLowerCase() === "hr";
+    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin";
 
     if (!employees.length) return <EmptyState message="No employees found" description="Try adjusting your filters or add a new employee." />;
 
@@ -570,7 +605,7 @@ const EmployeeCardView = ({ employees, onView, onEdit }) => {
                             <div className="flex items-center gap-2"><Mail className="w-3 h-3 text-gray-300 shrink-0" /><span className="truncate">{emp.email}</span></div>
                             <div className="flex items-center gap-2"><Phone className="w-3 h-3 text-gray-300 shrink-0" /><span>{emp.phoneNumber || "—"}</span></div>
                         </div>
-                        <div className="flex gap-2 mt-auto pt-1 border-t border-[#F3F4F6]">
+                        <div className="flex flex-wrap gap-2 mt-auto pt-1 border-t border-[#F3F4F6]">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onView(emp); }} 
                                 className="flex-1 py-1.5 text-xs font-bold text-[#2D79C7] bg-blue-50 hover:bg-blue-100 rounded-[8px] border border-blue-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
@@ -583,6 +618,21 @@ const EmployeeCardView = ({ employees, onView, onEdit }) => {
                                     className="flex-1 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-[8px] border border-amber-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
                                 >
                                     <Edit3 className="w-3.5 h-3.5" /> Edit
+                                </button>
+                            )}
+                            {isGlobalAdmin && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onInvite && onInvite(emp); }} 
+                                    disabled={invitingId === emp._id}
+                                    title={emp.invitationSent ? "Resend Welcome Invitation Email" : "Send Welcome Invitation Email"}
+                                    className={`w-full py-1.5 text-xs font-bold rounded-[8px] border transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                                        emp.invitationSent 
+                                            ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                            : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+                                    }`}
+                                >
+                                    {invitingId === emp._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                    <span>{emp.invitationSent ? "Re-invite" : "Invite"}</span>
                                 </button>
                             )}
                         </div>
@@ -865,8 +915,8 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 sickLeave: employee.leaveBalance?.sick?.total ?? 6,
                 earnedLeave: employee.leaveBalance?.earned?.total ?? 5,
                 compOffLeave: employee.leaveBalance?.compOff?.total ?? 0,
-                password: "",
-                confirmPassword: "",
+                password: employee.plainPassword || "",
+                confirmPassword: employee.plainPassword || "",
                 permissions: {
                     ...DEFAULT_PERMISSIONS,
                     ...(employee.permissions || {}),
@@ -2494,9 +2544,53 @@ const Employees = () => {
 
     const handleFilterChange = (f) => { setFilters(f); setPage(1); };
 
+    const [invitingId, setInvitingId] = useState(null);
+    const [activeStatFilter, setActiveStatFilter] = useState("all");
+
+    const handleStatCardClick = (cardId) => {
+        setActiveStatFilter(cardId);
+        setPage(1);
+        if (cardId === "all") {
+            setFilters(prev => ({ ...prev, status: "", employementType: "", search: "" }));
+        } else if (cardId === "active") {
+            setFilters(prev => ({ ...prev, status: "active", employementType: "" }));
+        } else if (cardId === "inactive") {
+            setFilters(prev => ({ ...prev, status: "inactive", employementType: "" }));
+        } else if (cardId === "full_time") {
+            setFilters(prev => ({ ...prev, employementType: "full_time", status: "" }));
+        } else if (cardId === "intern") {
+            setFilters(prev => ({ ...prev, employementType: "intern", status: "" }));
+        } else if (cardId === "newJoiners") {
+            setFilters(prev => ({ ...prev, status: "active", employementType: "" }));
+            setSortField("joiningDate");
+            setSortDir("desc");
+        }
+    };
+
+    const handleInvite = async (emp) => {
+        if (!emp?._id) return;
+        try {
+            setInvitingId(emp._id);
+            const res = await inviteEmployee(emp._id);
+            if (res.data?.success) {
+                toast.success(`Welcome invitation email sent to ${emp.email || "employee"}!`);
+                setData(prev => ({
+                    ...prev,
+                    employees: prev.employees.map(e => e._id === emp._id ? { ...e, invitationSent: true, invitationSentAt: new Date() } : e)
+                }));
+            } else {
+                toast.error(res.data?.message || "Failed to send invitation.");
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to send invitation email.");
+        } finally {
+            setInvitingId(null);
+        }
+    };
+
     return (
         <div className="space-y-6 select-none animate-fadeIn">
-            <SummaryCards summary={data.summary} loading={loading} />
+            <SummaryCards summary={data.summary} loading={loading} onCardClick={handleStatCardClick} activeFilter={activeStatFilter} />
 
             <Card>
                 <CardHeader
@@ -2530,6 +2624,8 @@ const Employees = () => {
                         onView={(emp) => navigate(`/profile/${emp._id}`)}
                         onEdit={(emp) => setDrawer({ mode: "edit", employee: emp })}
                         onDeactivate={handleDeactivate}
+                        onInvite={handleInvite}
+                        invitingId={invitingId}
                         sortField={sortField}
                         sortDir={sortDir}
                         onSort={handleSort}
@@ -2539,6 +2635,8 @@ const Employees = () => {
                         employees={paginated}
                         onView={(emp) => navigate(`/profile/${emp._id}`)}
                         onEdit={(emp) => setDrawer({ mode: "edit", employee: emp })}
+                        onInvite={handleInvite}
+                        invitingId={invitingId}
                     />
                 )}
 

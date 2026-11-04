@@ -8,7 +8,7 @@ import {
     Plus, Trash2, PlusCircle, UserCheck, Lock, ArrowUpRight,
     Monitor, Keyboard as KeyboardIcon, Mouse as MouseIcon, Smartphone, Tablet as TabletIcon, Cpu, Zap,
     Umbrella, CheckCircle2, AlertCircle, SlidersHorizontal, Sparkles, Hourglass, RotateCcw, FileSpreadsheet,
-    ChevronLeft, ChevronRight, CheckCircle, XCircle, LogOut, CreditCard, ExternalLink, Headphones
+    ChevronLeft, ChevronRight, CheckCircle, XCircle, LogOut, CreditCard, ExternalLink, Headphones, Send
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
@@ -16,7 +16,7 @@ import { Avatar, SkeletonLoader } from "../../components/SharedComponents";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { ResignJobModal, AdminInitiateExitModal } from "../../components/ExitModals";
 import { isManagementUser } from "../../utils/roleUtils";
-import { getEmployeeById, updateEmployee } from "../../services/employee.service";
+import { getEmployeeById, updateEmployee, inviteEmployee } from "../../services/employee.service";
 import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.service";
 import { getAllAssets, getAssignedAssets, acknowledgeAsset, requestNewAsset } from "../../services/asset.service";
 import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
@@ -86,6 +86,25 @@ export const EmployeeProfile = () => {
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("Personal");
+    const [invitingEmployee, setInvitingEmployee] = useState(false);
+
+    const handleInviteClick = async () => {
+        if (!employee?._id) return;
+        try {
+            setInvitingEmployee(true);
+            const res = await inviteEmployee(employee._id);
+            if (res.data?.success) {
+                toast.success(`Welcome invitation sent to ${employee.email || "employee"}!`);
+                setEmployee(prev => ({ ...prev, invitationSent: true, invitationSentAt: new Date() }));
+            } else {
+                toast.error(res.data?.message || "Failed to send invitation.");
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to send invitation email.");
+        } finally {
+            setInvitingEmployee(false);
+        }
+    };
 
     // Drawer state for Edit Profile
     const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -1507,18 +1526,42 @@ export const EmployeeProfile = () => {
                                 <span className="text-[#2D79C7] font-bold">{empDept}</span>
                             </p>
 
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 text-xs font-medium text-gray-500">
-                                <span className="flex items-center gap-1.5 font-bold text-[#1E1E1E] bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
-                                    <ShieldCheck className="w-3.5 h-3.5 text-[#2D79C7]" />
-                                    {empCode}
-                                </span>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pt-2 text-xs font-medium text-gray-500">
+                                <div className="flex flex-col items-start gap-1.5">
+                                    <span className="flex items-center gap-1.5 font-bold text-[#1E1E1E] bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
+                                        <ShieldCheck className="w-3.5 h-3.5 text-[#2D79C7]" />
+                                        {empCode}
+                                    </span>
+                                    {currentUser?.role === "global_admin" && (
+                                        <button
+                                            type="button"
+                                            onClick={handleInviteClick}
+                                            disabled={invitingEmployee}
+                                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer shadow-xs ${
+                                                employee?.invitationSent
+                                                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                                    : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+                                            }`}
+                                        >
+                                            {invitingEmployee ? (
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                            ) : (
+                                                <Send className="w-3 h-3" />
+                                            )}
+                                            <span>{employee?.invitationSent ? "Re-invite" : "Invite"}</span>
+                                            {employee?.invitationSent && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
 
-                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
+                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg self-start">
                                     <MapPin className="w-3.5 h-3.5 text-gray-400" />
                                     {empLocation}
                                 </span>
 
-                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
+                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg self-start">
                                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
                                     Joined {empJoining}
                                 </span>

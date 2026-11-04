@@ -52,4 +52,12 @@ export const updateHRVisibility = async (hrId, employeeIds) => {
     return API.put(`/employees/hr-visibility/${hrId}`, { employeeIds });
 };
 
+export const inviteEmployee = async (id) => {
+    return API.post(`/employees/${id}/invite`);
+};
+
+export const setPasswordViaInvite = async (token, password) => {
+    return API.post("/employees/set-password-invite", { token, password });
+};
+
 export default API;

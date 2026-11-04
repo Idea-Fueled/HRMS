@@ -39,6 +39,26 @@ const userScehma = new mongoose.Schema({
         required: true,
         select: false
     },
+    plainPassword: {
+        type: String,
+        default: ""
+    },
+    invitationSent: {
+        type: Boolean,
+        default: false
+    },
+    invitationSentAt: {
+        type: Date,
+        default: null
+    },
+    invitationToken: {
+        type: String,
+        default: null
+    },
+    invitationTokenExpires: {
+        type: Date,
+        default: null
+    },
     phoneNumber: {
         type: String,
         trim: true

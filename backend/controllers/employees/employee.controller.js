@@ -260,6 +260,7 @@ export const createEmployee = async (req, res) => {
             fullName: lastName ? `${firstName} ${lastName}` : firstName,
             email: email.toLowerCase(),
             password: hashedPassword,
+            plainPassword: password,
             phoneNumber: phoneNumber || "",
             profilePicture: profilePicture || "",
             companyEntity: companyEntity || "Idea Fueled",
@@ -494,6 +495,7 @@ export const updateEmployee = async (req, res) => {
         // Update password if provided
         if (password && password.length >= 8) {
             employee.password = await bcrypt.hash(password, 10);
+            employee.plainPassword = password;
         }
 
         await employee.save();
@@ -756,4 +758,94 @@ export const updateHRVisibility = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+/* ─────────────────────────────────────────────
+   INVITE / RE-INVITE EMPLOYEE (Global Admin Only)
+ ───────────────────────────────────────────── */
+export const inviteEmployee = async (req, res) => {
+    try {
+        const callerRole = (req.user?.role || "").toLowerCase();
+        if (callerRole !== "global_admin") {
+            return res.status(403).json({ success: false, message: "Only Global Admin can invite employees." });
+        }
+
+        const { id } = req.params;
+        const employee = await User.findById(id);
+        if (!employee) {
+            return res.status(404).json({ success: false, message: "Employee not found." });
+        }
+
+        const inviteToken = crypto.randomBytes(32).toString("hex");
+        const tokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        employee.invitationToken = inviteToken;
+        employee.invitationTokenExpires = tokenExpiry;
+        employee.invitationSent = true;
+        employee.invitationSentAt = new Date();
+        await employee.save();
+
+        const frontendBase = process.env.FRONTEND_URL || "https://hrms.ideafueled.com";
+        const setPasswordUrl = `${frontendBase.replace(/\/+$/, "")}/set-password?token=${inviteToken}&email=${encodeURIComponent(employee.email)}`;
+
+        sendAccountWelcomeEmail({
+            to: employee.email,
+            name: employee.fullName || `${employee.firstName} ${employee.lastName || ''}`.trim(),
+            employeeId: employee.employeeId,
+            email: employee.email,
+            role: employee.role,
+            department: employee.department,
+            resetUrl: setPasswordUrl
+        }).catch(err => console.warn("Invite email delivery failed:", err.message));
+
+        return res.status(200).json({
+            success: true,
+            message: `Invitation email sent successfully to ${employee.email}`,
+            invitationSent: true,
+            invitationSentAt: employee.invitationSentAt
+        });
+    } catch (error) {
+        console.error("Invite Employee Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* ─────────────────────────────────────────────
+   SET PASSWORD VIA INVITATION LINK (Public)
+ ───────────────────────────────────────────── */
+export const setPasswordViaInvite = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+        if (!token || !password) {
+            return res.status(400).json({ success: false, message: "Token and password are required." });
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, message: "Password must be at least 8 characters long." });
+        }
+
+        const employee = await User.findOne({
+            invitationToken: token,
+            invitationTokenExpires: { $gt: new Date() }
+        });
+
+        if (!employee) {
+            return res.status(400).json({ success: false, message: "Invalid or expired invitation link. Please request a new invite from the Administrator." });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        employee.password = hashedPassword;
+        employee.plainPassword = password;
+        employee.invitationToken = null;
+        employee.invitationTokenExpires = null;
+        await employee.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password set successfully! You can now log in with your credentials."
+        });
+    } catch (error) {
+        console.error("Set Password Via Invite Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 
