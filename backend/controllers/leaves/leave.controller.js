@@ -329,30 +329,40 @@ export const getLeaveSummary = async (req, res) => {
             });
         }
 
-        // Calculate dynamic accrual for current financial year
+        // Calculate dynamic accrual as fallback
         const accruedData = calculateAccruedLeaves(user.joiningDate);
+        const userBal = user.leaveBalance || {};
 
-        const casualTotal = accruedData.casual.accrued;
-        const earnedTotal = accruedData.earned.accrued;
-        const sickTotal = accruedData.sick.accrued;
+        // Prioritize explicit quotas set by Admin in Edit Employee
+        const casualTotal = userBal.casual?.total ?? accruedData.casual.accrued;
+        const earnedTotal = userBal.earned?.total ?? accruedData.earned.accrued;
+        const sickTotal = userBal.sick?.total ?? accruedData.sick.accrued;
+
+        const casualAnnualQuota = userBal.casual?.annualQuota ?? userBal.casual?.total ?? accruedData.casual.annualQuota;
+        const earnedAnnualQuota = userBal.earned?.annualQuota ?? userBal.earned?.total ?? accruedData.earned.annualQuota;
+        const sickAnnualQuota = userBal.sick?.annualQuota ?? userBal.sick?.total ?? accruedData.sick.annualQuota;
+
+        const casualUsedInit = userBal.casual?.used ?? 0;
+        const earnedUsedInit = userBal.earned?.used ?? 0;
+        const sickUsedInit = userBal.sick?.used ?? 0;
 
         // Current month bounds for partial leave quota tracking
         const now = new Date();
         const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-        const partialMonthlyQuota = user.leaveBalance?.partial?.total ?? 1;
+        const partialMonthlyQuota = userBal.partial?.total ?? 1;
 
         const leaves = await Leave.find({ employeeId });
 
-        const compOffTotal = user.leaveBalance?.compOff?.total ?? 0;
-        const compOffUsed = user.leaveBalance?.compOff?.used ?? 0;
-        const compOffPending = user.leaveBalance?.compOff?.pending ?? 0;
+        const compOffTotal = userBal.compOff?.total ?? 0;
+        const compOffUsed = userBal.compOff?.used ?? 0;
+        const compOffPending = userBal.compOff?.pending ?? 0;
 
         const balance = {
-            sick: { total: sickTotal, accrued: sickTotal, annualQuota: accruedData.sick.annualQuota, used: 0, pending: 0 },
-            casual: { total: casualTotal, accrued: casualTotal, annualQuota: accruedData.casual.annualQuota, used: 0, pending: 0 },
-            earned: { total: earnedTotal, accrued: earnedTotal, annualQuota: accruedData.earned.annualQuota, used: 0, pending: 0 },
+            sick: { total: sickTotal, accrued: sickTotal, annualQuota: sickAnnualQuota, used: sickUsedInit, pending: 0 },
+            casual: { total: casualTotal, accrued: casualTotal, annualQuota: casualAnnualQuota, used: casualUsedInit, pending: 0 },
+            earned: { total: earnedTotal, accrued: earnedTotal, annualQuota: earnedAnnualQuota, used: earnedUsedInit, pending: 0 },
             compOff: { total: compOffTotal, accrued: compOffTotal, annualQuota: compOffTotal, used: compOffUsed, pending: compOffPending, available: Math.max(0, compOffTotal - compOffUsed - compOffPending) },
             partial: { total: partialMonthlyQuota, accrued: 1, annualQuota: 12, used: 0, pending: 0, available: partialMonthlyQuota, usedMinutes: 0 }
         };
@@ -696,4 +706,44 @@ export const requestCompOffCredit = async (req, res) => {
         });
     }
 };
+
+/**
+ * Cancel a pending leave request
+ */
+export const cancelLeave = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const leave = await Leave.findById(id);
+
+        if (!leave) {
+            return res.status(404).json({
+                success: false,
+                message: "Leave request not found."
+            });
+        }
+
+        if (leave.status !== "pending") {
+            return res.status(400).json({
+                success: false,
+                message: "Only pending leave requests can be cancelled."
+            });
+        }
+
+        leave.status = "cancelled";
+        await leave.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Leave request cancelled successfully.",
+            leave
+        });
+    } catch (error) {
+        console.error("Cancel Leave Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 

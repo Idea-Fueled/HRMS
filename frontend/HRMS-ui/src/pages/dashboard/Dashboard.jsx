@@ -875,23 +875,33 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const dropRef = useRef(null);
 
     const logs = attendance?.logs || [];
-    const webLogs = logs.filter(l => l.source === "web");
-    const checkedIn = attendance?.isWebClockedIn !== undefined 
-        ? !!attendance.isWebClockedIn 
-        : (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in");
+    
+    // Sort all logs chronologically
+    const sortedLogs = [...logs].filter(l => l.timestamp).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const lastLog = sortedLogs.length > 0 ? sortedLogs[sortedLogs.length - 1] : null;
+
+    // Check if employee is currently in office / working (latest log is clock_in across biometric or web)
+    const isCurrentlyIn = lastLog 
+        ? lastLog.action === "clock_in" 
+        : !!attendance?.isWebClockedIn;
 
     const hasClockedInToday = !!(
         attendance?.firstClockIn ||
         attendance?.dailyWorkPlan ||
-        (attendance?.logs || []).some(l => l.source === "web" || l.action === "clock_in")
+        sortedLogs.some(l => l.action === "clock_in")
     );
+
+    const clockInLogs = sortedLogs.filter(l => l.action === "clock_in");
+    const clockOutLogs = sortedLogs.filter(l => l.action === "clock_out");
+    const latestClockIn = clockInLogs.length > 0 ? clockInLogs[clockInLogs.length - 1].timestamp : attendance?.firstClockIn;
+    const latestClockOut = clockOutLogs.length > 0 ? clockOutLogs[clockOutLogs.length - 1].timestamp : attendance?.lastClockOut;
 
     let statusLabel = "Absent";
     let statusColor = "text-gray-500";
     let dotColor = "bg-gray-400";
 
-    if (checkedIn) {
-        statusLabel = "Present (IN)";
+    if (isCurrentlyIn) {
+        statusLabel = "Active / In Office";
         statusColor = "text-emerald-600";
         dotColor = "bg-emerald-500 animate-pulse";
     } else if (hasClockedInToday) {
@@ -905,8 +915,12 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         return new Date(date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
     };
 
-    const checkInTime = attendance?.firstClockIn ? fmtTime(attendance.firstClockIn) : "—";
-    const checkOutTime = attendance?.lastClockOut ? fmtTime(attendance.lastClockOut) : "—";
+    const checkInTime = latestClockIn ? fmtTime(latestClockIn) : (attendance?.firstClockIn ? fmtTime(attendance.firstClockIn) : "—");
+    
+    // When employee is active in office, checkout shows "Active / In Office" instead of old checkout
+    const checkOutTime = isCurrentlyIn 
+        ? "Active / In Office" 
+        : (latestClockOut ? fmtTime(latestClockOut) : "—");
 
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 1000);
@@ -917,8 +931,8 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         let interval;
         const updateElapsed = () => {
             let totalSec = (attendance?.totalWorkMinutes || 0) * 60;
-            if (checkedIn && logs.length > 0) {
-                const lastIn = new Date(logs[logs.length - 1].timestamp);
+            if (isCurrentlyIn && lastLog && lastLog.action === "clock_in") {
+                const lastIn = new Date(lastLog.timestamp);
                 const diffSec = Math.floor((new Date() - lastIn) / 1000);
                 if (diffSec > 0) {
                     totalSec += diffSec;
@@ -927,11 +941,11 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
             setElapsedSec(totalSec);
         };
         updateElapsed();
-        if (checkedIn) {
+        if (isCurrentlyIn) {
             interval = setInterval(updateElapsed, 1000);
         }
         return () => clearInterval(interval);
-    }, [attendance, checkedIn, logs]);
+    }, [attendance, isCurrentlyIn, lastLog]);
 
     useEffect(() => {
         const handler = (e) => {
@@ -954,7 +968,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const dateStr = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
     const handleClockToggle = () => {
-        if (checkedIn) {
+        if (isCurrentlyIn) {
             onClockOut();
         } else {
             if (!hasClockedInToday) {
@@ -1046,8 +1060,8 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
                                     onClick={handleClockToggle}
                                     className="bg-white text-[#1F5EA8] text-[12px] font-bold px-4 py-2.5 rounded-[10px] shadow-sm hover:bg-white/90 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                                 >
-                                    {checkedIn ? <LogOut className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
-                                    {checkedIn ? "Clock Out" : "Clock In"}
+                                    {isCurrentlyIn ? <LogOut className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
+                                    {isCurrentlyIn ? "Clock Out" : "Clock In"}
                                 </button>
                                 <button
                                     onClick={() => setOtherOpen((p) => !p)}
@@ -1877,9 +1891,9 @@ const Dashboard = () => {
 
     const employeeId = user?._id;
 
-    const fetchDashboard = async () => {
+    const fetchDashboard = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             setError(null);
 
             const [dashRes, awayRes, eventsRes, pollsRes] = await Promise.all([
@@ -1911,15 +1925,33 @@ const Dashboard = () => {
             }
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
-            setError(err.response?.data?.message || err.message || "Failed to load dashboard data");
+            if (!silent) {
+                setError(err.response?.data?.message || err.message || "Failed to load dashboard data");
+            }
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     useEffect(() => {
         if (employeeId) {
             fetchDashboard();
+
+            // Periodic auto-refresh every 60 seconds so attendance and status stay updated automatically
+            const interval = setInterval(() => {
+                fetchDashboard(true);
+            }, 60000);
+
+            // Also auto-refresh whenever the window/tab regains focus
+            const onFocus = () => {
+                fetchDashboard(true);
+            };
+            window.addEventListener("focus", onFocus);
+
+            return () => {
+                clearInterval(interval);
+                window.removeEventListener("focus", onFocus);
+            };
         } else {
             setError("No employee ID found. Please log in again.");
             setLoading(false);

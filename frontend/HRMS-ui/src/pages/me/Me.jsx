@@ -33,10 +33,12 @@ import {
     BarChart3,
     Sparkles,
     Paperclip,
+    Eye,
+    XCircle,
     X
 } from "lucide-react";
 import { toast } from "sonner";
-import { getLeaveSummary, getLeaveHistory, getAllHolidays, applyLeave, clockIn, clockOut, getTodayAttendanceLogs, requestCompOffCredit } from "../../services/dashboard.service";
+import { getLeaveSummary, getLeaveHistory, getAllHolidays, applyLeave, cancelLeave, clockIn, clockOut, getTodayAttendanceLogs, requestCompOffCredit } from "../../services/dashboard.service";
 import { getEmployeeAttendanceHistory } from "../../services/attendance.service";
 import { uploadProfilePicture, updateProfilePicture } from "../../services/auth.service";
 import { getAllEmployees } from "../../services/employee.service";
@@ -1169,7 +1171,7 @@ const PendingLeaveRequestsCard = ({
                 <div className="space-y-3">
                     <button
                         type="button"
-                        onClick={onRequestLeave}
+                        onClick={() => onRequestLeave("casual_leave")}
                         className="w-full bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-[12px] font-bold py-2 px-3 rounded-[8px] transition-colors duration-200 text-center shadow-sm cursor-pointer"
                     >
                         Request Leave
@@ -1256,11 +1258,13 @@ const WeeklyPatternCard = ({ leaves = [] }) => {
 const ConsumedLeaveTypesCard = ({ leaves = [], leaveSummary }) => {
     const [hoverText, setHoverText] = useState(null);
 
-    let casualUsed = 0;
-    let earnedUsed = 0;
-    let sickUsed = 0;
+    const balance = leaveSummary?.leaveBalance || {};
+    let casualUsed = Number(balance.casual?.used) || 0;
+    let earnedUsed = Number(balance.earned?.used) || 0;
+    let sickUsed = Number(balance.sick?.used) || 0;
 
-    if (Array.isArray(leaves) && leaves.length > 0) {
+    // If balance used counts are 0, check approved leaves in filtered history
+    if (casualUsed === 0 && earnedUsed === 0 && sickUsed === 0 && Array.isArray(leaves) && leaves.length > 0) {
         leaves.forEach(l => {
             if (l.status?.toLowerCase() === "approved") {
                 const days = Number(l.totalDays) || 1;
@@ -1270,14 +1274,6 @@ const ConsumedLeaveTypesCard = ({ leaves = [], leaveSummary }) => {
                 else if (type.includes("sick")) sickUsed += days;
             }
         });
-    }
-
-    // If history has 0 or empty, pull from user balance summary
-    if (casualUsed === 0 && earnedUsed === 0 && sickUsed === 0 && leaveSummary?.leaveBalance) {
-        const balance = leaveSummary.leaveBalance || {};
-        casualUsed = Number(balance.casual?.used) || 0;
-        earnedUsed = Number(balance.earned?.used) || 0;
-        sickUsed = Number(balance.sick?.used) || 0;
     }
 
     const totalUsed = casualUsed + earnedUsed + sickUsed;
@@ -1667,10 +1663,47 @@ const LeaveHistorySection = ({
     selectedStatus,
     setSelectedStatus,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    onRefresh
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
+    const [menuOpenId, setMenuOpenId] = useState(null);
+    const [viewDetailsRow, setViewDetailsRow] = useState(null);
+    const [cancelConfirmRow, setCancelConfirmRow] = useState(null);
+    const [cancelling, setCancelling] = useState(false);
     const itemsPerPage = 5;
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleOutsideClick = (e) => {
+            if (!e.target.closest(".leave-action-menu-container")) {
+                setMenuOpenId(null);
+            }
+        };
+        document.addEventListener("mousedown", handleOutsideClick);
+        return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }, []);
+
+    const handleConfirmCancel = async () => {
+        if (!cancelConfirmRow?._id) return;
+        try {
+            setCancelling(true);
+            const res = await cancelLeave(cancelConfirmRow._id);
+            if (res.data?.success) {
+                toast.success("Leave request cancelled successfully.");
+                setCancelConfirmRow(null);
+                setMenuOpenId(null);
+                onRefresh?.();
+            } else {
+                toast.error(res.data?.message || "Failed to cancel leave request.");
+            }
+        } catch (err) {
+            console.error("Cancel leave error:", err);
+            toast.error(err.response?.data?.message || err.message || "Failed to cancel leave request.");
+        } finally {
+            setCancelling(false);
+        }
+    };
 
     const formatLeaveType = (type) => {
         switch (type) {
@@ -1880,9 +1913,54 @@ const LeaveHistorySection = ({
                                             {row.remarks || "--"}
                                         </td>
                                         <td className="py-3.5 px-4 text-center">
-                                            <button type="button" className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100/50 cursor-pointer">
-                                                <MoreVertical className="w-4 h-4" />
-                                            </button>
+                                            <div className="relative inline-block text-left leave-action-menu-container">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setMenuOpenId(prev => prev === row._id ? null : row._id);
+                                                    }}
+                                                    className={`p-1.5 rounded-[8px] transition-colors cursor-pointer ${
+                                                        menuOpenId === row._id
+                                                            ? "bg-blue-50 text-[#2D79C7]"
+                                                            : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/70"
+                                                    }`}
+                                                    title="Actions"
+                                                >
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </button>
+
+                                                {/* Dropdown Menu */}
+                                                {menuOpenId === row._id && (
+                                                    <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-[12px] shadow-xl border border-gray-150 py-1.5 z-40 text-left">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setViewDetailsRow(row);
+                                                                setMenuOpenId(null);
+                                                            }}
+                                                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] font-semibold text-gray-700 hover:bg-gray-50 hover:text-[#2D79C7] transition-colors cursor-pointer"
+                                                        >
+                                                            <Eye className="w-3.5 h-3.5 text-gray-500" />
+                                                            <span>View Details</span>
+                                                        </button>
+
+                                                        {row.status?.toLowerCase() === "pending" && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setCancelConfirmRow(row);
+                                                                    setMenuOpenId(null);
+                                                                }}
+                                                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                                            >
+                                                                <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                                                                <span>Cancel Request</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -1936,6 +2014,132 @@ const LeaveHistorySection = ({
                 </div>
 
             </div>
+
+            {/* View Details Modal */}
+            {viewDetailsRow && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 overflow-hidden text-left animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4.5 border-b border-gray-100 bg-gradient-to-r from-gray-50/50 to-white">
+                            <div>
+                                <h3 className="text-base font-bold text-[#1E1E1E]">Leave Request Details</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Application summary and current review status</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setViewDetailsRow(null)}
+                                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-4 text-xs">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span className="text-gray-400 font-bold block uppercase text-[10px] tracking-wider mb-1">Leave Type</span>
+                                    <span className="font-bold text-gray-800 text-[13px]">{formatLeaveType(viewDetailsRow.leaveType)}</span>
+                                </div>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span className="text-gray-400 font-bold block uppercase text-[10px] tracking-wider mb-1">Status</span>
+                                    <div className="mt-0.5">{getStatusBadge(viewDetailsRow.status)}</div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span className="text-gray-400 font-bold block uppercase text-[10px] tracking-wider mb-1">Leave Period</span>
+                                    <span className="font-mono font-bold text-gray-800 text-[12px]">{formatLeaveDates(viewDetailsRow.startDate, viewDetailsRow.endDate)}</span>
+                                </div>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span className="text-gray-400 font-bold block uppercase text-[10px] tracking-wider mb-1">Duration</span>
+                                    <span className="font-bold text-gray-800 text-[13px]">{viewDetailsRow.totalDays || 1} Day(s)</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span className="text-gray-400 font-bold block uppercase text-[10px] tracking-wider mb-1">Requested By</span>
+                                    <span className="font-bold text-gray-800 text-[12px]">{requesterName}</span>
+                                </div>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span className="text-gray-400 font-bold block uppercase text-[10px] tracking-wider mb-1">Action Date</span>
+                                    <span className="font-mono font-bold text-gray-800 text-[12px]">{formatActionTakenOn(viewDetailsRow)}</span>
+                                </div>
+                            </div>
+
+                            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                                <span className="text-gray-400 font-bold block uppercase text-[10px] tracking-wider mb-1">Reason / Note</span>
+                                <p className="text-gray-700 font-medium leading-relaxed">{viewDetailsRow.reason || "No reason provided."}</p>
+                            </div>
+
+                            {viewDetailsRow.remarks && (
+                                <div className="p-3.5 bg-rose-50/70 rounded-xl border border-rose-100">
+                                    <span className="text-rose-500 font-bold block uppercase text-[10px] tracking-wider mb-1">Review Remarks</span>
+                                    <p className="text-rose-700 font-medium italic">{viewDetailsRow.remarks}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-gray-50/60 border-t border-gray-100 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setViewDetailsRow(null)}
+                                className="px-5 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-100 transition-colors shadow-sm cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Cancel Request Confirmation Modal */}
+            {cancelConfirmRow && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 p-6 text-left animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                                <AlertCircle className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-[#1E1E1E]">Cancel Leave Request</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">Are you sure you want to cancel this leave application?</p>
+                            </div>
+                        </div>
+
+                        <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 text-xs space-y-1 mb-5">
+                            <div className="text-gray-700 font-medium">
+                                <span className="font-bold text-gray-800">Leave Type:</span> {formatLeaveType(cancelConfirmRow.leaveType)}
+                            </div>
+                            <div className="text-gray-700 font-medium">
+                                <span className="font-bold text-gray-800">Dates:</span> {formatLeaveDates(cancelConfirmRow.startDate, cancelConfirmRow.endDate)} ({cancelConfirmRow.totalDays || 1} Day(s))
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2.5">
+                            <button
+                                type="button"
+                                disabled={cancelling}
+                                onClick={() => setCancelConfirmRow(null)}
+                                className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-100 transition-colors cursor-pointer"
+                            >
+                                Never Mind
+                            </button>
+                            <button
+                                type="button"
+                                disabled={cancelling}
+                                onClick={handleConfirmCancel}
+                                className="px-4.5 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shadow-md shadow-rose-200 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                            >
+                                {cancelling ? "Cancelling..." : "Yes, Cancel Leave"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1949,7 +2153,8 @@ const LeaveTab = ({
     loadingSummary,
     loadingHistory,
     onRequestLeave,
-    onRequestCompOffCredit
+    onRequestCompOffCredit,
+    onRefresh
 }) => {
     const [selectedLeavePeriod, setSelectedLeavePeriod] = useState("Apr 2026 - Mar 2027");
 
@@ -1976,12 +2181,12 @@ const LeaveTab = ({
 
     const balance = leaveSummary?.leaveBalance || {
         sick: { total: 6, accrued: 6, annualQuota: 6, used: 0, pending: 0 },
-        casual: { total: 2.5, accrued: 2.5, annualQuota: 6, used: 0, pending: 0 },
-        earned: { total: 5, accrued: 5, annualQuota: 12, used: 0, pending: 0 }
+        casual: { total: 6, accrued: 6, annualQuota: 6, used: 0, pending: 0 },
+        earned: { total: 12, accrued: 12, annualQuota: 12, used: 0, pending: 0 }
     };
 
     // Casual Leave
-    const casualTotal = balance.casual?.total ?? 2.5;
+    const casualTotal = balance.casual?.total ?? 6;
     const casualAccrued = balance.casual?.accrued ?? casualTotal;
     const casualAnnualQuota = balance.casual?.annualQuota ?? 6;
     const casualUsed = balance.casual?.used ?? 0;
@@ -1997,7 +2202,7 @@ const LeaveTab = ({
     const sickAvailable = Math.max(0, sickTotal - sickUsed - sickPending);
 
     // Earned Leave
-    const earnedTotal = balance.earned?.total ?? 5;
+    const earnedTotal = balance.earned?.total ?? 12;
     const earnedAccrued = balance.earned?.accrued ?? earnedTotal;
     const earnedAnnualQuota = balance.earned?.annualQuota ?? 12;
     const earnedUsed = balance.earned?.used ?? 0;
@@ -2105,6 +2310,7 @@ const LeaveTab = ({
                 setSelectedStatus={setSelectedStatus}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                onRefresh={onRefresh}
             />
         </div>
     );
@@ -2121,7 +2327,8 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
     useEffect(() => {
         if (isOpen && initialLeaveType) {
-            setLeaveType(initialLeaveType);
+            const clean = typeof initialLeaveType === "string" ? initialLeaveType : "casual_leave";
+            setLeaveType(clean);
         }
     }, [isOpen, initialLeaveType]);
     
@@ -2236,16 +2443,24 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                 partialTimingText = `${catLabel} (2 Hours)`;
             }
 
+            const cleanType = typeof leaveType === "string" ? leaveType : "casual_leave";
+            const cleanNotify = (selectedEmployees || []).map(emp => {
+                if (typeof emp === "object" && emp !== null) {
+                    return emp._id || emp.id || "";
+                }
+                return typeof emp === "string" ? emp : "";
+            }).filter(Boolean);
+
             const res = await applyLeave({
                 employeeId,
-                leaveType,
+                leaveType: cleanType,
                 startDate,
                 endDate: activeEndDate,
                 totalDays: isPartial ? 0.25 : duration,
                 partialMinutes: isPartial ? 120 : 0,
                 partialTiming: partialTimingText,
                 reason: reason.trim(),
-                notifyEmployees: selectedEmployees.map(emp => emp._id || emp.id)
+                notifyEmployees: cleanNotify
             });
 
             if (res.data?.success) {
@@ -4412,7 +4627,8 @@ const Me = () => {
 
     const handleOpenGeneralLeaveModal = (type = "casual_leave") => {
         fetchLeaveData();
-        setInitialLeaveType(type);
+        const cleanType = typeof type === "string" ? type : "casual_leave";
+        setInitialLeaveType(cleanType);
         setIsApplyModalOpen(true);
     };
 
@@ -4533,6 +4749,7 @@ const Me = () => {
                     loadingHistory={loadingHistory}
                     onRequestLeave={handleOpenGeneralLeaveModal}
                     onRequestCompOffCredit={() => setIsCompOffCreditModalOpen(true)}
+                    onRefresh={fetchLeaveData}
                 />
             )}
 

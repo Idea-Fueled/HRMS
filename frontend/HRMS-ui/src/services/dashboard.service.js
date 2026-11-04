@@ -60,6 +60,10 @@ export const getLeaveHistory = async (employeeId) => {
     return API.get(`/leaves/history/${employeeId}`)
 }
 
+export const cancelLeave = async (leaveId) => {
+    return API.put(`/leaves/${leaveId}/cancel`)
+}
+
 export const updateEmployeeLeaveBalance = async (employeeId, balanceData) => {
     return API.put(`/leaves/balance/${employeeId}`, balanceData)
 }

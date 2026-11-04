@@ -4,7 +4,8 @@ import {
     getLeaveSummary,
     getLeaveHistory,
     updateLeaveBalance,
-    requestCompOffCredit
+    requestCompOffCredit,
+    cancelLeave
 } from "../../controllers/leaves/leave.controller.js";
 
 const router = express.Router();
@@ -14,5 +15,6 @@ router.post("/request-comp-off-credit", requestCompOffCredit);
 router.get("/summary/:employeeId", getLeaveSummary);
 router.get("/history/:employeeId", getLeaveHistory);
 router.put("/balance/:employeeId", updateLeaveBalance);
+router.put("/:id/cancel", cancelLeave);
 
 export default router;
