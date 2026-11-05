@@ -644,7 +644,8 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     const userName = user?.firstName || user?.name || "Prashant";
     
     // Determine if currently clocked in from web specifically (NOT biometric)
-    const webLogs = (todayAttendance?.logs || []).filter(l => l.source === "web");
+    const hasRemoteContext = !!(todayAttendance?.dailyWorkPlan || todayAttendance?.wfhMessage || (todayAttendance?.workMode && todayAttendance?.workMode !== "Office"));
+    const webLogs = (todayAttendance?.logs || []).filter(l => l.source === "web" && hasRemoteContext);
     const isClockedIn = todayAttendance?.isWebClockedIn !== undefined 
         ? !!todayAttendance.isWebClockedIn 
         : (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in");
@@ -652,7 +653,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     // Has employee already submitted their first daily work plan today?
     const hasWebClockedInToday = !!(
         todayAttendance?.dailyWorkPlan ||
-        (todayAttendance?.logs || []).some(l => l.source === "web")
+        (hasRemoteContext && (todayAttendance?.logs || []).some(l => l.source === "web"))
     );
 
     const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn, user?.department, user);
@@ -3324,8 +3325,11 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
 
     if (!isOpen) return null;
 
-    // Build log pairs from row's logs or todayAttendance logs
-    const rawLogs = (row?.logs && row.logs.length > 0) ? row.logs : (todayAttendance?.logs || []);
+    // Build log pairs from row's logs or todayAttendance logs (only if row is today)
+    const isTodayRow = !!row?.isToday;
+    const rawLogs = (row?.logs && row.logs.length > 0)
+        ? row.logs
+        : (isTodayRow ? (todayAttendance?.logs || []) : []);
 
     const buildPairs = (logsList, defaultIn = "10:00 AM", activeLabel = "Active") => {
         const pairs = [];
@@ -3370,6 +3374,9 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
         ? new Date(row.rawDate).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
         : null;
 
+    const workPlanText = row?.dailyWorkPlan || (isTodayRow ? todayAttendance?.dailyWorkPlan : "") || row?.wfhMessage || (isTodayRow ? todayAttendance?.wfhMessage : "") || "";
+    const hasRemoteContext = !!workPlanText || (row?.workMode && row.workMode !== "Office");
+
     rawLogs.forEach(l => {
         if (!l.timestamp) return;
         if (targetDateStr) {
@@ -3377,7 +3384,8 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
             if (logDateStr !== targetDateStr) return;
         }
         const src = (l.source || "").toLowerCase();
-        if (src === "web" || src === "wfh" || src === "manual") {
+        // Only classify as Web/Remote if the employee actually has remote context (WFH plan/message or non-office mode)
+        if ((src === "web" || src === "wfh" || src === "manual") && hasRemoteContext) {
             webLogs.push(l);
         } else {
             biometricLogs.push(l);
@@ -3386,8 +3394,6 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
 
     const biometricPairs = buildPairs(biometricLogs, row?.timeStr || "10:00 AM", "Active / In Office");
     const webPairs = buildPairs(webLogs, "—", "Active / Working Remotely");
-
-    const workPlanText = row?.dailyWorkPlan || todayAttendance?.dailyWorkPlan || row?.wfhMessage || todayAttendance?.wfhMessage || "";
 
     const modalContent = (
         <div 
@@ -3722,8 +3728,8 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                 return logDateStr === targetDateStr;
             });
 
-            // If break is abnormally large (> 300 mins / 5 hrs) or if work is missing, recompute strictly from same-day logs
-            if ((brk > 300 || !work) && validLogs.length > 0) {
+            // If break is abnormally large (> 120 mins / 2 hrs) or if work is missing, recompute strictly from same-day logs
+            if ((brk > 120 || !work) && validLogs.length > 0) {
                 const ins = validLogs.filter(l => l.action === "clock_in");
                 const outs = validLogs.filter(l => l.action === "clock_out");
                 let sumWork = 0;
@@ -3737,7 +3743,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                 for (let i = 0; i < outs.length; i++) {
                     if (ins[i + 1]) {
                         const bDiff = (new Date(ins[i + 1].timestamp) - new Date(outs[i].timestamp)) / 60000;
-                        if (bDiff > 0 && bDiff < 300) sumBreak += bDiff;
+                        if (bDiff > 0 && bDiff < 120) sumBreak += bDiff;
                     }
                 }
                 brk = Math.floor(sumBreak);
@@ -3755,7 +3761,7 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                 }
             }
 
-            if (brk > 300) brk = 60; // Cap any runaway edge-case breaks to reasonable limit
+            if (brk > 120) brk = 60; // Cap any runaway edge-case breaks to reasonable limit
 
             return { work, brk };
         };

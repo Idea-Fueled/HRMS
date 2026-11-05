@@ -14,7 +14,7 @@ const attendanceLogSchema = new mongoose.Schema({
     source: {
         type: String,
         enum: ["web", "biometric", "manual", "wfh"],
-        default: "web"
+        default: "biometric"
     }
 }, { _id: false })
 

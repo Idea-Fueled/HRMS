@@ -1051,51 +1051,56 @@ const parseTimeToDate = (timeVal, baseDate) => {
     if (!timeVal && timeVal !== 0) return null;
     if (!baseDate || isNaN(baseDate.getTime())) return null;
 
-    const result = new Date(baseDate);
+    // Extract YYYY-MM-DD in IST
+    const istDateStr = new Date(baseDate).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    const [year, month, day] = istDateStr.split("-").map(Number);
+
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
 
     if (timeVal instanceof Date) {
-        result.setHours(timeVal.getHours(), timeVal.getMinutes(), timeVal.getSeconds(), 0);
-        return result;
-    }
-
-    if (typeof timeVal === "number") {
+        hours = timeVal.getHours();
+        minutes = timeVal.getMinutes();
+        seconds = timeVal.getSeconds();
+    } else if (typeof timeVal === "number") {
         let fraction = timeVal;
         if (fraction > 1) {
             fraction = fraction - Math.floor(fraction);
         }
         const totalMinutes = Math.round(fraction * 24 * 60);
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        result.setHours(hours, minutes, 0, 0);
-        return result;
-    }
-
-    if (typeof timeVal === "string") {
+        hours = Math.floor(totalMinutes / 60);
+        minutes = totalMinutes % 60;
+    } else if (typeof timeVal === "string") {
         const clean = timeVal.trim();
         if (!clean || clean === "--" || clean.toLowerCase() === "null") return null;
 
         const timeMatch = clean.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
         if (timeMatch) {
-            let hours = parseInt(timeMatch[1], 10);
-            const minutes = parseInt(timeMatch[2], 10);
-            const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+            hours = parseInt(timeMatch[1], 10);
+            minutes = parseInt(timeMatch[2], 10);
+            seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
             const ampm = timeMatch[4]?.toUpperCase();
 
             if (ampm === "PM" && hours < 12) hours += 12;
             if (ampm === "AM" && hours === 12) hours = 0;
-
-            result.setHours(hours, minutes, seconds, 0);
-            return result;
+        } else {
+            const parsed = new Date(clean);
+            if (!isNaN(parsed.getTime())) {
+                hours = parsed.getHours();
+                minutes = parsed.getMinutes();
+                seconds = parsed.getSeconds();
+            } else {
+                return null;
+            }
         }
-
-        const parsed = new Date(clean);
-        if (!isNaN(parsed.getTime())) {
-            result.setHours(parsed.getHours(), parsed.getMinutes(), parsed.getSeconds(), 0);
-            return result;
-        }
+    } else {
+        return null;
     }
 
-    return null;
+    // Construct exact IST timestamp in UTC (IST is UTC + 5:30, so UTC = IST - 5:30)
+    const istTimestampMs = Date.UTC(year, month - 1, day, hours, minutes, seconds) - (5.5 * 3600 * 1000);
+    return new Date(istTimestampMs);
 };
 
 /**
@@ -1223,10 +1228,10 @@ export const importEmployeeAttendance = async (req, res) => {
 
             const logs = [];
             if (clockInDate) {
-                logs.push({ action: "clock_in", timestamp: clockInDate });
+                logs.push({ action: "clock_in", timestamp: clockInDate, source: "biometric" });
             }
             if (clockOutDate) {
-                logs.push({ action: "clock_out", timestamp: clockOutDate });
+                logs.push({ action: "clock_out", timestamp: clockOutDate, source: "biometric" });
             }
 
             await Attendance.findOneAndUpdate(
@@ -1481,13 +1486,14 @@ export const syncBiometricPunches = async (req, res) => {
                 });
             }
 
-            // Safely preserve any existing web clock in / remote logs that strictly belong to this date
-            const existingWebLogs = (existing?.logs || []).filter(l => {
-                if (l.source !== "web" && l.source !== "wfh" && l.source !== "manual") return false;
+            // Safely preserve genuine web/wfh logs only if employee actually had a remote request or submitted a daily work plan
+            const hasGenuineWebPresence = !!(existing?.dailyWorkPlan || existing?.wfhMessage || existing?.workMode === "Work From Home");
+            const existingWebLogs = hasGenuineWebPresence ? (existing?.logs || []).filter(l => {
+                if (l.source !== "web" && l.source !== "wfh") return false;
                 if (!l.timestamp) return false;
                 const logIstDate = new Date(l.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
                 return logIstDate === istDateStr;
-            });
+            }) : [];
 
             // Combine biometric logs + web logs
             const allLogs = [...biometricLogs, ...existingWebLogs];
@@ -1513,8 +1519,8 @@ export const syncBiometricPunches = async (req, res) => {
                 for (let i = 0; i < clockOuts.length; i++) {
                     if (clockIns[i + 1]) {
                         const breakDiff = (new Date(clockIns[i + 1].timestamp) - new Date(clockOuts[i].timestamp)) / (1000 * 60);
-                        // Sanity check: break must be positive and within a single shift (< 300 mins / 5 hours)
-                        if (breakDiff > 0 && breakDiff < 300) totalBreakMinutes += breakDiff;
+                        // Sanity check: break must be positive and within realistic midday break limit (< 180 mins / 3 hours)
+                        if (breakDiff > 0 && breakDiff < 180) totalBreakMinutes += breakDiff;
                     }
                 }
 
