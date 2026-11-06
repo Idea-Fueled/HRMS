@@ -599,14 +599,20 @@ export const getTodayAttendance = async (req, res) => {
             ]
         }).sort({ date: -1, updatedAt: -1 });
 
-        // Auto-close stale web clock-in (> 14h elapsed without clocking out)
+        // Auto-close stale web clock-in (> 14h elapsed without clocking out or Office employee without work plan)
         if (attendance && attendance.isWebClockedIn) {
-            const lastLog = attendance.logs && attendance.logs.length > 0 ? attendance.logs[attendance.logs.length - 1] : null;
-            const lastTime = lastLog?.timestamp ? new Date(lastLog.timestamp).getTime() : new Date(attendance.firstClockIn || attendance.updatedAt).getTime();
-            const hoursElapsed = (Date.now() - lastTime) / (1000 * 3600);
-            if (hoursElapsed > 14) {
+            const hasWebWorkPlan = !!attendance.dailyWorkPlan;
+            if (!hasWebWorkPlan && attendance.workMode === "Office") {
                 attendance.isWebClockedIn = false;
-                await attendance.save().catch(() => {});
+                await Attendance.updateOne({ _id: attendance._id }, { $set: { isWebClockedIn: false } }).catch(() => {});
+            } else {
+                const lastLog = attendance.logs && attendance.logs.length > 0 ? attendance.logs[attendance.logs.length - 1] : null;
+                const lastTime = lastLog?.timestamp ? new Date(lastLog.timestamp).getTime() : new Date(attendance.firstClockIn || attendance.updatedAt).getTime();
+                const hoursElapsed = (Date.now() - lastTime) / (1000 * 3600);
+                if (hoursElapsed > 14) {
+                    attendance.isWebClockedIn = false;
+                    await Attendance.updateOne({ _id: attendance._id }, { $set: { isWebClockedIn: false } }).catch(() => {});
+                }
             }
         }
 
@@ -641,13 +647,36 @@ export const getTodayLogs = async (req, res) => {
             if (user) userObjId = user._id;
         }
 
-        const attendance = await Attendance.findOne({
+        // Clean up any stale web clock-in flags from previous days for this user
+        await Attendance.updateMany(
+            { employeeId: userObjId, date: { $lt: todayUtc }, isWebClockedIn: true },
+            { $set: { isWebClockedIn: false } }
+        ).catch(() => {});
+
+        let attendance = await Attendance.findOne({
             employeeId: userObjId,
             $or: [
                 { date: todayUtc },
                 { date: { $gte: istDayStart, $lte: istDayEnd } }
             ]
         }).sort({ date: -1, updatedAt: -1 });
+
+        // If employee has no dailyWorkPlan and workMode is Office, ensure isWebClockedIn is strictly false
+        if (attendance && attendance.isWebClockedIn) {
+            const hasWebWorkPlan = !!attendance.dailyWorkPlan;
+            if (!hasWebWorkPlan && attendance.workMode === "Office") {
+                attendance.isWebClockedIn = false;
+                await Attendance.updateOne({ _id: attendance._id }, { $set: { isWebClockedIn: false } }).catch(() => {});
+            } else {
+                const lastLog = attendance.logs && attendance.logs.length > 0 ? attendance.logs[attendance.logs.length - 1] : null;
+                const lastTime = lastLog?.timestamp ? new Date(lastLog.timestamp).getTime() : new Date(attendance.firstClockIn || attendance.updatedAt).getTime();
+                const hoursElapsed = (Date.now() - lastTime) / (1000 * 3600);
+                if (hoursElapsed > 14) {
+                    attendance.isWebClockedIn = false;
+                    await Attendance.updateOne({ _id: attendance._id }, { $set: { isWebClockedIn: false } }).catch(() => {});
+                }
+            }
+        }
 
         return res.status(200).json({
             success: true,
@@ -1353,11 +1382,23 @@ export const syncBiometricPunches = async (req, res) => {
             const rawTimestamp = item.timestamp || item.time || item.punchTime;
             let punchDate;
             if (typeof rawTimestamp === "string") {
-                let clean = rawTimestamp.trim().replace(" ", "T");
-                if (!clean.includes("+") && !clean.includes("Z") && !clean.endsWith("z")) {
-                    clean = `${clean}+05:30`;
+                const clean = rawTimestamp.trim().replace(" ", "T");
+                // Match YYYY-MM-DDTHH:mm:ss regardless of any trailing false UTC Z or offsets
+                const dtMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+                if (dtMatch) {
+                    const py = parseInt(dtMatch[1], 10);
+                    const pm = parseInt(dtMatch[2], 10);
+                    const pd = parseInt(dtMatch[3], 10);
+                    const ph = parseInt(dtMatch[4], 10);
+                    const pmin = parseInt(dtMatch[5], 10);
+                    const ps = dtMatch[6] ? parseInt(dtMatch[6], 10) : 0;
+                    // Biometric machine clocks are strictly in Indian Standard Time (UTC+5:30)
+                    punchDate = new Date(Date.UTC(py, pm - 1, pd, ph, pmin, ps) - (5.5 * 3600 * 1000));
+                } else {
+                    punchDate = new Date(clean);
                 }
-                punchDate = new Date(clean);
+            } else if (rawTimestamp instanceof Date) {
+                punchDate = rawTimestamp;
             } else {
                 punchDate = new Date(rawTimestamp);
             }
@@ -1486,8 +1527,8 @@ export const syncBiometricPunches = async (req, res) => {
                 });
             }
 
-            // Safely preserve genuine web/wfh logs only if employee actually had a remote request or submitted a daily work plan
-            const hasGenuineWebPresence = !!(existing?.dailyWorkPlan || existing?.wfhMessage || existing?.workMode === "Work From Home");
+            // Safely preserve genuine web/wfh logs ONLY if employee actually submitted a Daily Work Plan from home on this exact day
+            const hasGenuineWebPresence = !!(existing?.dailyWorkPlan && (existing?.workMode === "Work From Home" || existing?.workMode === "Hybrid"));
             const existingWebLogs = hasGenuineWebPresence ? (existing?.logs || []).filter(l => {
                 if (l.source !== "web" && l.source !== "wfh") return false;
                 if (!l.timestamp) return false;
@@ -1540,13 +1581,16 @@ export const syncBiometricPunches = async (req, res) => {
                 totalBreakMinutes = 0;
             }
 
-            // Determine workMode: Hybrid if both biometric and web logs exist
+            // Determine workMode: Office for biometric punches unless explicit WFH plan exists
             let workMode = "Office";
             if (biometricLogs.length > 0 && existingWebLogs.length > 0) {
                 workMode = "Hybrid";
             } else if (existingWebLogs.length > 0 && biometricLogs.length === 0) {
                 workMode = existing?.workMode || "Work From Home";
             }
+
+            // Biometric presence means the user is physically in the office. isWebClockedIn MUST be false.
+            const isWebClockedIn = hasGenuineWebPresence && existingWebLogs.length > 0 && existingWebLogs[existingWebLogs.length - 1].action === "clock_in";
 
             bulkOps.push({
                 updateOne: {
@@ -1565,7 +1609,7 @@ export const syncBiometricPunches = async (req, res) => {
                             logs: allLogs,
                             ...(existing?.dailyWorkPlan ? { dailyWorkPlan: existing.dailyWorkPlan } : {}),
                             ...(existing?.wfhMessage ? { wfhMessage: existing.wfhMessage } : {}),
-                            isWebClockedIn: existing?.isWebClockedIn ?? false
+                            isWebClockedIn: isWebClockedIn
                         }
                     },
                     upsert: true

@@ -881,9 +881,11 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const lastLog = sortedLogs.length > 0 ? sortedLogs[sortedLogs.length - 1] : null;
 
     // Check if employee is currently in office / working (latest log is clock_in across biometric or web)
+    const hasDailyWorkPlan = !!(attendance?.dailyWorkPlan);
+    const hasRemoteContext = !!(hasDailyWorkPlan || attendance?.wfhMessage || (attendance?.workMode && attendance?.workMode !== "Office"));
     const isCurrentlyIn = lastLog 
         ? lastLog.action === "clock_in" 
-        : !!attendance?.isWebClockedIn;
+        : !!(attendance?.isWebClockedIn && hasRemoteContext);
 
     const hasClockedInToday = !!(
         attendance?.firstClockIn ||
@@ -912,7 +914,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
 
     const fmtTime = (date) => {
         if (!date) return "—";
-        return new Date(date).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+        return new Date(date).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
     };
 
     const checkInTime = latestClockIn ? fmtTime(latestClockIn) : (attendance?.firstClockIn ? fmtTime(attendance.firstClockIn) : "—");

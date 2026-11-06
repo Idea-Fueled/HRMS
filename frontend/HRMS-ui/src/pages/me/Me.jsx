@@ -644,16 +644,21 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     const userName = user?.firstName || user?.name || "Prashant";
     
     // Determine if currently clocked in from web specifically (NOT biometric)
-    const hasRemoteContext = !!(todayAttendance?.dailyWorkPlan || todayAttendance?.wfhMessage || (todayAttendance?.workMode && todayAttendance?.workMode !== "Office"));
-    const webLogs = (todayAttendance?.logs || []).filter(l => l.source === "web" && hasRemoteContext);
-    const isClockedIn = todayAttendance?.isWebClockedIn !== undefined 
-        ? !!todayAttendance.isWebClockedIn 
-        : (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in");
+    // A user is ONLY considered web clocked in if they actively have isWebClockedIn === true AND have submitted a dailyWorkPlan or have an active remote clock_in session
+    const hasDailyWorkPlan = !!(todayAttendance?.dailyWorkPlan);
+    const hasRemoteContext = !!(hasDailyWorkPlan || todayAttendance?.wfhMessage || (todayAttendance?.workMode && todayAttendance?.workMode !== "Office"));
+    const webLogs = (todayAttendance?.logs || []).filter(l => (l.source === "web" || l.source === "wfh") && hasRemoteContext);
+    
+    // STRICT RULE: Web clock-in requires the employee to have actually initiated a web session (dailyWorkPlan or active web log)
+    const isClockedIn = !!(
+        (todayAttendance?.isWebClockedIn && (hasDailyWorkPlan || hasRemoteContext)) ||
+        (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in")
+    );
 
     // Has employee already submitted their first daily work plan today?
     const hasWebClockedInToday = !!(
-        todayAttendance?.dailyWorkPlan ||
-        (hasRemoteContext && (todayAttendance?.logs || []).some(l => l.source === "web"))
+        hasDailyWorkPlan ||
+        (hasRemoteContext && (todayAttendance?.logs || []).some(l => (l.source === "web" || l.source === "wfh")))
     );
 
     const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn, user?.department, user);
@@ -3375,7 +3380,8 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
         : null;
 
     const workPlanText = row?.dailyWorkPlan || (isTodayRow ? todayAttendance?.dailyWorkPlan : "") || row?.wfhMessage || (isTodayRow ? todayAttendance?.wfhMessage : "") || "";
-    const hasRemoteContext = !!workPlanText || (row?.workMode && row.workMode !== "Office");
+    // STRICT: Only genuine WFH/Remote submissions count as Remote Context (must have workPlanText or explicit Work From Home mode)
+    const hasRemoteContext = !!workPlanText || row?.workMode === "Work From Home";
 
     rawLogs.forEach(l => {
         if (!l.timestamp) return;
@@ -3384,8 +3390,8 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
             if (logDateStr !== targetDateStr) return;
         }
         const src = (l.source || "").toLowerCase();
-        // Only classify as Web/Remote if the employee actually has remote context (WFH plan/message or non-office mode)
-        if ((src === "web" || src === "wfh" || src === "manual") && hasRemoteContext) {
+        // Web Clock In ONLY if the employee actually submitted a remote work plan/request AND log source is web/wfh
+        if ((src === "web" || src === "wfh") && hasRemoteContext) {
             webLogs.push(l);
         } else {
             biometricLogs.push(l);
@@ -3501,7 +3507,7 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
                     )}
 
                     {/* Section 2: Web Clock-In / Remote Sessions */}
-                    {webPairs.length > 0 && (
+                    {webPairs.length > 0 && hasRemoteContext && (
                         <div className={biometricPairs.length > 0 ? "pt-3 border-t border-slate-200" : ""}>
                             <div className="flex items-center justify-between mb-2.5">
                                 <div className="flex items-center gap-1.5">

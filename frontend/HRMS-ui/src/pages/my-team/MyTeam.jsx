@@ -1000,7 +1000,8 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
         : null;
 
     const workPlanText = row?.dailyWorkPlan || row?.wfhMessage || "";
-    const hasRemoteContext = !!workPlanText || (row?.workMode && row.workMode !== "Office");
+    // STRICT: Only genuine WFH/Remote submissions count as Remote Context (must have workPlanText or explicit Work From Home mode)
+    const hasRemoteContext = !!workPlanText || row?.workMode === "Work From Home";
 
     rawLogs.forEach(l => {
         if (!l.timestamp) return;
@@ -1009,8 +1010,8 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
             if (logDateStr !== targetDateStr) return;
         }
         const src = (l.source || "").toLowerCase();
-        // Only classify as Web/Remote if the employee actually has remote context (WFH plan/message or non-office mode)
-        if ((src === "web" || src === "wfh" || src === "manual") && hasRemoteContext) {
+        // Web Clock In ONLY if the employee actually submitted a remote work plan/request AND log source is web/wfh
+        if ((src === "web" || src === "wfh") && hasRemoteContext) {
             webLogs.push(l);
         } else {
             biometricLogs.push(l);
@@ -1126,7 +1127,7 @@ const TeamLogAuditModal = ({ isOpen, onClose, row, memberName }) => {
                     )}
 
                     {/* Section 2: Web Clock-In / Remote Sessions */}
-                    {webPairs.length > 0 && (
+                    {webPairs.length > 0 && hasRemoteContext && (
                         <div className={biometricPairs.length > 0 ? "pt-3 border-t border-slate-200" : ""}>
                             <div className="flex items-center justify-between mb-2.5">
                                 <div className="flex items-center gap-1.5">
