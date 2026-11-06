@@ -880,12 +880,25 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const sortedLogs = [...logs].filter(l => l.timestamp).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const lastLog = sortedLogs.length > 0 ? sortedLogs[sortedLogs.length - 1] : null;
 
-    // Check if employee is currently in office / working (latest log is clock_in across biometric or web)
+    // Determine if currently clocked in from web specifically (matching Me.jsx LiveClockCard)
     const hasDailyWorkPlan = !!(attendance?.dailyWorkPlan);
     const hasRemoteContext = !!(hasDailyWorkPlan || attendance?.wfhMessage || (attendance?.workMode && attendance?.workMode !== "Office"));
-    const isCurrentlyIn = lastLog 
-        ? lastLog.action === "clock_in" 
-        : !!(attendance?.isWebClockedIn && hasRemoteContext);
+    const webLogs = (attendance?.logs || []).filter(l => (l.source === "web" || l.source === "wfh") && hasRemoteContext);
+
+    // STRICT RULE: Web clock-in requires the employee to have actually initiated a web session (dailyWorkPlan or active web log)
+    const isWebClockedIn = !!(
+        (attendance?.isWebClockedIn && (hasDailyWorkPlan || hasRemoteContext)) ||
+        (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in")
+    );
+
+    // Has employee already submitted their first daily work plan today?
+    const hasWebClockedInToday = !!(
+        hasDailyWorkPlan ||
+        (hasRemoteContext && (attendance?.logs || []).some(l => (l.source === "web" || l.source === "wfh")))
+    );
+
+    // Check if employee is currently in office / working (latest log is clock_in across biometric or web)
+    const isCurrentlyIn = lastLog ? lastLog.action === "clock_in" : false;
 
     const hasClockedInToday = !!(
         attendance?.firstClockIn ||
@@ -970,10 +983,10 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const dateStr = now.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
     const handleClockToggle = () => {
-        if (isCurrentlyIn) {
+        if (isWebClockedIn) {
             onClockOut();
         } else {
-            if (!hasClockedInToday) {
+            if (!hasWebClockedInToday) {
                 setWebClockInOpen(true);
             } else {
                 onClockIn("Office", "", "");
@@ -1062,8 +1075,8 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
                                     onClick={handleClockToggle}
                                     className="bg-white text-[#1F5EA8] text-[12px] font-bold px-4 py-2.5 rounded-[10px] shadow-sm hover:bg-white/90 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                                 >
-                                    {isCurrentlyIn ? <LogOut className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
-                                    {isCurrentlyIn ? "Clock Out" : "Clock In"}
+                                    {isWebClockedIn ? <LogOut className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
+                                    {isWebClockedIn ? "Clock Out" : "Clock In"}
                                 </button>
                                 <button
                                     onClick={() => setOtherOpen((p) => !p)}
