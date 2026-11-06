@@ -138,6 +138,21 @@ function Sync-AttendancePunches {
         }
     }
 
+    # Filter out any punches with future timestamps (> now + 5 min buffer)
+    $nowBuffer = (Get-Date).AddMinutes(5)
+    $validPunches = [System.Collections.Generic.List[hashtable]]::new()
+    foreach ($p in $punches) {
+        try {
+            $pDate = [DateTime]::Parse($p.timestamp)
+            if ($pDate -le $nowBuffer) {
+                $validPunches.Add($p)
+            }
+        } catch {
+            $validPunches.Add($p)
+        }
+    }
+    $punches = $validPunches
+
     if ($punches.Count -gt 0) {
         $batchSize = 1000
         $totalBatches = [Math]::Ceiling($punches.Count / $batchSize)

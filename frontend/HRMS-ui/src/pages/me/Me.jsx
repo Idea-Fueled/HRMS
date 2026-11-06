@@ -3383,8 +3383,10 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
     // STRICT: Only genuine WFH/Remote submissions count as Remote Context (must have workPlanText or explicit Work From Home mode)
     const hasRemoteContext = !!workPlanText || row?.workMode === "Work From Home";
 
+    const nowLimit = Date.now() + 5 * 60 * 1000;
     rawLogs.forEach(l => {
         if (!l.timestamp) return;
+        if (new Date(l.timestamp).getTime() > nowLimit) return;
         if (targetDateStr) {
             const logDateStr = new Date(l.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
             if (logDateStr !== targetDateStr) return;
@@ -3727,15 +3729,19 @@ const AttendanceLogsAndRequestsHub = ({ todayAttendance }) => {
                 ? new Date(record.date).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
                 : null;
 
+            const nowLimit = Date.now() + 5 * 60 * 1000;
             const validLogs = (Array.isArray(record.logs) ? record.logs : []).filter(l => {
                 if (!l.timestamp) return false;
+                if (new Date(l.timestamp).getTime() > nowLimit) return false;
                 if (!targetDateStr) return true;
                 const logDateStr = new Date(l.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
                 return logDateStr === targetDateStr;
             });
 
-            // If break is abnormally large (> 120 mins / 2 hrs) or if work is missing, recompute strictly from same-day logs
-            if ((brk > 120 || !work) && validLogs.length > 0) {
+            const hasFuturePunches = (Array.isArray(record.logs) ? record.logs : []).some(l => l.timestamp && new Date(l.timestamp).getTime() > nowLimit);
+
+            // If break is abnormally large (> 120 mins / 2 hrs) or if work is missing or contaminated with future punches, recompute strictly from same-day logs
+            if ((hasFuturePunches || brk > 120 || !work) && validLogs.length > 0) {
                 const ins = validLogs.filter(l => l.action === "clock_in");
                 const outs = validLogs.filter(l => l.action === "clock_out");
                 let sumWork = 0;

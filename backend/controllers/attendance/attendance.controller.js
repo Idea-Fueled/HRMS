@@ -616,6 +616,38 @@ export const getTodayAttendance = async (req, res) => {
             }
         }
 
+        // Clean up any phantom future punches that might have been saved due to biometric machine clock skew
+        if (attendance && Array.isArray(attendance.logs)) {
+            const nowLimit = Date.now() + 5 * 60 * 1000;
+            const validLogs = attendance.logs.filter(l => l.timestamp && new Date(l.timestamp).getTime() <= nowLimit);
+            if (validLogs.length !== attendance.logs.length) {
+                attendance.logs = validLogs;
+                const hasWebPlan = !!attendance.dailyWorkPlan;
+                const hasOnlyWeb = validLogs.length > 0 && validLogs.every(l => l.source === "web" || l.source === "wfh");
+                if (hasWebPlan && hasOnlyWeb) {
+                    attendance.workMode = "Work From Home";
+                    attendance.isWebClockedIn = validLogs[validLogs.length - 1].action === "clock_in";
+                    attendance.firstClockIn = validLogs[0].timestamp;
+                    attendance.lastClockOut = null;
+                    attendance.totalWorkMinutes = 0;
+                    attendance.totalBreakMinutes = 0;
+                    attendance.totalSessions = 1;
+                }
+                await Attendance.updateOne({ _id: attendance._id }, {
+                    $set: {
+                        logs: attendance.logs,
+                        workMode: attendance.workMode,
+                        isWebClockedIn: attendance.isWebClockedIn,
+                        firstClockIn: attendance.firstClockIn,
+                        lastClockOut: attendance.lastClockOut,
+                        totalWorkMinutes: attendance.totalWorkMinutes,
+                        totalBreakMinutes: attendance.totalBreakMinutes,
+                        totalSessions: attendance.totalSessions
+                    }
+                }).catch(() => {});
+            }
+        }
+
         return res.status(200).json({
             success: true,
             attendance: attendance || null,
@@ -675,6 +707,38 @@ export const getTodayLogs = async (req, res) => {
                     attendance.isWebClockedIn = false;
                     await Attendance.updateOne({ _id: attendance._id }, { $set: { isWebClockedIn: false } }).catch(() => {});
                 }
+            }
+        }
+
+        // Clean up any phantom future punches that might have been saved due to biometric machine clock skew
+        if (attendance && Array.isArray(attendance.logs)) {
+            const nowLimit = Date.now() + 5 * 60 * 1000;
+            const validLogs = attendance.logs.filter(l => l.timestamp && new Date(l.timestamp).getTime() <= nowLimit);
+            if (validLogs.length !== attendance.logs.length) {
+                attendance.logs = validLogs;
+                const hasWebPlan = !!attendance.dailyWorkPlan;
+                const hasOnlyWeb = validLogs.length > 0 && validLogs.every(l => l.source === "web" || l.source === "wfh");
+                if (hasWebPlan && hasOnlyWeb) {
+                    attendance.workMode = "Work From Home";
+                    attendance.isWebClockedIn = validLogs[validLogs.length - 1].action === "clock_in";
+                    attendance.firstClockIn = validLogs[0].timestamp;
+                    attendance.lastClockOut = null;
+                    attendance.totalWorkMinutes = 0;
+                    attendance.totalBreakMinutes = 0;
+                    attendance.totalSessions = 1;
+                }
+                await Attendance.updateOne({ _id: attendance._id }, {
+                    $set: {
+                        logs: attendance.logs,
+                        workMode: attendance.workMode,
+                        isWebClockedIn: attendance.isWebClockedIn,
+                        firstClockIn: attendance.firstClockIn,
+                        lastClockOut: attendance.lastClockOut,
+                        totalWorkMinutes: attendance.totalWorkMinutes,
+                        totalBreakMinutes: attendance.totalBreakMinutes,
+                        totalSessions: attendance.totalSessions
+                    }
+                }).catch(() => {});
             }
         }
 
@@ -1019,9 +1083,47 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
         const attendances = await Attendance.find(dateFilter)
             .sort({ date: -1 });
 
+        // Clean up any phantom future punches that might have been saved due to biometric machine clock skew
+        const nowLimit = Date.now() + 5 * 60 * 1000;
+        const cleanedAttendances = [];
+
+        for (const att of attendances) {
+            const attObj = att.toObject ? att.toObject() : { ...att };
+            if (Array.isArray(attObj.logs) && attObj.logs.length > 0) {
+                const validLogs = attObj.logs.filter(l => l.timestamp && new Date(l.timestamp).getTime() <= nowLimit);
+                if (validLogs.length !== attObj.logs.length) {
+                    attObj.logs = validLogs;
+                    const hasWebPlan = !!attObj.dailyWorkPlan;
+                    const hasOnlyWeb = validLogs.length > 0 && validLogs.every(l => l.source === "web" || l.source === "wfh");
+                    if (hasWebPlan && hasOnlyWeb) {
+                        attObj.workMode = "Work From Home";
+                        attObj.isWebClockedIn = validLogs[validLogs.length - 1].action === "clock_in";
+                        attObj.firstClockIn = validLogs[0].timestamp;
+                        attObj.lastClockOut = null;
+                        attObj.totalWorkMinutes = 0;
+                        attObj.totalBreakMinutes = 0;
+                        attObj.totalSessions = 1;
+                    }
+                    Attendance.updateOne({ _id: att._id }, {
+                        $set: {
+                            logs: attObj.logs,
+                            workMode: attObj.workMode,
+                            isWebClockedIn: attObj.isWebClockedIn,
+                            firstClockIn: attObj.firstClockIn,
+                            lastClockOut: attObj.lastClockOut,
+                            totalWorkMinutes: attObj.totalWorkMinutes,
+                            totalBreakMinutes: attObj.totalBreakMinutes,
+                            totalSessions: attObj.totalSessions
+                        }
+                    }).catch(() => {});
+                }
+            }
+            cleanedAttendances.push(attObj);
+        }
+
         return res.status(200).json({
             success: true,
-            attendances
+            attendances: cleanedAttendances
         });
     } catch (error) {
         console.error("Get Employee Attendance History Error:", error);
@@ -1332,18 +1434,14 @@ export const syncBiometricPunches = async (req, res) => {
 
         const users = await User.find({}).select("_id employeeId biometricEnrollNumber firstName lastName fullName").lean();
         const userMap = new Map();
+        const bioEnrollMap = new Map();
 
-        // 1. Map employeeId fallback
+        // 1. Map by exact MongoDB _id and exact Employee ID string
         users.forEach(u => {
             userMap.set(u._id.toString(), u);
             if (u.employeeId) {
                 const raw = String(u.employeeId).trim();
                 userMap.set(raw.toUpperCase(), u);
-                const digits = raw.replace(/\D/g, "");
-                if (digits) {
-                    userMap.set(digits, u);
-                    userMap.set(String(parseInt(digits, 10)), u);
-                }
             }
         });
 
@@ -1352,10 +1450,11 @@ export const syncBiometricPunches = async (req, res) => {
             if (u.biometricEnrollNumber) {
                 const rawBio = String(u.biometricEnrollNumber).trim();
                 userMap.set(rawBio.toUpperCase(), u);
+                bioEnrollMap.set(rawBio.toUpperCase(), u);
                 const digitsBio = rawBio.replace(/\D/g, "");
                 if (digitsBio) {
-                    userMap.set(digitsBio, u);
-                    userMap.set(String(parseInt(digitsBio, 10)), u);
+                    bioEnrollMap.set(digitsBio, u);
+                    bioEnrollMap.set(String(parseInt(digitsBio, 10)), u);
                 }
             }
         });
@@ -1363,6 +1462,8 @@ export const syncBiometricPunches = async (req, res) => {
         // Group punches by user first, then organize into logical shifts
         const userPunchesMap = new Map();
         let skippedUnknownUsers = 0;
+        let rejectedFuturePunches = 0;
+        const nowBuffer = Date.now() + 5 * 60 * 1000;
 
         for (const item of rawPunches) {
             const rawId = item.enrollNumber ?? item.userId ?? item.employeeId ?? item.employeeCode ?? item.empCode ?? item.empId ?? item.id ?? item.EnrollNumber;
@@ -1370,9 +1471,11 @@ export const syncBiometricPunches = async (req, res) => {
 
             const cleanKey = String(rawId).trim();
             const digitsOnly = cleanKey.replace(/\D/g, "");
+            // STRICT RESOLUTION: Exact ID match first, then explicit biometricEnrollNumber digit match.
+            // NEVER fallback to arbitrary employeeId digits to prevent user collisions.
             const user = userMap.get(cleanKey.toUpperCase()) || 
-                         (digitsOnly ? userMap.get(digitsOnly) : null) || 
-                         (digitsOnly ? userMap.get(String(parseInt(digitsOnly, 10))) : null);
+                         (digitsOnly ? bioEnrollMap.get(digitsOnly) : null) || 
+                         (digitsOnly ? bioEnrollMap.get(String(parseInt(digitsOnly, 10))) : null);
 
             if (!user) {
                 skippedUnknownUsers++;
@@ -1403,6 +1506,12 @@ export const syncBiometricPunches = async (req, res) => {
                 punchDate = new Date(rawTimestamp);
             }
             if (isNaN(punchDate.getTime())) continue;
+
+            // STRICT FUTURE PUNCH GUARD: Reject any punch that is in the future (> now + 5 mins skew buffer)
+            if (punchDate.getTime() > nowBuffer) {
+                rejectedFuturePunches++;
+                continue;
+            }
 
             const uid = user._id.toString();
             if (!userPunchesMap.has(uid)) {
@@ -1631,7 +1740,8 @@ export const syncBiometricPunches = async (req, res) => {
                 totalPunchesReceived: rawPunches.length,
                 recordsUpserted: updatedDaysCount,
                 employeesCount: employeeSummary.size,
-                skippedUnknownUsers
+                skippedUnknownUsers,
+                rejectedFuturePunches
             }
         });
     } catch (error) {
