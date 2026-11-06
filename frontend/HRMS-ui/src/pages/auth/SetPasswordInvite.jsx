@@ -71,17 +71,19 @@ const SetPasswordInvite = () => {
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 relative z-10 transition-all">
-                {/* Header Logo */}
-                <div className="flex flex-col items-center mb-6">
-                    <div className="h-14 w-auto flex items-center justify-center p-2 mb-2">
-                        <img 
-                            src={ideaFueledLogo} 
-                            alt="Idea Fueled Logo" 
-                            className="max-h-12 w-auto object-contain"
-                            onError={(e) => { e.target.style.display = "none"; }}
-                        />
-                    </div>
+            <div className="w-full max-w-md relative z-10 flex flex-col items-center">
+                {/* Brand Logo placed outside & centered above the card per reference design */}
+                <div className="auth-logo-wrapper mb-8 sm:mb-10 flex items-center justify-center">
+                    <img 
+                        src={ideaFueledLogo} 
+                        alt="Idea Fueled Logo" 
+                        style={{ height: "42px", maxHeight: "42px", width: "auto" }}
+                        className="auth-brand-logo h-[42px] max-h-[42px] w-auto object-contain drop-shadow-xs"
+                        onError={(e) => { e.target.style.display = "none"; }}
+                    />
+                </div>
+
+                <div className="w-full bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 transition-all">
                     <span className="text-xs font-semibold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1.5">
                         <Sparkles className="w-3 h-3 text-indigo-600" /> Welcome to Idea-Fueled HRMS
                     </span>

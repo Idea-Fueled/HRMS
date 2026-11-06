@@ -147,22 +147,23 @@ const Login = () => {
             <div className="absolute bottom-[-10%] right-[-10%] w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] bg-gradient-to-tl from-[#38BDF8]/25 via-[#2D79C7]/20 to-[#818CF8]/18 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[280px] h-[280px] bg-indigo-300/15 rounded-full blur-[90px] pointer-events-none" />
 
-            <div className="w-full max-w-[460px] sm:max-w-[480px] relative z-10">
+            <div className="w-full max-w-[460px] sm:max-w-[480px] relative z-10 flex flex-col items-center">
+                {/* Brand Logo placed outside & centered above the card per reference design */}
+                <div className="auth-logo-wrapper mb-8 sm:mb-10 flex items-center justify-center">
+                    <img
+                        src={ideaFueledLogo}
+                        alt="Idea Fueled logo"
+                        style={{ height: "42px", maxHeight: "42px", width: "auto" }}
+                        className="auth-brand-logo h-[42px] max-h-[42px] w-auto object-contain drop-shadow-xs"
+                    />
+                </div>
+
                 {/* Glassmorphism Card */}
-                <div className="relative rounded-[28px] sm:rounded-[32px] p-7 sm:p-10 bg-white/70 backdrop-blur-2xl border border-white/80 shadow-[0_20px_60px_-15px_rgba(45,121,199,0.14),0_10px_25px_-5px_rgba(0,0,0,0.04)] ring-1 ring-slate-900/[0.03] transition-all">
+                <div className="w-full relative rounded-[28px] sm:rounded-[32px] p-7 sm:p-10 bg-white/70 backdrop-blur-2xl border border-white/80 shadow-[0_20px_60px_-15px_rgba(45,121,199,0.14),0_10px_25px_-5px_rgba(0,0,0,0.04)] ring-1 ring-slate-900/[0.03] transition-all">
                     {/* Subtle top inner reflection */}
                     <div className="absolute inset-0 rounded-[28px] sm:rounded-[32px] bg-gradient-to-b from-white/70 via-white/20 to-transparent pointer-events-none" />
 
                     <div className="relative z-10">
-                        {/* Logo and Brand Section */}
-                        <div className="flex flex-col items-center text-center mb-6">
-                            <img
-                                src={ideaFueledLogo}
-                                alt="Idea Fueled logo"
-                                className="h-7 sm:h-8 object-contain drop-shadow-xs"
-                            />
-                        </div>
-
                         {/* FORGOT PASSWORD VIEW */}
                         {isForgotOpen ? (
                             <div className="space-y-6 animate-fadeIn">
