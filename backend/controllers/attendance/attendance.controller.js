@@ -1301,6 +1301,15 @@ export const importEmployeeAttendance = async (req, res) => {
 
             parsedDate.setHours(0, 0, 0, 0);
 
+            // Reject future dates to prevent phantom pre-dated attendance
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+            if (parsedDate > todayEnd) {
+                skippedCount++;
+                errors.push(`Row ${i + 1}: Future dates cannot be imported (${rawDate}).`);
+                continue;
+            }
+
             const rawClockIn = getValue([/^clock.*in/i, /^punch.*in/i, /^in.*time/i, /^first.*in/i, /^check.*in/i, /^start.*time/i]);
             const rawClockOut = getValue([/^clock.*out/i, /^punch.*out/i, /^out.*time/i, /^last.*out/i, /^check.*out/i, /^end.*time/i]);
             const rawStatus = getValue([/^status$/i, /attendance.*status/i]);
