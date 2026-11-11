@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { 
-    Wallet, 
-    CreditCard, 
-    Building2, 
-    ShieldCheck, 
-    FileText, 
-    Download, 
-    CheckCircle2, 
+import {
+    Wallet,
+    CreditCard,
+    Building2,
+    ShieldCheck,
+    FileText,
+    Download,
+    CheckCircle2,
     Calendar,
     Percent,
     Building
@@ -155,9 +155,8 @@ const MyFinances = () => {
                                 key={tab.key}
                                 type="button"
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 py-2.5 sm:py-3 text-xs font-bold transition-all relative cursor-pointer whitespace-nowrap shrink-0 ${
-                                    isActive ? "text-[#2D79C7]" : "text-gray-500 hover:text-gray-800"
-                                }`}
+                                className={`flex items-center gap-2 py-2.5 sm:py-3 text-xs font-bold transition-all relative cursor-pointer whitespace-nowrap shrink-0 ${isActive ? "text-[#2D79C7]" : "text-gray-500 hover:text-gray-800"
+                                    }`}
                             >
                                 <Icon className={`w-4 h-4 ${isActive ? "text-[#2D79C7]" : "text-gray-400"}`} />
                                 <span>{tab.label}</span>
@@ -182,24 +181,24 @@ const MyFinances = () => {
                 <div className="space-y-4 sm:space-y-6 animate-fadeIn">
                     {/* Top Stat Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-5">
-                        <MiniStatCard 
-                            title="Annual CTC / Salary" 
-                            value={annualCtc ? `₹${annualCtc.toLocaleString("en-IN")}` : "Not Configured"} 
+                        <MiniStatCard
+                            title="Annual CTC / Salary"
+                            value={annualCtc ? `₹${annualCtc.toLocaleString("en-IN")}` : "Not Configured"}
                             subtext="Yearly total compensation"
                             icon={Wallet}
                             iconBg="bg-blue-50 text-[#2D79C7] border-blue-100"
                         />
-                        <MiniStatCard 
-                            title="Monthly Salary" 
-                            value={totalEarnings ? `₹${totalEarnings.toLocaleString("en-IN")}` : "Not Configured"} 
-                            subtext="Gross monthly earnings" 
+                        <MiniStatCard
+                            title="Monthly Salary"
+                            value={totalEarnings ? `₹${totalEarnings.toLocaleString("en-IN")}` : "Not Configured"}
+                            subtext="Gross monthly earnings"
                             icon={CreditCard}
                             iconBg="bg-indigo-50 text-indigo-600 border-indigo-100"
                         />
-                        <MiniStatCard 
-                            title="Latest Issued Payslip" 
-                            value={lastPayslip ? lastPayslip.periodString : "None"} 
-                            subtext={lastPayslip ? `Net Salary: ₹${(lastPayslip.netSalaryPayable || 0).toLocaleString("en-IN")}` : "Pending HR processing"} 
+                        <MiniStatCard
+                            title="Latest Issued Payslip"
+                            value={lastPayslip ? lastPayslip.periodString : "None"}
+                            subtext={lastPayslip ? `Net Salary: ₹${(lastPayslip.netSalaryPayable || 0).toLocaleString("en-IN")}` : "Pending HR processing"}
                             icon={Calendar}
                             iconBg="bg-emerald-50 text-emerald-600 border-emerald-100"
                         />
@@ -244,7 +243,7 @@ const MyFinances = () => {
                                                             ₹{(ps.netSalaryPayable || 0).toLocaleString("en-IN")}
                                                         </td>
                                                         <td className="px-4 sm:px-6 py-3.5 sm:py-4 text-right">
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleDownloadPdf(ps)}
                                                                 className="px-2.5 sm:px-3.5 py-1.5 bg-[#2D79C7] hover:bg-[#1D5E9E] text-white rounded-lg font-bold text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                                                             >

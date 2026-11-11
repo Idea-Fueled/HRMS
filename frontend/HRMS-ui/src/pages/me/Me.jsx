@@ -2366,10 +2366,34 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
         return false;
     };
 
+    const getMinStartDate = () => {
+        if (leaveType === "earned_leave") {
+            const d = new Date();
+            d.setDate(d.getDate() + 7);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+        return undefined;
+    };
+
     const handleLeaveTypeChange = (val) => {
         if (val === "earned_leave" && isProbationOrIntern()) {
             toast.error("You are not eligible for earned leaves while on probation or internship.");
             return;
+        }
+        if (val === "earned_leave" && startDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const [y, m, d] = String(startDate).split("-").map(Number);
+            const reqStart = new Date(y, m - 1, d);
+            reqStart.setHours(0, 0, 0, 0);
+            const advanceDays = Math.round((reqStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (advanceDays < 7) {
+                setStartDate("");
+                setEndDate("");
+            }
         }
         setLeaveType(val);
     };
@@ -2405,9 +2429,22 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (leaveType === "earned_leave" && isProbationOrIntern()) {
-            toast.error("You are not eligible for earned leaves while on probation or internship.");
-            return;
+        if (leaveType === "earned_leave") {
+            if (isProbationOrIntern()) {
+                toast.error("You are not eligible for earned leaves while on probation or internship.");
+                return;
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const [y, m, d] = String(startDate).split("-").map(Number);
+            const reqStart = new Date(y, m - 1, d);
+            reqStart.setHours(0, 0, 0, 0);
+            const advanceDays = Math.round((reqStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (advanceDays < 7) {
+                toast.error("Earned leave must be applied at least 7 days in advance.");
+                return;
+            }
         }
 
         if (leaveType === "comp_off") {
@@ -2540,6 +2577,14 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                         </div>
                     )}
 
+                    {/* Earned Leave Info Badge when selected */}
+                    {leaveType === "earned_leave" && (
+                        <div className="flex items-center gap-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-[10px] text-[#1F5EA8] text-xs font-semibold">
+                            <Info className="w-4 h-4 text-[#2D79C7] shrink-0" />
+                            <span>Earned leave must be applied at least 7 days in advance.</span>
+                        </div>
+                    )}
+
                     {/* Partial Leave Section */}
                     {isPartial ? (
                         <div className="space-y-3 pt-1">
@@ -2609,6 +2654,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                                     <input
                                         type="date"
                                         value={startDate}
+                                        min={getMinStartDate()}
                                         onChange={(e) => setStartDate(e.target.value)}
                                         className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
                                     />
@@ -2619,6 +2665,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                                         type="date"
                                         value={isHalfDay ? startDate : endDate}
                                         disabled={isHalfDay}
+                                        min={startDate || getMinStartDate()}
                                         onChange={(e) => setEndDate(e.target.value)}
                                         className="w-full bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12px] font-medium py-2 px-3 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                                     />

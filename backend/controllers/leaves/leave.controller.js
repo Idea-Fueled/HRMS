@@ -111,6 +111,23 @@ export const applyLeave = async (req, res) => {
                     message: "You are not eligible for earned leaves while on probation or internship.",
                 });
             }
+
+            // Earned Leave must be applied at least 7 days in advance
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const [y, m, d] = String(startDate).split("T")[0].split("-").map(Number);
+            const reqStart = new Date(y, m - 1, d);
+            reqStart.setHours(0, 0, 0, 0);
+
+            const diffTime = reqStart.getTime() - today.getTime();
+            const advanceDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            if (advanceDays < 7) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Earned leave must be applied at least 7 days in advance.",
+                });
+            }
         }
 
         // Validate monthly quota for Partial Leave (Only 1 allowed per calendar month)
