@@ -280,9 +280,9 @@ const Reports = () => {
     }, [viewMode, weeklyData, monthlyData]);
 
     return (
-        <div className="space-y-6 pb-12 select-none animate-fadeIn">
+        <div className="space-y-4 sm:space-y-6 pb-12 select-none animate-fadeIn">
             {/* Standard Header & Controls Card (Matching other pages) */}
-            <div className="premium-3d-card p-5 space-y-4">
+            <div className="premium-3d-card p-4 sm:p-5 space-y-4">
                 {/* Top Title & Actions Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -291,7 +291,7 @@ const Reports = () => {
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-base font-bold text-[#1E1E1E] tracking-tight">
+                                <h1 className="text-sm sm:text-base font-bold text-[#1E1E1E] tracking-tight">
                                     Work &amp; Attendance Reports
                                 </h1>
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#1F5EA8] border border-blue-100">
@@ -305,12 +305,12 @@ const Reports = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2.5 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
                         <button
                             type="button"
                             onClick={handleSendEmail}
                             disabled={sendingEmail || loading}
-                            className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-bold rounded-[12px] shadow-sm transition-all cursor-pointer hover:shadow active:scale-95 disabled:opacity-50"
+                            className="flex-1 sm:flex-initial justify-center flex items-center gap-1.5 px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-bold rounded-[12px] shadow-sm transition-all cursor-pointer hover:shadow active:scale-95 disabled:opacity-50"
                         >
                             {sendingEmail ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-900" />
@@ -324,7 +324,7 @@ const Reports = () => {
                             type="button"
                             onClick={handleExportCSV}
                             disabled={loading || filteredEmployees.length === 0}
-                            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold rounded-[12px] shadow-sm shadow-[#2D79C7]/20 transition-all cursor-pointer hover:shadow active:scale-95 disabled:opacity-50"
+                            className="flex-1 sm:flex-initial justify-center flex items-center gap-1.5 px-3.5 py-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold rounded-[12px] shadow-sm shadow-[#2D79C7]/20 transition-all cursor-pointer hover:shadow active:scale-95 disabled:opacity-50"
                         >
                             <Download className="w-3.5 h-3.5" />
                             <span>Export Excel</span>
@@ -335,11 +335,11 @@ const Reports = () => {
                 {/* Filters & Navigation Controls Row */}
                 <div className="pt-3 border-t border-[#F3F4F6] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     {/* View Mode Tabs */}
-                    <div className="inline-flex p-1 bg-gray-100 rounded-[12px] border border-gray-200/50 shadow-inner select-none shrink-0">
+                    <div className="inline-flex p-1 bg-gray-100 rounded-[12px] border border-gray-200/50 shadow-inner select-none shrink-0 overflow-x-auto max-w-full scrollbar-none">
                         <button
                             type="button"
                             onClick={() => setViewMode("weekly")}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-bold transition-all cursor-pointer ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                                 viewMode === "weekly"
                                     ? "bg-white text-[#2D79C7] shadow-sm"
                                     : "text-gray-500 hover:text-gray-800"
@@ -351,7 +351,7 @@ const Reports = () => {
                         <button
                             type="button"
                             onClick={() => setViewMode("monthly")}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-bold transition-all cursor-pointer ${
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                                 viewMode === "monthly"
                                     ? "bg-white text-[#2D79C7] shadow-sm"
                                     : "text-gray-500 hover:text-gray-800"
@@ -363,24 +363,24 @@ const Reports = () => {
                     </div>
 
                     {/* Date Navigation, Department, Search */}
-                    <div className="flex items-center gap-2.5 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto">
                         {viewMode === "weekly" ? (
-                            <div className="flex items-center bg-[#F8FAFC] border border-gray-200 rounded-[12px] p-1 h-[38px]">
+                            <div className="flex items-center bg-[#F8FAFC] border border-gray-200 rounded-[12px] p-1 h-[38px] max-w-full overflow-x-auto scrollbar-none">
                                 <button
                                     type="button"
                                     onClick={handlePrevWeek}
-                                    className="p-1 text-gray-500 hover:text-gray-800 hover:bg-white rounded-[8px] transition-colors cursor-pointer"
+                                    className="p-1 text-gray-500 hover:text-gray-800 hover:bg-white rounded-[8px] transition-colors cursor-pointer shrink-0"
                                     title="Previous Week"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
-                                <span className="text-xs font-bold text-slate-800 px-2 select-none">
+                                <span className="text-xs font-bold text-slate-800 px-2 select-none whitespace-nowrap">
                                     {weeklyData?.weekRange?.formatted || "Loading week..."}
                                 </span>
                                 <button
                                     type="button"
                                     onClick={handleNextWeek}
-                                    className="p-1 text-gray-500 hover:text-gray-800 hover:bg-white rounded-[8px] transition-colors cursor-pointer"
+                                    className="p-1 text-gray-500 hover:text-gray-800 hover:bg-white rounded-[8px] transition-colors cursor-pointer shrink-0"
                                     title="Next Week"
                                 >
                                     <ChevronRight className="w-4 h-4" />
@@ -388,17 +388,17 @@ const Reports = () => {
                                 <button
                                     type="button"
                                     onClick={handleCurrentWeek}
-                                    className="text-[11px] font-bold text-[#2D79C7] hover:bg-blue-50 px-2 py-0.5 rounded-[6px] transition-colors cursor-pointer border border-blue-100 ml-1"
+                                    className="text-[11px] font-bold text-[#2D79C7] hover:bg-blue-50 px-2 py-0.5 rounded-[6px] transition-colors cursor-pointer border border-blue-100 ml-1 shrink-0"
                                 >
                                     Current
                                 </button>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-1 sm:flex-initial">
                                 <select
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                    className="h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
+                                    className="flex-1 sm:flex-initial h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
                                 >
                                     {MONTH_NAMES.map((name, i) => (
                                         <option key={name} value={i + 1}>{name}</option>
@@ -407,7 +407,7 @@ const Reports = () => {
                                 <select
                                     value={selectedYear}
                                     onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                    className="h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
+                                    className="flex-1 sm:flex-initial h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
                                 >
                                     {[2024, 2025, 2026, 2027].map(yr => (
                                         <option key={yr} value={yr}>{yr}</option>
@@ -420,7 +420,7 @@ const Reports = () => {
                         <select
                             value={selectedDepartment}
                             onChange={(e) => setSelectedDepartment(e.target.value)}
-                            className="h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
+                            className="flex-1 sm:flex-initial h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
                         >
                             {availableDepartments.map(d => (
                                 <option key={d} value={d}>
@@ -433,7 +433,7 @@ const Reports = () => {
                         <select
                             value={attendanceCategory}
                             onChange={(e) => setAttendanceCategory(e.target.value)}
-                            className="h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
+                            className="flex-1 sm:flex-initial h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] px-3 outline-none focus:border-[#2D79C7] cursor-pointer"
                         >
                             <option value="all">All Employees</option>
                             <option value="late">Late Comers (After 10:00 AM)</option>

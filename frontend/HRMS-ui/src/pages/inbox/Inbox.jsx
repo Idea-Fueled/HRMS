@@ -1549,10 +1549,10 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                         </div>
                     ) : (
                         /* Complete Email Reader */
-                        <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
+                        <div className="flex-1 flex flex-col h-full overflow-hidden bg-white max-w-full">
                             {/* Email Action Header */}
-                            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200/80 bg-white">
-                                <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-between px-3.5 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200/80 bg-white">
+                                <div className="flex items-center gap-1.5 sm:gap-2">
                                     <button
                                         onClick={() => {
                                             setSelectedEmailId(null);
@@ -1593,22 +1593,22 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                     </button>
                                 </div>
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 sm:gap-2">
                                     <button
                                         onClick={() => handleReplyInModal(activeEmail)}
                                         title="Reply"
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
+                                        className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
                                     >
                                         <Reply className="w-3.5 h-3.5" />
-                                        <span>Reply</span>
+                                        <span className="hidden sm:inline">Reply</span>
                                     </button>
                                     <button
                                         onClick={() => handleForwardEmail(activeEmail)}
                                         title="Forward"
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
+                                        className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
                                     >
                                         <Forward className="w-3.5 h-3.5" />
-                                        <span>Forward</span>
+                                        <span className="hidden sm:inline">Forward</span>
                                     </button>
                                     <button
                                         onClick={() => window.print()}
@@ -1621,7 +1621,7 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                             </div>
 
                             {/* Scrollable Conversation Content */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            <div className="flex-1 overflow-y-auto overflow-x-auto p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-w-full scrollbar-thin">
                                 {/* Subject & Meta */}
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
@@ -1741,9 +1741,9 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                 })()}
 
                                 {/* Main Email Message Card */}
-                                <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+                                <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4 max-w-full overflow-hidden">
                                     {/* Sender & Recipient Bar */}
-                                    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 border-b border-slate-100 pb-3 sm:pb-4">
                                         <div className="flex items-center gap-3">
                                             {activeEmail.senderAvatar ? (
                                                 <img
@@ -1761,7 +1761,7 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                     <span className="text-sm font-bold text-slate-900">
                                                         {activeEmail.senderName}
                                                     </span>
-                                                    <span className="text-xs text-slate-400">
+                                                    <span className="text-xs text-slate-400 truncate max-w-[150px] sm:max-w-none">
                                                         &lt;{activeEmail.senderEmail}&gt;
                                                     </span>
                                                 </div>
@@ -1773,16 +1773,17 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-right shrink-0">
+                                        <div className="text-left sm:text-right shrink-0">
                                             <span className="text-xs text-slate-400 font-medium">
                                                 {formatFullDate(activeEmail.createdAt)}
                                             </span>
                                         </div>
                                     </div>
 
-                                    {/* Email Body Content */}
+                                    {/* Email Body Content with Horizontal Touch Scrolling */}
                                     <div
-                                        className="prose prose-sm max-w-none text-slate-800 text-sm leading-relaxed"
+                                        className="prose prose-sm max-w-none text-slate-800 text-sm leading-relaxed overflow-x-auto max-w-full scrollbar-thin"
+                                        style={{ WebkitOverflowScrolling: "touch" }}
                                         dangerouslySetInnerHTML={{
                                             __html: activeEmail.body || "<p>(No content)</p>",
                                         }}
@@ -1851,7 +1852,8 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                             </span>
                                         </div>
                                         <div
-                                            className="text-xs text-slate-700 leading-relaxed"
+                                            className="text-xs text-slate-700 leading-relaxed overflow-x-auto max-w-full scrollbar-thin"
+                                            style={{ WebkitOverflowScrolling: "touch" }}
                                             dangerouslySetInnerHTML={{
                                                 __html: replyItem.body || "",
                                             }}
@@ -1907,12 +1909,12 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                COMPOSE EMAIL MODAL
             ───────────────────────────────────────────── */}
             {isComposeOpen && (
-                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
                     <div
                         className={`bg-white rounded-2xl border border-slate-200 shadow-2xl flex flex-col transition-all overflow-hidden ${
                             composeMaximized
                                 ? "w-full h-full max-w-5xl"
-                                : "w-full max-w-2xl max-h-[85vh]"
+                                : "w-[calc(100%-1rem)] sm:w-full max-w-2xl max-h-[88vh]"
                         }`}
                     >
                         {/* Compose Header - Clean White Background */}

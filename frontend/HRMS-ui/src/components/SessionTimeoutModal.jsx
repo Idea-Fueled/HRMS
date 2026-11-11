@@ -31,11 +31,11 @@ const SessionTimeoutModal = ({ countdown, onStayLoggedIn, onLogout }) => {
 
     return ReactDOM.createPortal(
         <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4"
             style={{ background: "rgba(10,16,32,0.70)", backdropFilter: "blur(8px)" }}
         >
             <div
-                className="bg-white rounded-[28px] shadow-2xl w-full max-w-sm overflow-hidden"
+                className="bg-white rounded-[24px] sm:rounded-[28px] shadow-2xl w-[calc(100%-2rem)] max-w-sm overflow-hidden"
                 style={{ animation: "stModalIn 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards" }}
             >
                 <style>{`

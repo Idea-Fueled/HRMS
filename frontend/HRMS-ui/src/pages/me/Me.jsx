@@ -76,7 +76,7 @@ const AnalogClock = () => {
     const dayNum = time.getDate();
 
     return (
-        <div className="relative w-44 h-44 sm:w-48 sm:h-48 rounded-full bg-gradient-to-br from-white via-slate-50 to-slate-100 border-[6px] border-slate-200/90 shadow-[0_16px_38px_rgba(15,23,42,0.14),0_6px_16px_rgba(45,121,199,0.12),inset_0_3px_6px_rgba(255,255,255,1),inset_0_-4px_8px_rgba(0,0,0,0.08)] flex items-center justify-center shrink-0 select-none transform transition-all hover:scale-105 duration-300">
+        <div className="relative w-36 h-36 sm:w-48 sm:h-48 rounded-full bg-gradient-to-br from-white via-slate-50 to-slate-100 border-[5px] sm:border-[6px] border-slate-200/90 shadow-[0_16px_38px_rgba(15,23,42,0.14),0_6px_16px_rgba(45,121,199,0.12),inset_0_3px_6px_rgba(255,255,255,1),inset_0_-4px_8px_rgba(0,0,0,0.08)] flex items-center justify-center shrink-0 select-none transform transition-all hover:scale-105 duration-300">
             {/* Outer Subtle Glass Inner Ring */}
             <div className="absolute inset-1.5 rounded-full border border-slate-200/70 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] bg-white/50 pointer-events-none" />
 
@@ -684,16 +684,16 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     };
 
     return (
-        <div className="premium-3d-card p-6 sm:p-7 select-none">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="premium-3d-card p-4 sm:p-7 select-none">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
                 
                 {/* Left Side: Analog Clock + User & Shift Info */}
-                <div className="flex items-center gap-6">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6">
                     <AnalogClock />
                     
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                         <div>
-                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            <h2 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">
                                 {getTimeGreeting()}, {userName}
                             </h2>
                             <p className="text-xs font-semibold text-slate-500 mt-1">
@@ -701,7 +701,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                             </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                             <span className="text-xs font-medium text-slate-500">Status</span>
                             {isClockedIn ? (
                                 <div className="flex items-center gap-2">
@@ -730,11 +730,11 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                 </div>
 
                 {/* Right Side: Action Buttons with Theme Blue */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
                     <button
                         type="button"
                         onClick={handleClockToggle}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-blue-500/20 active:scale-95 ${
+                        className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-blue-500/20 active:scale-95 ${
                             isClockedIn
                                 ? "bg-[#2D79C7] hover:bg-[#1F5EA8] text-white"
                                 : "bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -747,7 +747,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                     <button
                         type="button"
                         onClick={onOpenWfhModal}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
                     >
                         <Home className="w-4 h-4 text-[#2D79C7]" />
                         <span>Work From Home</span>
@@ -756,7 +756,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
                     <button
                         type="button"
                         onClick={onOpenPartialLeave}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-blue-50/60 border border-slate-200 hover:border-[#2D79C7]/40 text-slate-700 hover:text-[#2D79C7] transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
                     >
                         <FileText className="w-4 h-4 text-[#2D79C7]" />
                         <span>Partial Day</span>
@@ -4712,10 +4712,10 @@ const Me = () => {
     ];
 
     return (
-        <div className="space-y-6 select-none">
+        <div className="space-y-4 sm:space-y-6 select-none">
             {/* Top tab sub-navigation bar */}
-            <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-[20px] px-6 py-1 flex items-center shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
-                <nav className="flex gap-4">
+            <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-[20px] px-3.5 sm:px-6 py-1 flex items-center shadow-[0_1px_4px_rgba(0,0,0,0.02)] overflow-x-auto scrollbar-none">
+                <nav className="flex gap-2 sm:gap-4 shrink-0">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.key;
@@ -4726,7 +4726,7 @@ const Me = () => {
                                 onClick={() => {
                                     setActiveTab(tab.key);
                                 }}
-                                className={`flex items-center gap-2 px-3 py-4 text-[13px] font-bold border-b-2 transition-all cursor-pointer relative ${isActive
+                                className={`flex items-center gap-2 px-3 py-3 sm:py-4 text-xs sm:text-[13px] font-bold border-b-2 transition-all cursor-pointer relative whitespace-nowrap shrink-0 ${isActive
                                     ? "border-[#2D79C7] text-[#2D79C7]"
                                     : "border-transparent text-gray-400 hover:text-gray-600"
                                     }`}

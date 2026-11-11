@@ -201,9 +201,9 @@ const ActivityLogs = () => {
     };
 
     return (
-        <div className="space-y-6 pb-12 select-none animate-fadeIn">
+        <div className="space-y-4 sm:space-y-6 pb-12 select-none animate-fadeIn">
             {/* Standard Header & Controls Card */}
-            <div className="premium-3d-card p-5 space-y-4">
+            <div className="premium-3d-card p-4 sm:p-5 space-y-4">
                 {/* Title & Actions Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -212,7 +212,7 @@ const ActivityLogs = () => {
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-base font-bold text-[#1E1E1E] tracking-tight">
+                                <h1 className="text-sm sm:text-base font-bold text-[#1E1E1E] tracking-tight">
                                     User Activity Logs
                                 </h1>
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
@@ -226,7 +226,7 @@ const ActivityLogs = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 self-start sm:self-auto">
                         <button
                             type="button"
                             onClick={() => {
@@ -243,15 +243,15 @@ const ActivityLogs = () => {
                 </div>
 
                 {/* Filters Row */}
-                <div className="pt-3 border-t border-[#F3F4F6] flex flex-wrap items-center justify-between gap-3">
+                <div className="pt-3 border-t border-[#F3F4F6] flex flex-col md:flex-row md:items-center justify-between gap-3">
                     {/* Left Filter Group */}
-                    <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
                         {/* Employee Dropdown Filter */}
-                        <div className="relative">
+                        <div className="relative flex-1 min-[480px]:flex-initial">
                             <select
                                 value={selectedEmployee}
                                 onChange={(e) => handleEmployeeChange(e.target.value)}
-                                className="h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] pl-3 pr-8 outline-none focus:border-[#2D79C7] cursor-pointer"
+                                className="w-full sm:w-auto h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] pl-3 pr-8 outline-none focus:border-[#2D79C7] cursor-pointer"
                             >
                                 <option value="All">All Tracked Employees</option>
                                 {employees.map((emp) => (
@@ -263,18 +263,18 @@ const ActivityLogs = () => {
                         </div>
 
                         {/* Date Picker Filter */}
-                        <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 rounded-[12px] p-1 h-[38px]">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400 ml-2" />
+                        <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 rounded-[12px] p-1 h-[38px] flex-1 min-[480px]:flex-initial">
+                            <Calendar className="w-3.5 h-3.5 text-gray-400 ml-2 shrink-0" />
                             <input
                                 type="date"
                                 value={selectedDate}
                                 onChange={(e) => handleDateChange(e.target.value)}
-                                className="bg-transparent text-xs font-bold text-slate-800 outline-none pr-2 cursor-pointer"
+                                className="bg-transparent text-xs font-bold text-slate-800 outline-none pr-2 cursor-pointer w-full"
                             />
                             <button
                                 type="button"
                                 onClick={handleTodayClick}
-                                className={`text-[10.5px] font-bold px-2 py-0.5 rounded-[6px] transition-colors cursor-pointer border ${
+                                className={`text-[10.5px] font-bold px-2 py-0.5 rounded-[6px] transition-colors cursor-pointer border shrink-0 ${
                                     selectedDate === new Date().toISOString().split("T")[0]
                                         ? "bg-blue-50 text-[#2D79C7] border-blue-200"
                                         : "hover:bg-white text-gray-500 border-transparent"
@@ -286,7 +286,7 @@ const ActivityLogs = () => {
                                 <button
                                     type="button"
                                     onClick={handleClearDate}
-                                    className="text-[10px] font-semibold text-gray-400 hover:text-gray-700 px-1 cursor-pointer"
+                                    className="text-[10px] font-semibold text-gray-400 hover:text-gray-700 px-1 cursor-pointer shrink-0"
                                     title="View All Dates"
                                 >
                                     Clear
@@ -295,11 +295,11 @@ const ActivityLogs = () => {
                         </div>
 
                         {/* Action Type Filter */}
-                        <div className="relative">
+                        <div className="relative flex-1 min-[480px]:flex-initial">
                             <select
                                 value={selectedActionType}
                                 onChange={(e) => handleActionTypeChange(e.target.value)}
-                                className="h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] pl-3 pr-8 outline-none focus:border-[#2D79C7] cursor-pointer"
+                                className="w-full sm:w-auto h-[38px] bg-white border border-gray-200 text-[#1E1E1E] text-xs font-bold rounded-[12px] pl-3 pr-8 outline-none focus:border-[#2D79C7] cursor-pointer"
                             >
                                 {ACTION_TYPE_OPTIONS.map((opt) => (
                                     <option key={opt.value} value={opt.value}>
@@ -311,7 +311,7 @@ const ActivityLogs = () => {
                     </div>
 
                     {/* Right: Search Input */}
-                    <div className="relative w-full sm:w-64">
+                    <div className="relative w-full md:w-64">
                         <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                             type="text"
@@ -367,7 +367,7 @@ const ActivityLogs = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
+                        <table className="w-full min-w-[650px] text-left text-xs border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/80 text-gray-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-[#F3F4F6]">
                                     <th className="py-3 px-4 w-40">Timestamp</th>

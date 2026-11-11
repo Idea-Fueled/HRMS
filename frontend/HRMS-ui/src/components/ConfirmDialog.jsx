@@ -46,10 +46,10 @@ const ConfirmDialog = ({
     return ReactDOM.createPortal(
         <>
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[1200]" onClick={handleCancel} />
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1201] w-full max-w-sm mx-4">
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1201] w-[calc(100%-2rem)] max-w-sm">
                 <div className="bg-white rounded-[20px] border border-gray-100 shadow-2xl overflow-hidden select-none">
                     {/* Header */}
-                    <div className="flex items-start justify-between px-6 pt-6 pb-0">
+                    <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-0">
                         <div className={`w-11 h-11 rounded-full border flex items-center justify-center shrink-0 ${iconBg}`}>
                             <Icon className={`w-5 h-5 ${iconColor}`} strokeWidth={2} />
                         </div>
@@ -62,13 +62,13 @@ const ConfirmDialog = ({
                     </div>
 
                     {/* Body */}
-                    <div className="px-6 pt-4 pb-6">
+                    <div className="px-5 sm:px-6 pt-4 pb-5 sm:pb-6">
                         <h3 className="text-[#1E1E1E] text-[15px] font-black leading-tight">{title}</h3>
                         <p className="text-gray-400 text-[13px] mt-1.5 leading-relaxed">{message}</p>
                     </div>
 
                     {/* Footer */}
-                    <div className="px-6 pb-6 flex gap-3">
+                    <div className="px-5 sm:px-6 pb-5 sm:pb-6 flex gap-3">
                         <button
                             onClick={handleCancel}
                             disabled={loading}

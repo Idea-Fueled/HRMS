@@ -591,6 +591,7 @@ const Navbar = ({ onToggleSidebar }) => {
         });
 
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const profileRef = useRef(null);
 
     useEffect(() => {
@@ -604,36 +605,64 @@ const Navbar = ({ onToggleSidebar }) => {
     }, []);
 
     return (
-        <header className="sticky top-0 right-0 bg-white border-b border-gray-100 h-20 px-4 sm:px-8 flex items-center justify-between z-20 select-none shadow-[0_1px_3px_rgba(0,0,0,0.02)] gap-2">
+        <header className="sticky top-0 right-0 bg-white border-b border-gray-100 h-16 sm:h-20 px-3 sm:px-8 flex items-center justify-between z-20 select-none shadow-[0_1px_3px_rgba(0,0,0,0.02)] gap-2">
+
+            {/* Mobile Search Overlay Bar */}
+            {mobileSearchOpen && (
+                <div className="absolute inset-0 bg-white z-30 px-3 flex items-center gap-2 md:hidden animate-fadeIn">
+                    <div className="flex-1 min-w-0">
+                        <GlobalSearch />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setMobileSearchOpen(false)}
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl cursor-pointer shrink-0"
+                        title="Close search"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+            )}
 
             {/* Left — hamburger + page title */}
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 {onToggleSidebar && (
                     <button
                         onClick={onToggleSidebar}
+                        aria-label="Toggle Navigation Menu"
                         className="lg:hidden text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-50 rounded-[12px] border border-gray-200/80 transition-all cursor-pointer shrink-0"
                     >
                         <Menu className="w-5 h-5" />
                     </button>
                 )}
                 <div className="flex flex-col min-w-0 text-left">
-                    <h2 className="text-[#1E1E1E] text-sm sm:text-base md:text-lg font-bold tracking-wide leading-tight truncate">
+                    <h2 className="text-[#1E1E1E] text-sm sm:text-base md:text-lg font-bold tracking-wide leading-tight truncate max-w-[130px] min-[400px]:max-w-[180px] sm:max-w-none">
                         {meta.title}
                     </h2>
                 </div>
             </div>
 
-            {/* Center — global employee search */}
+            {/* Center — global employee search (Desktop/Tablet) */}
             <div className="hidden md:flex flex-1 max-w-md mx-4 lg:mx-8">
                 <GlobalSearch />
             </div>
 
-            {/* Right — role badge, notifications, profile */}
-            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Right — mobile search toggle, role badge, profile */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
-                {/* Role badge (Hidden for standard employees) */}
+                {/* Mobile Search Icon Button */}
+                <button
+                    type="button"
+                    onClick={() => setMobileSearchOpen(true)}
+                    className="md:hidden text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-50 rounded-[12px] border border-gray-200/80 transition-all cursor-pointer"
+                    title="Open Search"
+                >
+                    <Search className="w-4.5 h-4.5 text-gray-600" />
+                </button>
+
+                {/* Role badge (Visible on tablet/desktop, compact for clean mobile) */}
                 {user?.role && user.role.toLowerCase() !== "employee" && (
-                    <div className={`h-9 px-3 rounded-[12px] border text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs ${
+                    <div className={`hidden sm:flex h-9 px-3 rounded-[12px] border text-xs font-bold items-center gap-1.5 transition-all shadow-2xs ${
                         ROLE_CONFIG[user.role?.toLowerCase()]?.badgeCls || "bg-slate-100 text-slate-700 border-slate-200"
                     }`}>
                         <Shield className="w-3.5 h-3.5 shrink-0 stroke-[2.2] text-[#1F5EA8]" />

@@ -106,7 +106,7 @@ const CelebrationWishModal = ({ isOpen, onClose, data, onWishSent }) => {
     };
 
     return ReactDOM.createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 select-none">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 select-none">
             {/* Full-screen Dark Backdrop */}
             <div
                 className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] transition-opacity animate-fadeIn"
@@ -119,7 +119,7 @@ const CelebrationWishModal = ({ isOpen, onClose, data, onWishSent }) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Clean Header */}
-                <div className="px-5 py-4 border-b border-slate-150 flex items-center justify-between bg-white">
+                <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-150 flex items-center justify-between bg-white">
                     <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-8 h-8 rounded-lg ${config.iconBg} ${config.iconColor} border flex items-center justify-center shrink-0`}>
                             <HeaderIcon className="w-4 h-4" />
@@ -141,7 +141,7 @@ const CelebrationWishModal = ({ isOpen, onClose, data, onWishSent }) => {
                 </div>
 
                 {/* Modal Body */}
-                <div className="p-5 space-y-4">
+                <div className="p-4 sm:p-5 space-y-4">
                     {/* Recipient Snippet */}
                     <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200/70 rounded-xl">
                         <div className="flex items-center gap-2.5 min-w-0">

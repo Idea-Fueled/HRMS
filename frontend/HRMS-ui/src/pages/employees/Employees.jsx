@@ -746,41 +746,47 @@ export const ViewEmployeeDrawer = ({ employee, onClose, onEdit, onInitiateExit }
         <>
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={onClose} />
             <div className="fixed top-0 right-0 h-full w-full max-w-[540px] bg-white z-50 shadow-2xl flex flex-col overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] shadow-md">
-                    <div className="flex items-center gap-3">
-                        <Avatar src={employee.profilePicture} name={name} size="w-12 h-12" textSize="text-base" className="ring-2 ring-white/20" />
-                        <div>
-                            <h4 className="text-white text-base font-black leading-tight tracking-wide">{name}</h4>
-                            <p className="text-white/70 text-xs font-semibold mt-0.5">{employee.designation} · {employee.employeeId}</p>
+                <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <Avatar src={employee.profilePicture} name={name} size="w-11 h-11 sm:w-12 sm:h-12" textSize="text-base" className="ring-2 ring-white/20 shrink-0" />
+                            <div className="min-w-0">
+                                <h4 className="text-white text-sm sm:text-base font-black leading-tight tracking-wide truncate">{name}</h4>
+                                <p className="text-white/70 text-xs font-semibold mt-0.5 truncate">{employee.designation} · {employee.employeeId}</p>
+                            </div>
                         </div>
+                        <button onClick={onClose} aria-label="Close drawer" className="sm:hidden text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-[10px] transition-colors cursor-pointer shrink-0">
+                            <X className="w-5 h-5" />
+                        </button>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                         <button
                             onClick={() => {
                                 onClose();
                                 navigate(`/profile/${employee._id}`);
                             }}
-                            className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3.5 py-2 rounded-[10px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                            className="flex-1 sm:flex-initial bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-[10px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
                         >
                             <UserIcon className="w-3.5 h-3.5" /> Full Profile
                         </button>
                         {onEdit && (
-                            <button onClick={() => { onClose(); onEdit(employee); }} className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3.5 py-2 rounded-[10px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+                            <button onClick={() => { onClose(); onEdit(employee); }} className="flex-1 sm:flex-initial bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-[10px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap">
                                 <Edit3 className="w-3.5 h-3.5" /> Edit
                             </button>
                         )}
                         {onInitiateExit && !isManagementUser(employee) && (
-                            <button onClick={() => { onClose(); onInitiateExit(employee); }} className="bg-rose-500/80 hover:bg-rose-600 text-white text-xs font-bold px-3.5 py-2 rounded-[10px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+                            <button onClick={() => { onClose(); onInitiateExit(employee); }} className="w-full sm:w-auto bg-rose-500/80 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-[10px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap">
                                 <LogOut className="w-3.5 h-3.5" /> Initiate Exit
                             </button>
                         )}
-                        <button onClick={onClose} className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-[10px] transition-colors cursor-pointer">
+                        <button onClick={onClose} aria-label="Close drawer" className="hidden sm:inline-flex text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-[10px] transition-colors cursor-pointer shrink-0">
                             <X className="w-4.5 h-4.5" />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/10">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6 bg-slate-50/10">
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${statusBadge(employee.status)}`}>{statusLabel(employee.status)}</span>
                         <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-2xs ${empTypeBadge(effectiveType(employee))}`}>{empTypeLabel(effectiveType(employee))}</span>
@@ -1279,28 +1285,28 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
             <div className="fixed top-0 right-0 h-full w-full max-w-[560px] bg-white z-50 shadow-2xl flex flex-col overflow-hidden">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8]">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-[10px] bg-white/20 flex items-center justify-center">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8]">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-[10px] bg-white/20 flex items-center justify-center shrink-0">
                             {isEdit ? <Edit3 className="w-4 h-4 text-white" /> : <UserIcon className="w-4 h-4 text-white" />}
                         </div>
-                        <div>
-                            <p className="text-white font-black text-sm">{isEdit ? "Edit Employee" : "Add New Employee"}</p>
-                            <p className="text-white/60 text-xs">{isEdit ? `Editing ${employee?.employeeId}` : "Fill in the details below"}</p>
+                        <div className="min-w-0">
+                            <p className="text-white font-black text-sm truncate">{isEdit ? "Edit Employee" : "Add New Employee"}</p>
+                            <p className="text-white/60 text-xs truncate">{isEdit ? `Editing ${employee?.employeeId}` : "Fill in the details below"}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-[8px] transition-colors cursor-pointer">
+                    <button onClick={onClose} aria-label="Close form" className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-[8px] transition-colors cursor-pointer shrink-0">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
 
                     {/* Basic Information */}
                     <SectionTitle>Basic Information</SectionTitle>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="col-span-1 sm:col-span-2">
                             <FormField label="Employee ID" required error={errors.employeeId}>
                                 <div className="relative">
                                     <input value={form.employeeId} onChange={set("employeeId")} placeholder="e.g. EMP-001" className={`${inputCls} pr-8 ${errors.employeeId ? "border-rose-300" : ""}`} />
@@ -2231,7 +2237,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-[#F3F4F6] flex items-center gap-3 bg-white">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-[#F3F4F6] flex items-center gap-3 bg-white">
                     <button onClick={onClose} className="flex-1 py-2.5 text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-[12px] transition-colors cursor-pointer">
                         Cancel
                     </button>

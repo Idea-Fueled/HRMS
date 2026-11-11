@@ -1049,9 +1049,9 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
 
             <Card>
                 <CardHeader icon={Clock} title="Time Today" />
-                <div className="px-5 pb-5 pt-4">
+                <div className="px-3.5 sm:px-5 pb-4 sm:pb-5 pt-3 sm:pt-4">
                     <div
-                        className="rounded-[16px] px-5 py-4 mb-4 relative"
+                        className="rounded-[16px] px-4 sm:px-5 py-3 sm:py-4 mb-4 relative"
                         style={{ background: "linear-gradient(125deg, #2D79C7 0%, #3A88D8 45%, #1F5EA8 100%)" }}
                     >
                         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[16px]">
@@ -1063,24 +1063,24 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
                                     Current Time
                                 </span>
                                 <div className="flex items-baseline mt-0.5">
-                                    <span className="text-white text-[32px] font-extrabold tracking-tight leading-none">{hm}</span>
-                                    <span className="text-white/60 text-xl font-semibold">:{sec}</span>
-                                    <span className="text-white/80 text-base font-bold ml-1.5">{ampm}</span>
+                                    <span className="text-white text-[28px] sm:text-[32px] font-extrabold tracking-tight leading-none">{hm}</span>
+                                    <span className="text-white/60 text-lg sm:text-xl font-semibold">:{sec}</span>
+                                    <span className="text-white/80 text-sm sm:text-base font-bold ml-1.5">{ampm}</span>
                                 </div>
-                                <span className="text-white/55 text-[11px] mt-1">{dateStr}</span>
+                                <span className="text-white/55 text-[10.5px] sm:text-[11px] mt-1 block">{dateStr}</span>
                             </div>
 
-                            <div className="flex items-center gap-2 relative" ref={dropRef}>
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 relative w-full sm:w-auto" ref={dropRef}>
                                 <button
                                     onClick={handleClockToggle}
-                                    className="bg-white text-[#1F5EA8] text-[12px] font-bold px-4 py-2.5 rounded-[10px] shadow-sm hover:bg-white/90 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                                    className="flex-1 sm:flex-initial justify-center bg-white text-[#1F5EA8] text-[12px] font-bold px-4 py-2.5 rounded-[10px] shadow-sm hover:bg-white/90 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                                 >
                                     {isWebClockedIn ? <LogOut className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
                                     {isWebClockedIn ? "Clock Out" : "Clock In"}
                                 </button>
                                 <button
                                     onClick={() => setOtherOpen((p) => !p)}
-                                    className="bg-white/15 text-white border border-white/25 text-[12px] font-bold px-3.5 py-2.5 rounded-[10px] hover:bg-white/25 active:scale-95 transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                                    className="bg-white/15 text-white border border-white/25 text-[12px] font-bold px-3.5 py-2.5 rounded-[10px] hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                                 >
                                     Other <ChevronDown className={`w-3.5 h-3.5 transition-transform ${otherOpen ? "rotate-180" : ""}`} />
                                 </button>
@@ -1863,7 +1863,7 @@ const WelcomeBanner = ({ user }) => {
 
     return (
         <section
-            className="relative overflow-hidden rounded-[20px] shadow-[0_15px_40px_rgba(37,99,235,0.18)] border border-blue-600/20 px-6 sm:px-8 py-4 sm:py-5 flex flex-col sm:flex-row justify-between items-center gap-3 select-none"
+            className="relative overflow-hidden rounded-[20px] shadow-[0_15px_40px_rgba(37,99,235,0.18)] border border-blue-600/20 px-4 sm:px-8 py-3.5 sm:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 select-none"
             style={{
                 background: "linear-gradient(125deg, #2D79C7 0%, #3A88D8 40%, #1F5EA8 100%)",
             }}
@@ -1875,14 +1875,14 @@ const WelcomeBanner = ({ user }) => {
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
             </div>
 
-            <div className="flex flex-col text-left relative z-10">
-                <h1 className="text-white text-[19px] sm:text-[21px] font-bold tracking-tight leading-tight">
+            <div className="flex flex-col text-left relative z-10 min-w-0">
+                <h1 className="text-white text-base sm:text-[21px] font-bold tracking-tight leading-tight">
                     {firstName ? `Hi ${firstName}, ${personalMessage} 👋` : "Welcome back! 👋"}
                 </h1>
             </div>
 
-            <div className="relative z-10 shrink-0">
-                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/25 rounded-[14px] px-4 py-2 text-[12.5px] text-white font-semibold tracking-wide shadow-xs">
+            <div className="relative z-10 shrink-0 self-start sm:self-auto">
+                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/25 rounded-[14px] px-3 sm:px-4 py-1.5 sm:py-2 text-[11.5px] sm:text-[12.5px] text-white font-semibold tracking-wide shadow-xs">
                     <Calendar className="w-3.5 h-3.5 text-[#FFEA00] shrink-0" />
                     <span>{formattedDate}</span>
                 </div>

@@ -66,7 +66,7 @@ const SetPasswordInvite = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden font-sans">
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-3.5 sm:p-4 relative overflow-hidden font-sans">
             {/* Background glowing orbs */}
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -83,7 +83,7 @@ const SetPasswordInvite = () => {
                     />
                 </div>
 
-                <div className="w-full bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-8 transition-all">
+                <div className="w-full bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-5 sm:p-8 transition-all">
                     <span className="text-xs font-semibold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center gap-1.5">
                         <Sparkles className="w-3 h-3 text-indigo-600" /> Welcome to Idea-Fueled HRMS
                     </span>

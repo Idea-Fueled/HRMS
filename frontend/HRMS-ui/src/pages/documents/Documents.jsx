@@ -368,11 +368,11 @@ export const Documents = () => {
     );
 
     return (
-        <div className="space-y-6 select-none animate-fadeIn">
+        <div className="space-y-4 sm:space-y-6 select-none animate-fadeIn">
             {/* Header section */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-150 gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-150 gap-3 sm:gap-4">
                 <div>
-                    <h2 className="text-[#1E1E1E] text-[20px] font-black tracking-wide">Documents Center</h2>
+                    <h2 className="text-[#1E1E1E] text-lg sm:text-[20px] font-black tracking-wide">Documents Center</h2>
                 </div>
                 {isHrOrAdmin && (
                     <button
@@ -386,10 +386,10 @@ export const Documents = () => {
 
             {/* Role-based sub-tabs header (Only for Admin/HR with permission) */}
             {showEmployeeDocsTab && (
-                <div className="flex border-b border-gray-200">
+                <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-none pb-0.5">
                     <button
                         onClick={() => { setActiveTab("company"); setSelectedCategory(""); setSelectedEmployeeId(""); }}
-                        className={`px-5 py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                        className={`px-4 sm:px-5 py-2.5 sm:py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                             activeTab === "company"
                                 ? "border-[#2D79C7] text-[#2D79C7]"
                                 : "border-transparent text-gray-400 hover:text-gray-600"
@@ -400,7 +400,7 @@ export const Documents = () => {
                     </button>
                     <button
                         onClick={() => { setActiveTab("employee"); setSelectedCategory(""); setSelectedEmployeeId(""); }}
-                        className={`px-5 py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                        className={`px-4 sm:px-5 py-2.5 sm:py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                             activeTab === "employee"
                                 ? "border-[#2D79C7] text-[#2D79C7]"
                                 : "border-transparent text-gray-400 hover:text-gray-600"
@@ -413,7 +413,7 @@ export const Documents = () => {
             )}
 
             {/* Filter Bar Controls */}
-            <div className="premium-3d-card-mini flex flex-col md:flex-row md:items-center justify-between gap-4 p-4">
+            <div className="premium-3d-card-mini flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 p-3.5 sm:p-4">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                     <SearchBar
                         value={searchQuery}
@@ -610,7 +610,7 @@ export const Documents = () => {
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40" onClick={closeFormDrawer} />
                     <div className="fixed top-0 right-0 h-full w-full max-w-[480px] bg-white z-50 shadow-2xl flex flex-col overflow-hidden animate-slideLeft">
                         {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-150 bg-slate-50">
+                        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-150 bg-slate-50">
                             <div>
                                 <h4 className="text-[#1E1E1E] text-sm font-black tracking-wide">
                                     {editingDoc ? "Edit Document" : "Add New Document"}
@@ -628,7 +628,7 @@ export const Documents = () => {
                         </div>
 
                         {/* Form */}
-                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
                             {/* Document Title */}
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Document Title *</label>

@@ -578,59 +578,61 @@ export const generateWeeklyEmailHtml = (report, filename) => {
         .slice(0, 3);
 
     const overtimeSnippet = topOvertime.length > 0 ? `
-        <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 12px; padding: 14px 16px; margin: 16px 24px;">
-            <div style="font-size: 11px; font-weight: 800; color: #854d0e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+        <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 12px; padding: 12px 14px; margin: 8px 14px 12px; box-sizing: border-box;">
+            <div style="font-size: 10.5px; font-weight: 800; color: #854d0e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
                 ⚡ Overtime Highlights (Daily &gt; 8 Hours)
             </div>
             ${topOvertime.map(e => `
-                <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: #713f12;">
-                    <span><strong>${e.fullName}</strong> (${e.department})</span>
-                    <span style="font-weight: 800; color: #b45309;">${e.totalOvertimeDisplay}</span>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0; color: #713f12; gap: 8px;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><strong>${e.fullName}</strong> <span style="opacity: 0.8; font-size: 11px;">(${e.department})</span></span>
+                    <span style="font-weight: 800; color: #b45309; white-space: nowrap; flex-shrink: 0;">${e.totalOvertimeDisplay}</span>
                 </div>
             `).join("")}
         </div>
     ` : "";
 
     return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #f1f5f9; color: #1e293b;">
-        <div style="background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; width: 100%; margin: 0 auto; padding: 12px 6px; background-color: #f1f5f9; color: #1e293b; box-sizing: border-box; -webkit-text-size-adjust: 100%;">
+        <div style="background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); width: 100%; box-sizing: border-box;">
             <!-- Header -->
-            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 28px 32px; color: #ffffff;">
-                <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 20px 16px; color: #ffffff; box-sizing: border-box;">
+                <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 4px 10px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
                     Weekly Executive Summary
                 </div>
-                <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Weekly Work &amp; Attendance Report</h1>
-                <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-weight: 500;">
+                <h1 style="margin: 0; font-size: 18px; line-height: 1.3; font-weight: 800; letter-spacing: -0.3px; color: #ffffff;">Weekly Work &amp; Attendance Report</h1>
+                <p style="margin: 6px 0 0; font-size: 12px; opacity: 0.9; font-weight: 500; color: #ffffff;">
                     Period: <strong>${weekRange.formatted}</strong> (Monday – Friday)
                 </p>
             </div>
 
-            <!-- KPI Cards -->
-            <div style="padding: 24px 24px 12px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
+            <!-- KPI Cards 2x2 Grid for Strict Mobile & Desktop Responsiveness -->
+            <div style="padding: 12px 10px 6px; box-sizing: border-box; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0;">
                     <tr>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: 800; text-transform: uppercase;">Total Hours</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin-top: 4px;">${summary.totalWorkDisplay}</div>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Total Hours</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #0f172a; margin-top: 3px; word-break: break-word;">${summary.totalWorkDisplay}</div>
                             </div>
                         </td>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: 800; text-transform: uppercase;">Avg / Employee</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #2563eb; margin-top: 4px;">${summary.avgWorkHours}h</div>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Avg / Employee</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #2563eb; margin-top: 3px; word-break: break-word;">${summary.avgWorkHours}h</div>
                             </div>
                         </td>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #92400e; font-weight: 800; text-transform: uppercase;">Overtime</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #b45309; margin-top: 4px;">${summary.totalOvertimeDisplay}</div>
+                    </tr>
+                    <tr>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #92400e; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Overtime</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #b45309; margin-top: 3px; word-break: break-word;">${summary.totalOvertimeDisplay}</div>
                             </div>
                         </td>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: 800; text-transform: uppercase;">Breaks</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #475569; margin-top: 4px;">${summary.totalBreakDisplay}</div>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Breaks</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #475569; margin-top: 3px; word-break: break-word;">${summary.totalBreakDisplay}</div>
                             </div>
                         </td>
                     </tr>
@@ -640,29 +642,29 @@ export const generateWeeklyEmailHtml = (report, filename) => {
             ${overtimeSnippet}
 
             <!-- Excel Export Card Banner (Requirement: Excel sheet export option on mail) -->
-            <div style="padding: 8px 24px 24px;">
-                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #a7f3d0; border-radius: 16px; padding: 22px; text-align: center;">
-                    <div style="font-size: 28px; margin-bottom: 6px;">📊</div>
-                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #065f46;">
+            <div style="padding: 6px 14px 18px; box-sizing: border-box;">
+                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #a7f3d0; border-radius: 14px; padding: 18px 14px; text-align: center; box-sizing: border-box;">
+                    <div style="font-size: 24px; margin-bottom: 4px;">📊</div>
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #065f46; line-height: 1.3;">
                         Complete Employee Attendance Excel Sheet Attached
                     </h3>
-                    <p style="margin: 6px 0 16px; font-size: 12.5px; color: #047857; line-height: 1.5;">
+                    <p style="margin: 6px 0 14px; font-size: 12px; color: #047857; line-height: 1.4;">
                         The full employee attendance report (with daily hours, breaks, and overtime) for <strong>${summary.totalEmployees} active team members</strong> has been compiled into the attached Excel spreadsheet (<strong>${filename}</strong>).
                     </p>
 
-                    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-                        <a href="${frontendUrl}/reports" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-size: 12.5px; font-weight: 800; letter-spacing: 0.3px; box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2);">
+                    <div style="text-align: center;">
+                        <a href="${frontendUrl}/reports" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.3px; box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2); max-width: 100%; box-sizing: border-box;">
                             📥 View &amp; Export Excel in HRMS
                         </a>
                     </div>
-                    <div style="font-size: 11px; color: #059669; margin-top: 10px; opacity: 0.9;">
+                    <div style="font-size: 10.5px; color: #059669; margin-top: 8px; opacity: 0.9;">
                         Note: Management executives are excluded from this report per organization policy.
                     </div>
                 </div>
             </div>
 
             <!-- Footer -->
-            <div style="background-color: #f8fafc; padding: 16px 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #64748b;">
+            <div style="background-color: #f8fafc; padding: 14px 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 10.5px; color: #64748b; line-height: 1.4; box-sizing: border-box;">
                 Idea-Fueled HRMS Attendance Intelligence Engine · Dispatched every Saturday at 10:00 AM.
             </div>
         </div>
@@ -678,45 +680,47 @@ export const generateMonthlyEmailHtml = (report, filename) => {
     const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/+$/, "");
 
     return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #f1f5f9; color: #1e293b;">
-        <div style="background-color: #ffffff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; width: 100%; margin: 0 auto; padding: 12px 6px; background-color: #f1f5f9; color: #1e293b; box-sizing: border-box; -webkit-text-size-adjust: 100%;">
+        <div style="background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); width: 100%; box-sizing: border-box;">
             <!-- Header -->
-            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 28px 32px; color: #ffffff;">
-                <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 20px 16px; color: #ffffff; box-sizing: border-box;">
+                <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; padding: 4px 10px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
                     Monthly Executive Summary
                 </div>
-                <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">Monthly Work &amp; Attendance Report</h1>
-                <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-weight: 500;">
+                <h1 style="margin: 0; font-size: 18px; line-height: 1.3; font-weight: 800; letter-spacing: -0.3px; color: #ffffff;">Monthly Work &amp; Attendance Report</h1>
+                <p style="margin: 6px 0 0; font-size: 12px; opacity: 0.9; font-weight: 500; color: #ffffff;">
                     Month: <strong>${monthName}</strong> (Week-by-Week Breakdown)
                 </p>
             </div>
 
-            <!-- KPI Cards -->
-            <div style="padding: 24px 24px 12px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
+            <!-- KPI Cards 2x2 Grid for Strict Mobile & Desktop Responsiveness -->
+            <div style="padding: 12px 10px 6px; box-sizing: border-box; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0;">
                     <tr>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: 800; text-transform: uppercase;">Total Hours</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin-top: 4px;">${summary.totalWorkDisplay}</div>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Total Hours</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #0f172a; margin-top: 3px; word-break: break-word;">${summary.totalWorkDisplay}</div>
                             </div>
                         </td>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: 800; text-transform: uppercase;">Avg / Employee</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #2563eb; margin-top: 4px;">${summary.avgWorkHours}h</div>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Avg / Employee</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #2563eb; margin-top: 3px; word-break: break-word;">${summary.avgWorkHours}h</div>
                             </div>
                         </td>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #92400e; font-weight: 800; text-transform: uppercase;">Overtime</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #b45309; margin-top: 4px;">${summary.totalOvertimeDisplay}</div>
+                    </tr>
+                    <tr>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #92400e; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Overtime</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #b45309; margin-top: 3px; word-break: break-word;">${summary.totalOvertimeDisplay}</div>
                             </div>
                         </td>
-                        <td width="25%" style="padding: 6px;">
-                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 10px; text-align: center;">
-                                <div style="font-size: 10px; color: #64748b; font-weight: 800; text-transform: uppercase;">Breaks</div>
-                                <div style="font-size: 20px; font-weight: 900; color: #475569; margin-top: 4px;">${summary.totalBreakDisplay}</div>
+                        <td width="50%" style="padding: 4px; vertical-align: top; box-sizing: border-box;">
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 8px; text-align: center; box-sizing: border-box;">
+                                <div style="font-size: 9.5px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;">Breaks</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #475569; margin-top: 3px; word-break: break-word;">${summary.totalBreakDisplay}</div>
                             </div>
                         </td>
                     </tr>
@@ -724,18 +728,18 @@ export const generateMonthlyEmailHtml = (report, filename) => {
             </div>
 
             <!-- Excel Export Card Banner -->
-            <div style="padding: 8px 24px 24px;">
-                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #a7f3d0; border-radius: 16px; padding: 22px; text-align: center;">
-                    <div style="font-size: 28px; margin-bottom: 6px;">📊</div>
-                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #065f46;">
+            <div style="padding: 6px 14px 18px; box-sizing: border-box;">
+                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #a7f3d0; border-radius: 14px; padding: 18px 14px; text-align: center; box-sizing: border-box;">
+                    <div style="font-size: 24px; margin-bottom: 4px;">📊</div>
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #065f46; line-height: 1.3;">
                         Complete Monthly Attendance Excel Sheet Attached
                     </h3>
-                    <p style="margin: 6px 0 16px; font-size: 12.5px; color: #047857; line-height: 1.5;">
+                    <p style="margin: 6px 0 14px; font-size: 12px; color: #047857; line-height: 1.4;">
                         The full month week-by-week attendance report for <strong>${summary.totalEmployees} active team members</strong> has been compiled into the attached Excel spreadsheet (<strong>${filename}</strong>).
                     </p>
 
-                    <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-                        <a href="${frontendUrl}/reports" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-size: 12.5px; font-weight: 800; letter-spacing: 0.3px; box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2);">
+                    <div style="text-align: center;">
+                        <a href="${frontendUrl}/reports" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.3px; box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2); max-width: 100%; box-sizing: border-box;">
                             📥 View &amp; Export Excel in HRMS
                         </a>
                     </div>
@@ -743,7 +747,7 @@ export const generateMonthlyEmailHtml = (report, filename) => {
             </div>
 
             <!-- Footer -->
-            <div style="background-color: #f8fafc; padding: 16px 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #64748b;">
+            <div style="background-color: #f8fafc; padding: 14px 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 10.5px; color: #64748b; line-height: 1.4; box-sizing: border-box;">
                 Idea-Fueled HRMS Attendance Intelligence Engine · Dispatched on 1st of every month at 10:00 AM.
             </div>
         </div>

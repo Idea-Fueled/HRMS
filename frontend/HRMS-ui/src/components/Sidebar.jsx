@@ -375,6 +375,10 @@ const Sidebar = ({ onClose }) => {
         }))
         .filter(cat => cat.items.length > 0);
 
+    const handleNavClick = () => {
+        if (onClose) onClose();
+    };
+
     return (
         <aside className="w-[280px] h-screen bg-gradient-to-b from-[#225FA3] to-[#144277] flex flex-col border-r border-white/10 overflow-hidden select-none z-30 shadow-2xl relative">
             <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
@@ -384,7 +388,7 @@ const Sidebar = ({ onClose }) => {
             <div className="h-20 px-6 flex items-center justify-between border-b border-white/10 relative z-10">
                 <img src={ideaFueledLogo} alt="Idea Fueled Logo" className="h-auto max-h-12 object-contain" />
                 {onClose && (
-                    <button onClick={onClose} className="lg:hidden text-white/70 hover:text-white p-1 hover:bg-white/10 rounded-[10px] transition-all cursor-pointer">
+                    <button onClick={onClose} aria-label="Close sidebar" className="lg:hidden text-white/70 hover:text-white p-1 hover:bg-white/10 rounded-[10px] transition-all cursor-pointer">
                         <X className="w-5 h-5" />
                     </button>
                 )}
@@ -410,6 +414,7 @@ const Sidebar = ({ onClose }) => {
                                         <div className="relative group/parent">
                                             <Link
                                                 to={targetTo}
+                                                onClick={hasSubItems ? undefined : handleNavClick}
                                                 className={
                                                     `group flex items-center gap-3 px-4 py-3 rounded-[18px] transition-all duration-300 ${isActive
                                                         ? "bg-white text-[#1F5EA8] shadow-lg shadow-black/10 font-bold"
@@ -454,6 +459,7 @@ const Sidebar = ({ onClose }) => {
                                                             <li key={sub.name} className="list-none">
                                                                 <Link
                                                                     to={sub.to}
+                                                                    onClick={handleNavClick}
                                                                     className={
                                                                         `flex items-center gap-3 px-4 py-2 rounded-[14px] transition-all duration-200 ${isSubActive
                                                                             ? "bg-white/20 text-white font-bold"

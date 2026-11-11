@@ -194,20 +194,20 @@ export default function Approvals() {
             {/* ─────────────────────────────────────────────
                TOP HEADER
             ───────────────────────────────────────────── */}
-            <div className="bg-white border-b border-slate-200/80 px-6 sm:px-8 py-6">
+            <div className="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-4 sm:py-6">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#2D79C7] to-[#1F5EA8] flex items-center justify-center text-white shadow-md shadow-blue-500/10">
-                            <CheckSquare className="w-6 h-6" />
+                    <div className="flex items-center gap-3 sm:gap-3.5">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#2D79C7] to-[#1F5EA8] flex items-center justify-center text-white shadow-md shadow-blue-500/10 shrink-0">
+                            <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-2.5">
-                                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Leaves / Approvals Hub</h1>
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[#2D79C7] border border-blue-100">
+                            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                                <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Leaves / Approvals Hub</h1>
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-blue-50 text-[#2D79C7] border border-blue-100">
                                     Direct Management
                                 </span>
                             </div>
-                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
                                 Review, approve, or reject employee leave requests with one-click instant sync
                             </p>
                         </div>
@@ -218,7 +218,7 @@ export default function Approvals() {
                             type="button"
                             onClick={() => fetchLeaves(true)}
                             disabled={refreshing || loading}
-                            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer disabled:opacity-60"
+                            className="flex items-center gap-2 px-3.5 sm:px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer disabled:opacity-60"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${refreshing ? "animate-spin text-[#2D79C7]" : ""}`} />
                             <span>{refreshing ? "Syncing..." : "Refresh"}</span>
@@ -230,8 +230,8 @@ export default function Approvals() {
             {/* ─────────────────────────────────────────────
                METRIC SUMMARY CARDS
             ───────────────────────────────────────────── */}
-            <div className="max-w-7xl mx-auto w-full px-6 sm:px-8 pt-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="max-w-7xl mx-auto w-full px-3.5 sm:px-8 pt-4 sm:pt-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {/* Pending Card */}
                     <div
                         onClick={() => setStatusFilter("pending")}
@@ -325,10 +325,10 @@ export default function Approvals() {
             {/* ─────────────────────────────────────────────
                CONTROLS (TABS & SEARCH)
             ───────────────────────────────────────────── */}
-            <div className="max-w-7xl mx-auto w-full px-6 sm:px-8 pt-6 pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="max-w-7xl mx-auto w-full px-3.5 sm:px-8 pt-4 sm:pt-6 pb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200 shadow-2xs">
                     {/* Status Tabs */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 sm:pb-0 shrink-0">
                         <button
                             type="button"
                             onClick={() => setStatusFilter("pending")}
@@ -440,7 +440,7 @@ export default function Approvals() {
             {/* ─────────────────────────────────────────────
                LEAVES GRID
             ───────────────────────────────────────────── */}
-            <div className="max-w-7xl mx-auto w-full px-6 sm:px-8 pb-12 flex-1">
+            <div className="max-w-7xl mx-auto w-full px-3.5 sm:px-8 pb-12 flex-1">
                 {loading ? (
                     <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center text-slate-400 shadow-2xs">
                         <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#2D79C7] mb-3" />

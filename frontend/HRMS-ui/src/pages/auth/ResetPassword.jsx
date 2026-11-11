@@ -115,7 +115,7 @@ const ResetPassword = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#EEF4FB] via-[#F8FAFD] to-[#E5EFF9] p-4 sm:p-6 select-none relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#EEF4FB] via-[#F8FAFD] to-[#E5EFF9] p-3.5 sm:p-6 select-none relative overflow-hidden">
             {/* Ambient colorful orbs */}
             <div className="absolute top-[-8%] left-[-8%] w-[420px] h-[420px] sm:w-[540px] sm:h-[540px] bg-gradient-to-br from-[#2D79C7]/25 to-[#60A5FA]/20 rounded-full blur-[100px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] bg-gradient-to-tl from-[#38BDF8]/25 via-[#2D79C7]/20 to-[#818CF8]/18 rounded-full blur-[120px] pointer-events-none" />
@@ -131,7 +131,7 @@ const ResetPassword = () => {
                     />
                 </div>
 
-                <div className="w-full relative rounded-[28px] sm:rounded-[32px] p-7 sm:p-10 bg-white/75 backdrop-blur-2xl border border-white/80 shadow-[0_20px_60px_-15px_rgba(45,121,199,0.14),0_10px_25px_-5px_rgba(0,0,0,0.04)] ring-1 ring-slate-900/[0.03] transition-all">
+                <div className="w-full relative rounded-[28px] sm:rounded-[32px] p-5 sm:p-10 bg-white/75 backdrop-blur-2xl border border-white/80 shadow-[0_20px_60px_-15px_rgba(45,121,199,0.14),0_10px_25px_-5px_rgba(0,0,0,0.04)] ring-1 ring-slate-900/[0.03] transition-all">
                     {/* Inner sheen */}
                     <div className="absolute inset-0 rounded-[28px] sm:rounded-[32px] bg-gradient-to-b from-white/70 via-white/20 to-transparent pointer-events-none" />
 

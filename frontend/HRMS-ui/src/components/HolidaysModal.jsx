@@ -136,9 +136,9 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
     };
 
     return ReactDOM.createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-4 select-none">
-            <div className="bg-white rounded-[20px] border border-gray-100 shadow-2xl max-w-md w-full overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6]">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1100] flex items-center justify-center p-3 sm:p-4 select-none">
+            <div className="bg-white rounded-[20px] border border-gray-100 shadow-2xl w-[calc(100%-2rem)] max-w-md overflow-hidden">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-[#F3F4F6]">
                     <div className="flex items-center gap-2.5">
                         <div className="w-7 h-7 rounded-[10px] bg-amber-50 flex items-center justify-center border border-amber-100">
                             <Edit3 className="w-3.5 h-3.5 text-amber-600" strokeWidth={2.5} />
@@ -149,7 +149,7 @@ const EditHolidayModal = ({ holiday, onClose, onSuccess }) => {
                         <X className="w-4.5 h-4.5" />
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
                     <div>
                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Holiday Title *</label>
                         <input type="text" required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Independence Day"
@@ -445,10 +445,10 @@ const HolidaysModal = ({ isOpen, onClose }) => {
             <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 transition-opacity" onClick={onClose} />
 
             {/* Modal */}
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl mx-4 max-h-[85vh] bg-white rounded-[24px] shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-150 select-none">
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-4xl max-h-[85vh] bg-white rounded-[20px] sm:rounded-[24px] shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-150 select-none">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] text-white shrink-0">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] text-white shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-[10px] bg-white/20 flex items-center justify-center">
                             <CalendarDays className="w-4 h-4 text-white" />
@@ -464,9 +464,9 @@ const HolidaysModal = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Body Content */}
-                <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thin">
+                <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 scrollbar-thin">
                     {/* Filter bar */}
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-4 gap-2.5">
                         <div className="flex items-center gap-3">
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Year:</label>
                             <select

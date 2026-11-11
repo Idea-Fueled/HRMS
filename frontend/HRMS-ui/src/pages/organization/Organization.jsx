@@ -345,11 +345,11 @@ export default function Organization() {
     return (
         <div className="space-y-4 pb-12 animate-fadeIn select-none">
             {/* Top Navigation Tabs Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-8">
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between overflow-x-auto scrollbar-none">
+                <div className="flex items-center gap-5 sm:gap-8 shrink-0">
                     <button
                         onClick={() => setViewMode("directory")}
-                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 hover:scale-105 active:scale-95 ${
+                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 ${
                             viewMode === "directory" ? "text-[#2D79C7] border-[#2D79C7]" : "text-gray-500 border-transparent hover:text-gray-900"
                         }`}
                     >
@@ -357,7 +357,7 @@ export default function Organization() {
                     </button>
                     <button
                         onClick={() => setViewMode("tree")}
-                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 hover:scale-105 active:scale-95 ${
+                        className={`text-xs font-bold transition-all py-1 cursor-pointer border-b-2 hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 ${
                             viewMode === "tree" ? "text-[#2D79C7] border-[#2D79C7]" : "text-gray-500 border-transparent hover:text-gray-900"
                         }`}
                     >
@@ -367,7 +367,7 @@ export default function Organization() {
             </div>
 
             {/* Action Bar (Search + Go To Buttons) */}
-            <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div className="bg-white border border-gray-200/80 rounded-[16px] p-3.5 sm:p-4 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
                 {/* Search Bar */}
                 <div className="relative flex-1 max-w-md w-full">
                     <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -407,22 +407,22 @@ export default function Organization() {
                     )}
 
                     {/* Entity Filter Toggle */}
-                    <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
+                    <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50 overflow-x-auto max-w-full scrollbar-none shrink-0">
                         <button
                             onClick={() => setSelectedEntity("all")}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 ${selectedEntity === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 ${selectedEntity === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             All Entities
                         </button>
                         <button
                             onClick={() => setSelectedEntity("Idea Fueled")}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 ${selectedEntity === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 ${selectedEntity === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             Idea Fueled
                         </button>
                         <button
                             onClick={() => setSelectedEntity("Idea Fueled LLP")}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 ${selectedEntity === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 ${selectedEntity === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             Idea Fueled LLP
                         </button>

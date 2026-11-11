@@ -135,15 +135,15 @@ export const Pagination = ({ total, limit, currentPage, onPageChange }) => {
     const endIdx = Math.min(currentPage * limit, total);
 
     return (
-        <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-[#F3F4F6] text-xs font-bold text-gray-500 select-none">
-            <span>
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 border-t border-[#F3F4F6] text-xs font-bold text-gray-500 select-none">
+            <span className="text-center sm:text-left text-[11.5px] sm:text-xs">
                 Showing <span className="text-gray-800">{startIdx}</span> to <span className="text-gray-800">{endIdx}</span> of <span className="text-gray-800">{total}</span> entries
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 max-w-full overflow-x-auto scrollbar-none py-1 px-1">
                 <button
                     disabled={currentPage === 1}
                     onClick={() => onPageChange(currentPage - 1)}
-                    className="p-1.5 border border-gray-200 rounded-[8px] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                    className="p-1.5 border border-gray-200 rounded-[8px] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer shrink-0"
                 >
                     <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -153,7 +153,7 @@ export const Pagination = ({ total, limit, currentPage, onPageChange }) => {
                         <button
                             key={pageNum}
                             onClick={() => onPageChange(pageNum)}
-                            className={`w-7.5 h-7.5 rounded-[8px] border text-center transition-all cursor-pointer ${
+                            className={`w-7.5 h-7.5 rounded-[8px] border text-center transition-all cursor-pointer shrink-0 text-xs ${
                                 currentPage === pageNum
                                     ? "bg-[#2D79C7] border-[#2D79C7] text-white"
                                     : "border-gray-200 hover:bg-gray-50 text-gray-600"
@@ -166,7 +166,7 @@ export const Pagination = ({ total, limit, currentPage, onPageChange }) => {
                 <button
                     disabled={currentPage === totalPages}
                     onClick={() => onPageChange(currentPage + 1)}
-                    className="p-1.5 border border-gray-200 rounded-[8px] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                    className="p-1.5 border border-gray-200 rounded-[8px] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer shrink-0"
                 >
                     <ChevronRight className="w-4 h-4" />
                 </button>

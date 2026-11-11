@@ -1466,24 +1466,24 @@ export const EmployeeProfile = () => {
     }
 
     return (
-        <div className="space-y-6 text-left select-none animate-fadeIn pb-16 max-w-7xl mx-auto">
+        <div className="space-y-4 sm:space-y-6 text-left select-none animate-fadeIn pb-16 max-w-7xl mx-auto">
 
             {/* ─────────────────────────────────────────────
                TOP HERO SECTION
             ───────────────────────────────────────────── */}
-            <div className="premium-3d-card p-6 sm:p-8 relative overflow-hidden bg-white border border-[#E5E7EB] rounded-[24px]">
+            <div className="premium-3d-card p-4 sm:p-8 relative overflow-hidden bg-white border border-[#E5E7EB] rounded-[20px] sm:rounded-[24px]">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#2D79C7] via-[#3B82F6] to-[#1E40AF]" />
 
-                <div className="flex flex-col lg:flex-row items-start justify-between gap-6 pt-2">
+                <div className="flex flex-col lg:flex-row items-start justify-between gap-5 sm:gap-6 pt-2">
                     
                     {/* Left: Avatar & Info */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full lg:w-auto">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6 w-full lg:w-auto">
                         <div className="relative shrink-0 group">
                             <Avatar
                                 src={employee?.profilePicture}
                                 name={empName}
-                                size="w-24 h-24 sm:w-28 sm:h-28"
-                                textSize="text-2xl font-black"
+                                size="w-20 h-20 sm:w-28 sm:h-28"
+                                textSize="text-xl sm:text-2xl font-black"
                             />
                             {canEdit && (
                                 <label
@@ -1508,14 +1508,14 @@ export const EmployeeProfile = () => {
                                     />
                                 </label>
                             )}
-                            <span className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center ${
+                            <span className={`absolute bottom-1 right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center ${
                                 empStatus === "active" ? "bg-emerald-500" : empStatus === "on_notice" ? "bg-amber-500" : "bg-gray-400"
                             }`} title={`Status: ${empStatus}`} />
                         </div>
 
                         <div className="space-y-1.5 flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2.5">
-                                <h1 className="text-[#1E1E1E] text-2xl sm:text-3xl font-black tracking-tight leading-tight">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-2.5">
+                                <h1 className="text-[#1E1E1E] text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight">
                                     {empName}
                                 </h1>
                                 <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border tracking-wider ${
@@ -1529,14 +1529,14 @@ export const EmployeeProfile = () => {
                                 </span>
                             </div>
 
-                            <p className="text-gray-600 text-sm font-semibold flex items-center gap-2">
+                            <p className="text-gray-600 text-xs sm:text-sm font-semibold flex items-center justify-center sm:justify-start gap-2">
                                 <span>{empDesignation}</span>
                                 <span className="text-gray-300">·</span>
                                 <span className="text-[#2D79C7] font-bold">{empDept}</span>
                             </p>
 
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pt-2 text-xs font-medium text-gray-500">
-                                <div className="flex flex-col items-start gap-1.5">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 sm:gap-x-4 gap-y-2 pt-2 text-xs font-medium text-gray-500">
+                                <div className="flex flex-col items-center sm:items-start gap-1.5">
                                     <span className="flex items-center gap-1.5 font-bold text-[#1E1E1E] bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg">
                                         <ShieldCheck className="w-3.5 h-3.5 text-[#2D79C7]" />
                                         {empCode}
@@ -1565,12 +1565,12 @@ export const EmployeeProfile = () => {
                                     )}
                                 </div>
 
-                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg self-start">
+                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg self-center sm:self-start">
                                     <MapPin className="w-3.5 h-3.5 text-gray-400" />
                                     {empLocation}
                                 </span>
 
-                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg self-start">
+                                <span className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 px-2.5 py-1 rounded-lg self-center sm:self-start">
                                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
                                     Joined {empJoining}
                                 </span>
@@ -1579,13 +1579,13 @@ export const EmployeeProfile = () => {
                     </div>
 
                     {/* Right: Contact & Actions */}
-                    <div className="flex flex-col items-start lg:items-end justify-between gap-4 w-full lg:w-auto border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100">
-                        <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex flex-col items-center sm:items-start lg:items-end justify-between gap-4 w-full lg:w-auto border-t lg:border-t-0 pt-4 lg:pt-0 border-gray-100">
+                        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-center sm:justify-start">
                             {canEdit && (
                                 <button
                                     type="button"
                                     onClick={openEditDrawer}
-                                    className="flex items-center gap-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer shrink-0"
+                                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer shrink-0"
                                 >
                                     <Edit3 className="w-4 h-4" />
                                     <span>Edit Profile</span>
@@ -1593,19 +1593,19 @@ export const EmployeeProfile = () => {
                             )}
                         </div>
 
-                        <div className="space-y-2 text-xs text-gray-600 font-medium text-left lg:text-right w-full">
-                            <div className="flex items-center lg:justify-end gap-2">
+                        <div className="space-y-2 text-xs text-gray-600 font-medium text-center sm:text-left lg:text-right w-full">
+                            <div className="flex items-center justify-center sm:justify-start lg:justify-end gap-2">
                                 <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                <span className="font-semibold text-gray-700">{empEmail}</span>
+                                <span className="font-semibold text-gray-700 truncate">{empEmail}</span>
                             </div>
 
-                            <div className="flex items-center lg:justify-end gap-2">
+                            <div className="flex items-center justify-center sm:justify-start lg:justify-end gap-2">
                                 <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                 <span className="font-semibold text-gray-700">{empPhone}</span>
                             </div>
 
                             {!isTargetManagement && managerName && (
-                                <div className="flex items-center lg:justify-end gap-2">
+                                <div className="flex items-center justify-center sm:justify-start lg:justify-end gap-2">
                                     <User className="w-3.5 h-3.5 text-[#2D79C7] shrink-0" />
                                     <span>Reports to: <strong className="text-[#1E1E1E]">{managerName}</strong></span>
                                 </div>
@@ -1613,7 +1613,7 @@ export const EmployeeProfile = () => {
 
                             {/* Resignation / Exit action directly below Reports to (Excluded for Management) */}
                             {isOwnProfile && !isTargetManagement && (
-                                <div className="flex items-center lg:justify-end pt-1.5">
+                                <div className="flex items-center justify-center sm:justify-start lg:justify-end pt-1.5">
                                     <button
                                         type="button"
                                         onClick={() => setIsResignModalOpen(true)}
@@ -1711,7 +1711,7 @@ export const EmployeeProfile = () => {
             {/* ─────────────────────────────────────────────
                NAVIGATION TABS
             ───────────────────────────────────────────── */}
-            <div className="flex border-b border-gray-200 gap-2 overflow-x-auto scrollbar-none">
+            <div className="flex border-b border-gray-200 gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none pb-0.5">
                 {profileTabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.key;
@@ -1720,7 +1720,7 @@ export const EmployeeProfile = () => {
                             key={tab.key}
                             type="button"
                             onClick={() => setActiveTab(tab.key)}
-                            className={`px-5 py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                            className={`px-3.5 sm:px-5 py-2.5 sm:py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                                 isActive
                                     ? "border-[#2D79C7] text-[#2D79C7]"
                                     : "border-transparent text-gray-400 hover:text-gray-600"

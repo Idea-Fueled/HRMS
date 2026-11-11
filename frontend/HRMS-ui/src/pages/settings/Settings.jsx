@@ -184,12 +184,12 @@ const Settings = () => {
     const userName = user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.displayName || "User";
 
     return (
-        <div className="space-y-6 text-left select-none animate-fadeIn pb-12 max-w-5xl mx-auto">
+        <div className="space-y-4 sm:space-y-6 text-left select-none animate-fadeIn pb-12 max-w-5xl mx-auto">
             {/* Header Banner */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-gray-100">
                 <div>
-                    <h2 className="text-[#1E1E1E] text-[22px] font-extrabold flex items-center gap-2">
-                        <Shield className="w-6 h-6 text-[#2D79C7]" />
+                    <h2 className="text-[#1E1E1E] text-lg sm:text-[22px] font-extrabold flex items-center gap-2">
+                        <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-[#2D79C7]" />
                         Account & Personal Settings
                     </h2>
                     <p className="text-gray-400 text-xs font-medium mt-1">
@@ -197,7 +197,7 @@ const Settings = () => {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-blue-50/70 border border-blue-100 px-3 py-1.5 rounded-xl">
+                <div className="flex items-center gap-2 bg-blue-50/70 border border-blue-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
                     <Avatar src={user?.profilePicture} name={userName} size="w-7 h-7" textSize="text-xs" />
                     <div>
                         <p className="text-xs font-bold text-gray-800 leading-none">{userName}</p>
@@ -207,11 +207,11 @@ const Settings = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex flex-wrap items-center gap-2 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/60 max-w-fit">
+            <div className="flex items-center gap-1.5 sm:gap-2 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/60 overflow-x-auto max-w-full scrollbar-none shrink-0">
                 <button
                     type="button"
                     onClick={() => setActiveTab("security")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         activeTab === "security"
                             ? "bg-white text-[#2D79C7] shadow-sm"
                             : "text-gray-500 hover:text-gray-800"
@@ -224,7 +224,7 @@ const Settings = () => {
                 <button
                     type="button"
                     onClick={() => setActiveTab("notifications")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         activeTab === "notifications"
                             ? "bg-white text-[#2D79C7] shadow-sm"
                             : "text-gray-500 hover:text-gray-800"
@@ -237,7 +237,7 @@ const Settings = () => {
                 <button
                     type="button"
                     onClick={() => setActiveTab("preferences")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         activeTab === "preferences"
                             ? "bg-white text-[#2D79C7] shadow-sm"
                             : "text-gray-500 hover:text-gray-800"
@@ -250,7 +250,7 @@ const Settings = () => {
                 <button
                     type="button"
                     onClick={() => setActiveTab("session")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         activeTab === "session"
                             ? "bg-white text-[#2D79C7] shadow-sm"
                             : "text-gray-500 hover:text-gray-800"
@@ -267,7 +267,7 @@ const Settings = () => {
             {activeTab === "security" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Left Form: Change Password */}
-                    <div className="md:col-span-2 bg-white rounded-[20px] border border-gray-100 shadow-sm p-6 space-y-5">
+                    <div className="md:col-span-2 bg-white rounded-[20px] border border-gray-100 shadow-sm p-4 sm:p-6 space-y-5">
                         <div className="flex items-center gap-2.5 pb-4 border-b border-gray-100">
                             <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center">
                                 <Key className="w-4 h-4" />
@@ -437,7 +437,7 @@ const Settings = () => {
                TAB 2: NOTIFICATIONS
             ───────────────────────────────────────────── */}
             {activeTab === "notifications" && (
-                <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6 space-y-6">
+                <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-4 sm:p-6 space-y-6">
                     <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                         <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center">
@@ -552,7 +552,7 @@ const Settings = () => {
                TAB 3: APPEARANCE & DISPLAY
             ───────────────────────────────────────────── */}
             {activeTab === "preferences" && (
-                <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6 space-y-6">
+                <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-4 sm:p-6 space-y-6">
                     <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                         <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center">
@@ -642,9 +642,9 @@ const Settings = () => {
                TAB 4: SESSION & PROFILE
             ───────────────────────────────────────────── */}
             {activeTab === "session" && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     {/* User Profile Card */}
-                    <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6">
+                    <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-4 sm:p-6">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
                             <div className="flex items-center gap-4">
                                 <Avatar src={user?.profilePicture} name={userName} size="w-14 h-14" textSize="text-lg" />
@@ -690,7 +690,7 @@ const Settings = () => {
                     </div>
 
                     {/* Active Session & Device Card */}
-                    <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-6 space-y-4">
+                    <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-4 sm:p-6 space-y-4">
                         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                             <div className="flex items-center gap-2">
                                 <Laptop className="w-5 h-5 text-[#2D79C7]" />

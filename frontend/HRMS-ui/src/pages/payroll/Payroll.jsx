@@ -362,9 +362,9 @@ export default function Payroll() {
     return (
         <div className="space-y-6 pb-12 animate-fadeIn select-none">
             {/* Header Bar */}
-            <div className="bg-white border border-gray-200/80 rounded-[16px] p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">Payroll & Payslips</h1>
+                    <h1 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">Payroll & Payslips</h1>
                     <p className="text-gray-500 text-xs font-medium mt-0.5">
                         Generate and manage monthly salary processing for Idea Fueled & Idea Fueled LLP employees.
                     </p>
@@ -395,7 +395,7 @@ export default function Payroll() {
                         });
                         setIsGenerateModalOpen(true);
                     }}
-                    className="bg-[#2D79C7] hover:bg-[#1D5E9E] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    className="w-full sm:w-auto bg-[#2D79C7] hover:bg-[#1D5E9E] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shrink-0"
                 >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
                     <span>Process New Salary</span>
@@ -403,54 +403,54 @@ export default function Payroll() {
             </div>
 
             {/* Top Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+                <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 sm:p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
                     <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Total Payslips Issued</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">{payslips.length}</div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">Issued this month</span>
+                        <span className="text-gray-400 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider block">Total Payslips Issued</span>
+                        <div className="text-xl sm:text-2xl font-black text-gray-900 mt-1">{payslips.length}</div>
+                        <span className="text-[10.5px] sm:text-[11px] font-medium text-gray-500 mt-1 block">Issued this month</span>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center border border-blue-100">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center border border-blue-100 shrink-0">
                         <FileText className="w-5 h-5" strokeWidth={2} />
                     </div>
                 </div>
 
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
+                <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 sm:p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
                     <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Total Payroll Outflow</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">₹{totalOutflow.toLocaleString("en-IN")}</div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">Net payout amount</span>
+                        <span className="text-gray-400 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider block">Total Payroll Outflow</span>
+                        <div className="text-xl sm:text-2xl font-black text-gray-900 mt-1">₹{totalOutflow.toLocaleString("en-IN")}</div>
+                        <span className="text-[10.5px] sm:text-[11px] font-medium text-gray-500 mt-1 block">Net payout amount</span>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
                         <IndianRupee className="w-5 h-5" strokeWidth={2.2} />
                     </div>
                 </div>
 
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
+                <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 sm:p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
                     <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Idea Fueled Entity</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">{ideaFueledCount} <span className="text-xs text-gray-400 font-medium">Records</span></div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">Regular entity</span>
+                        <span className="text-gray-400 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider block">Idea Fueled Entity</span>
+                        <div className="text-xl sm:text-2xl font-black text-gray-900 mt-1">{ideaFueledCount} <span className="text-xs text-gray-400 font-medium">Records</span></div>
+                        <span className="text-[10.5px] sm:text-[11px] font-medium text-gray-500 mt-1 block">Regular entity</span>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center border border-slate-200">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center border border-slate-200 shrink-0">
                         <Building2 className="w-5 h-5" strokeWidth={2} />
                     </div>
                 </div>
 
-                <div className="bg-white border border-gray-200/80 rounded-[16px] p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
+                <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 sm:p-5 shadow-sm flex items-center justify-between hover:border-gray-300 transition-all">
                     <div>
-                        <span className="text-gray-400 text-[10.5px] font-bold uppercase tracking-wider block">Idea Fueled LLP Entity</span>
-                        <div className="text-2xl font-black text-gray-900 mt-1">{ideaFueledLlpCount} <span className="text-xs text-gray-400 font-medium">Records</span></div>
-                        <span className="text-[11px] font-medium text-gray-500 mt-1 block">LLP entity</span>
+                        <span className="text-gray-400 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider block">Idea Fueled LLP Entity</span>
+                        <div className="text-xl sm:text-2xl font-black text-gray-900 mt-1">{ideaFueledLlpCount} <span className="text-xs text-gray-400 font-medium">Records</span></div>
+                        <span className="text-[10.5px] sm:text-[11px] font-medium text-gray-500 mt-1 block">LLP entity</span>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100 shrink-0">
                         <Building className="w-5 h-5" strokeWidth={2} />
                     </div>
                 </div>
             </div>
 
             {/* Filter Bar & Table Container */}
-            <div className="bg-white border border-gray-200/80 rounded-[16px] p-6 shadow-sm space-y-5">
+            <div className="bg-white border border-gray-200/80 rounded-[16px] p-4 sm:p-6 shadow-sm space-y-4 sm:space-y-5">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="relative flex-1 max-w-md">
                         <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -511,22 +511,22 @@ export default function Payroll() {
                         </div>
 
                         {/* Entity Filter */}
-                        <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50">
+                        <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl border border-gray-200/50 overflow-x-auto max-w-full scrollbar-none shrink-0">
                             <button
                                 onClick={() => setSelectedEntityFilter("all")}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${selectedEntityFilter === "all" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                             >
                                 All Entities
                             </button>
                             <button
                                 onClick={() => setSelectedEntityFilter("Idea Fueled")}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${selectedEntityFilter === "Idea Fueled" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                             >
                                 Idea Fueled
                             </button>
                             <button
                                 onClick={() => setSelectedEntityFilter("Idea Fueled LLP")}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${selectedEntityFilter === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${selectedEntityFilter === "Idea Fueled LLP" ? "bg-white text-[#2D79C7] shadow-xs" : "text-gray-600 hover:text-gray-900"}`}
                             >
                                 Idea Fueled LLP
                             </button>

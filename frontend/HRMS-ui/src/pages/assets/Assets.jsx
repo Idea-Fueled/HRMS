@@ -274,15 +274,15 @@ const Assets = () => {
     });
 
     return (
-        <div className="space-y-6 text-left select-none animate-fadeIn">
+        <div className="space-y-4 sm:space-y-6 text-left select-none animate-fadeIn">
             {/* Header Title & Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-gray-100">
                 <div>
-                    <h2 className="text-[#1E1E1E] text-[20px] font-extrabold flex items-center gap-2">
-                        <Box className="w-6 h-6 text-[#2D79C7]" />
+                    <h2 className="text-[#1E1E1E] text-lg sm:text-[20px] font-extrabold flex items-center gap-2">
+                        <Box className="w-5 h-5 sm:w-6 sm:h-6 text-[#2D79C7]" />
                         Asset Management
                     </h2>
-                    <p className="text-gray-400 text-[12px] font-medium mt-1">
+                    <p className="text-gray-400 text-xs font-medium mt-1">
                         Track company inventory, manage allocations, and oversee asset lifecycles.
                     </p>
                 </div>
@@ -292,7 +292,7 @@ const Assets = () => {
                         setDrawerMode("create");
                         setShowAssetDrawer(true);
                     }}
-                    className="bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-[12px] hover:opacity-95 transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0 self-start sm:self-auto"
+                    className="w-full sm:w-auto justify-center bg-gradient-to-r from-[#2D79C7] to-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-[12px] hover:opacity-95 transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Add New Asset</span>
@@ -300,7 +300,7 @@ const Assets = () => {
             </div>
 
             {/* Summary Statistics Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <div className="bg-white border border-slate-200/80 rounded-[18px] p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col justify-between gap-3 group">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Total Assets</span>

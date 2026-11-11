@@ -238,14 +238,14 @@ const TimeAttendanceDashboard = () => {
             {/* ─────────────────────────────────────────────
                TOP FILTER CONTROLS BAR (CLEAN MINIMAL CARD)
             ───────────────────────────────────────────── */}
-            <div className="premium-3d-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-3">
+            <div className="premium-3d-card p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                     {/* Clean View Switcher Pill */}
-                    <div className="flex items-center bg-[#F8FAFC] border border-gray-200 rounded-xl p-1 text-xs font-semibold">
+                    <div className="flex items-center bg-[#F8FAFC] border border-gray-200 rounded-xl p-1 text-xs font-semibold overflow-x-auto max-w-full scrollbar-none shrink-0">
                         <button
                             type="button"
                             onClick={() => setViewRole("hr")}
-                            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                            className={`px-3 sm:px-3.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                                 viewRole === "hr" ? "bg-[#2D79C7] text-white font-bold shadow-sm" : "text-gray-500 hover:text-gray-800"
                             }`}
                         >
@@ -254,7 +254,7 @@ const TimeAttendanceDashboard = () => {
                         <button
                             type="button"
                             onClick={() => setViewRole("manager")}
-                            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                            className={`px-3 sm:px-3.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                                 viewRole === "manager" ? "bg-[#2D79C7] text-white font-bold shadow-sm" : "text-gray-500 hover:text-gray-800"
                             }`}
                         >
@@ -263,7 +263,7 @@ const TimeAttendanceDashboard = () => {
                         <button
                             type="button"
                             onClick={() => setViewRole("employee")}
-                            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                            className={`px-3 sm:px-3.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                                 viewRole === "employee" ? "bg-[#2D79C7] text-white font-bold shadow-sm" : "text-gray-500 hover:text-gray-800"
                             }`}
                         >
@@ -272,7 +272,7 @@ const TimeAttendanceDashboard = () => {
                     </div>
 
                     {/* Date Selector & Filter */}
-                    <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 rounded-xl p-1 text-xs font-semibold">
+                    <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-gray-200 rounded-xl p-1 text-xs font-semibold overflow-x-auto max-w-full scrollbar-none shrink-0">
                         <button
                             type="button"
                             onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
@@ -976,7 +976,7 @@ export const TimeAttendance = () => {
             </div>
 
             {/* Sub-navigation Tabs matching Documents.jsx */}
-            <div className="flex border-b border-gray-200">
+            <div className="flex border-b border-gray-200 gap-1 overflow-x-auto scrollbar-none pb-0.5">
                 {moduleTabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.key;
@@ -985,7 +985,7 @@ export const TimeAttendance = () => {
                             key={tab.key}
                             type="button"
                             onClick={() => setActiveTab(tab.key)}
-                            className={`px-5 py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                            className={`px-3.5 sm:px-5 py-2.5 sm:py-3 text-xs font-extrabold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                                 isActive
                                     ? "border-[#2D79C7] text-[#2D79C7]"
                                     : "border-transparent text-gray-400 hover:text-gray-600"

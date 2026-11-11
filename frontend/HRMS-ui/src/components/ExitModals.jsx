@@ -51,11 +51,11 @@ export const ResignJobModal = ({ isOpen, onClose, onSuccess, employee }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
-            <div className="bg-white border border-[#E5E7EB] rounded-[16px] shadow-2xl max-w-lg w-full overflow-hidden text-left animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 select-none">
+            <div className="bg-white border border-[#E5E7EB] rounded-[16px] shadow-2xl w-[calc(100%-2rem)] max-w-lg overflow-hidden text-left animate-in fade-in zoom-in duration-200">
                 {/* Header */}
-                <div className="px-6 py-4.5 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-[16px] font-bold text-gray-800">Resign from job</h3>
+                <div className="px-4 sm:px-6 py-3.5 sm:py-4.5 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="text-[15px] sm:text-[16px] font-bold text-gray-800">Resign from job</h3>
                     <button
                         type="button"
                         onClick={onClose}
@@ -66,7 +66,7 @@ export const ResignJobModal = ({ isOpen, onClose, onSuccess, employee }) => {
                 </div>
 
                 {/* Form Body */}
-                <div className="p-6 space-y-4.5 max-h-[85vh] overflow-y-auto">
+                <div className="p-4 sm:p-6 space-y-4 max-h-[85vh] overflow-y-auto">
                     {/* Warning Box */}
                     <div className="bg-[#FEFCE8] border border-[#FEF08A] rounded-[10px] p-3.5 flex items-start gap-2.5">
                         <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
@@ -319,22 +319,22 @@ export const AdminInitiateExitModal = ({ isOpen, onClose, onSuccess, employee })
     const isTermination = exitReasonType === "Company decides to terminate";
 
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
-            <div className="bg-white border border-[#E5E7EB] rounded-[16px] shadow-2xl max-w-lg w-full overflow-hidden text-left animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 select-none">
+            <div className="bg-white border border-[#E5E7EB] rounded-[16px] shadow-2xl w-[calc(100%-2rem)] max-w-lg overflow-hidden text-left animate-in fade-in zoom-in duration-200">
                 {/* Header */}
-                <div className="px-6 py-4.5 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-[16px] font-bold text-gray-800">Initiate exit - {empName}</h3>
+                <div className="px-4 sm:px-6 py-3.5 sm:py-4.5 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="text-[15px] sm:text-[16px] font-bold text-gray-800 truncate pr-2">Initiate exit - {empName}</h3>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 font-extrabold text-[16px] cursor-pointer"
+                        className="text-gray-400 hover:text-gray-600 font-extrabold text-[16px] cursor-pointer shrink-0"
                     >
                         <X className="w-4.5 h-4.5" />
                     </button>
                 </div>
 
                 {/* Modal Form Scrollable Area */}
-                <div className="p-6 space-y-4.5 max-h-[82vh] overflow-y-auto">
+                <div className="p-4 sm:p-6 space-y-4 max-h-[82vh] overflow-y-auto">
                     {/* Employee Card Snapshot (Screenshot 2) */}
                     <div className="bg-white border border-gray-200 rounded-[12px] p-4 shadow-sm space-y-3">
                         <div className="flex items-center gap-3">

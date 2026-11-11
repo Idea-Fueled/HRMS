@@ -37,7 +37,7 @@ const Layout = () => {
                         </main>
                     ) : (
                         <main className="flex-1 overflow-y-auto min-w-0 bg-[#F8FAFC]">
-                            <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-7 space-y-6">
+                            <div className="max-w-[1600px] mx-auto p-3.5 sm:p-5 lg:p-7 space-y-4 sm:space-y-6 w-full">
                                 <Outlet />
                             </div>
                         </main>
