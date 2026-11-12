@@ -20,14 +20,20 @@ export const getDashboardData = async (req, res) => {
             });
         }
 
-        // Today's Attendance
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // Today's Attendance (aligned with IST timezone matching attendance controller)
+        const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const [y, m, d] = istDateStr.split("-").map(Number);
+        const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const istDayStart = new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - (5.5 * 3600 * 1000));
+        const istDayEnd = new Date(istDayStart.getTime() + 24 * 3600 * 1000 - 1);
 
         const attendance = await Attendance.findOne({
             employeeId,
-            date: today,
-        });
+            $or: [
+                { date: todayUtc },
+                { date: { $gte: istDayStart, $lte: istDayEnd } }
+            ]
+        }).sort({ date: -1, updatedAt: -1 });
 
         const leaves = await Leave.find({ employeeId });
 

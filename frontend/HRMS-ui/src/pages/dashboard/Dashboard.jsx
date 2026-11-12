@@ -986,11 +986,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         if (isWebClockedIn) {
             onClockOut();
         } else {
-            if (!hasWebClockedInToday) {
-                setWebClockInOpen(true);
-            } else {
-                onClockIn("Office", "", "");
-            }
+            setWebClockInOpen(true);
         }
     };
 

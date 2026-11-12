@@ -254,7 +254,7 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
             return;
         }
         if (trimmed.length < 20) {
-            toast.error("Please enter at least 20 characters describing your tasks for today.");
+            toast.error("Daily work plan must be at least 20 characters long. Please write your tasks that have to do today.");
             return;
         }
         setSubmitting(true);
@@ -319,7 +319,7 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
                         <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                         <div className="text-xs font-semibold leading-relaxed">
                             <span className="font-extrabold text-amber-800 uppercase tracking-wide text-[10.5px] mr-1.5">Note:</span>
-                            Please write your tasks that have to do today.
+                            Please write your tasks that have to do today. (Min 20 characters you have to write for your daily task plan)
                         </div>
                     </div>
 
@@ -693,12 +693,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         if (isClockedIn) {
             onClockOut();
         } else {
-            if (!hasWebClockedInToday) {
-                onOpenClockInModal();
-            } else {
-                if (onDirectClockIn) onDirectClockIn();
-                else onOpenClockInModal();
-            }
+            onOpenClockInModal();
         }
     };
 
