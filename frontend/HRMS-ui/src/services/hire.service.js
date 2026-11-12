@@ -110,7 +110,7 @@ export const addCandidateApi = async (candidateData) => {
         phone: candidateData.phone || "",
         address: candidateData.address || "",
         photo: candidateData.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidateData.name || "C")}&background=2D79C7&color=fff`,
-        position: candidateData.position || "Software Engineer",
+        position: candidateData.position || "",
         experience: candidateData.experience || "0 Yrs",
         currentCompany: candidateData.currentCompany || "N/A",
         currentCtc: candidateData.currentCtc || "N/A",

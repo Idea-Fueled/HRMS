@@ -53,21 +53,39 @@ const SKILLS_DICTIONARY = [
 ];
 
 /**
- * Common Job Titles List
+ * Common Job Titles List across Tech, Business, Sales, Marketing, Design & Operations
  */
 const COMMON_ROLES = [
+    // Business Development & Sales
+    "Business Development Executive", "Business Development Manager", "Business Development Associate",
+    "BDE", "BDM", "Sales Executive", "Sales Manager", "Inside Sales Executive", "Account Executive",
+    "Lead Generation Specialist", "Sales Associate", "Client Relationship Manager",
+
+    // Marketing & Content
+    "Email Marketer", "Digital Marketing Specialist", "Digital Marketing Executive",
+    "Digital Marketer", "SEO Specialist", "Content Writer", "Copywriter",
+    "Social Media Specialist", "Social Media Manager", "Performance Marketer",
+
+    // Tech & Engineering
     "Full Stack Developer", "Full Stack Engineer", "Frontend Developer", "Frontend Engineer",
     "Backend Developer", "Backend Engineer", "Software Engineer", "Software Developer",
     "Senior Software Engineer", "Lead Engineer", "Staff Engineer", "Principal Engineer",
     "React Developer", "Node.js Developer", "Python Developer", "Java Developer",
-    "DevOps Engineer", "Cloud Engineer", "Site Reliability Engineer", "SRE",
-    "UI/UX Designer", "Product Designer", "Graphic Designer", "Visual Designer",
+    "PHP Developer", "Laravel Developer", "WordPress Developer", "MERN Stack Developer",
+    "Android Developer", "iOS Developer", "Mobile App Developer", "Flutter Developer",
+    "Site Reliability Engineer", "SRE", "DevOps Engineer", "Cloud Engineer", "System Administrator",
     "QA Engineer", "Automation QA", "SDET", "Manual Tester", "Quality Analyst",
     "Data Scientist", "Data Analyst", "Data Engineer", "Machine Learning Engineer",
-    "Product Manager", "Project Manager", "Scrum Master", "Engineering Manager",
-    "Technical Architect", "Solutions Architect", "System Administrator",
-    "Android Developer", "iOS Developer", "Mobile App Developer", "Flutter Developer",
-    "HR Manager", "HR Executive", "HR Specialist", "Talent Acquisition Specialist", "Recruiter"
+
+    // Design & Product
+    "UI/UX Designer", "Product Designer", "Graphic Designer", "Visual Designer",
+    "Video Editor", "Motion Graphic Designer", "Product Manager", "Project Manager",
+    "Scrum Master", "Business Analyst",
+
+    // HR, Finance & Operations
+    "HR Manager", "HR Executive", "HR Generalist", "HR Specialist", "Talent Acquisition Specialist",
+    "Technical Recruiter", "Recruiter", "Operations Executive", "Operations Manager",
+    "Accountant", "Accounts Executive", "Finance Executive"
 ];
 
 /**
@@ -128,7 +146,7 @@ export const parseResumeDetails = (rawText, filename = "") => {
             name: extractNameFromFilename(filename),
             email: "",
             phone: "",
-            position: "Software Engineer",
+            position: "",
             expYears: 0,
             expMonths: 0,
             experience: "0 Yrs",
@@ -172,20 +190,24 @@ export const parseResumeDetails = (rawText, filename = "") => {
     const ignoreNameTerms = [
         "resume", "curriculum", "vitae", "cv", "profile", "contact", "phone",
         "email", "address", "summary", "objective", "experience", "education",
-        "skills", "projects", "certifications", "page", "developer", "engineer"
+        "skills", "projects", "certifications", "page", "developer", "engineer",
+        "designer", "manager", "executive", "intern", "about", "me", "about me",
+        "personal", "details", "declaration", "hobbies", "interests", "languages",
+        "overview", "history", "employment", "academic", "qualifications"
     ];
 
-    // Scan first 8 lines for a valid personal name
-    for (let i = 0; i < Math.min(lines.length, 8); i++) {
+    // Scan first 10 lines for a valid personal name
+    for (let i = 0; i < Math.min(lines.length, 10); i++) {
         const line = lines[i];
         if (line.includes("@") || /(?:https?:\/\/|\.com|\.in)/i.test(line)) continue;
         if (/\d/.test(line)) continue;
+        if (line.includes(":") || /^(?:about\s*me|profile|summary|resume)/i.test(line)) continue;
 
         const words = line.split(/\s+/).filter(Boolean);
         if (words.length >= 2 && words.length <= 4) {
             const isAllIgnore = words.some(w => ignoreNameTerms.includes(w.toLowerCase()));
             if (!isAllIgnore) {
-                // Check if starts with uppercase letter
+                // Check if starts with uppercase letter or valid personal name format
                 const isProperName = words.every(w => /^[A-Z][a-zA-Z.'-]*$/.test(w));
                 if (isProperName || /^[a-zA-Z\s.'-]+$/.test(line)) {
                     name = line;
@@ -194,21 +216,53 @@ export const parseResumeDetails = (rawText, filename = "") => {
             }
         }
     }
-    if (!name) {
+    if (!name || name.toLowerCase().includes("about me")) {
         name = extractNameFromFilename(filename);
     }
 
     // 4. Extract Target Position / Designation
     let position = "";
-    for (const role of COMMON_ROLES) {
-        const rx = new RegExp(`\\b${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-        if (rx.test(rawText)) {
-            position = role;
-            break;
+
+    // Check first 12 lines right below candidate name for explicit designation
+    for (let i = 0; i < Math.min(lines.length, 12); i++) {
+        const line = lines[i];
+        if (line === name) continue;
+        for (const role of COMMON_ROLES) {
+            const rx = new RegExp(`^\\s*${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
+            if (rx.test(line)) {
+                position = role;
+                break;
+            }
+        }
+        if (position) break;
+    }
+
+    // If not found as standalone line, find which role appears closest to the top of the resume
+    if (!position) {
+        let earliestPos = -1;
+        let matchedRole = "";
+        for (const role of COMMON_ROLES) {
+            const rx = new RegExp(`\\b${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+            const match = rawText.match(rx);
+            if (match && (earliestPos === -1 || match.index < earliestPos)) {
+                earliestPos = match.index;
+                matchedRole = role;
+            }
+        }
+        if (matchedRole && earliestPos < 2000) {
+            position = matchedRole;
         }
     }
-    if (!position) {
-        position = "Software Engineer";
+
+    // Check filename for role hints (e.g. Hem_Raj_BDE.pdf or Anmol_Sales.docx)
+    if (!position && filename) {
+        for (const role of COMMON_ROLES) {
+            const rx = new RegExp(`\\b${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+            if (rx.test(filename)) {
+                position = role;
+                break;
+            }
+        }
     }
 
     // 5. Extract Experience (Years & Months)
@@ -219,7 +273,7 @@ export const parseResumeDetails = (rawText, filename = "") => {
     const expRegexes = [
         /(?:total\s*experience|experience)\s*[:\-]?\s*(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?)(?:\s*(?:and|&)?\s*(\d+)\s*(?:months?|mos?))?/i,
         /(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?)(?:\s*(?:and|&)?\s*(\d+)\s*(?:months?|mos?))?\s*(?:of)?\s*experience/i,
-        /(\d+)\+?\s*(?:years?|yrs?)\s*in\s*(?:software|development|tech|industry|it)/i
+        /(\d+)\+?\s*(?:years?|yrs?)\s*in\s*(?:software|development|tech|industry|it|sales|marketing)/i
     ];
 
     for (const rx of expRegexes) {
@@ -257,20 +311,44 @@ export const parseResumeDetails = (rawText, filename = "") => {
     const experienceStr = `${expYears} Yrs${expMonths > 0 ? ` ${expMonths} Mos` : ""}`;
 
     // 6. Extract Current Company
-    let currentCompany = "N/A";
+    let currentCompany = "";
     const companyPatterns = [
-        /(?:currently\s*(?:working)?\s*at|worked\s*at|company\s*[:\-]|employer\s*[:\-])\s*([A-Za-z0-9&.,\s]{2,35})/i,
-        /(?:experience|employment)\s*\n+([A-Za-z0-9&.,\s]{3,35})\s*(?:-|–|\|)/i
+        /(?:currently\s*(?:working)?\s*at|worked\s*at|company\s*[:\-]|employer\s*[:\-]|organization\s*[:\-])\s*([A-Za-z0-9&.,\s]{2,40})/i,
+        /(?:at|@)\s+([A-Z][A-Za-z0-9&.,\s]{2,35}(?:Pvt\.?\s*Ltd\.?|Private\s*Limited|Technologies|Solutions|Infotech|Labs|Software|Services|Inc\.?|LLC|Corp\.?))/i
     ];
     for (const cp of companyPatterns) {
         const match = rawText.match(cp);
         if (match && match[1]) {
             const cleanComp = match[1].replace(/[\r\n]+/g, " ").trim();
-            if (cleanComp && cleanComp.length > 2 && !ignoreNameTerms.includes(cleanComp.toLowerCase())) {
+            const isDateOrTime = /\b(19\d\d|20\d\d|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|present|current|year|month)\b/i.test(cleanComp);
+            const isRole = COMMON_ROLES.some(r => cleanComp.toLowerCase().includes(r.toLowerCase()));
+            if (!isDateOrTime && !isRole && cleanComp.length > 2 && !ignoreNameTerms.includes(cleanComp.toLowerCase())) {
                 currentCompany = cleanComp;
                 break;
             }
         }
+    }
+
+    // Fallback: Check lines under experience section but avoid capturing job roles or dates
+    if (!currentCompany) {
+        const expSectionMatch = rawText.match(/(?:experience|employment|work\s*history)\s*[:\n]+([^\n]+)\n+([^\n]+)/i);
+        if (expSectionMatch) {
+            const lineA = expSectionMatch[1].trim();
+            const lineB = expSectionMatch[2].trim();
+            for (const candLine of [lineA, lineB]) {
+                const isDate = /\b(19\d\d|20\d\d|present|current)\b/i.test(candLine);
+                const isRole = COMMON_ROLES.some(r => candLine.toLowerCase().includes(r.toLowerCase()));
+                if (isRole && !position) {
+                    position = candLine.replace(/[-|–].*$/, "").trim();
+                } else if (!isDate && !isRole && candLine.length >= 3 && candLine.length <= 40) {
+                    currentCompany = candLine.replace(/[-|–].*$/, "").trim();
+                    break;
+                }
+            }
+        }
+    }
+    if (!currentCompany) {
+        currentCompany = "N/A";
     }
 
     // 7. Extract Skills (Keyword Matching)

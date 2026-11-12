@@ -244,15 +244,22 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
 
     if (!isOpen) return null;
 
+    const trimmedLength = workPlan.trim().length;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!workPlan.trim()) {
+        const trimmed = workPlan.trim();
+        if (!trimmed) {
             toast.error("Please enter your daily work plan before clocking in.");
+            return;
+        }
+        if (trimmed.length < 20) {
+            toast.error("Please enter at least 20 characters describing your tasks for today.");
             return;
         }
         setSubmitting(true);
         try {
-            await onSubmit(workPlan.trim());
+            await onSubmit(trimmed);
             setWorkPlan("");
             onClose();
         } catch (err) {
@@ -297,10 +304,22 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
                             placeholder="What tasks or projects will you work on today? (e.g. client deliveries, bug fixes, features...)"
                             className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium p-3.5 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all resize-none shadow-2xs"
                         />
-                        <div className="text-right">
-                            <span className="text-[10.5px] font-bold text-slate-400 font-mono">
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                            <span className={trimmedLength >= 20 ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
+                                {trimmedLength >= 20 ? "✓ Min 20 characters met" : `${trimmedLength}/20 min chars required`}
+                            </span>
+                            <span className="font-bold text-slate-400">
                                 {workPlan.length} / 1024
                             </span>
+                        </div>
+                    </div>
+
+                    {/* Highlighted Note */}
+                    <div className="flex items-start gap-2.5 p-3 bg-amber-50/90 border border-amber-200/90 rounded-[10px] text-amber-900 shadow-2xs">
+                        <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-xs font-semibold leading-relaxed">
+                            <span className="font-extrabold text-amber-800 uppercase tracking-wide text-[10.5px] mr-1.5">Note:</span>
+                            Please write your tasks that have to do today.
                         </div>
                     </div>
 

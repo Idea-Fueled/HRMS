@@ -29,6 +29,18 @@ export const clockIn = async (req, res) => {
         }).sort({ date: -1, updatedAt: -1 });
 
         const isFirstWebClockIn = !attendance || !attendance.dailyWorkPlan || !(attendance.logs || []).some(l => l.source === "web");
+
+        // Enforce minimum 20 characters for Web Clock-in Daily Work Plan
+        if (isFirstWebClockIn && workMode !== "Work From Home" && (source === "web" || !source)) {
+            const plan = (dailyWorkPlan || "").trim();
+            if (!plan || plan.length < 20) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Daily work plan must be at least 20 characters long. Please write your tasks that have to do today.",
+                });
+            }
+        }
+
         const currentTime = new Date();
 
         if (!attendance) {

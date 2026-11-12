@@ -2962,7 +2962,7 @@ const AddCandidateModal = ({ onClose, onSave, initialData = null, initialFile = 
                             <label className="block text-gray-500 font-bold mb-1">Position Applied</label>
                             <input
                                 type="text"
-                                placeholder="e.g. Software Engineer"
+                                placeholder="e.g. Software Engineer, BDE, Marketing..."
                                 value={form.position}
                                 onChange={e => setForm({ ...form, position: e.target.value })}
                                 className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
@@ -3064,103 +3064,181 @@ const EditCandidateModal = ({ candidate, onClose, onSave }) => {
     const initialExp = parseExperience(candidate?.experience);
     const [expYears, setExpYears] = useState(initialExp.years);
     const [expMonths, setExpMonths] = useState(initialExp.months);
-    const [form, setForm] = useState({ ...candidate });
+    const [form, setForm] = useState({
+        ...candidate,
+        position: candidate?.position || "",
+        currentCompany: candidate?.currentCompany || "",
+        email: candidate?.email || "",
+        phone: candidate?.phone || "",
+        currentCtc: candidate?.currentCtc || "",
+        expectedCtc: candidate?.expectedCtc || "",
+        noticePeriod: candidate?.noticePeriod || "",
+        skills: Array.isArray(candidate?.skills) ? candidate.skills.join(", ") : (candidate?.skills || "")
+    });
 
     const handleSubmit = (e) => {
         e.preventDefault();
         const formattedExp = formatExperience(expYears, expMonths);
-        onSave({ ...form, experience: formattedExp });
+        const cleanedSkills = typeof form.skills === "string"
+            ? form.skills.split(",").map(s => s.trim()).filter(Boolean)
+            : (form.skills || []);
+        onSave({
+            ...form,
+            experience: formattedExp,
+            skills: cleanedSkills
+        });
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn select-none">
             <div className="bg-white rounded-[20px] shadow-2xl border border-gray-200 max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <h3 className="text-sm font-bold text-[#1E1E1E]">Edit Candidate Details</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                    <div>
+                        <h3 className="text-sm font-bold text-[#1E1E1E]">Edit Candidate Details</h3>
+                        <p className="text-[11px] text-gray-400">Update candidate profile, position, company, and compensation</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer"><X className="w-4 h-4" /></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-3 text-xs">
                     <div>
-                        <label className="block text-gray-500 font-bold mb-1">Full Name</label>
+                        <label className="block text-gray-500 font-bold mb-1">Full Name *</label>
                         <input
                             type="text"
-                            value={form.name}
+                            required
+                            value={form.name || ""}
                             onChange={e => setForm({ ...form, name: e.target.value })}
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                         />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-gray-500 font-bold mb-1">Position</label>
-                            <select
-                                value={form.position}
+                            <label className="block text-gray-500 font-bold mb-1">Position / Job Title</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Software Engineer, BDE, Marketing..."
+                                value={form.position || ""}
                                 onChange={e => setForm({ ...form, position: e.target.value })}
-                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
-                            >
-                                {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                            />
                         </div>
                         <div>
-                            <label className="block text-gray-500 font-bold mb-1">Experience (Years & Months)</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="relative w-full">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="50"
-                                        placeholder="0"
-                                        value={expYears}
-                                        onChange={e => setExpYears(e.target.value)}
-                                        className="w-full p-2 pr-11 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
-                                    />
-                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
-                                        Years
-                                    </span>
-                                </div>
-                                <div className="relative w-full">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="11"
-                                        placeholder="0"
-                                        value={expMonths}
-                                        onChange={e => setExpMonths(e.target.value)}
-                                        className="w-full p-2 pr-12 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
-                                    />
-                                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
-                                        Months
-                                    </span>
-                                </div>
+                            <label className="block text-gray-500 font-bold mb-1">Current Company</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Baseline IT, ToXSL, DigiWolves..."
+                                value={form.currentCompany || ""}
+                                onChange={e => setForm({ ...form, currentCompany: e.target.value })}
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-gray-500 font-bold mb-1">Email</label>
+                            <input
+                                type="email"
+                                placeholder="candidate@example.com"
+                                value={form.email || ""}
+                                onChange={e => setForm({ ...form, email: e.target.value })}
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-gray-500 font-bold mb-1">Phone</label>
+                            <input
+                                type="text"
+                                placeholder="+91 98765 43210"
+                                value={form.phone || ""}
+                                onChange={e => setForm({ ...form, phone: e.target.value })}
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-gray-500 font-bold mb-1">Experience (Years & Months)</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="relative w-full">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="50"
+                                    placeholder="0"
+                                    value={expYears}
+                                    onChange={e => setExpYears(e.target.value)}
+                                    className="w-full p-2 pr-11 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
+                                />
+                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                    Years
+                                </span>
+                            </div>
+                            <div className="relative w-full">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="11"
+                                    placeholder="0"
+                                    value={expMonths}
+                                    onChange={e => setExpMonths(e.target.value)}
+                                    className="w-full p-2 pr-12 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7] text-xs font-medium"
+                                />
+                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
+                                    Months
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label className="block text-gray-500 font-bold mb-1">Current CTC</label>
                             <input
                                 type="text"
+                                placeholder="e.g. 5.5 LPA"
                                 value={form.currentCtc || ""}
                                 onChange={e => setForm({ ...form, currentCtc: e.target.value })}
-                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                             />
                         </div>
                         <div>
                             <label className="block text-gray-500 font-bold mb-1">Expected CTC</label>
                             <input
                                 type="text"
+                                placeholder="e.g. 8.0 LPA"
                                 value={form.expectedCtc || ""}
                                 onChange={e => setForm({ ...form, expectedCtc: e.target.value })}
-                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px]"
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-gray-500 font-bold mb-1">Notice Period</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. 30 Days"
+                                value={form.noticePeriod || ""}
+                                onChange={e => setForm({ ...form, noticePeriod: e.target.value })}
+                                className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
                             />
                         </div>
                     </div>
 
-                    <div className="pt-4 flex justify-end gap-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Update</button>
+                    <div>
+                        <label className="block text-gray-500 font-bold mb-1">Skills (comma separated)</label>
+                        <input
+                            type="text"
+                            placeholder="e.g. Sales, Negotiation, CRM, Lead Generation..."
+                            value={form.skills || ""}
+                            onChange={e => setForm({ ...form, skills: e.target.value })}
+                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-[10px] focus:outline-none focus:border-[#2D79C7]"
+                        />
+                    </div>
+
+                    <div className="pt-4 flex justify-end gap-2 border-t border-gray-100">
+                        <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-[10px] text-gray-600 font-bold cursor-pointer hover:bg-gray-50">Cancel</button>
+                        <button type="submit" className="px-4 py-2 bg-[#2D79C7] text-white rounded-[10px] font-bold hover:bg-[#1F5EA8] cursor-pointer">Update Candidate</button>
                     </div>
                 </form>
             </div>

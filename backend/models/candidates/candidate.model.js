@@ -29,7 +29,7 @@ const candidateSchema = new mongoose.Schema({
     },
     position: {
         type: String,
-        default: "Software Engineer"
+        default: ""
     },
     experience: {
         type: String,
