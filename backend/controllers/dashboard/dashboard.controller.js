@@ -20,7 +20,10 @@ export const getDashboardData = async (req, res) => {
             });
         }
 
-        // Today's Attendance (aligned with IST timezone matching attendance controller)
+        // Today's Date & Attendance (aligned with IST timezone matching attendance controller)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
         const istDateStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         const [y, m, d] = istDateStr.split("-").map(Number);
         const todayUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
