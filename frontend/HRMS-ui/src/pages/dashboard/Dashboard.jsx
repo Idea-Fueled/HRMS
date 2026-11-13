@@ -880,8 +880,8 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const sortedLogs = [...logs].filter(l => l.timestamp).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const lastLog = sortedLogs.length > 0 ? sortedLogs[sortedLogs.length - 1] : null;
 
-    // Determine if currently clocked in from web specifically (matching Me.jsx LiveClockCard)
-    const hasDailyWorkPlan = !!(attendance?.dailyWorkPlan);
+    // Has employee already submitted their daily work plan (min 20 chars) today?
+    const hasDailyWorkPlan = Boolean(attendance?.dailyWorkPlan && attendance.dailyWorkPlan.trim().length >= 20);
     const hasRemoteContext = !!(hasDailyWorkPlan || attendance?.wfhMessage || (attendance?.workMode && attendance?.workMode !== "Office"));
     const webLogs = (attendance?.logs || []).filter(l => (l.source === "web" || l.source === "wfh") && hasRemoteContext);
 
@@ -891,11 +891,7 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in")
     );
 
-    // Has employee already submitted their first daily work plan today?
-    const hasWebClockedInToday = !!(
-        hasDailyWorkPlan ||
-        (hasRemoteContext && (attendance?.logs || []).some(l => (l.source === "web" || l.source === "wfh")))
-    );
+    const hasWebClockedInToday = hasDailyWorkPlan;
 
     // Check if employee is currently in office / working (latest log is clock_in across biometric or web)
     const isCurrentlyIn = lastLog ? lastLog.action === "clock_in" : false;
@@ -986,7 +982,13 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         if (isWebClockedIn) {
             onClockOut();
         } else {
-            setWebClockInOpen(true);
+            if (hasDailyWorkPlan) {
+                // Plan already submitted today: direct clock in without reopening modal!
+                onClockIn("Office", "", attendance?.dailyWorkPlan || "");
+            } else {
+                // First web clock in of the day: open modal to enter daily plan
+                setWebClockInOpen(true);
+            }
         }
     };
 

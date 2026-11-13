@@ -662,9 +662,8 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     const { user } = useAuth();
     const userName = user?.firstName || user?.name || "Prashant";
     
-    // Determine if currently clocked in from web specifically (NOT biometric)
-    // A user is ONLY considered web clocked in if they actively have isWebClockedIn === true AND have submitted a dailyWorkPlan or have an active remote clock_in session
-    const hasDailyWorkPlan = !!(todayAttendance?.dailyWorkPlan);
+    // Has employee already submitted their daily work plan (min 20 chars) today?
+    const hasDailyWorkPlan = Boolean(todayAttendance?.dailyWorkPlan && todayAttendance.dailyWorkPlan.trim().length >= 20);
     const hasRemoteContext = !!(hasDailyWorkPlan || todayAttendance?.wfhMessage || (todayAttendance?.workMode && todayAttendance?.workMode !== "Office"));
     const webLogs = (todayAttendance?.logs || []).filter(l => (l.source === "web" || l.source === "wfh") && hasRemoteContext);
     
@@ -674,11 +673,7 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in")
     );
 
-    // Has employee already submitted their first daily work plan today?
-    const hasWebClockedInToday = !!(
-        hasDailyWorkPlan ||
-        (hasRemoteContext && (todayAttendance?.logs || []).some(l => (l.source === "web" || l.source === "wfh")))
-    );
+    const hasWebClockedInToday = hasDailyWorkPlan;
 
     const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn, user?.department, user);
 
@@ -693,7 +688,14 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         if (isClockedIn) {
             onClockOut();
         } else {
-            onOpenClockInModal();
+            if (hasDailyWorkPlan) {
+                // Plan already submitted today: direct clock in without reopening modal!
+                if (onDirectClockIn) onDirectClockIn();
+                else onOpenClockInModal();
+            } else {
+                // First web clock in of the day: open modal to enter daily plan
+                onOpenClockInModal();
+            }
         }
     };
 
@@ -4810,7 +4812,7 @@ const Me = () => {
                         onOpenPartialLeave={handleOpenPartialLeaveModal}
                         todayAttendance={todayAttendance}
                         onOpenClockInModal={() => setIsWebClockInModalOpen(true)}
-                        onDirectClockIn={() => handleClockInSubmit("")}
+                        onDirectClockIn={() => handleClockInSubmit(todayAttendance?.dailyWorkPlan || "")}
                         onClockOut={handleClockOutSubmit}
                         onOpenWfhModal={() => setIsWfhModalOpen(true)}
                     />

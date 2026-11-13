@@ -28,7 +28,7 @@ export const clockIn = async (req, res) => {
             ]
         }).sort({ date: -1, updatedAt: -1 });
 
-        const isFirstWebClockIn = !attendance || !attendance.dailyWorkPlan || !(attendance.logs || []).some(l => l.source === "web");
+        const isFirstWebClockIn = !attendance || !attendance.dailyWorkPlan || attendance.dailyWorkPlan.trim().length < 20;
 
         // Enforce minimum 20 characters for Web Clock-in Daily Work Plan
         if (isFirstWebClockIn && workMode !== "Work From Home" && (source === "web" || !source)) {
