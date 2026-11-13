@@ -28,9 +28,18 @@ export const clockIn = async (req, res) => {
             ]
         }).sort({ date: -1, updatedAt: -1 });
 
-        const isFirstWebClockIn = !attendance || !attendance.dailyWorkPlan || attendance.dailyWorkPlan.trim().length < 20;
+        // A clock-in is only the FIRST clock-in of the day if no clock-in has happened yet today
+        const hasAlreadyClockedIn = Boolean(
+            attendance && (
+                attendance.firstClockIn ||
+                (attendance.logs || []).some(l => l.action === "clock_in") ||
+                (attendance.dailyWorkPlan && attendance.dailyWorkPlan.trim().length >= 20)
+            )
+        );
 
-        // Enforce minimum 20 characters for Web Clock-in Daily Work Plan
+        const isFirstWebClockIn = !hasAlreadyClockedIn;
+
+        // Enforce minimum 20 characters for Web Clock-in Daily Work Plan ONLY ON FIRST CLOCK-IN
         if (isFirstWebClockIn && workMode !== "Work From Home" && (source === "web" || !source)) {
             const plan = (dailyWorkPlan || "").trim();
             if (!plan || plan.length < 20) {
@@ -52,7 +61,7 @@ export const clockIn = async (req, res) => {
                 isWebClockedIn: source === "web",
                 workMode: workMode || "Office",
                 wfhMessage: workMode === "Work From Home" ? (wfhMessage || "") : "",
-                dailyWorkPlan: dailyWorkPlan || "",
+                dailyWorkPlan: dailyWorkPlan ? dailyWorkPlan.trim() : "",
                 logs: [
                     {
                         action: "clock_in",
@@ -94,8 +103,8 @@ export const clockIn = async (req, res) => {
                 attendance.wfhMessage = wfhMessage;
             }
 
-            if (dailyWorkPlan && !attendance.dailyWorkPlan) {
-                attendance.dailyWorkPlan = dailyWorkPlan;
+            if (dailyWorkPlan && dailyWorkPlan.trim()) {
+                attendance.dailyWorkPlan = dailyWorkPlan.trim();
             }
 
             await attendance.save();
@@ -244,8 +253,8 @@ export const clockIn = async (req, res) => {
             }
         }
 
-        // If Daily Work Plan is submitted on clock in, dispatch email to Manager & Global Admins
-        if (dailyWorkPlan && String(dailyWorkPlan).trim().length > 0 && workMode !== "Work From Home") {
+        // If Daily Work Plan is submitted on clock in, dispatch email to Manager & Global Admins (only on first clock in)
+        if (isFirstWebClockIn && dailyWorkPlan && String(dailyWorkPlan).trim().length > 0 && workMode !== "Work From Home") {
             try {
                 let applicant = null;
                 if (mongoose.Types.ObjectId.isValid(employeeId)) {

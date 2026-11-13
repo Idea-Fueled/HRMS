@@ -662,8 +662,8 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
     const { user } = useAuth();
     const userName = user?.firstName || user?.name || "Prashant";
     
-    // Has employee already submitted their daily work plan (min 20 chars) today?
-    const hasDailyWorkPlan = Boolean(todayAttendance?.dailyWorkPlan && todayAttendance.dailyWorkPlan.trim().length >= 20);
+    // Determine if employee has active daily work plan / remote context
+    const hasDailyWorkPlan = !!(todayAttendance?.dailyWorkPlan);
     const hasRemoteContext = !!(hasDailyWorkPlan || todayAttendance?.wfhMessage || (todayAttendance?.workMode && todayAttendance?.workMode !== "Office"));
     const webLogs = (todayAttendance?.logs || []).filter(l => (l.source === "web" || l.source === "wfh") && hasRemoteContext);
     
@@ -673,7 +673,14 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in")
     );
 
-    const hasWebClockedInToday = hasDailyWorkPlan;
+    // Has employee already clocked in at least once today?
+    const hasAlreadyClockedInToday = Boolean(
+        todayAttendance?.dailyWorkPlan ||
+        todayAttendance?.firstClockIn ||
+        (todayAttendance?.logs || []).some(l => l.action === "clock_in")
+    );
+
+    const hasWebClockedInToday = hasAlreadyClockedInToday;
 
     const punctuality = calculatePunctualityStatus(todayAttendance?.firstClockIn, user?.department, user);
 
@@ -688,8 +695,8 @@ const LiveClockCard = ({ onOpenPartialLeave, todayAttendance, onOpenClockInModal
         if (isClockedIn) {
             onClockOut();
         } else {
-            if (hasDailyWorkPlan) {
-                // Plan already submitted today: direct clock in without reopening modal!
+            if (hasAlreadyClockedInToday) {
+                // Already clocked in earlier today: 1-click direct clock in! Modal must NOT open.
                 if (onDirectClockIn) onDirectClockIn();
                 else onOpenClockInModal();
             } else {
@@ -4668,15 +4675,14 @@ const Me = () => {
                 toast.success("Clocked in successfully!");
                 if (res.data.attendance) {
                     setTodayAttendance(res.data.attendance);
-                } else {
-                    await fetchTodayAttendance();
                 }
+                await fetchTodayAttendance();
             } else {
                 toast.error(res.data?.message || "Failed to clock in.");
             }
         } catch (err) {
             console.error(err);
-            toast.error("Failed to clock in.");
+            toast.error(err.response?.data?.message || "Failed to clock in.");
         }
     };
 
@@ -4688,15 +4694,14 @@ const Me = () => {
                 toast.success("Clocked out successfully!");
                 if (res.data.attendance) {
                     setTodayAttendance(res.data.attendance);
-                } else {
-                    await fetchTodayAttendance();
                 }
+                await fetchTodayAttendance();
             } else {
                 toast.error(res.data?.message || "Failed to clock out.");
             }
         } catch (err) {
             console.error(err);
-            toast.error("Failed to clock out.");
+            toast.error(err.response?.data?.message || "Failed to clock out.");
         }
     };
 

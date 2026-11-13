@@ -880,8 +880,8 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
     const sortedLogs = [...logs].filter(l => l.timestamp).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const lastLog = sortedLogs.length > 0 ? sortedLogs[sortedLogs.length - 1] : null;
 
-    // Has employee already submitted their daily work plan (min 20 chars) today?
-    const hasDailyWorkPlan = Boolean(attendance?.dailyWorkPlan && attendance.dailyWorkPlan.trim().length >= 20);
+    // Determine if employee has active daily work plan / remote context
+    const hasDailyWorkPlan = !!(attendance?.dailyWorkPlan);
     const hasRemoteContext = !!(hasDailyWorkPlan || attendance?.wfhMessage || (attendance?.workMode && attendance?.workMode !== "Office"));
     const webLogs = (attendance?.logs || []).filter(l => (l.source === "web" || l.source === "wfh") && hasRemoteContext);
 
@@ -891,7 +891,14 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in")
     );
 
-    const hasWebClockedInToday = hasDailyWorkPlan;
+    // Has employee already clocked in at least once today?
+    const hasAlreadyClockedInToday = Boolean(
+        attendance?.dailyWorkPlan ||
+        attendance?.firstClockIn ||
+        sortedLogs.some(l => l.action === "clock_in")
+    );
+
+    const hasWebClockedInToday = hasAlreadyClockedInToday;
 
     // Check if employee is currently in office / working (latest log is clock_in across biometric or web)
     const isCurrentlyIn = lastLog ? lastLog.action === "clock_in" : false;
@@ -982,8 +989,8 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
         if (isWebClockedIn) {
             onClockOut();
         } else {
-            if (hasDailyWorkPlan) {
-                // Plan already submitted today: direct clock in without reopening modal!
+            if (hasAlreadyClockedInToday) {
+                // Already clocked in earlier today: 1-click direct clock in! Modal must NOT open.
                 onClockIn("Office", "", attendance?.dailyWorkPlan || "");
             } else {
                 // First web clock in of the day: open modal to enter daily plan
