@@ -35,7 +35,13 @@ import {
     Paperclip,
     Eye,
     XCircle,
-    X
+    X,
+    Bold,
+    Italic,
+    Underline,
+    List,
+    ListOrdered,
+    RemoveFormatting
 } from "lucide-react";
 import { toast } from "sonner";
 import { getLeaveSummary, getLeaveHistory, getAllHolidays, applyLeave, cancelLeave, clockIn, clockOut, getTodayAttendanceLogs, requestCompOffCredit } from "../../services/dashboard.service";
@@ -239,28 +245,83 @@ const calculatePunctualityStatus = (clockInTime, dept = "", userObj = null) => {
 };
 
 const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
-    const [workPlan, setWorkPlan] = useState("");
+    const editorRef = useRef(null);
+    const [htmlContent, setHtmlContent] = useState("");
+    const [plainText, setPlainText] = useState("");
     const [submitting, setSubmitting] = useState(false);
+
+    const handleInput = () => {
+        if (!editorRef.current) return;
+        const html = editorRef.current.innerHTML;
+        const text = (editorRef.current.innerText || editorRef.current.textContent || "").trim();
+        setHtmlContent(html);
+        setPlainText(text);
+    };
+
+    // Rich paste handler: preserves bold, italic, bullet lists and structure from ChatGPT, Notion, Word
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const clipboardHtml = e.clipboardData.getData("text/html");
+        const clipboardText = e.clipboardData.getData("text/plain");
+
+        if (clipboardHtml) {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(clipboardHtml, "text/html");
+
+                // Remove dangerous or clutter tags
+                doc.querySelectorAll("script, style, meta, link, iframe, object, embed").forEach(el => el.remove());
+
+                // Strip inline color/background styles that clash with UI while keeping structural tags
+                doc.querySelectorAll("*").forEach(el => {
+                    el.removeAttribute("style");
+                    el.removeAttribute("class");
+                    el.removeAttribute("id");
+                });
+
+                const cleanHtml = doc.body.innerHTML;
+                document.execCommand("insertHTML", false, cleanHtml);
+            } catch (err) {
+                document.execCommand("insertText", false, clipboardText);
+            }
+        } else if (clipboardText) {
+            const lines = clipboardText.split(/\r?\n/);
+            const formatted = lines.map(line => line.trim() ? `<div>${line}</div>` : `<div><br></div>`).join("");
+            document.execCommand("insertHTML", false, formatted);
+        }
+
+        handleInput();
+    };
+
+    const executeCommand = (command, value = null) => {
+        if (!editorRef.current) return;
+        editorRef.current.focus();
+        document.execCommand(command, false, value);
+        handleInput();
+    };
 
     if (!isOpen) return null;
 
-    const trimmedLength = workPlan.trim().length;
+    const trimmedLength = plainText.length;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const trimmed = workPlan.trim();
-        if (!trimmed) {
+        const text = plainText.trim();
+        if (!text) {
             toast.error("Please enter your daily work plan before clocking in.");
             return;
         }
-        if (trimmed.length < 20) {
+        if (text.length < 20) {
             toast.error("Daily work plan must be at least 20 characters long. Please write your tasks that have to do today.");
             return;
         }
         setSubmitting(true);
         try {
-            await onSubmit(trimmed);
-            setWorkPlan("");
+            const finalContent = htmlContent.trim() || text;
+            await onSubmit(finalContent);
+            if (editorRef.current) editorRef.current.innerHTML = "";
+            setHtmlContent("");
+            setPlainText("");
             onClose();
         } catch (err) {
             console.error(err);
@@ -296,20 +357,97 @@ const WebClockInModal = ({ isOpen, onClose, onSubmit }) => {
                         <label className="text-xs font-bold text-slate-700 block">
                             Daily Work Plan / Comments <span className="text-rose-500">*</span>
                         </label>
-                        <textarea
-                            rows={4}
-                            maxLength={1024}
-                            value={workPlan}
-                            onChange={(e) => setWorkPlan(e.target.value)}
-                            placeholder="What tasks or projects will you work on today? (e.g. client deliveries, bug fixes, features...)"
-                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-medium p-3.5 rounded-lg focus:outline-none focus:border-[#2D79C7] focus:ring-1 focus:ring-[#2D79C7] transition-all resize-none shadow-2xs"
-                        />
-                        <div className="flex items-center justify-between text-[11px] font-mono">
+
+                        {/* Rich Text Editor Container */}
+                        <div className="border border-slate-200 rounded-[12px] overflow-hidden focus-within:border-[#2D79C7] focus-within:ring-1 focus-within:ring-[#2D79C7] transition-all bg-white shadow-2xs">
+                            {/* Toolbar */}
+                            <div className="flex items-center gap-1 p-1.5 bg-slate-50/90 border-b border-slate-200 select-none">
+                                <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); executeCommand("bold"); }}
+                                    title="Bold (Ctrl+B)"
+                                    className="p-1.5 hover:bg-white text-slate-700 hover:text-[#2D79C7] rounded-md transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                                >
+                                    <Bold className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); executeCommand("italic"); }}
+                                    title="Italic (Ctrl+I)"
+                                    className="p-1.5 hover:bg-white text-slate-700 hover:text-[#2D79C7] rounded-md transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                                >
+                                    <Italic className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); executeCommand("underline"); }}
+                                    title="Underline (Ctrl+U)"
+                                    className="p-1.5 hover:bg-white text-slate-700 hover:text-[#2D79C7] rounded-md transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                                >
+                                    <Underline className="w-3.5 h-3.5" />
+                                </button>
+
+                                <span className="h-4 w-px bg-slate-200 mx-1" />
+
+                                <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); executeCommand("insertUnorderedList"); }}
+                                    title="Bullet Points"
+                                    className="p-1.5 hover:bg-white text-slate-700 hover:text-[#2D79C7] rounded-md transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                                >
+                                    <List className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); executeCommand("insertOrderedList"); }}
+                                    title="Numbered List"
+                                    className="p-1.5 hover:bg-white text-slate-700 hover:text-[#2D79C7] rounded-md transition-colors cursor-pointer border border-transparent hover:border-slate-200"
+                                >
+                                    <ListOrdered className="w-3.5 h-3.5" />
+                                </button>
+
+                                <span className="h-4 w-px bg-slate-200 mx-1" />
+
+                                <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); executeCommand("removeFormat"); }}
+                                    title="Clear Formatting"
+                                    className="p-1.5 hover:bg-white text-slate-400 hover:text-rose-600 rounded-md transition-colors cursor-pointer border border-transparent hover:border-slate-200 ml-auto"
+                                >
+                                    <RemoveFormatting className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
+                            {/* Editable Canvas */}
+                            <div className="relative">
+                                <div
+                                    ref={editorRef}
+                                    contentEditable
+                                    onInput={handleInput}
+                                    onPaste={handlePaste}
+                                    className="w-full min-h-[140px] max-h-[260px] overflow-y-auto p-3.5 text-xs text-slate-800 focus:outline-none leading-relaxed select-text [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_b]:font-bold [&_strong]:font-bold [&_p]:mb-1 [&_div]:min-h-[1em]"
+                                    style={{ wordBreak: "break-word" }}
+                                />
+
+                                {/* Placeholder when empty */}
+                                {!plainText && (
+                                    <div
+                                        onClick={() => editorRef.current?.focus()}
+                                        className="absolute top-3.5 left-3.5 text-slate-400 text-xs pointer-events-none select-none font-medium leading-relaxed pr-6"
+                                    >
+                                        What tasks or projects will you work on today? (Paste directly from ChatGPT or write in bullet points...)
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Counter & Validation status */}
+                        <div className="flex items-center justify-between text-[11px] font-mono pt-0.5">
                             <span className={trimmedLength >= 20 ? "text-emerald-600 font-bold" : "text-amber-600 font-bold"}>
                                 {trimmedLength >= 20 ? "✓ Min 20 characters met" : `${trimmedLength}/20 min chars required`}
                             </span>
                             <span className="font-bold text-slate-400">
-                                {workPlan.length} / 1024
+                                {trimmedLength} chars
                             </span>
                         </div>
                     </div>
@@ -3626,7 +3764,14 @@ const LogAuditModal = ({ isOpen, onClose, row, todayAttendance }) => {
                                         {workPlanText && idx === 0 && (
                                             <div className="mt-2.5 pt-2 border-t border-blue-100/80 text-[11px] font-sans text-slate-600">
                                                 <span className="font-bold text-[#2D79C7] block text-[10px] uppercase tracking-wide">Work Plan / Message</span>
-                                                <p className="italic mt-0.5 text-slate-700">"{workPlanText}"</p>
+                                                {workPlanText.includes("<") && workPlanText.includes(">") ? (
+                                                    <div
+                                                        className="mt-1 text-slate-700 text-xs leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_b]:font-bold [&_strong]:font-bold"
+                                                        dangerouslySetInnerHTML={{ __html: workPlanText }}
+                                                    />
+                                                ) : (
+                                                    <p className="italic mt-0.5 text-slate-700">"{workPlanText}"</p>
+                                                )}
                                             </div>
                                         )}
                                     </div>

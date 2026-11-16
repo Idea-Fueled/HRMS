@@ -33,7 +33,7 @@ export const clockIn = async (req, res) => {
             attendance && (
                 attendance.firstClockIn ||
                 (attendance.logs || []).some(l => l.action === "clock_in") ||
-                (attendance.dailyWorkPlan && attendance.dailyWorkPlan.trim().length >= 20)
+                (attendance.dailyWorkPlan && attendance.dailyWorkPlan.replace(/<[^>]*>/g, "").trim().length >= 20)
             )
         );
 
@@ -42,7 +42,8 @@ export const clockIn = async (req, res) => {
         // Enforce minimum 20 characters for Web Clock-in Daily Work Plan ONLY ON FIRST CLOCK-IN
         if (isFirstWebClockIn && workMode !== "Work From Home" && (source === "web" || !source)) {
             const plan = (dailyWorkPlan || "").trim();
-            if (!plan || plan.length < 20) {
+            const textContent = plan.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+            if (!textContent || textContent.length < 20) {
                 return res.status(400).json({
                     success: false,
                     message: "Daily work plan must be at least 20 characters long. Please write your tasks that have to do today.",
