@@ -23,6 +23,7 @@ import emailRoutes from "./routes/emails/email.routes.js";
 import reportRoutes from "./routes/reports/report.routes.js";
 import logRoutes from "./routes/logs/log.routes.js";
 import probationRoutes from "./routes/probation/probation.routes.js";
+import fileRoutes from "./routes/file-manager/file.routes.js";
 import { initSocket } from "./socket/socket.js";
 import { initDsrScheduler } from "./cron/dsrCron.js";
 import { initProbationScheduler } from "./cron/probationCron.js";
@@ -82,6 +83,7 @@ app.use("/api/emails", emailRoutes)
 app.use("/api/reports", reportRoutes)
 app.use("/api/logs", logRoutes)
 app.use("/api/probation", probationRoutes)
+app.use("/api/files", fileRoutes)
 
 connectDB();
 initSocket(httpServer, allowedOrigins);

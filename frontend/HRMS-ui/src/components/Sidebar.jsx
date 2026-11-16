@@ -230,6 +230,19 @@ const menuCategories = [
                     </svg>
                 ),
             },
+            {
+                name: "File Manager",
+                to: "/file-manager",
+                permissionKey: "fileManager",
+                roles: ["global_admin"],
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 shrink-0">
+                        <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+                        <path d="M12 10v6" />
+                        <path d="m9 13 3-3 3 3" />
+                    </svg>
+                ),
+            },
         ],
     },
 ];
@@ -323,6 +336,10 @@ const Sidebar = ({ onClose }) => {
         }
 
         if (item.permissionKey === "logs" || item.to === "/logs") {
+            return role === "global_admin";
+        }
+
+        if (item.permissionKey === "fileManager" || item.to === "/file-manager") {
             return role === "global_admin";
         }
 

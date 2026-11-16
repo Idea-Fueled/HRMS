@@ -36,7 +36,7 @@ export const uploadToCloudinary = (fileBuffer, folder = "hrms_profiles", resourc
  * @param {string} url 
  * @returns {Promise<object>}
  */
-export const deleteFromCloudinary = async (url) => {
+export const deleteFromCloudinary = async (url, resourceType = "image") => {
     if (!url || !url.includes("cloudinary.com")) return null;
     try {
         // Extract public ID from Cloudinary URL
@@ -49,10 +49,10 @@ export const deleteFromCloudinary = async (url) => {
         const relevantParts = parts.slice(uploadIndex + 2); // skip "upload" and version segment
         const fullPublicId = relevantParts.join("/");
         
-        // Strip file extension (.png, .jpg, etc.)
-        const publicId = fullPublicId.split(".").slice(0, -1).join(".");
+        // For raw files, Cloudinary keeps extension in public_id, while for images/videos it strips extension
+        const publicId = resourceType === "raw" ? fullPublicId : (fullPublicId.includes(".") ? fullPublicId.split(".").slice(0, -1).join(".") : fullPublicId);
 
-        const response = await cloudinary.uploader.destroy(publicId);
+        const response = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType || "image" });
         return response;
     } catch (error) {
         console.error("Cloudinary delete error:", error);

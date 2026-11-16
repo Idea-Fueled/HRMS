@@ -27,6 +27,7 @@ import Inbox from "./pages/inbox/Inbox";
 import Approvals from "./pages/approvals/Approvals";
 import Reports from "./pages/reports/Reports";
 import ActivityLogs from "./pages/activity-logs/ActivityLogs";
+import FileManager from "./pages/file-manager/FileManager";
 import Probation from "./pages/probation/Probation";
 import Settings from "./pages/settings/Settings";
 
@@ -209,6 +210,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>
                         <ActivityLogs />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "file-manager",
+                element: (
+                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>
+                        <FileManager />
                     </ProtectedRoute>
                 ),
             },

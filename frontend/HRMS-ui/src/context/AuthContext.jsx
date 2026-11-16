@@ -143,8 +143,8 @@ export const AuthProvider = ({ children }) => {
         const normalize = (p) => p.replace(/^\//, "").replace(/\/$/, "");
         const normPath = normalize(path);
 
-        // Assets module is strictly accessible to Global Admin role only
-        if (normPath === "assets") {
+        // Assets & File Manager modules are strictly accessible to Global Admin role only
+        if (normPath === "assets" || normPath === "file-manager") {
             return userRole === "global_admin";
         }
 

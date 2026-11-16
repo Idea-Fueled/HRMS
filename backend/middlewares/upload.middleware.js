@@ -47,3 +47,10 @@ export const uploadDoc = multer({
     },
     fileFilter: docFileFilter
 });
+
+export const uploadFileManager = multer({
+    storage: storage,
+    limits: {
+        fileSize: 50 * 1024 * 1024 // 50 MB limit for file manager
+    }
+});
