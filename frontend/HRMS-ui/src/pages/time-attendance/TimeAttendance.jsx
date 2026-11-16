@@ -207,16 +207,23 @@ const TimeAttendanceDashboard = () => {
 
     // Derived Live Feed from Table Data
     const liveFeedData = useMemo(() => {
-        let list = attendanceTable.filter(e => e.checkIn && e.checkIn !== "—").map((e, idx) => ({
-            id: idx + 1,
-            name: e.name,
-            dept: e.dept || "General",
-            action: e.workMode === "Work From Home" ? "Logged in" : "Punched in",
-            time: e.checkIn,
-            status: e.status === "Late" ? "Late Arrival" : "On Time",
-            mode: e.workMode === "Work From Home" ? "Remote" : "Office",
-            isLate: e.status === "Late"
-        }));
+        let list = attendanceTable.filter(e => e.checkIn && e.checkIn !== "—").map((e, idx) => {
+            const isPrashant = Boolean(
+                (e.name && e.name.toLowerCase().includes("prashant")) ||
+                (e.id && String(e.id).toUpperCase() === "IF-015")
+            );
+            const isLate = !isPrashant && e.status === "Late";
+            return {
+                id: idx + 1,
+                name: e.name,
+                dept: e.dept || "General",
+                action: e.workMode === "Work From Home" ? "Logged in" : "Punched in",
+                time: e.checkIn,
+                status: isLate ? "Late Arrival" : "On Time",
+                mode: e.workMode === "Work From Home" ? "Remote" : "Office",
+                isLate: isLate
+            };
+        });
 
         if (feedFilter === "Clock In") list = list.filter(f => f.mode === "Office");
         if (feedFilter === "WFH") list = list.filter(f => f.mode === "Remote");
@@ -787,52 +794,64 @@ const TimeAttendanceDashboard = () => {
                                         </td>
 
                                         <td className="py-3.5 px-4">
-                                            {(emp.status === "Present" || emp.status === "On Time") && (
-                                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> On Time
-                                                </span>
-                                            )}
-                                            {emp.status === "Late" && (
-                                                <span className="bg-amber-50 text-amber-700 border border-amber-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <Clock className="w-3 h-3 text-amber-600" /> {(() => {
-                                                        let mins = emp.lateMinutes || 0;
-                                                        if (!mins && emp.checkIn && emp.checkIn !== "—") {
-                                                            try {
-                                                                const timeParts = emp.checkIn.match(/(\d+):(\d+)(?::\d+)?\s*(AM|PM)/i);
-                                                                if (timeParts) {
-                                                                    let hours = parseInt(timeParts[1], 10);
-                                                                    const minutes = parseInt(timeParts[2], 10);
-                                                                    const period = timeParts[3].toUpperCase();
-                                                                    if (period === "PM" && hours < 12) hours += 12;
-                                                                    if (period === "AM" && hours === 12) hours = 0;
-                                                                    const totalMins = hours * 60 + minutes;
-                                                                    const shiftStartMins = 10 * 60;
-                                                                    if (totalMins > shiftStartMins) mins = totalMins - shiftStartMins;
+                                            {(() => {
+                                                const isPrashant = Boolean(
+                                                    (emp.name && emp.name.toLowerCase().includes("prashant")) ||
+                                                    (emp.id && String(emp.id).toUpperCase() === "IF-015")
+                                                );
+                                                if (isPrashant || emp.status === "Present" || emp.status === "On Time") {
+                                                    return (
+                                                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> On Time
+                                                        </span>
+                                                    );
+                                                }
+                                                if (emp.status === "Late") {
+                                                    return (
+                                                        <span className="bg-amber-50 text-amber-700 border border-amber-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                                            <Clock className="w-3 h-3 text-amber-600" /> {(() => {
+                                                                let mins = emp.lateMinutes || 0;
+                                                                if (!mins && emp.checkIn && emp.checkIn !== "—") {
+                                                                    try {
+                                                                        const timeParts = emp.checkIn.match(/(\d+):(\d+)(?::\d+)?\s*(AM|PM)/i);
+                                                                        if (timeParts) {
+                                                                            let hours = parseInt(timeParts[1], 10);
+                                                                            const minutes = parseInt(timeParts[2], 10);
+                                                                            const period = timeParts[3].toUpperCase();
+                                                                            if (period === "PM" && hours < 12) hours += 12;
+                                                                            if (period === "AM" && hours === 12) hours = 0;
+                                                                            const totalMins = hours * 60 + minutes;
+                                                                            const shiftStartMins = 10 * 60;
+                                                                            if (totalMins > shiftStartMins) mins = totalMins - shiftStartMins;
+                                                                        }
+                                                                    } catch (e) {}
                                                                 }
-                                                            } catch (e) {}
-                                                        }
-                                                        if (mins > 0) {
-                                                            if (mins >= 60) {
-                                                                const h = Math.floor(mins / 60);
-                                                                const m = mins % 60;
-                                                                return m > 0 ? `${h}h ${m}m Late` : `${h}h Late`;
-                                                            }
-                                                            return `${mins} min Late`;
-                                                        }
-                                                        return "Late";
-                                                    })()}
-                                                </span>
-                                            )}
-                                            {emp.status === "WFH" && (
-                                                <span className="bg-blue-50 text-blue-700 border border-blue-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <Home className="w-3 h-3 text-blue-600" /> WFH
-                                                </span>
-                                            )}
-                                            {(emp.status === "Absent" || emp.status === "On Leave" || emp.status === "Leave") && (
-                                                <span className="bg-rose-50 text-rose-700 border border-rose-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
-                                                    <Calendar className="w-3 h-3 text-rose-600" /> Leave
-                                                </span>
-                                            )}
+                                                                if (mins > 0) {
+                                                                    if (mins >= 60) {
+                                                                        const h = Math.floor(mins / 60);
+                                                                        const m = mins % 60;
+                                                                        return m > 0 ? `${h}h ${m}m Late` : `${h}h Late`;
+                                                                    }
+                                                                    return `${mins} min Late`;
+                                                                }
+                                                                return "Late";
+                                                            })()}
+                                                        </span>
+                                                    );
+                                                }
+                                                if (emp.status === "WFH") {
+                                                    return (
+                                                        <span className="bg-blue-50 text-blue-700 border border-blue-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                                            <Home className="w-3 h-3 text-blue-600" /> WFH
+                                                        </span>
+                                                    );
+                                                }
+                                                return (
+                                                    <span className="bg-rose-50 text-rose-700 border border-rose-100 text-[10.5px] font-bold px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3 text-rose-600" /> Leave
+                                                    </span>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                 ))

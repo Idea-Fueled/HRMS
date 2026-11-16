@@ -872,6 +872,16 @@ export const getAttendanceDashboardSummary = async (req, res) => {
             let breakStr = "0m";
             let lateMinutes = 0;
 
+            const userNameLower = `${user.fullName || ""} ${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+            const userEmailLower = (user.email || "").toLowerCase();
+            const isPrashant = Boolean(
+                (user.employeeId && String(user.employeeId).toUpperCase() === "IF-015") ||
+                userNameLower.includes("prashant") ||
+                userEmailLower.includes("prashant")
+            );
+            const deptLower = (user.department || "").trim().toLowerCase();
+            const isSales = deptLower.includes("sales");
+
             if (att) {
                 if (att.workMode) workMode = att.workMode;
                 if (att.firstClockIn) {
@@ -882,7 +892,15 @@ export const getAttendanceDashboardSummary = async (req, res) => {
                     const clockInTotalMin = clockInHour * 60 + clockInMin;
                     const shiftStartMin = 10 * 60; // 10:00 AM
 
-                    if (clockInTotalMin > shiftStartMin) {
+                    if (isPrashant || isSales) {
+                        if (att.workMode === "Work From Home") {
+                            status = "WFH";
+                            wfhCount++;
+                        } else {
+                            status = "Present";
+                            presentCount++;
+                        }
+                    } else if (clockInTotalMin > shiftStartMin) {
                         status = "Late";
                         lateMinutes = clockInTotalMin - shiftStartMin;
                         lateCount++;

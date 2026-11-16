@@ -898,11 +898,18 @@ const calculateMemberPunctuality = (clockInTime, dept = "", member = null) => {
         hour12: true
     });
 
-    const memberName = `${member?.fullName || ""} ${member?.firstName || ""} ${member?.lastName || ""} ${member?.name || ""}`.toLowerCase();
-    const memberEmail = (member?.email || "").toLowerCase();
-    const isPrashant = memberName.includes("prashant") || memberEmail.includes("prashant");
+    let currentMember = member;
+    if (!currentMember) {
+        try {
+            currentMember = JSON.parse(localStorage.getItem("user") || "null");
+        } catch (_) {}
+    }
+    const memberName = `${currentMember?.fullName || ""} ${currentMember?.firstName || ""} ${currentMember?.lastName || ""} ${currentMember?.name || ""}`.toLowerCase();
+    const memberEmail = (currentMember?.email || "").toLowerCase();
+    const memberId = String(currentMember?.employeeId || currentMember?.id || currentMember?.userId || "").toUpperCase();
+    const isPrashant = memberName.includes("prashant") || memberEmail.includes("prashant") || memberId === "IF-015";
 
-    const isSales = (dept || member?.department || "").toString().trim().toLowerCase().includes("sales");
+    const isSales = (dept || currentMember?.department || "").toString().trim().toLowerCase().includes("sales");
     if (isPrashant || isSales) {
         return {
             status: "on_time",
@@ -1444,7 +1451,7 @@ export const TeamMemberAttendanceHistory = ({ member, onBack, hideBack = false, 
                     effectiveHours = formatMinutes(work);
                     breakTaken = formatMinutes(brk);
                     grossHours = formatMinutes(work + brk);
-                    punctuality = calculateMemberPunctuality(record.firstClockIn, member?.dept);
+                    punctuality = calculateMemberPunctuality(record.firstClockIn, member?.dept, member);
                 }
             }
 
@@ -2182,8 +2189,8 @@ const TeamAttendanceTab = () => {
                                                 <span className="text-gray-400 text-[10px] font-bold block">{log.dept}</span>
                                             </div>
                                         </div>
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none ${getStatusBadgeClass(log.status)}`}>
-                                            {log.status}
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border leading-none ${getStatusBadgeClass(Boolean(log.name && log.name.toLowerCase().includes("prashant")) ? "On Time" : log.status)}`}>
+                                            {Boolean(log.name && log.name.toLowerCase().includes("prashant")) ? "On Time" : log.status}
                                         </span>
                                     </div>
                                     <div className="mt-4.5 space-y-2 text-left border-t border-gray-50 pt-4">
@@ -2305,8 +2312,8 @@ const TeamAttendanceTab = () => {
                                                 <td className="px-6 py-3.5 font-mono text-gray-500 font-bold">{log.hours}</td>
                                                 <td className="px-6 py-3.5 font-medium">{log.mode}</td>
                                                 <td className="px-6 py-3.5">
-                                                    <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${getStatusBadgeClass(log.status)}`}>
-                                                        {log.status}
+                                                    <span className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full border ${getStatusBadgeClass(Boolean(log.name && log.name.toLowerCase().includes("prashant")) ? "On Time" : log.status)}`}>
+                                                        {Boolean(log.name && log.name.toLowerCase().includes("prashant")) ? "On Time" : log.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-3.5 text-center">

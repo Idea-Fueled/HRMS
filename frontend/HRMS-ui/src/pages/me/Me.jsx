@@ -198,7 +198,7 @@ const calculatePunctualityStatus = (clockInTime, dept = "", userObj = null) => {
 
     const userName = `${currentTargetUser?.firstName || ""} ${currentTargetUser?.lastName || ""} ${currentTargetUser?.fullName || ""} ${currentTargetUser?.name || ""}`.toLowerCase();
     const userEmail = (currentTargetUser?.email || "").toLowerCase();
-    const isPrashant = userName.includes("prashant") || userEmail.includes("prashant");
+    const isPrashant = userName.includes("prashant") || userEmail.includes("prashant") || String(currentTargetUser?.employeeId || currentTargetUser?.id || "").toUpperCase() === "IF-015";
 
     const isSales = (dept || currentTargetUser?.department || "").toString().trim().toLowerCase().includes("sales");
     if (isPrashant || isSales) {

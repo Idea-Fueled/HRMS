@@ -163,6 +163,12 @@ const Reports = () => {
                 if (viewMode === "weekly") {
                     const daysArr = Object.values(e.days || {});
                     if (attendanceCategory === "late") {
+                        const isPrashant = Boolean(
+                            (e.name && e.name.toLowerCase().includes("prashant")) ||
+                            (e.fullName && e.fullName.toLowerCase().includes("prashant")) ||
+                            (e.employeeId && String(e.employeeId).toUpperCase() === "IF-015")
+                        );
+                        if (isPrashant) return false;
                         return daysArr.some(d => {
                             if (!d.firstClockIn) return false;
                             const dt = new Date(d.firstClockIn);

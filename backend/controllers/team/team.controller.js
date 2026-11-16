@@ -366,6 +366,13 @@ export const getTeamAttendance = async (req, res) => {
             if (att) {
                 const deptLower = (user.department || "").trim().toLowerCase();
                 const isSales = deptLower.includes("sales");
+                const userNameLower = `${user.fullName || ""} ${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+                const userEmailLower = (user.email || "").toLowerCase();
+                const isPrashant = Boolean(
+                    (user.employeeId && String(user.employeeId).toUpperCase() === "IF-015") ||
+                    userNameLower.includes("prashant") ||
+                    userEmailLower.includes("prashant")
+                );
 
                 if (att.workMode && att.workMode.toLowerCase().includes("home")) {
                     status = "WFH";
@@ -386,10 +393,10 @@ export const getTeamAttendance = async (req, res) => {
                 mode = att.workMode || "Office";
 
                 // Punctuality check:
-                // 1. Sales team employees NEVER show as Late (always On Time)
+                // 1. Prashant Kumar or Sales team employees NEVER show as Late (always On Time)
                 // 2. Others: Late ONLY if clock-in is strictly after 10:00 AM IST
                 if (att.firstClockIn) {
-                    if (isSales) {
+                    if (isPrashant || isSales) {
                         status = "On Time";
                     } else {
                         const istParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(new Date(att.firstClockIn));
