@@ -172,6 +172,11 @@ export const AuthProvider = ({ children }) => {
             return userRole === "manager" || userRole === "hr" || userRole === "management";
         }
         if (normPath === "my-finances") return user.permissions.myFinances !== false;
+        if (normPath === "approvals" || normPath === "inbox") {
+            if (userRole === "global_admin" || userRole === "admin") return true;
+            if (userRole === "manager") return user.permissions?.approvals !== false;
+            return user.permissions?.approvals === true;
+        }
         if (normPath === "documents") {
             return !!(user.permissions.documents?.companyDocuments || user.permissions.documents?.employeeDocuments);
         }

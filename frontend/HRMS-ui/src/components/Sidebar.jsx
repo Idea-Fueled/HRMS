@@ -243,6 +243,13 @@ const Sidebar = ({ onClose }) => {
 
     useEffect(() => {
         if (!user) return;
+        const role = user.role?.toLowerCase();
+        const canSeeApprovals = role === "global_admin" || role === "admin" || (role === "manager" && user.permissions?.approvals !== false) || user.permissions?.approvals === true;
+        if (!canSeeApprovals) {
+            setPendingLeavesCount(0);
+            return;
+        }
+
         const checkPendingLeaves = async () => {
             try {
                 const res = await getTeamLeaves();
@@ -272,13 +279,20 @@ const Sidebar = ({ onClose }) => {
     const hasItemPermission = (item) => {
         if (!user || item.hidden) return false;
 
-        // Workspace categories (Dashboard, Me, My Finances, Approvals) are visible to everyone
-        const alwaysVisibleKeys = ["dashboard", "me", "myFinances", "inbox", "approvals"];
+        // Workspace categories (Dashboard, Me, My Finances, Inbox) are visible to everyone
+        const alwaysVisibleKeys = ["dashboard", "me", "myFinances", "inbox"];
         if (alwaysVisibleKeys.includes(item.permissionKey)) {
             return true;
         }
 
         const role = user.role?.toLowerCase();
+
+        // Leaves / Approvals visibility: Global Admin / Admin always, Managers by default, or if explicitly permitted
+        if (item.permissionKey === "approvals" || item.to === "/approvals") {
+            if (role === "global_admin" || role === "admin") return true;
+            if (role === "manager") return user.permissions?.approvals !== false;
+            return user.permissions?.approvals === true;
+        }
 
         // My Team visibility: Admins always, Managers/HR by default or if allowed, Employees/Interns if granted access
         if (item.permissionKey === "myTeam" || item.to === "/my-team") {

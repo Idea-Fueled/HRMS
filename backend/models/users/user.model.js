@@ -347,7 +347,8 @@ const userScehma = new mongoose.Schema({
             hire: { type: Boolean, default: false },
             offboardingAndOnboarding: { type: Boolean, default: false },
             organization: { type: Boolean, default: false },
-            probation: { type: Boolean, default: false }
+            probation: { type: Boolean, default: false },
+            approvals: { type: Boolean, default: false }
         },
         default: {
             dashboard: true,
@@ -372,7 +373,8 @@ const userScehma = new mongoose.Schema({
             hire: false,
             offboardingAndOnboarding: false,
             organization: false,
-            probation: false
+            probation: false,
+            approvals: false
         }
     },
     preferences: {

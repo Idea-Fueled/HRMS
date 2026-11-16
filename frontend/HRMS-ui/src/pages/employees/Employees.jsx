@@ -89,6 +89,7 @@ const WORK_LOCATIONS = ["Office", "WFH", "Hybrid"];
 const DEFAULT_PERMISSIONS = {
     dashboard: true,
     me: true,
+    approvals: false,
     myTeam: {
         access: false,
         teamSummary: false,
@@ -926,6 +927,12 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 permissions: {
                     ...DEFAULT_PERMISSIONS,
                     ...(employee.permissions || {}),
+                    approvals: (() => {
+                        if (employee.permissions?.approvals !== undefined) {
+                            return employee.permissions.approvals === true;
+                        }
+                        return ["global_admin", "admin", "manager"].includes((employee.role || "").toLowerCase());
+                    })(),
                     myTeam: (() => {
                         const mt = employee.permissions?.myTeam;
                         const isMgrOrAdmin = ["global_admin", "admin", "hr", "manager", "management"].includes((employee.role || "").toLowerCase());
@@ -1148,6 +1155,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                 permissions: {
                     dashboard: true,
                     me: true,
+                    approvals: ["global_admin", "admin", "manager"].includes(val.toLowerCase()),
                     myTeam: {
                         access: isMgrOrAdmin,
                         teamSummary: isMgrOrAdmin,
@@ -1584,6 +1592,27 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                             <p className="text-[10px] text-gray-400 font-bold">Personal profile and settings (Always enabled)</p>
                                         </div>
                                         <input type="checkbox" checked disabled className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] cursor-not-allowed opacity-60" />
+                                    </div>
+
+                                    {/* Leaves / Approvals (Configurable) */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">Leaves / Approvals</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Review & manage employee leave requests and approvals (Default for Global Admin & Managers)</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleGlobalAdmin || form.permissions?.approvals === true} 
+                                            disabled={isRoleGlobalAdmin}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    approvals: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
                                     </div>
 
                                     {/* My Team (Configurable with Sub-tabs) */}

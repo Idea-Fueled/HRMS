@@ -209,6 +209,7 @@ export const createEmployee = async (req, res) => {
         const defaultPermissions = {
             dashboard: true,
             me: true,
+            approvals: role === "global_admin" || role === "admin" || role === "manager",
             myTeam: {
                 access: isManagerOrAdmin,
                 teamSummary: isManagerOrAdmin,
