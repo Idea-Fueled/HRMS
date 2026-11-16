@@ -1466,17 +1466,23 @@ export const syncBiometricPunches = async (req, res) => {
         const users = await User.find({}).select("_id employeeId biometricEnrollNumber firstName lastName fullName").lean();
         const userMap = new Map();
         const bioEnrollMap = new Map();
+        const empDigitMap = new Map();
 
-        // 1. Map by exact MongoDB _id and exact Employee ID string
+        // 1. Map by exact MongoDB _id and exact Employee ID string, plus extract employeeId numeric digits
         users.forEach(u => {
             userMap.set(u._id.toString(), u);
             if (u.employeeId) {
                 const raw = String(u.employeeId).trim();
                 userMap.set(raw.toUpperCase(), u);
+                const digits = raw.replace(/\D/g, "");
+                if (digits) {
+                    empDigitMap.set(digits, u);
+                    empDigitMap.set(String(parseInt(digits, 10)), u);
+                }
             }
         });
 
-        // 2. Map explicit biometricEnrollNumber (PRIORITY over employeeId)
+        // 2. Map explicit biometricEnrollNumber (PRIORITY over employeeId fallback)
         users.forEach(u => {
             if (u.biometricEnrollNumber) {
                 const rawBio = String(u.biometricEnrollNumber).trim();
@@ -1494,7 +1500,7 @@ export const syncBiometricPunches = async (req, res) => {
         const userPunchesMap = new Map();
         let skippedUnknownUsers = 0;
         let rejectedFuturePunches = 0;
-        const nowBuffer = Date.now() + 5 * 60 * 1000;
+        const nowBuffer = Date.now() + 30 * 60 * 1000;
 
         for (const item of rawPunches) {
             const rawId = item.enrollNumber ?? item.userId ?? item.employeeId ?? item.employeeCode ?? item.empCode ?? item.empId ?? item.id ?? item.EnrollNumber;
@@ -1502,11 +1508,15 @@ export const syncBiometricPunches = async (req, res) => {
 
             const cleanKey = String(rawId).trim();
             const digitsOnly = cleanKey.replace(/\D/g, "");
-            // STRICT RESOLUTION: Exact ID match first, then explicit biometricEnrollNumber digit match.
-            // NEVER fallback to arbitrary employeeId digits to prevent user collisions.
+            // RESOLUTION HIERARCHY:
+            // 1. Exact ID match (_id, exact employeeId string, or exact biometricEnrollNumber)
+            // 2. Explicit biometricEnrollNumber digits match (if assigned by admin)
+            // 3. Fallback to employeeId digits match (e.g. IF-044 -> 44 / 044)
             const user = userMap.get(cleanKey.toUpperCase()) || 
                          (digitsOnly ? bioEnrollMap.get(digitsOnly) : null) || 
-                         (digitsOnly ? bioEnrollMap.get(String(parseInt(digitsOnly, 10))) : null);
+                         (digitsOnly ? bioEnrollMap.get(String(parseInt(digitsOnly, 10))) : null) ||
+                         (digitsOnly ? empDigitMap.get(digitsOnly) : null) ||
+                         (digitsOnly ? empDigitMap.get(String(parseInt(digitsOnly, 10))) : null);
 
             if (!user) {
                 skippedUnknownUsers++;

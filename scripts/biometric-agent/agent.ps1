@@ -138,8 +138,8 @@ function Sync-AttendancePunches {
         }
     }
 
-    # Filter out any punches with future timestamps (> now + 5 min buffer)
-    $nowBuffer = (Get-Date).AddMinutes(5)
+    # Filter out any punches with future timestamps (> now + 30 min buffer for hardware clock skew)
+    $nowBuffer = (Get-Date).AddMinutes(30)
     $validPunches = [System.Collections.Generic.List[hashtable]]::new()
     foreach ($p in $punches) {
         try {
