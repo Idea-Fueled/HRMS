@@ -65,3 +65,4 @@ fileSchema.index({ folder: 1, category: 1, createdAt: -1 });
 
 const FileItem = mongoose.model("FileItem", fileSchema);
 export default FileItem;
+

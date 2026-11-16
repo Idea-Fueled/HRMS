@@ -33,3 +33,4 @@ export const updateFile = async (id, data) => {
 export const deleteFile = async (id) => {
     return API.delete(`/files/${id}`);
 };
+
