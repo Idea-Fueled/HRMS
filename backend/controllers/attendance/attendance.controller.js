@@ -640,7 +640,7 @@ export const getTodayAttendance = async (req, res) => {
 
         // Clean up any phantom future punches that might have been saved due to biometric machine clock skew
         if (attendance && Array.isArray(attendance.logs)) {
-            const nowLimit = Date.now() + 5 * 60 * 1000;
+            const nowLimit = Date.now() + 30 * 60 * 1000;
             const validLogs = attendance.logs.filter(l => l.timestamp && new Date(l.timestamp).getTime() <= nowLimit);
             if (validLogs.length !== attendance.logs.length) {
                 attendance.logs = validLogs;
@@ -734,7 +734,7 @@ export const getTodayLogs = async (req, res) => {
 
         // Clean up any phantom future punches that might have been saved due to biometric machine clock skew
         if (attendance && Array.isArray(attendance.logs)) {
-            const nowLimit = Date.now() + 5 * 60 * 1000;
+            const nowLimit = Date.now() + 30 * 60 * 1000;
             const validLogs = attendance.logs.filter(l => l.timestamp && new Date(l.timestamp).getTime() <= nowLimit);
             if (validLogs.length !== attendance.logs.length) {
                 attendance.logs = validLogs;
@@ -1106,7 +1106,7 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
             .sort({ date: -1 });
 
         // Clean up any phantom future punches that might have been saved due to biometric machine clock skew
-        const nowLimit = Date.now() + 5 * 60 * 1000;
+        const nowLimit = Date.now() + 30 * 60 * 1000;
         const cleanedAttendances = [];
 
         for (const att of attendances) {
@@ -1677,14 +1677,14 @@ export const syncBiometricPunches = async (req, res) => {
                 });
             }
 
-            // Safely preserve genuine web/wfh logs ONLY if employee actually submitted a Daily Work Plan from home on this exact day
-            const hasGenuineWebPresence = !!(existing?.dailyWorkPlan && (existing?.workMode === "Work From Home" || existing?.workMode === "Hybrid"));
-            const existingWebLogs = hasGenuineWebPresence ? (existing?.logs || []).filter(l => {
-                if (l.source !== "web" && l.source !== "wfh") return false;
+            // Safely preserve genuine web/wfh logs so employees who web clock-in before reaching office retain all their web punches
+            const existingWebLogs = (existing?.logs || []).filter(l => {
+                const src = (l.source || "").toLowerCase();
+                if (src !== "web" && src !== "wfh") return false;
                 if (!l.timestamp) return false;
                 const logIstDate = new Date(l.timestamp).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
                 return logIstDate === istDateStr;
-            }) : [];
+            });
 
             // Combine biometric logs + web logs
             const allLogs = [...biometricLogs, ...existingWebLogs];
@@ -1725,22 +1725,28 @@ export const syncBiometricPunches = async (req, res) => {
                         totalBreakMinutes = Math.max(0, totalSpan - totalWorkMinutes);
                     }
                 }
-            } else if (filteredPunches.length === 2) {
-                const spanMins = Math.round((filteredPunches[1].getTime() - filteredPunches[0].getTime()) / 60000);
+            } else if (filteredPunches.length >= 2) {
+                const spanMins = Math.round((filteredPunches[filteredPunches.length - 1].getTime() - filteredPunches[0].getTime()) / 60000);
                 totalWorkMinutes = Math.max(0, spanMins);
                 totalBreakMinutes = 0;
             }
 
-            // Determine workMode: Office for biometric punches unless explicit WFH plan exists
+            // Determine workMode:
+            // If both biometric logs and web logs exist -> "Hybrid"
+            // If only biometric logs -> "Office"
+            // If only web logs -> existing workMode || "Work From Home"
             let workMode = "Office";
             if (biometricLogs.length > 0 && existingWebLogs.length > 0) {
                 workMode = "Hybrid";
             } else if (existingWebLogs.length > 0 && biometricLogs.length === 0) {
                 workMode = existing?.workMode || "Work From Home";
+            } else if (existing?.workMode === "Work From Home" && biometricLogs.length === 0) {
+                workMode = "Work From Home";
             }
 
-            // Biometric presence means the user is physically in the office. isWebClockedIn MUST be false.
-            const isWebClockedIn = hasGenuineWebPresence && existingWebLogs.length > 0 && existingWebLogs[existingWebLogs.length - 1].action === "clock_in";
+            // Web clock-in status: true if employee has web logs and last web log was clock_in
+            const lastWebLog = existingWebLogs.length > 0 ? existingWebLogs[existingWebLogs.length - 1] : null;
+            const isWebClockedIn = lastWebLog ? (lastWebLog.action === "clock_in") : false;
 
             bulkOps.push({
                 updateOne: {

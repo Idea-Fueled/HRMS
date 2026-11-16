@@ -882,12 +882,11 @@ const TimeTodayCard = ({ attendance, onClockIn, onClockOut, onRefresh, employeeI
 
     // Determine if employee has active daily work plan / remote context
     const hasDailyWorkPlan = !!(attendance?.dailyWorkPlan);
-    const hasRemoteContext = !!(hasDailyWorkPlan || attendance?.wfhMessage || (attendance?.workMode && attendance?.workMode !== "Office"));
-    const webLogs = (attendance?.logs || []).filter(l => (l.source === "web" || l.source === "wfh") && hasRemoteContext);
+    const webLogs = (attendance?.logs || []).filter(l => l.source === "web" || l.source === "wfh");
 
     // STRICT RULE: Web clock-in requires the employee to have actually initiated a web session (dailyWorkPlan or active web log)
     const isWebClockedIn = !!(
-        (attendance?.isWebClockedIn && (hasDailyWorkPlan || hasRemoteContext)) ||
+        attendance?.isWebClockedIn ||
         (webLogs.length > 0 && webLogs[webLogs.length - 1].action === "clock_in")
     );
 
