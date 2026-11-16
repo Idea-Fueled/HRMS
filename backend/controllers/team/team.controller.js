@@ -682,45 +682,67 @@ export const updateLeaveStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: "Leave request not found." });
         }
 
-        // Adjust counts on user object if transitioning from pending
-        if (leave.status === "pending") {
-            const user = await User.findById(leave.employeeId);
-            if (user) {
-                let key = "";
-                if (leave.leaveType === "sick_leave") key = "sick";
-                else if (leave.leaveType === "casual_leave") key = "casual";
-                else if (leave.leaveType === "earned_leave") key = "earned";
-                else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
+        // Adjust counts on user object
+        const user = await User.findById(leave.employeeId);
+        if (user) {
+            let key = "";
+            if (leave.leaveType === "sick_leave") key = "sick";
+            else if (leave.leaveType === "casual_leave") key = "casual";
+            else if (leave.leaveType === "earned_leave") key = "earned";
+            else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
+            else if (leave.leaveType === "partial_leave") key = "partial";
 
-                const start = new Date(leave.startDate);
-                const end = new Date(leave.endDate);
-                const diffTime = Math.abs(end - start);
-                const days = leave.totalDays !== undefined && leave.totalDays !== null && !isNaN(leave.totalDays)
-                    ? leave.totalDays
-                    : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            const days = leave.totalDays !== undefined && leave.totalDays !== null && !isNaN(leave.totalDays)
+                ? Number(leave.totalDays)
+                : 1;
 
-                const decPendingObj = {
-                    pendingLeaves: -days
-                };
-                if (key) {
-                    decPendingObj[`leaveBalance.${key}.pending`] = -days;
-                }
-
+            if (leave.status === "pending") {
                 if (normalizedStatus === "approved") {
-                    const incUsedObj = {
-                        usedLeaves: days
-                    };
-                    if (key) {
-                        incUsedObj[`leaveBalance.${key}.used`] = days;
+                    // Already deducted from total and added to used at apply time.
+                    // DO NOT deduct from total again! Just clear pending count.
+                    if (key && user.leaveBalance && user.leaveBalance[key]) {
+                        user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - (key === "partial" ? 1 : days)).toFixed(1)));
+                        if (key === "partial") {
+                            user.leaveBalance.partial.used = (user.leaveBalance.partial.used || 0) + 1;
+                        }
                     }
-                    await User.findByIdAndUpdate(leave.employeeId, {
-                        $inc: { ...decPendingObj, ...incUsedObj }
-                    });
-                } else {
-                    await User.findByIdAndUpdate(leave.employeeId, {
-                        $inc: decPendingObj
-                    });
+                    user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
+                    user.usedLeaves = parseFloat(((user.usedLeaves || 0) + days).toFixed(1));
+                    user.markModified("leaveBalance");
+                    await user.save();
+                } else if (normalizedStatus === "rejected") {
+                    // Credit back the days to total, and subtract from used & pending!
+                    if (key && user.leaveBalance && user.leaveBalance[key]) {
+                        if (key !== "partial") {
+                            user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
+                            user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
+                            user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
+                        } else {
+                            user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
+                        }
+                    }
+                    user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
+                    user.markModified("leaveBalance");
+                    await user.save();
                 }
+            } else if (leave.status === "approved" && normalizedStatus === "rejected") {
+                // If previously approved leave is later rejected, refund / credit back the days
+                if (key && user.leaveBalance && user.leaveBalance[key] && key !== "partial") {
+                    user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
+                    user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
+                }
+                user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
+                user.markModified("leaveBalance");
+                await user.save();
+            } else if (leave.status === "rejected" && normalizedStatus === "approved") {
+                // If previously rejected leave is later approved, deduct the days
+                if (key && user.leaveBalance && user.leaveBalance[key] && key !== "partial") {
+                    user.leaveBalance[key].total = Math.max(0, parseFloat(((user.leaveBalance[key].total || 0) - days).toFixed(1)));
+                    user.leaveBalance[key].used = parseFloat(((user.leaveBalance[key].used || 0) + days).toFixed(1));
+                }
+                user.usedLeaves = parseFloat(((user.usedLeaves || 0) + days).toFixed(1));
+                user.markModified("leaveBalance");
+                await user.save();
             }
         }
 

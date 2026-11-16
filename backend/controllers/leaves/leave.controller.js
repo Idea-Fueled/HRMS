@@ -92,9 +92,35 @@ export const applyLeave = async (req, res) => {
             });
         }
 
+        const applicantUser = await User.findById(employeeId);
+        if (!applicantUser) {
+            return res.status(404).json({
+                success: false,
+                message: "Employee not found.",
+            });
+        }
+
+        let key = "";
+        if (leaveType === "sick_leave") key = "sick";
+        else if (leaveType === "casual_leave") key = "casual";
+        else if (leaveType === "earned_leave") key = "earned";
+        else if (leaveType === "partial_leave") key = "partial";
+        else if (leaveType === "comp_off" || leaveType === "comp_off_leave") key = "compOff";
+
+        // Validate available leave balance before creating (cannot apply for more than available balance)
+        if (key && key !== "partial") {
+            const currentTotal = applicantUser.leaveBalance?.[key]?.total ?? 0;
+            if (currentTotal < days) {
+                const formattedType = leaveType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient ${formattedType} balance. You have ${currentTotal} day(s) available.`,
+                });
+            }
+        }
+
         // Restrict Earned Leave for Interns & Employees in Probation (< 6 months)
         if (leaveType === "earned_leave") {
-            const applicantUser = await User.findById(employeeId);
             const isIntern = applicantUser?.role === "intern" || applicantUser?.employementType === "intern";
             let isProbation = false;
             if (applicantUser?.joiningDate) {
@@ -162,24 +188,24 @@ export const applyLeave = async (req, res) => {
             reason,
         });
 
-        let key = "";
-        if (leaveType === "sick_leave") key = "sick";
-        else if (leaveType === "casual_leave") key = "casual";
-        else if (leaveType === "earned_leave") key = "earned";
-        else if (leaveType === "partial_leave") key = "partial";
-        else if (leaveType === "comp_off" || leaveType === "comp_off_leave") key = "compOff";
+        // Deduct specific days immediately from leaveBalance.total and track in used/pending
+        if (key && key !== "partial") {
+            if (!applicantUser.leaveBalance) applicantUser.leaveBalance = {};
+            if (!applicantUser.leaveBalance[key]) applicantUser.leaveBalance[key] = { total: 0, used: 0, pending: 0 };
 
-        const updateObj = {
-            pendingLeaves: days
-        };
-
-        if (key) {
-            updateObj[`leaveBalance.${key}.pending`] = days;
+            applicantUser.leaveBalance[key].total = Math.max(0, parseFloat(((applicantUser.leaveBalance[key].total || 0) - days).toFixed(1)));
+            applicantUser.leaveBalance[key].used = parseFloat(((applicantUser.leaveBalance[key].used || 0) + days).toFixed(1));
+            applicantUser.leaveBalance[key].pending = parseFloat(((applicantUser.leaveBalance[key].pending || 0) + days).toFixed(1));
+            applicantUser.pendingLeaves = parseFloat(((applicantUser.pendingLeaves || 0) + days).toFixed(1));
+            applicantUser.markModified("leaveBalance");
+            await applicantUser.save();
+        } else if (key === "partial") {
+            if (!applicantUser.leaveBalance) applicantUser.leaveBalance = {};
+            if (!applicantUser.leaveBalance.partial) applicantUser.leaveBalance.partial = { total: 1, used: 0, pending: 0 };
+            applicantUser.leaveBalance.partial.pending = (applicantUser.leaveBalance.partial.pending || 0) + 1;
+            applicantUser.markModified("leaveBalance");
+            await applicantUser.save();
         }
-
-        await User.findByIdAndUpdate(employeeId, {
-            $inc: updateObj,
-        });
 
         // Dispatch notification emails to Notify list, Reporting Manager, and Global Admins
         try {
@@ -350,18 +376,25 @@ export const getLeaveSummary = async (req, res) => {
         const accruedData = calculateAccruedLeaves(user.joiningDate);
         const userBal = user.leaveBalance || {};
 
-        // Prioritize explicit quotas set by Admin in Edit Employee
+        // Prioritize explicit quotas set by Admin in Edit Employee (representing current available balance)
         const casualTotal = userBal.casual?.total ?? accruedData.casual.accrued;
         const earnedTotal = userBal.earned?.total ?? accruedData.earned.accrued;
         const sickTotal = userBal.sick?.total ?? accruedData.sick.accrued;
+        const compOffTotal = userBal.compOff?.total ?? 0;
 
-        const casualAnnualQuota = userBal.casual?.annualQuota ?? userBal.casual?.total ?? accruedData.casual.annualQuota;
-        const earnedAnnualQuota = userBal.earned?.annualQuota ?? userBal.earned?.total ?? accruedData.earned.annualQuota;
-        const sickAnnualQuota = userBal.sick?.annualQuota ?? userBal.sick?.total ?? accruedData.sick.annualQuota;
+        const casualUsed = userBal.casual?.used ?? 0;
+        const earnedUsed = userBal.earned?.used ?? 0;
+        const sickUsed = userBal.sick?.used ?? 0;
+        const compOffUsed = userBal.compOff?.used ?? 0;
 
-        const casualUsedInit = userBal.casual?.used ?? 0;
-        const earnedUsedInit = userBal.earned?.used ?? 0;
-        const sickUsedInit = userBal.sick?.used ?? 0;
+        const casualPending = userBal.casual?.pending ?? 0;
+        const earnedPending = userBal.earned?.pending ?? 0;
+        const sickPending = userBal.sick?.pending ?? 0;
+        const compOffPending = userBal.compOff?.pending ?? 0;
+
+        const casualAnnualQuota = userBal.casual?.annualQuota ?? parseFloat((casualTotal + casualUsed).toFixed(1));
+        const earnedAnnualQuota = userBal.earned?.annualQuota ?? parseFloat((earnedTotal + earnedUsed).toFixed(1));
+        const sickAnnualQuota = userBal.sick?.annualQuota ?? parseFloat((sickTotal + sickUsed).toFixed(1));
 
         // Current month bounds for partial leave quota tracking
         const now = new Date();
@@ -370,70 +403,65 @@ export const getLeaveSummary = async (req, res) => {
 
         const partialMonthlyQuota = userBal.partial?.total ?? 1;
 
-        const leaves = await Leave.find({ employeeId });
-
-        const compOffTotal = userBal.compOff?.total ?? 0;
-        const compOffUsed = userBal.compOff?.used ?? 0;
-        const compOffPending = userBal.compOff?.pending ?? 0;
+        // Verify partial leaves for this calendar month
+        const monthlyPartials = await Leave.find({
+            employeeId,
+            leaveType: "partial_leave",
+            status: { $ne: "rejected" },
+            startDate: { $gte: currentMonthStart, $lte: currentMonthEnd }
+        });
+        const partialUsed = monthlyPartials.filter(l => l.status === "approved").length;
+        const partialPending = monthlyPartials.filter(l => l.status === "pending").length;
+        const partialUsedMinutes = monthlyPartials.filter(l => l.status === "approved").reduce((sum, l) => sum + (l.partialMinutes || 120), 0);
 
         const balance = {
-            sick: { total: sickTotal, accrued: sickTotal, annualQuota: sickAnnualQuota, used: sickUsedInit, pending: 0 },
-            casual: { total: casualTotal, accrued: casualTotal, annualQuota: casualAnnualQuota, used: casualUsedInit, pending: 0 },
-            earned: { total: earnedTotal, accrued: earnedTotal, annualQuota: earnedAnnualQuota, used: earnedUsedInit, pending: 0 },
-            compOff: { total: compOffTotal, accrued: compOffTotal, annualQuota: compOffTotal, used: compOffUsed, pending: compOffPending, available: Math.max(0, compOffTotal - compOffUsed - compOffPending) },
-            partial: { total: partialMonthlyQuota, accrued: 1, annualQuota: 12, used: 0, pending: 0, available: partialMonthlyQuota, usedMinutes: 0 }
+            sick: {
+                total: sickTotal,
+                accrued: parseFloat((sickTotal + sickUsed).toFixed(1)),
+                annualQuota: sickAnnualQuota,
+                used: sickUsed,
+                pending: sickPending,
+                available: sickTotal
+            },
+            casual: {
+                total: casualTotal,
+                accrued: parseFloat((casualTotal + casualUsed).toFixed(1)),
+                annualQuota: casualAnnualQuota,
+                used: casualUsed,
+                pending: casualPending,
+                available: casualTotal
+            },
+            earned: {
+                total: earnedTotal,
+                accrued: parseFloat((earnedTotal + earnedUsed).toFixed(1)),
+                annualQuota: earnedAnnualQuota,
+                used: earnedUsed,
+                pending: earnedPending,
+                available: earnedTotal
+            },
+            compOff: {
+                total: compOffTotal,
+                accrued: parseFloat((compOffTotal + compOffUsed).toFixed(1)),
+                annualQuota: parseFloat((compOffTotal + compOffUsed).toFixed(1)),
+                used: compOffUsed,
+                pending: compOffPending,
+                available: compOffTotal
+            },
+            partial: {
+                total: partialMonthlyQuota,
+                accrued: 1,
+                annualQuota: 12,
+                used: partialUsed,
+                pending: partialPending,
+                available: Math.max(0, partialMonthlyQuota - partialUsed - partialPending),
+                usedMinutes: partialUsedMinutes
+            }
         };
 
-        leaves.forEach(leave => {
-            if (leave.leaveType === "partial_leave") {
-                const leaveDate = new Date(leave.startDate);
-                if (leaveDate >= currentMonthStart && leaveDate <= currentMonthEnd) {
-                    if (leave.status === "approved") {
-                        balance.partial.used += 1;
-                        balance.partial.usedMinutes += (leave.partialMinutes || 120);
-                    } else if (leave.status === "pending") {
-                        balance.partial.pending += 1;
-                    }
-                }
-            } else {
-                let key = "";
-                if (leave.leaveType === "sick_leave") key = "sick";
-                else if (leave.leaveType === "casual_leave") key = "casual";
-                else if (leave.leaveType === "earned_leave") key = "earned";
-                else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
-
-                if (key) {
-                    let days = Number(leave.totalDays);
-                    if (isNaN(days) || days === undefined || days === null) {
-                        const start = new Date(leave.startDate);
-                        const end = new Date(leave.endDate);
-                        const diffTime = Math.abs(end - start);
-                        days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                    }
-
-                    if (leave.status === "approved") {
-                        balance[key].used += days;
-                    } else if (leave.status === "pending") {
-                        balance[key].pending += days;
-                    }
-                }
-            }
-        });
-
-        // Round all numbers cleanly to 1 decimal place
-        balance.sick.used = parseFloat(balance.sick.used.toFixed(1));
-        balance.sick.pending = parseFloat(balance.sick.pending.toFixed(1));
-        balance.casual.used = parseFloat(balance.casual.used.toFixed(1));
-        balance.casual.pending = parseFloat(balance.casual.pending.toFixed(1));
-        balance.earned.used = parseFloat(balance.earned.used.toFixed(1));
-        balance.earned.pending = parseFloat(balance.earned.pending.toFixed(1));
-
-        balance.partial.available = Math.max(0, balance.partial.total - balance.partial.used - balance.partial.pending);
-
+        const availableLeaves = parseFloat((balance.sick.available + balance.casual.available + balance.earned.available).toFixed(1));
         const usedLeaves = parseFloat((balance.sick.used + balance.casual.used + balance.earned.used).toFixed(1));
         const pendingLeaves = parseFloat((balance.sick.pending + balance.casual.pending + balance.earned.pending).toFixed(1));
-        const totalLeaves = parseFloat((balance.sick.total + balance.casual.total + balance.earned.total).toFixed(1));
-        const availableLeaves = parseFloat((totalLeaves - usedLeaves - pendingLeaves).toFixed(1));
+        const totalLeaves = parseFloat((availableLeaves + usedLeaves).toFixed(1));
 
         return res.status(200).json({
             success: true,
@@ -748,6 +776,31 @@ export const cancelLeave = async (req, res) => {
 
         leave.status = "cancelled";
         await leave.save();
+
+        // Refund / credit back deducted days to employee's leave balance
+        const user = await User.findById(leave.employeeId);
+        if (user) {
+            let key = "";
+            if (leave.leaveType === "sick_leave") key = "sick";
+            else if (leave.leaveType === "casual_leave") key = "casual";
+            else if (leave.leaveType === "earned_leave") key = "earned";
+            else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
+            else if (leave.leaveType === "partial_leave") key = "partial";
+
+            const days = Number(leave.totalDays) || 1;
+            if (key && user.leaveBalance && user.leaveBalance[key]) {
+                if (key !== "partial") {
+                    user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
+                    user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
+                    user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
+                } else {
+                    user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
+                }
+                user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
+                user.markModified("leaveBalance");
+                await user.save();
+            }
+        }
 
         return res.status(200).json({
             success: true,

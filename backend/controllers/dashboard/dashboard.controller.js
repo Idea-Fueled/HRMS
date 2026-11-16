@@ -40,39 +40,29 @@ export const getDashboardData = async (req, res) => {
 
         const leaves = await Leave.find({ employeeId });
 
+        const userBal = user.leaveBalance || {};
+        const sickTotal = userBal.sick?.total ?? 6;
+        const casualTotal = userBal.casual?.total ?? 8;
+        const earnedTotal = userBal.earned?.total ?? 20;
+
+        const sickUsed = userBal.sick?.used ?? 0;
+        const casualUsed = userBal.casual?.used ?? 0;
+        const earnedUsed = userBal.earned?.used ?? 0;
+
+        const sickPending = userBal.sick?.pending ?? 0;
+        const casualPending = userBal.casual?.pending ?? 0;
+        const earnedPending = userBal.earned?.pending ?? 0;
+
         const balance = {
-            sick: { total: user.leaveBalance?.sick?.total ?? 6, used: 0, pending: 0 },
-            casual: { total: user.leaveBalance?.casual?.total ?? 8, used: 0, pending: 0 },
-            earned: { total: user.leaveBalance?.earned?.total ?? 20, used: 0, pending: 0 }
+            sick: { total: sickTotal, used: sickUsed, pending: sickPending, available: sickTotal },
+            casual: { total: casualTotal, used: casualUsed, pending: casualPending, available: casualTotal },
+            earned: { total: earnedTotal, used: earnedUsed, pending: earnedPending, available: earnedTotal }
         };
 
-        leaves.forEach(leave => {
-            let key = "";
-            if (leave.leaveType === "sick_leave") key = "sick";
-            else if (leave.leaveType === "casual_leave") key = "casual";
-            else if (leave.leaveType === "earned_leave") key = "earned";
-
-            if (key) {
-                let days = leave.totalDays;
-                if (days === undefined || days === null) {
-                    const start = new Date(leave.startDate);
-                    const end = new Date(leave.endDate);
-                    const diffTime = Math.abs(end - start);
-                    days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                }
-
-                if (leave.status === "approved") {
-                    balance[key].used += days;
-                } else if (leave.status === "pending") {
-                    balance[key].pending += days;
-                }
-            }
-        });
-
-        const usedLeaves = balance.sick.used + balance.casual.used + balance.earned.used;
-        const pendingLeaves = balance.sick.pending + balance.casual.pending + balance.earned.pending;
-        const totalLeaves = balance.sick.total + balance.casual.total + balance.earned.total;
-        const availableLeaves = totalLeaves - usedLeaves - pendingLeaves;
+        const availableLeaves = parseFloat((sickTotal + casualTotal + earnedTotal).toFixed(1));
+        const usedLeaves = parseFloat((sickUsed + casualUsed + earnedUsed).toFixed(1));
+        const pendingLeaves = parseFloat((sickPending + casualPending + earnedPending).toFixed(1));
+        const totalLeaves = parseFloat((availableLeaves + usedLeaves).toFixed(1));
 
         // Leave Summary
         const leaveSummary = {

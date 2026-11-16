@@ -2357,7 +2357,7 @@ const LeaveTab = ({
     const casualAnnualQuota = balance.casual?.annualQuota ?? 6;
     const casualUsed = balance.casual?.used ?? 0;
     const casualPending = balance.casual?.pending ?? 0;
-    const casualAvailable = Math.max(0, casualTotal - casualUsed - casualPending);
+    const casualAvailable = balance.casual?.available !== undefined ? balance.casual.available : casualTotal;
 
     // Sick Leave
     const sickTotal = balance.sick?.total ?? 6;
@@ -2365,7 +2365,7 @@ const LeaveTab = ({
     const sickAnnualQuota = balance.sick?.annualQuota ?? 6;
     const sickUsed = balance.sick?.used ?? 0;
     const sickPending = balance.sick?.pending ?? 0;
-    const sickAvailable = Math.max(0, sickTotal - sickUsed - sickPending);
+    const sickAvailable = balance.sick?.available !== undefined ? balance.sick.available : sickTotal;
 
     // Earned Leave
     const earnedTotal = balance.earned?.total ?? 12;
@@ -2373,13 +2373,13 @@ const LeaveTab = ({
     const earnedAnnualQuota = balance.earned?.annualQuota ?? 12;
     const earnedUsed = balance.earned?.used ?? 0;
     const earnedPending = balance.earned?.pending ?? 0;
-    const earnedAvailable = Math.max(0, earnedTotal - earnedUsed - earnedPending);
+    const earnedAvailable = balance.earned?.available !== undefined ? balance.earned.available : earnedTotal;
 
     // Comp Offs (Managed by Global Admin)
     const compOffTotal = balance.compOff?.total ?? 0;
     const compOffUsed = balance.compOff?.used ?? 0;
     const compOffPending = balance.compOff?.pending ?? 0;
-    const compOffAvailable = balance.compOff?.available ?? Math.max(0, compOffTotal - compOffUsed - compOffPending);
+    const compOffAvailable = balance.compOff?.available !== undefined ? balance.compOff.available : compOffTotal;
 
     // Setup active type and status filters in history
     const [selectedType, setSelectedType] = useState("All Leave Types");
@@ -2607,10 +2607,17 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
             }
         }
 
-        if (leaveType === "comp_off") {
-            const availableCompOff = leaveSummary?.leaveBalance?.compOff?.available ?? 0;
-            if (availableCompOff < duration) {
-                toast.error(`Insufficient compensatory off balance. You have ${availableCompOff} day(s) available. Please request credit first.`);
+        let leaveKey = "";
+        if (leaveType === "casual_leave") leaveKey = "casual";
+        else if (leaveType === "sick_leave") leaveKey = "sick";
+        else if (leaveType === "earned_leave") leaveKey = "earned";
+        else if (leaveType === "comp_off") leaveKey = "compOff";
+
+        if (leaveKey) {
+            const avail = leaveSummary?.leaveBalance?.[leaveKey]?.available ?? leaveSummary?.leaveBalance?.[leaveKey]?.total ?? 0;
+            if (avail < duration) {
+                const label = leaveType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                toast.error(`Insufficient ${label} balance. You only have ${avail} day(s) available.`);
                 return;
             }
         }
