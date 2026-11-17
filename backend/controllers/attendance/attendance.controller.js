@@ -1722,12 +1722,67 @@ export const syncBiometricPunches = async (req, res) => {
             const existing = existingMap.get(`${user._id.toString()}_${istDateStr}`) ||
                              existingMap.get(`${user._id.toString()}_${dateObj.toISOString().split("T")[0]}`);
 
+            // 1. Collect all existing biometric timestamps already stored in DB for this employee on this day
+            const existingBioTimes = [];
+            if (Array.isArray(existing?.logs)) {
+                for (const l of existing.logs) {
+                    if (!l.timestamp) continue;
+                    const src = (l.source || "").toLowerCase();
+                    if (src === "biometric") {
+                        const d = new Date(l.timestamp);
+                        if (!isNaN(d.getTime())) {
+                            existingBioTimes.push(d);
+                        }
+                    }
+                }
+            }
+
+            // Also check existing.firstClockIn and existing.lastClockOut if they came from biometric
+            if (existing?.firstClockIn) {
+                const fc = new Date(existing.firstClockIn);
+                if (!isNaN(fc.getTime())) {
+                    const isWeb = (existing.logs || []).some(l => (l.source === "web" || l.source === "wfh") && Math.abs(new Date(l.timestamp).getTime() - fc.getTime()) < 2000);
+                    if (!isWeb) {
+                        existingBioTimes.push(fc);
+                    }
+                }
+            }
+            if (existing?.lastClockOut) {
+                const lc = new Date(existing.lastClockOut);
+                if (!isNaN(lc.getTime())) {
+                    const isWeb = (existing.logs || []).some(l => (l.source === "web" || l.source === "wfh") && Math.abs(new Date(l.timestamp).getTime() - lc.getTime()) < 2000);
+                    if (!isWeb) {
+                        existingBioTimes.push(lc);
+                    }
+                }
+            }
+
+            // Combine incoming punches with any existing biometric punches from earlier in the day (NEVER overwrite previous punches)
+            const allBioTimes = [...existingBioTimes, ...filteredPunches];
+            allBioTimes.sort((a, b) => a.getTime() - b.getTime());
+
+            // Debounce: filter duplicate punches closer than 45 seconds
+            const mergedBioPunches = [];
+            for (const p of allBioTimes) {
+                if (mergedBioPunches.length === 0) {
+                    mergedBioPunches.push(p);
+                } else {
+                    const lastP = mergedBioPunches[mergedBioPunches.length - 1];
+                    const diffSec = Math.abs((p.getTime() - lastP.getTime()) / 1000);
+                    if (diffSec >= 45) {
+                        mergedBioPunches.push(p);
+                    }
+                }
+            }
+
+            if (mergedBioPunches.length === 0) continue;
+
             // Generate biometric logs with alternating clock_in and clock_out
             const biometricLogs = [];
-            for (let i = 0; i < filteredPunches.length; i++) {
+            for (let i = 0; i < mergedBioPunches.length; i++) {
                 biometricLogs.push({
                     action: i % 2 === 0 ? "clock_in" : "clock_out",
-                    timestamp: filteredPunches[i],
+                    timestamp: mergedBioPunches[i],
                     source: "biometric"
                 });
             }
@@ -1762,8 +1817,11 @@ export const syncBiometricPunches = async (req, res) => {
             const clockIns = allLogs.filter(l => l.action === "clock_in");
             const clockOuts = allLogs.filter(l => l.action === "clock_out");
 
-            const firstClockIn = allLogs.length > 0 ? new Date(allLogs[0].timestamp) : filteredPunches[0];
-            const lastClockOut = clockOuts.length > 0 ? new Date(clockOuts[clockOuts.length - 1].timestamp) : (filteredPunches.length > 1 ? filteredPunches[filteredPunches.length - 1] : null);
+            const firstClockIn = allLogs.length > 0 ? new Date(allLogs[0].timestamp) : mergedBioPunches[0];
+            const lastLog = allLogs.length > 0 ? allLogs[allLogs.length - 1] : null;
+            const lastClockOut = (lastLog && lastLog.action === "clock_out")
+                ? new Date(lastLog.timestamp)
+                : (clockOuts.length > 0 ? new Date(clockOuts[clockOuts.length - 1].timestamp) : null);
 
             // Calculate work and break minutes across combined web and biometric sessions
             let totalWorkMinutes = 0;
@@ -1775,10 +1833,6 @@ export const syncBiometricPunches = async (req, res) => {
             for (let i = 0; i < Math.min(bioIns.length, bioOuts.length); i++) {
                 const diff = (new Date(bioOuts[i].timestamp) - new Date(bioIns[i].timestamp)) / (1000 * 60);
                 if (diff > 0) bioWork += diff;
-            }
-            if (bioIns.length > bioOuts.length && filteredPunches.length >= 2) {
-                const span = (filteredPunches[filteredPunches.length - 1].getTime() - filteredPunches[0].getTime()) / (1000 * 60);
-                if (span > bioWork) bioWork = span;
             }
 
             const webIns = existingWebLogs.filter(l => l.action === "clock_in");
@@ -1854,6 +1908,17 @@ export const syncBiometricPunches = async (req, res) => {
                     },
                     upsert: true
                 }
+            });
+
+            existingMap.set(`${user._id.toString()}_${istDateStr}`, {
+                ...(existing || {}),
+                firstClockIn,
+                lastClockOut,
+                totalWorkMinutes: Math.floor(totalWorkMinutes),
+                totalBreakMinutes: Math.floor(totalBreakMinutes),
+                totalSessions: clockIns.length,
+                workMode,
+                logs: allLogs
             });
 
             updatedDaysCount++;

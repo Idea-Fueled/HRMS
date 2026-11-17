@@ -151,7 +151,7 @@ function Sync-AttendancePunches {
             $validPunches.Add($p)
         }
     }
-    $punches = $validPunches
+    $punches = [System.Collections.Generic.List[hashtable]]($validPunches | Sort-Object { [DateTime]::Parse($_.timestamp) })
 
     if ($punches.Count -gt 0) {
         $batchSize = 1000
