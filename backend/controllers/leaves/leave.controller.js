@@ -188,13 +188,12 @@ export const applyLeave = async (req, res) => {
             reason,
         });
 
-        // Deduct specific days immediately from leaveBalance.total and track in used/pending
+        // Deduct specific days immediately from leaveBalance.total and track in pending
         if (key && key !== "partial") {
             if (!applicantUser.leaveBalance) applicantUser.leaveBalance = {};
             if (!applicantUser.leaveBalance[key]) applicantUser.leaveBalance[key] = { total: 0, used: 0, pending: 0 };
 
             applicantUser.leaveBalance[key].total = Math.max(0, parseFloat(((applicantUser.leaveBalance[key].total || 0) - days).toFixed(1)));
-            applicantUser.leaveBalance[key].used = parseFloat(((applicantUser.leaveBalance[key].used || 0) + days).toFixed(1));
             applicantUser.leaveBalance[key].pending = parseFloat(((applicantUser.leaveBalance[key].pending || 0) + days).toFixed(1));
             applicantUser.pendingLeaves = parseFloat(((applicantUser.pendingLeaves || 0) + days).toFixed(1));
             applicantUser.markModified("leaveBalance");
@@ -416,7 +415,7 @@ export const getLeaveSummary = async (req, res) => {
 
         const balance = {
             sick: {
-                total: sickTotal,
+                total: parseFloat((sickTotal + sickUsed + sickPending).toFixed(1)),
                 accrued: parseFloat((sickTotal + sickUsed).toFixed(1)),
                 annualQuota: sickAnnualQuota,
                 used: sickUsed,
@@ -424,7 +423,7 @@ export const getLeaveSummary = async (req, res) => {
                 available: sickTotal
             },
             casual: {
-                total: casualTotal,
+                total: parseFloat((casualTotal + casualUsed + casualPending).toFixed(1)),
                 accrued: parseFloat((casualTotal + casualUsed).toFixed(1)),
                 annualQuota: casualAnnualQuota,
                 used: casualUsed,
@@ -432,7 +431,7 @@ export const getLeaveSummary = async (req, res) => {
                 available: casualTotal
             },
             earned: {
-                total: earnedTotal,
+                total: parseFloat((earnedTotal + earnedUsed + earnedPending).toFixed(1)),
                 accrued: parseFloat((earnedTotal + earnedUsed).toFixed(1)),
                 annualQuota: earnedAnnualQuota,
                 used: earnedUsed,
@@ -440,7 +439,7 @@ export const getLeaveSummary = async (req, res) => {
                 available: earnedTotal
             },
             compOff: {
-                total: compOffTotal,
+                total: parseFloat((compOffTotal + compOffUsed + compOffPending).toFixed(1)),
                 accrued: parseFloat((compOffTotal + compOffUsed).toFixed(1)),
                 annualQuota: parseFloat((compOffTotal + compOffUsed).toFixed(1)),
                 used: compOffUsed,
@@ -808,20 +807,24 @@ export const cancelLeave = async (req, res) => {
             if (key && user.leaveBalance && user.leaveBalance[key]) {
                 if (key !== "partial") {
                     user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
-                    user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
-                    if (!wasApproved) {
+                    if (wasApproved) {
+                        user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
+                    } else {
                         user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
                     }
                 } else {
-                    if (!wasApproved) {
+                    if (wasApproved) {
+                        user.leaveBalance.partial.used = Math.max(0, (user.leaveBalance.partial.used || 0) - 1);
+                    } else {
                         user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
                     }
                 }
             }
-            if (!wasApproved) {
+            if (wasApproved) {
+                user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
+            } else {
                 user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
             }
-            user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
             user.markModified("leaveBalance");
             await user.save();
         }

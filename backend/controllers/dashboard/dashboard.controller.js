@@ -54,9 +54,9 @@ export const getDashboardData = async (req, res) => {
         const earnedPending = userBal.earned?.pending ?? 0;
 
         const balance = {
-            sick: { total: sickTotal, used: sickUsed, pending: sickPending, available: sickTotal },
-            casual: { total: casualTotal, used: casualUsed, pending: casualPending, available: casualTotal },
-            earned: { total: earnedTotal, used: earnedUsed, pending: earnedPending, available: earnedTotal }
+            sick: { total: parseFloat((sickTotal + sickUsed + sickPending).toFixed(1)), used: sickUsed, pending: sickPending, available: sickTotal },
+            casual: { total: parseFloat((casualTotal + casualUsed + casualPending).toFixed(1)), used: casualUsed, pending: casualPending, available: casualTotal },
+            earned: { total: parseFloat((earnedTotal + earnedUsed + earnedPending).toFixed(1)), used: earnedUsed, pending: earnedPending, available: earnedTotal }
         };
 
         const availableLeaves = parseFloat((sickTotal + casualTotal + earnedTotal).toFixed(1));

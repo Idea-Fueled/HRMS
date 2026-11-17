@@ -4750,7 +4750,7 @@ const ProfileTab = ({ user, refreshUser }) => {
                         <div key={label} className="bg-[#F9FAFB] border border-[#F3F4F6] rounded-[14px] p-4 text-center">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">{label}</span>
                             <span className="text-xl font-black text-[#1E1E1E] mt-2 block">
-                                {total - used}<span className="text-xs font-bold text-gray-400">/{total}</span>
+                                {total}<span className="text-xs font-bold text-gray-400">/{total + used}</span>
                             </span>
                             <span className="text-[9px] text-gray-400 mt-1 block">{used} days used</span>
                         </div>

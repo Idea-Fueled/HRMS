@@ -722,20 +722,24 @@ export const updateLeaveStatus = async (req, res) => {
             if (key && user.leaveBalance && user.leaveBalance[key]) {
                 if (key !== "partial") {
                     user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
-                    user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
-                    if (!wasFullyApproved) {
+                    if (wasFullyApproved) {
+                        user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
+                    } else {
                         user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
                     }
                 } else {
-                    if (!wasFullyApproved) {
+                    if (wasFullyApproved) {
+                        user.leaveBalance.partial.used = Math.max(0, (user.leaveBalance.partial.used || 0) - 1);
+                    } else {
                         user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
                     }
                 }
             }
-            if (!wasFullyApproved) {
+            if (wasFullyApproved) {
+                user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
+            } else {
                 user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
             }
-            user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
             user.markModified("leaveBalance");
         };
 
@@ -744,6 +748,8 @@ export const updateLeaveStatus = async (req, res) => {
                 user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - (key === "partial" ? 1 : days)).toFixed(1)));
                 if (key === "partial") {
                     user.leaveBalance.partial.used = (user.leaveBalance.partial.used || 0) + 1;
+                } else {
+                    user.leaveBalance[key].used = parseFloat(((user.leaveBalance[key].used || 0) + days).toFixed(1));
                 }
             }
             user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
