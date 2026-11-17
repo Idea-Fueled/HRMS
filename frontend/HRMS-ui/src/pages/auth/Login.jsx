@@ -95,7 +95,8 @@ const Login = () => {
                 const token = response.data.token;
                 if (token) {
                     try {
-                        localStorage.setItem("token", token);
+                        sessionStorage.setItem("token", token);
+                        localStorage.removeItem("token");
                     } catch (e) {
                         console.warn("Could not save token:", e);
                     }
@@ -105,7 +106,9 @@ const Login = () => {
                 const loggedInUser = response.data.user;
                 if (loggedInUser) {
                     try {
-                        localStorage.setItem("user", JSON.stringify(loggedInUser));
+                        sessionStorage.setItem("user", JSON.stringify(loggedInUser));
+                        sessionStorage.setItem("loginTime", Date.now().toString());
+                        localStorage.removeItem("user");
                     } catch (e) {
                         console.warn("Could not save user:", e);
                     }
@@ -117,7 +120,9 @@ const Login = () => {
                     const profileRes = await getCurrentUser();
                     if (profileRes.data && profileRes.data.success) {
                         const fetchedUser = profileRes.data.user;
-                        localStorage.setItem("user", JSON.stringify(fetchedUser));
+                        sessionStorage.setItem("user", JSON.stringify(fetchedUser));
+                        sessionStorage.setItem("loginTime", Date.now().toString());
+                        localStorage.removeItem("user");
                         setUser(fetchedUser);
                         toast.success("Login successful. Redirecting...");
                         navigate("/dashboard", { replace: true });

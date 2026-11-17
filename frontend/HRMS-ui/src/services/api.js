@@ -34,17 +34,17 @@ const API = axios.create({
     withCredentials: true,
 });
 
-// Automatically attach Bearer token from localStorage to support Incognito mode and cross-domain cookies
+// Automatically attach Bearer token from sessionStorage (or legacy localStorage fallback)
 API.interceptors.request.use(
     (config) => {
         try {
-            const token = localStorage.getItem("token");
+            const token = sessionStorage.getItem("token") || localStorage.getItem("token");
             if (token) {
                 config.headers = config.headers || {};
                 config.headers.Authorization = `Bearer ${token}`;
             }
         } catch (e) {
-            // localStorage access might throw in strict sandboxes
+            // Storage access might throw in strict sandboxes
         }
         return config;
     },
@@ -54,6 +54,16 @@ API.interceptors.request.use(
 API.interceptors.response.use(
     (response) => response,
     (error) => {
+        if (error.response && error.response.status === 401) {
+            try {
+                sessionStorage.clear();
+                localStorage.removeItem("user");
+                localStorage.removeItem("token");
+            } catch (e) {}
+            if (window.location.pathname !== "/login") {
+                window.location.href = "/login";
+            }
+        }
         return Promise.reject(error);
     }
 );

@@ -192,7 +192,7 @@ const calculatePunctualityStatus = (clockInTime, dept = "", userObj = null) => {
     let currentTargetUser = userObj;
     if (!currentTargetUser) {
         try {
-            currentTargetUser = JSON.parse(localStorage.getItem("user") || "null");
+            currentTargetUser = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "null");
         } catch (_) {}
     }
 
@@ -1972,7 +1972,7 @@ const LeaveHistorySection = ({
         }
     }, [filteredHistory.length, totalPages, currentPage]);
 
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const user = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "null");
     const requesterName = user?.fullName || "";
 
     return (
@@ -2518,7 +2518,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
     const isPartial = leaveType === "partial_leave";
 
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const user = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "null");
     const isProbationOrIntern = () => {
         if (!user) return false;
         const role = (user.role || "").toLowerCase();
@@ -3222,7 +3222,7 @@ const RequestCompOffCreditModal = ({ isOpen, onClose, onSubmitSuccess }) => {
             curr.setDate(curr.getDate() + 1);
         }
 
-        const user = JSON.parse(localStorage.getItem("user") || "null");
+        const user = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "null");
         const employeeId = user?._id || user?.id;
         if (!employeeId) {
             toast.error("Session expired. Please sign in again.");

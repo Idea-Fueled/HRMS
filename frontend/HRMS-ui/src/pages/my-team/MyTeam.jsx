@@ -901,7 +901,7 @@ const calculateMemberPunctuality = (clockInTime, dept = "", member = null) => {
     let currentMember = member;
     if (!currentMember) {
         try {
-            currentMember = JSON.parse(localStorage.getItem("user") || "null");
+            currentMember = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "null");
         } catch (_) {}
     }
     const memberName = `${currentMember?.fullName || ""} ${currentMember?.firstName || ""} ${currentMember?.lastName || ""} ${currentMember?.name || ""}`.toLowerCase();

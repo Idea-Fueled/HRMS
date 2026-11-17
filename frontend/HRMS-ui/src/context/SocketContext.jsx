@@ -48,7 +48,7 @@ export const SocketProvider = ({ children }) => {
 
         const socketUrl = getSocketUrl();
         const token = (() => {
-            try { return localStorage.getItem("token"); } catch { return null; }
+            try { return sessionStorage.getItem("token") || localStorage.getItem("token"); } catch { return null; }
         })();
         const socket = io(socketUrl, {
             withCredentials: true,

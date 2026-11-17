@@ -248,7 +248,7 @@ export const loginUser = async (req, res) => {
             user.role = "global_admin";
         }
 
-        // Generate JWT
+        // Generate JWT (Strict 30 minutes expiration)
         const token = jwt.sign(
             {
                 id: user._id,
@@ -257,7 +257,7 @@ export const loginUser = async (req, res) => {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn: "7d",
+                expiresIn: "30m",
             }
         );
 
@@ -299,13 +299,12 @@ export const loginUser = async (req, res) => {
         // Remove Password
         user.password = undefined;
 
-        // Set Cookie — sameSite "none" required for cross-domain (Vercel ↔ Render)
+        // Set Session Cookie — expires automatically when browser/session closes
         const isProduction = process.env.NODE_ENV === "production";
         res.cookie("token", token, {
             httpOnly: true,
             secure: isProduction,
             sameSite: isProduction ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
         return res.status(200).json({

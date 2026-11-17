@@ -88,27 +88,71 @@ export const ROLE_ALLOWED_ROUTES = {
 ───────────────────────────────────────────── */
 const AuthContext = createContext(null);
 
+const SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes strict
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
-        try { return JSON.parse(localStorage.getItem("user") || "null"); } catch { return null; }
+        try {
+            const loginTimeStr = sessionStorage.getItem("loginTime");
+            if (loginTimeStr) {
+                const loginTime = parseInt(loginTimeStr, 10);
+                if (Date.now() - loginTime >= SESSION_DURATION_MS) {
+                    sessionStorage.clear();
+                    localStorage.removeItem("user");
+                    localStorage.removeItem("token");
+                    return null;
+                }
+            }
+            // Use sessionStorage so closing browser or tab immediately terminates session
+            const stored = sessionStorage.getItem("user");
+            return stored ? JSON.parse(stored) : null;
+        } catch {
+            return null;
+        }
     });
-    // If we already have a cached user, we don't need to block rendering
+    // If we already have a cached user in sessionStorage, we don't need to block rendering
     const [loading, setLoading] = useState(true);
 
     const refreshUser = useCallback(async () => {
         try {
+            // Check 30 minute strict timeout
+            const loginTimeStr = sessionStorage.getItem("loginTime");
+            if (loginTimeStr) {
+                const loginTime = parseInt(loginTimeStr, 10);
+                if (Date.now() - loginTime >= SESSION_DURATION_MS) {
+                    sessionStorage.clear();
+                    localStorage.removeItem("user");
+                    localStorage.removeItem("token");
+                    setUser(null);
+                    setLoading(false);
+                    return;
+                }
+            } else if (!sessionStorage.getItem("user")) {
+                // If tab or browser was closed, session is terminated
+                sessionStorage.clear();
+                localStorage.removeItem("user");
+                localStorage.removeItem("token");
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
             const res = await getCurrentUser();
             if (res.data?.success) {
-                localStorage.setItem("user", JSON.stringify(res.data.user));
+                sessionStorage.setItem("user", JSON.stringify(res.data.user));
+                if (!sessionStorage.getItem("loginTime")) {
+                    sessionStorage.setItem("loginTime", Date.now().toString());
+                }
+                localStorage.removeItem("user");
                 setUser(res.data.user);
             } else {
+                sessionStorage.clear();
                 localStorage.removeItem("user");
                 localStorage.removeItem("token");
                 setUser(null);
             }
         } catch {
-            // Network error — keep the cached user if present so the app stays usable
-            const cached = localStorage.getItem("user");
+            const cached = sessionStorage.getItem("user");
             if (!cached) setUser(null);
         } finally {
             setLoading(false);
@@ -200,6 +244,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = useCallback(() => {
         try {
+            sessionStorage.clear();
             localStorage.removeItem("user");
             localStorage.removeItem("token");
         } catch (e) {}
