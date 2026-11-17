@@ -108,6 +108,7 @@ const getPriorityBadge = (priority) => {
 ───────────────────────────────────────────── */
 const Inbox = ({ initialFolder = "inbox" }) => {
     const { user } = useAuth();
+    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin";
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Navigation / folder state
@@ -134,9 +135,15 @@ const Inbox = ({ initialFolder = "inbox" }) => {
             if (res.data?.success) {
                 const list = res.data.leaves || [];
                 setLeaves(list);
-                const pending = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === "pending").length;
+                const pending = list.filter(l => {
+                    const s = (l.rawStatus || l.status || "").toLowerCase();
+                    return s === "pending" || s === "manager_approved" || s === "manager approved";
+                }).length;
                 const approved = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === "approved").length;
-                const rejected = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === "rejected").length;
+                const rejected = list.filter(l => {
+                    const s = (l.rawStatus || l.status || "").toLowerCase();
+                    return s === "rejected" || s === "cancelled";
+                }).length;
                 setLeaveStats({ pending, approved, rejected });
             }
         } catch (err) {
@@ -162,8 +169,19 @@ const Inbox = ({ initialFolder = "inbox" }) => {
             setProcessingLeaveId(leaveId);
             const res = await updateLeaveStatus(leaveId, status, remarks);
             if (res.data?.success) {
-                toast.success(`Leave request ${status} successfully.`);
+                if (status === "cancelled") {
+                    toast.success("Leave cancelled successfully and days refunded to employee.");
+                } else if (status === "approved") {
+                    toast.success(
+                        isGlobalAdmin
+                            ? "🟢 Leave request fully approved by Global Admin!"
+                            : "🟢 Approved by Manager. Awaiting final Global Admin approval."
+                    );
+                } else {
+                    toast.success("🔴 Leave request marked as rejected and refunded.");
+                }
                 await loadApprovals();
+                window.dispatchEvent(new CustomEvent("hrms:leave_status_updated"));
             } else {
                 toast.error(res.data?.message || `Failed to update status.`);
             }
@@ -735,7 +753,21 @@ const Inbox = ({ initialFolder = "inbox" }) => {
     const filteredLeaves = useMemo(() => {
         let list = leaves;
         if (approvalFilter !== "all") {
-            list = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === approvalFilter.toLowerCase());
+            if (approvalFilter === "pending") {
+                list = list.filter(l => {
+                    const s = (l.rawStatus || l.status || "").toLowerCase();
+                    return s === "pending" || s === "manager_approved" || s === "manager approved";
+                });
+            } else if (approvalFilter === "approved") {
+                list = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === "approved");
+            } else if (approvalFilter === "rejected") {
+                list = list.filter(l => {
+                    const s = (l.rawStatus || l.status || "").toLowerCase();
+                    return s === "rejected" || s === "cancelled";
+                });
+            } else {
+                list = list.filter(l => (l.rawStatus || l.status || "").toLowerCase() === approvalFilter.toLowerCase());
+            }
         }
         if (approvalSearch.trim()) {
             const q = approvalSearch.toLowerCase().trim();
@@ -1180,9 +1212,12 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                             ) : (
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     {filteredLeaves.map((req) => {
-                                        const isPending = (req.rawStatus || req.status || "").toLowerCase() === "pending";
-                                        const isApproved = (req.rawStatus || req.status || "").toLowerCase() === "approved";
-                                        const isRejected = (req.rawStatus || req.status || "").toLowerCase() === "rejected";
+                                        const raw = (req.rawStatus || req.status || "").toLowerCase();
+                                        const isPending = raw === "pending";
+                                        const isManagerApproved = raw === "manager_approved" || raw === "manager approved";
+                                        const isApproved = raw === "approved";
+                                        const isCancelled = raw === "cancelled";
+                                        const isRejected = raw === "rejected";
                                         const isTarget = searchParams.get("leaveId") === req._id;
 
                                         return (
@@ -1219,9 +1254,17 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
                                                                 ● Pending
                                                             </span>
+                                                        ) : isManagerApproved ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                                                                ● Manager Approved • Awaiting Admin
+                                                            </span>
                                                         ) : isApproved ? (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                                                                 ✓ Approved
+                                                            </span>
+                                                        ) : isCancelled ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 shadow-2xs">
+                                                                ✕ Cancelled (Refunded)
                                                             </span>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
@@ -1267,7 +1310,7 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                                 className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
                                                             >
                                                                 <Check className="w-3.5 h-3.5" />
-                                                                <span>{processingLeaveId === req._id ? "Processing..." : "Approve 🟢"}</span>
+                                                                <span>{processingLeaveId === req._id ? "Processing..." : isGlobalAdmin ? "Approve (Final) 🟢" : "Approve 🟢"}</span>
                                                             </button>
                                                             <button
                                                                 type="button"
@@ -1279,9 +1322,53 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                                 <span>Reject 🔴</span>
                                                             </button>
                                                         </div>
+                                                    ) : isManagerApproved ? (
+                                                        isGlobalAdmin ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleLeaveAction(req._id, "approved")}
+                                                                    disabled={processingLeaveId === req._id}
+                                                                    className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                                                                >
+                                                                    <Check className="w-3.5 h-3.5" />
+                                                                    <span>{processingLeaveId === req._id ? "Processing..." : "Approve (Final) 🟢"}</span>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleLeaveAction(req._id, "rejected")}
+                                                                    disabled={processingLeaveId === req._id}
+                                                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                    <span>Reject 🔴</span>
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                                                                Awaiting Global Admin
+                                                            </span>
+                                                        )
+                                                    ) : isApproved ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-emerald-700">
+                                                                Approved
+                                                            </span>
+                                                            {isGlobalAdmin && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleLeaveAction(req._id, "cancelled")}
+                                                                    disabled={processingLeaveId === req._id}
+                                                                    className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                                                                    title="Cancel leave and refund balance"
+                                                                >
+                                                                    Cancel (Refund)
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     ) : (
-                                                        <span className="text-xs font-bold text-slate-500">
-                                                            {isApproved ? "Approved by Management" : "Declined"}
+                                                        <span className={`text-xs font-bold ${isCancelled ? "text-gray-500" : "text-rose-600"}`}>
+                                                            {isCancelled ? "Cancelled (Refunded)" : "Declined"}
                                                         </span>
                                                     )}
                                                 </div>
@@ -1672,9 +1759,12 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                     );
 
                                     if (!matchingLeave) return null;
-                                    const isPending = (matchingLeave.rawStatus || matchingLeave.status || "").toLowerCase() === "pending";
-                                    const isApproved = (matchingLeave.rawStatus || matchingLeave.status || "").toLowerCase() === "approved";
-                                    const isRejected = (matchingLeave.rawStatus || matchingLeave.status || "").toLowerCase() === "rejected";
+                                    const raw = (matchingLeave.rawStatus || matchingLeave.status || "").toLowerCase();
+                                    const isPending = raw === "pending";
+                                    const isManagerApproved = raw === "manager_approved" || raw === "manager approved";
+                                    const isApproved = raw === "approved";
+                                    const isCancelled = raw === "cancelled";
+                                    const isRejected = raw === "rejected";
 
                                     return (
                                         <div className="bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-blue-50/90 border border-emerald-200/80 rounded-2xl p-4 shadow-2xs space-y-3 animate-fadeIn">
@@ -1692,9 +1782,17 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
                                                                     ● Pending Review
                                                                 </span>
+                                                            ) : isManagerApproved ? (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                                                                    ● Manager Approved • Awaiting Admin
+                                                                </span>
                                                             ) : isApproved ? (
                                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                                                                     ✓ Approved
+                                                                </span>
+                                                            ) : isCancelled ? (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                                                                    ✕ Cancelled (Refunded)
                                                                 </span>
                                                             ) : (
                                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
@@ -1718,7 +1816,7 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                             className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 transition-all cursor-pointer"
                                                         >
                                                             <Check className="w-3.5 h-3.5" />
-                                                            <span>{processingLeaveId === matchingLeave._id ? "Processing..." : "Approve 🟢"}</span>
+                                                            <span>{processingLeaveId === matchingLeave._id ? "Processing..." : isGlobalAdmin ? "Approve (Final) 🟢" : "Approve 🟢"}</span>
                                                         </button>
                                                         <button
                                                             type="button"
@@ -1730,9 +1828,53 @@ const Inbox = ({ initialFolder = "inbox" }) => {
                                                             <span>Reject 🔴</span>
                                                         </button>
                                                     </div>
+                                                ) : isManagerApproved ? (
+                                                    isGlobalAdmin ? (
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleLeaveAction(matchingLeave._id, "approved")}
+                                                                disabled={processingLeaveId === matchingLeave._id}
+                                                                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                                <span>{processingLeaveId === matchingLeave._id ? "Processing..." : "Approve (Final) 🟢"}</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleLeaveAction(matchingLeave._id, "rejected")}
+                                                                disabled={processingLeaveId === matchingLeave._id}
+                                                                className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold disabled:opacity-50 transition-all cursor-pointer"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                                <span>Reject 🔴</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 shrink-0">
+                                                            Awaiting Global Admin
+                                                        </span>
+                                                    )
+                                                ) : isApproved ? (
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="text-xs font-bold text-emerald-700">
+                                                            Approved
+                                                        </span>
+                                                        {isGlobalAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleLeaveAction(matchingLeave._id, "cancelled")}
+                                                                disabled={processingLeaveId === matchingLeave._id}
+                                                                className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                                                                title="Cancel leave and refund balance"
+                                                            >
+                                                                Cancel (Refund)
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 ) : (
-                                                    <span className="text-xs font-bold text-slate-500">
-                                                        {isApproved ? "Approved by Management" : "Application declined"}
+                                                    <span className={`text-xs font-bold shrink-0 ${isCancelled ? "text-gray-500" : "text-rose-600"}`}>
+                                                        {isCancelled ? "Cancelled (Refunded)" : "Declined"}
                                                     </span>
                                                 )}
                                             </div>

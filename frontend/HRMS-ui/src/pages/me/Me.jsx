@@ -1368,7 +1368,7 @@ const WeeklyPatternCard = ({ leaves = [] }) => {
     const counts = [0, 0, 0, 0, 0, 0, 0];
 
     leaves.forEach(l => {
-        if (l.status?.toLowerCase() === "approved" || l.status?.toLowerCase() === "pending") {
+        if (l.status?.toLowerCase() === "approved" || l.status?.toLowerCase() === "pending" || l.status?.toLowerCase() === "manager_approved") {
             const date = new Date(l.startDate || l.createdAt);
             if (!isNaN(date.getTime())) {
                 const dayIdx = dayIndexMap[date.getDay()];
@@ -1911,6 +1911,13 @@ const LeaveHistorySection = ({
                         Approved
                     </span>
                 );
+            case "manager_approved":
+            case "manager approved":
+                return (
+                    <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-[4px] inline-block">
+                        Pending (Admin Review)
+                    </span>
+                );
             case "pending":
                 return (
                     <span className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold px-2 py-0.5 rounded-[4px] inline-block">
@@ -1926,7 +1933,7 @@ const LeaveHistorySection = ({
             case "cancelled":
                 return (
                     <span className="bg-gray-50 text-gray-500 border border-gray-150 text-[10px] font-bold px-2 py-0.5 rounded-[4px] inline-block">
-                        Cancelled
+                        Cancelled (Refunded)
                     </span>
                 );
             default:
@@ -1941,7 +1948,10 @@ const LeaveHistorySection = ({
     // Filter logic
     const filteredHistory = leaveHistory.filter(row => {
         const typeMatches = selectedType === "All Leave Types" || formatLeaveType(row.leaveType) === selectedType;
-        const statusMatches = selectedStatus === "All Statuses" || row.status?.toLowerCase() === selectedStatus?.toLowerCase();
+        const statusMatches = selectedStatus === "All Statuses" ||
+            (selectedStatus === "Pending" && (row.status?.toLowerCase() === "pending" || row.status?.toLowerCase() === "manager_approved" || row.status?.toLowerCase() === "manager approved")) ||
+            (selectedStatus === "Rejected" && (row.status?.toLowerCase() === "rejected" || row.status?.toLowerCase() === "cancelled")) ||
+            row.status?.toLowerCase() === selectedStatus?.toLowerCase();
         
         const dateStr = formatLeaveDates(row.startDate, row.endDate).toLowerCase();
         const noteStr = (row.reason || "").toLowerCase();
@@ -2009,6 +2019,7 @@ const LeaveHistorySection = ({
                                 <option>Approved</option>
                                 <option>Pending</option>
                                 <option>Rejected</option>
+                                <option>Cancelled</option>
                             </select>
                             <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-2.5 pointer-events-none" />
                         </div>
@@ -2111,7 +2122,7 @@ const LeaveHistorySection = ({
                                                             <span>View Details</span>
                                                         </button>
 
-                                                        {row.status?.toLowerCase() === "pending" && (
+                                                        {(row.status?.toLowerCase() === "pending" || row.status?.toLowerCase() === "manager_approved" || row.status?.toLowerCase() === "manager approved") && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {

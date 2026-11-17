@@ -15,18 +15,21 @@ import {
     FileCheck
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../../components/SharedComponents";
 import { getTeamLeaves, updateLeaveStatus } from "../../services/team.service";
 import ConfirmDialog from "../../components/ConfirmDialog";
 
 export const RequestsApprovals = () => {
+    const { user } = useAuth();
+    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin";
     const [leaves, setLeaves] = useState([]);
     const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, onLeave: 0 });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("All"); // 'All' | 'Pending' | 'Approved' | 'Rejected'
     const [processingId, setProcessingId] = useState(null);
-    const [actionTarget, setActionTarget] = useState(null); // { req, action: 'approved' | 'rejected' }
+    const [actionTarget, setActionTarget] = useState(null); // { req, action: 'approved' | 'rejected' | 'cancelled' }
 
     const fetchRequests = useCallback(async () => {
         try {
@@ -73,7 +76,14 @@ export const RequestsApprovals = () => {
         let list = leaves;
 
         if (filterStatus !== "All") {
-            list = list.filter(l => l.status.toLowerCase() === filterStatus.toLowerCase());
+            const fs = filterStatus.toLowerCase();
+            if (fs === "pending") {
+                list = list.filter(l => l.status.toLowerCase() === "pending" || l.status.toLowerCase() === "manager approved");
+            } else if (fs === "approved") {
+                list = list.filter(l => l.status.toLowerCase() === "approved");
+            } else if (fs === "rejected") {
+                list = list.filter(l => l.status.toLowerCase() === "rejected" || l.status.toLowerCase() === "cancelled");
+            }
         }
 
         if (searchQuery.trim()) {
@@ -90,9 +100,11 @@ export const RequestsApprovals = () => {
     }, [leaves, filterStatus, searchQuery]);
 
     const statusBadgeStyles = {
-        Pending: "bg-amber-50 text-amber-700 border-amber-100",
-        Approved: "bg-emerald-50 text-emerald-700 border-emerald-100",
-        Rejected: "bg-rose-50 text-rose-700 border-rose-100"
+        Pending: "bg-amber-50 text-amber-700 border-amber-200",
+        "Manager Approved": "bg-blue-50 text-blue-700 border-blue-200",
+        Approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        Rejected: "bg-rose-50 text-rose-700 border-rose-200",
+        Cancelled: "bg-gray-100 text-gray-600 border-gray-300",
     };
 
     return (
@@ -264,24 +276,67 @@ export const RequestsApprovals = () => {
                                                         type="button"
                                                         disabled={processingId === req._id}
                                                         onClick={() => setActionTarget({ req, action: "approved" })}
-                                                        className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                        className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                     >
                                                         <Check className="w-3.5 h-3.5" />
-                                                        <span>Approve</span>
+                                                        <span>{isGlobalAdmin ? "Approve (Final)" : "Approve"}</span>
                                                     </button>
 
                                                     <button
                                                         type="button"
                                                         disabled={processingId === req._id}
                                                         onClick={() => setActionTarget({ req, action: "rejected" })}
-                                                        className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                        className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
                                                     >
                                                         <X className="w-3.5 h-3.5" />
                                                         <span>Reject</span>
                                                     </button>
                                                 </div>
+                                            ) : req.status === "Manager Approved" ? (
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {isGlobalAdmin ? (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                disabled={processingId === req._id}
+                                                                onClick={() => setActionTarget({ req, action: "approved" })}
+                                                                className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                                <span>Approve (Final)</span>
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                disabled={processingId === req._id}
+                                                                onClick={() => setActionTarget({ req, action: "rejected" })}
+                                                                className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                                <span>Reject</span>
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-blue-600 text-xs font-bold">Manager Approved (Awaiting Admin)</span>
+                                                    )}
+                                                </div>
+                                            ) : req.status === "Approved" ? (
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <span className="text-emerald-700 text-xs font-bold">Approved</span>
+                                                    {isGlobalAdmin && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={processingId === req._id}
+                                                            onClick={() => setActionTarget({ req, action: "cancelled" })}
+                                                            className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                            <span>Cancel Leave (Refund)</span>
+                                                        </button>
+                                                    )}
+                                                </div>
                                             ) : (
-                                                <span className="text-gray-400 text-xs font-medium">Completed</span>
+                                                <span className="text-gray-400 text-xs font-medium">{req.status}</span>
                                             )}
                                         </td>
                                     </tr>
@@ -293,14 +348,16 @@ export const RequestsApprovals = () => {
 
             </div>
 
-            {/* Approval / Rejection Confirm Dialog */}
+            {/* Approval / Rejection / Cancellation Confirm Dialog */}
             <ConfirmDialog
                 isOpen={!!actionTarget}
-                title={actionTarget?.action === "approved" ? "Approve Request" : "Reject Request"}
+                title={actionTarget?.action === "approved" ? "Approve Request" : actionTarget?.action === "cancelled" ? "Cancel Approved Leave" : "Reject Request"}
                 message={actionTarget?.action === "approved" 
                     ? `Are you sure you want to approve ${actionTarget?.req?.type} for ${actionTarget?.req?.name}?` 
+                    : actionTarget?.action === "cancelled"
+                    ? `Are you sure you want to cancel this approved leave for ${actionTarget?.req?.name}? The ${actionTarget?.req?.duration || "leave days"} will be immediately refunded back to their leave balance.`
                     : `Are you sure you want to decline ${actionTarget?.req?.type} for ${actionTarget?.req?.name}?`}
-                confirmLabel={actionTarget?.action === "approved" ? "Approve Request" : "Reject Request"}
+                confirmLabel={actionTarget?.action === "approved" ? "Approve Request" : actionTarget?.action === "cancelled" ? "Cancel Leave & Refund" : "Reject Request"}
                 cancelLabel="Cancel"
                 variant={actionTarget?.action === "approved" ? "info" : "danger"}
                 onConfirm={confirmActionTarget}

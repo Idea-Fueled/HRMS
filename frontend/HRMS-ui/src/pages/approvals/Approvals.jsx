@@ -24,6 +24,7 @@ import { Avatar } from "../../components/SharedComponents";
 
 export default function Approvals() {
     const { user } = useAuth();
+    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin";
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Leaves state
@@ -40,6 +41,11 @@ export default function Approvals() {
     const [rejectModalData, setRejectModalData] = useState(null);
     const [rejectRemarks, setRejectRemarks] = useState("");
     const [submittingReject, setSubmittingReject] = useState(false);
+
+    // Cancel Approved Leave Modal for Global Admin
+    const [cancelModalData, setCancelModalData] = useState(null);
+    const [cancelRemarks, setCancelRemarks] = useState("");
+    const [submittingCancel, setSubmittingCancel] = useState(false);
 
     // Target leave highlighting from query params (?leaveId=...)
     const targetLeaveId = searchParams.get("leaveId");
@@ -79,9 +85,9 @@ export default function Approvals() {
 
         leaves.forEach((l) => {
             const st = (l.rawStatus || l.status || "").toLowerCase();
-            if (st === "pending") pending++;
+            if (st === "pending" || st === "manager_approved") pending++;
             else if (st === "approved") approved++;
-            else if (st === "rejected") rejected++;
+            else if (st === "rejected" || st === "cancelled") rejected++;
         });
 
         return {
@@ -98,7 +104,7 @@ export default function Approvals() {
             const targetLeave = leaves.find((l) => l._id === targetLeaveId);
             if (targetLeave) {
                 const targetStatus = (targetLeave.rawStatus || targetLeave.status || "").toLowerCase();
-                if (targetStatus !== "pending" && statusFilter === "pending") {
+                if (targetStatus !== "pending" && targetStatus !== "manager_approved" && statusFilter === "pending") {
                     setStatusFilter(targetStatus);
                 }
                 // Scroll to target card smoothly
@@ -109,33 +115,27 @@ export default function Approvals() {
                 }, 300);
             }
         }
-    }, [targetLeaveId, leaves]);
+    }, [targetLeaveId, leaves, statusFilter]);
 
-    // Handle Approve / Reject actions
+    // Handle Approve / Reject / Cancel actions
     const handleAction = async (leaveId, status, remarks = "") => {
         try {
             setProcessingId(leaveId);
             const res = await updateLeaveStatus(leaveId, status, remarks);
             if (res.data?.success) {
-                toast.success(
-                    status === "approved"
-                        ? "🟢 Leave request approved successfully!"
-                        : "🔴 Leave request marked as rejected."
-                );
+                if (status === "cancelled") {
+                    toast.success("Leave cancelled successfully and days refunded to employee.");
+                } else if (status === "approved") {
+                    toast.success(
+                        isGlobalAdmin
+                            ? "🟢 Leave request fully approved by Global Admin!"
+                            : "🟢 Approved by Manager. Awaiting final Global Admin approval."
+                    );
+                } else {
+                    toast.success("🔴 Leave request marked as rejected and refunded.");
+                }
 
-                // Update local state optimistically
-                setLeaves((prev) =>
-                    prev.map((item) =>
-                        item._id === leaveId
-                            ? {
-                                  ...item,
-                                  status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
-                                  rawStatus: status.toLowerCase(),
-                                  remarks: remarks || item.remarks,
-                              }
-                            : item
-                    )
-                );
+                await fetchLeaves(true);
 
                 // Notify any listeners across the app (like Sidebar badges)
                 window.dispatchEvent(new CustomEvent("hrms:leave_status_updated"));
@@ -152,6 +152,11 @@ export default function Approvals() {
                 setRejectRemarks("");
                 setSubmittingReject(false);
             }
+            if (cancelModalData) {
+                setCancelModalData(null);
+                setCancelRemarks("");
+                setSubmittingCancel(false);
+            }
         }
     };
 
@@ -161,8 +166,12 @@ export default function Approvals() {
             const raw = (req.rawStatus || req.status || "").toLowerCase();
 
             // Status filter
-            if (statusFilter !== "all" && raw !== statusFilter) {
-                return false;
+            if (statusFilter === "pending") {
+                if (raw !== "pending" && raw !== "manager_approved") return false;
+            } else if (statusFilter === "approved") {
+                if (raw !== "approved") return false;
+            } else if (statusFilter === "rejected") {
+                if (raw !== "rejected" && raw !== "cancelled") return false;
             }
 
             // Search query filter
@@ -474,7 +483,9 @@ export default function Approvals() {
                         {filteredLeaves.map((req) => {
                             const rawStatus = (req.rawStatus || req.status || "").toLowerCase();
                             const isPending = rawStatus === "pending";
+                            const isManagerApproved = rawStatus === "manager_approved";
                             const isApproved = rawStatus === "approved";
+                            const isCancelled = rawStatus === "cancelled";
                             const isRejected = rawStatus === "rejected";
                             const isTarget = targetLeaveId === req._id;
 
@@ -510,7 +521,12 @@ export default function Approvals() {
                                             </div>
 
                                             {/* Status Badge */}
-                                            {isPending ? (
+                                            {isManagerApproved ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                                    Manager Approved • Awaiting Admin
+                                                </span>
+                                            ) : isPending ? (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                                                     Pending Review
@@ -519,6 +535,11 @@ export default function Approvals() {
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                                                     <Check className="w-3 h-3 text-emerald-600" />
                                                     Approved
+                                                </span>
+                                            ) : isCancelled ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-600 border border-slate-300 shadow-2xs">
+                                                    <X className="w-3 h-3 text-slate-500" />
+                                                    Cancelled (Refunded)
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
@@ -561,7 +582,7 @@ export default function Approvals() {
                                         {/* Optional Remarks if already evaluated */}
                                         {req.remarks && (
                                             <div className="p-2.5 bg-amber-50/50 border border-amber-200/60 rounded-xl text-[11px] text-amber-900">
-                                                <span className="font-bold">Manager Remarks: </span>
+                                                <span className="font-bold">Remarks: </span>
                                                 <span>{req.remarks}</span>
                                             </div>
                                         )}
@@ -582,7 +603,13 @@ export default function Approvals() {
                                                     className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
-                                                    <span>{processingId === req._id ? "Processing..." : "Approve 🟢"}</span>
+                                                    <span>
+                                                        {processingId === req._id
+                                                            ? "Processing..."
+                                                            : isGlobalAdmin
+                                                            ? "Approve (Final) 🟢"
+                                                            : "Approve 🟢"}
+                                                    </span>
                                                 </button>
 
                                                 <button
@@ -598,19 +625,70 @@ export default function Approvals() {
                                                     <span>Reject 🔴</span>
                                                 </button>
                                             </div>
-                                        ) : (
-                                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                                                {isApproved ? (
+                                        ) : isManagerApproved ? (
+                                            <div className="flex items-center gap-2">
+                                                {isGlobalAdmin ? (
                                                     <>
-                                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                                        <span>Decision: Approved</span>
+                                                        <button
+                                                            type="button"
+                                                            disabled={processingId === req._id}
+                                                            onClick={() => handleAction(req._id, "approved")}
+                                                            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                                                        >
+                                                            <Check className="w-3.5 h-3.5" />
+                                                            <span>{processingId === req._id ? "Processing..." : "Approve (Final) 🟢"}</span>
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            disabled={processingId === req._id}
+                                                            onClick={() => {
+                                                                setRejectModalData(req);
+                                                                setRejectRemarks("");
+                                                            }}
+                                                            className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                            <span>Reject 🔴</span>
+                                                        </button>
                                                     </>
                                                 ) : (
-                                                    <>
-                                                        <X className="w-3.5 h-3.5 text-rose-600" />
-                                                        <span>Decision: Rejected</span>
-                                                    </>
+                                                    <span className="text-xs font-bold text-blue-600 flex items-center gap-1.5">
+                                                        <Check className="w-3.5 h-3.5 text-blue-600" />
+                                                        <span>Manager Approved • Awaiting Admin</span>
+                                                    </span>
                                                 )}
+                                            </div>
+                                        ) : isApproved ? (
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                                    <span>Decision: Approved</span>
+                                                </span>
+                                                {isGlobalAdmin && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={processingId === req._id}
+                                                        onClick={() => {
+                                                            setCancelModalData(req);
+                                                            setCancelRemarks("");
+                                                        }}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                        <span>Cancel Leave (Refund)</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : isCancelled ? (
+                                            <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                                                <X className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>Cancelled • Days Credited Back</span>
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                                <X className="w-3.5 h-3.5 text-rose-600" />
+                                                <span>Decision: Rejected</span>
                                             </span>
                                         )}
                                     </div>
@@ -688,6 +766,84 @@ export default function Approvals() {
                                 className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer disabled:opacity-50"
                             >
                                 {submittingReject ? "Rejecting..." : "Confirm Rejection"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               CANCEL APPROVED LEAVE MODAL (GLOBAL ADMIN)
+            ───────────────────────────────────────────── */}
+            {cancelModalData && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fadeIn"
+                    onClick={() => {
+                        if (!submittingCancel) setCancelModalData(null);
+                    }}
+                >
+                    <div
+                        className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 space-y-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold">
+                                    <X className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-slate-900">Cancel Approved Leave</h3>
+                                    <p className="text-[11px] text-slate-500 font-medium">
+                                        For {cancelModalData.name} ({cancelModalData.type || cancelModalData.leaveType})
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setCancelModalData(null)}
+                                disabled={submittingCancel}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed font-medium">
+                            ⚠️ <span className="font-bold">Refund Notice:</span> Cancelling this leave will immediately refund <strong>{cancelModalData.totalDays || 1} day(s)</strong> back to {cancelModalData.name}'s leave balance.
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                Cancellation Reason (Optional)
+                            </label>
+                            <textarea
+                                rows={3}
+                                value={cancelRemarks}
+                                onChange={(e) => setCancelRemarks(e.target.value)}
+                                placeholder="E.g., Client emergency requirement, employee requested cancellation, etc..."
+                                className="w-full p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2">
+                            <button
+                                type="button"
+                                disabled={submittingCancel}
+                                onClick={() => setCancelModalData(null)}
+                                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 cursor-pointer"
+                            >
+                                Keep Leave
+                            </button>
+                            <button
+                                type="button"
+                                disabled={submittingCancel}
+                                onClick={async () => {
+                                    setSubmittingCancel(true);
+                                    await handleAction(cancelModalData._id, "cancelled", cancelRemarks);
+                                }}
+                                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer disabled:opacity-50"
+                            >
+                                {submittingCancel ? "Cancelling..." : "Confirm Cancellation & Refund"}
                             </button>
                         </div>
                     </div>

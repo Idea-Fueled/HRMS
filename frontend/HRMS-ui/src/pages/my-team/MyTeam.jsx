@@ -2504,6 +2504,8 @@ const MemberLeaveDonut = ({ member }) => {
 };
 
 const TeamLeavesTab = () => {
+    const { user } = useAuth();
+    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin";
     const [loading, setLoading] = useState(true);
     const [leavesData, setLeavesData] = useState({ stats: null, teamBalances: [], leaves: [] });
     const [error, setError] = useState(null);
@@ -2533,8 +2535,10 @@ const TeamLeavesTab = () => {
 
     const statusColors = {
         "Pending": "bg-amber-50 text-amber-700 border-amber-200",
+        "Manager Approved": "bg-blue-50 text-blue-700 border-blue-200",
         "Approved": "bg-emerald-50 text-emerald-700 border-emerald-200",
-        "Rejected": "bg-rose-50 text-rose-700 border-rose-200"
+        "Rejected": "bg-rose-50 text-rose-700 border-rose-200",
+        "Cancelled": "bg-gray-100 text-gray-600 border-gray-300"
     };
 
     const fetchLeaves = async () => {
@@ -2579,9 +2583,20 @@ const TeamLeavesTab = () => {
             setActionModal(prev => ({ ...prev, isSubmitting: true }));
             const res = await updateLeaveStatus(actionModal.leave._id, actionModal.status, actionModal.remarks);
             if (res.data?.success) {
-                toast.success(`Leave request ${actionModal.status} successfully.`);
+                if (actionModal.status === "cancelled") {
+                    toast.success("Leave cancelled successfully and days refunded to employee.");
+                } else if (actionModal.status === "approved") {
+                    toast.success(
+                        isGlobalAdmin
+                            ? "🟢 Leave request fully approved by Global Admin!"
+                            : "🟢 Approved by Manager. Awaiting final Global Admin approval."
+                    );
+                } else {
+                    toast.success("🔴 Leave request marked as rejected and refunded.");
+                }
                 setActionModal({ isOpen: false, leave: null, status: "", remarks: "", isSubmitting: false });
-                fetchLeaves();
+                await fetchLeaves();
+                window.dispatchEvent(new CustomEvent("hrms:leave_status_updated"));
             } else {
                 toast.error(res.data?.message || `Failed to update leave to ${actionModal.status}.`);
                 setActionModal(prev => ({ ...prev, isSubmitting: false }));
@@ -2624,7 +2639,11 @@ const TeamLeavesTab = () => {
                 l.type.toLowerCase().includes(q) ||
                 (l.reason && l.reason.toLowerCase().includes(q));
 
-            const matchesStatus = statusFilter === "all" || l.status.toLowerCase() === statusFilter.toLowerCase();
+            const matchesStatus = statusFilter === "all" ||
+                (statusFilter === "pending" && (l.status.toLowerCase() === "pending" || l.status.toLowerCase() === "manager approved")) ||
+                (statusFilter === "approved" && l.status.toLowerCase() === "approved") ||
+                (statusFilter === "rejected" && (l.status.toLowerCase() === "rejected" || l.status.toLowerCase() === "cancelled")) ||
+                l.status.toLowerCase() === statusFilter.toLowerCase();
             const matchesType = typeFilter === "all" || l.type.toLowerCase() === typeFilter.toLowerCase();
             return matchesSearch && matchesStatus && matchesType;
         });
@@ -2958,7 +2977,7 @@ const TeamLeavesTab = () => {
                                                     className="flex-1 py-1.5 bg-[#2E7D32]/10 hover:bg-[#2E7D32]/25 text-[#2E7D32] border border-[#2E7D32]/20 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
                                                 >
                                                     <Check className="w-3.5 h-3.5" />
-                                                    <span>Approve</span>
+                                                    <span>{isGlobalAdmin ? "Approve (Final)" : "Approve"}</span>
                                                 </button>
                                                 <button
                                                     onClick={() => openActionDialog(l, "rejected")}
@@ -2968,9 +2987,50 @@ const TeamLeavesTab = () => {
                                                     <span>Reject</span>
                                                 </button>
                                             </div>
+                                        ) : l.status === "Manager Approved" ? (
+                                            isGlobalAdmin ? (
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => openActionDialog(l, "approved")}
+                                                        className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-xs"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" />
+                                                        <span>Approve (Final)</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openActionDialog(l, "rejected")}
+                                                        className="flex-1 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                        <span>Reject</span>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-1">
+                                                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md inline-block">
+                                                        Manager Approved • Awaiting Admin
+                                                    </span>
+                                                </div>
+                                            )
+                                        ) : l.status === "Approved" ? (
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">
+                                                    Approved
+                                                </span>
+                                                {isGlobalAdmin && (
+                                                    <button
+                                                        onClick={() => openActionDialog(l, "cancelled")}
+                                                        className="px-2.5 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                                        title="Cancel leave and refund days to employee"
+                                                    >
+                                                        <XCircle className="w-3.5 h-3.5" />
+                                                        <span>Cancel Leave</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         ) : (
                                             <div className="text-center py-1">
-                                                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${l.status === "Approved" ? "text-emerald-600" : "text-rose-600"}`}>
+                                                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${l.status === "Cancelled" ? "text-gray-500" : "text-rose-600"}`}>
                                                     {l.status}
                                                 </span>
                                             </div>
@@ -3084,10 +3144,10 @@ const TeamLeavesTab = () => {
                                                         <button
                                                             onClick={() => openActionDialog(l, "approved")}
                                                             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 focus:outline-none"
-                                                            title="Approve leave request"
+                                                            title={isGlobalAdmin ? "Approve (Final)" : "Approve leave request"}
                                                         >
                                                             <Check className="w-3.5 h-3.5" />
-                                                            <span>Approve</span>
+                                                            <span>{isGlobalAdmin ? "Approve (Final)" : "Approve"}</span>
                                                         </button>
                                                         <button
                                                             onClick={() => openActionDialog(l, "rejected")}
@@ -3098,8 +3158,50 @@ const TeamLeavesTab = () => {
                                                             <span>Reject</span>
                                                         </button>
                                                     </div>
+                                                ) : l.status === "Manager Approved" ? (
+                                                    isGlobalAdmin ? (
+                                                        <div className="flex items-center justify-center gap-1.5">
+                                                            <button
+                                                                onClick={() => openActionDialog(l, "approved")}
+                                                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs focus:outline-none"
+                                                                title="Grant final approval"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5" />
+                                                                <span>Approve (Final)</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openActionDialog(l, "rejected")}
+                                                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 focus:outline-none"
+                                                                title="Reject leave request"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                                <span>Reject</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full inline-block">
+                                                            Awaiting Admin
+                                                        </span>
+                                                    )
+                                                ) : l.status === "Approved" ? (
+                                                    isGlobalAdmin ? (
+                                                        <div className="flex items-center justify-center gap-1.5">
+                                                            <button
+                                                                onClick={() => openActionDialog(l, "cancelled")}
+                                                                className="px-2 py-1 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 focus:outline-none"
+                                                                title="Cancel this leave and refund days to employee balance"
+                                                            >
+                                                                <XCircle className="w-3.5 h-3.5" />
+                                                                <span>Cancel Leave</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] font-extrabold text-emerald-600 select-none uppercase tracking-wide">
+                                                            Approved
+                                                        </span>
+                                                    )
                                                 ) : (
-                                                    <span className="text-[10px] font-extrabold text-gray-400 select-none uppercase tracking-wide">
+                                                    <span className={`text-[10px] font-extrabold select-none uppercase tracking-wide ${l.status === "Cancelled" ? "text-gray-400" : "text-rose-500"}`}>
                                                         {l.status}
                                                     </span>
                                                 )}
@@ -3114,7 +3216,7 @@ const TeamLeavesTab = () => {
                 )}
             </div>
 
-            {/* Manager Approve / Reject Confirmation Modal */}
+            {/* Action Confirmation Modal */}
             {actionModal.isOpen && actionModal.leave && (
                 <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
                     <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-100 p-6 space-y-4">
@@ -3124,14 +3226,22 @@ const TeamLeavesTab = () => {
                                     <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
                                         <Check className="w-4 h-4" />
                                     </div>
+                                ) : actionModal.status === "cancelled" ? (
+                                    <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                        <AlertCircle className="w-4 h-4" />
+                                    </div>
                                 ) : (
                                     <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
                                         <X className="w-4 h-4" />
                                     </div>
                                 )}
                                 <div>
-                                    <h3 className="text-sm font-black text-[#1E1E1E] capitalize">
-                                        {actionModal.status} Leave Request
+                                    <h3 className="text-sm font-black text-[#1E1E1E]">
+                                        {actionModal.status === "cancelled"
+                                            ? "Cancel Approved Leave"
+                                            : actionModal.status === "approved" && actionModal.leave.status === "Manager Approved"
+                                            ? "Final Approve Leave"
+                                            : `${actionModal.status === "approved" ? "Approve" : "Reject"} Leave Request`}
                                     </h3>
                                     <span className="text-[11px] text-gray-400 font-medium">
                                         Applicant: {actionModal.leave.name} ({actionModal.leave.code || "EMP"})
@@ -3166,15 +3276,27 @@ const TeamLeavesTab = () => {
                             </div>
                         </div>
 
+                        {actionModal.status === "cancelled" && (
+                            <div className="p-3 bg-amber-50 border border-amber-200/60 rounded-xl text-xs text-amber-800 space-y-1">
+                                <div className="font-bold flex items-center gap-1.5">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Refund Notice</span>
+                                </div>
+                                <p className="text-[11px] text-amber-700 leading-relaxed">
+                                    Cancelling this leave will immediately refund <strong>{actionModal.leave.duration}</strong> back to <strong>{actionModal.leave.name}</strong>'s balance and update leave counters.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Optional Remarks */}
                         <div className="space-y-1 text-left">
                             <label className="text-xs font-bold text-gray-700">
-                                Manager Remarks / Comments <span className="text-gray-400 font-normal">(Optional)</span>
+                                {actionModal.status === "cancelled" ? "Cancellation Reason" : "Remarks / Comments"} <span className="text-gray-400 font-normal">(Optional)</span>
                             </label>
                             <textarea
                                 value={actionModal.remarks}
                                 onChange={(e) => setActionModal(prev => ({ ...prev, remarks: e.target.value }))}
-                                placeholder={actionModal.status === "rejected" ? "Provide reason for rejection..." : "Add any notes or approval comments..."}
+                                placeholder={actionModal.status === "cancelled" ? "State reason for cancelling this leave..." : actionModal.status === "rejected" ? "Provide reason for rejection..." : "Add any notes or approval comments..."}
                                 rows={3}
                                 className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D79C7]/20 text-gray-800 resize-none"
                             />
@@ -3188,7 +3310,7 @@ const TeamLeavesTab = () => {
                                 onClick={() => setActionModal({ isOpen: false, leave: null, status: "", remarks: "", isSubmitting: false })}
                                 className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
                             >
-                                Cancel
+                                Back
                             </button>
                             <button
                                 type="button"
@@ -3205,7 +3327,13 @@ const TeamLeavesTab = () => {
                                 ) : (
                                     <>
                                         {actionModal.status === "approved" ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-                                        <span className="capitalize">Confirm {actionModal.status}</span>
+                                        <span>
+                                            {actionModal.status === "cancelled"
+                                                ? "Confirm Cancellation & Refund"
+                                                : actionModal.status === "approved" && actionModal.leave.status === "Manager Approved"
+                                                ? "Confirm Final Approval"
+                                                : `Confirm ${actionModal.status}`}
+                                        </span>
                                     </>
                                 )}
                             </button>

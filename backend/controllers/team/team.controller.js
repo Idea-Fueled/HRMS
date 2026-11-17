@@ -472,6 +472,10 @@ export const getTeamLeaves = async (req, res) => {
         const [leaves, teamMembers] = await Promise.all([
             Leave.find(leaveQuery)
                 .populate("employeeId", "fullName firstName lastName employeeId department designation profilePicture")
+                .populate("managerApproval.actionBy", "fullName firstName lastName employeeId")
+                .populate("adminApproval.actionBy", "fullName firstName lastName employeeId")
+                .populate("approvedBy", "fullName firstName lastName employeeId")
+                .populate("cancelledBy", "fullName firstName lastName employeeId")
                 .sort({ createdAt: -1 }),
             User.find(memberQuery)
                 .select("fullName firstName lastName employeeId department designation profilePicture leaveBalance status")
@@ -536,6 +540,13 @@ export const getTeamLeaves = async (req, res) => {
                 ? l.totalDays
                 : 1;
 
+            let formattedStatus = "Pending";
+            const rawSt = (l.status || "").toLowerCase();
+            if (rawSt === "manager_approved") formattedStatus = "Manager Approved";
+            else if (rawSt === "approved") formattedStatus = "Approved";
+            else if (rawSt === "rejected") formattedStatus = "Rejected";
+            else if (rawSt === "cancelled") formattedStatus = "Cancelled";
+
             return {
                 _id: l._id,
                 employeeId: emp?._id,
@@ -554,12 +565,18 @@ export const getTeamLeaves = async (req, res) => {
                 partialTiming: l.partialTiming || (l.partialMinutes ? `${l.partialMinutes} mins` : ""),
                 totalDays: days,
                 duration: `${days} Day${days !== 1 ? 's' : ''}`,
-                status: l.status.charAt(0).toUpperCase() + l.status.slice(1).toLowerCase(),
-                rawStatus: l.status.toLowerCase(),
+                status: formattedStatus,
+                rawStatus: rawSt,
                 reason: l.reason || "No reason specified",
                 remarks: l.remarks || "",
                 appliedDate: l.createdAt ? new Date(l.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" }) : "—",
-                createdAt: l.createdAt
+                createdAt: l.createdAt,
+                managerApproval: l.managerApproval || { status: "pending" },
+                adminApproval: l.adminApproval || { status: "pending" },
+                approvedBy: l.approvedBy,
+                cancelledBy: l.cancelledBy,
+                cancelledAt: l.cancelledAt,
+                cancellationReason: l.cancellationReason || ""
             };
         });
 
@@ -568,9 +585,9 @@ export const getTeamLeaves = async (req, res) => {
         today.setHours(0, 0, 0, 0);
 
         const [pending, approved, rejected, onLeave] = await Promise.all([
-            Leave.countDocuments({ status: "pending", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            Leave.countDocuments({ status: { $in: ["pending", "manager_approved"] }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
             Leave.countDocuments({ status: "approved", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
-            Leave.countDocuments({ status: "rejected", ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
+            Leave.countDocuments({ status: { $in: ["rejected", "cancelled"] }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) }),
             Leave.countDocuments({ status: "approved", startDate: { $lte: today }, endDate: { $gte: today }, ...(hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {}) })
         ]);
 
@@ -669,12 +686,14 @@ export const updateLeaveStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status, remarks } = req.body;
-        const managerId = req.user?.id || req.user?.userId;
+        const callerId = req.user?.id || req.user?.userId;
+        const callerRole = (req.user?.role || "").toLowerCase();
+        const isGlobalAdmin = callerRole === "global_admin" || callerRole === "admin";
 
-        const normalizedStatus = status.toLowerCase();
+        const normalizedStatus = (status || "").toLowerCase();
 
-        if (!["approved", "rejected"].includes(normalizedStatus)) {
-            return res.status(400).json({ success: false, message: "Invalid status option. Choose approved or rejected." });
+        if (!["approved", "rejected", "cancelled"].includes(normalizedStatus)) {
+            return res.status(400).json({ success: false, message: "Invalid status option. Choose approved, rejected, or cancelled." });
         }
 
         const leave = await Leave.findById(id);
@@ -682,87 +701,164 @@ export const updateLeaveStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: "Leave request not found." });
         }
 
-        // Adjust counts on user object
         const user = await User.findById(leave.employeeId);
-        if (user) {
-            let key = "";
-            if (leave.leaveType === "sick_leave") key = "sick";
-            else if (leave.leaveType === "casual_leave") key = "casual";
-            else if (leave.leaveType === "earned_leave") key = "earned";
-            else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
-            else if (leave.leaveType === "partial_leave") key = "partial";
+        if (!user) {
+            return res.status(404).json({ success: false, message: "Associated employee not found." });
+        }
 
-            const days = leave.totalDays !== undefined && leave.totalDays !== null && !isNaN(leave.totalDays)
-                ? Number(leave.totalDays)
-                : 1;
+        let key = "";
+        if (leave.leaveType === "sick_leave") key = "sick";
+        else if (leave.leaveType === "casual_leave") key = "casual";
+        else if (leave.leaveType === "earned_leave") key = "earned";
+        else if (leave.leaveType === "comp_off" || leave.leaveType === "comp_off_leave") key = "compOff";
+        else if (leave.leaveType === "partial_leave") key = "partial";
 
-            if (leave.status === "pending") {
-                if (normalizedStatus === "approved") {
-                    // Already deducted from total and added to used at apply time.
-                    // DO NOT deduct from total again! Just clear pending count.
-                    if (key && user.leaveBalance && user.leaveBalance[key]) {
-                        user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - (key === "partial" ? 1 : days)).toFixed(1)));
-                        if (key === "partial") {
-                            user.leaveBalance.partial.used = (user.leaveBalance.partial.used || 0) + 1;
-                        }
-                    }
-                    user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
-                    user.usedLeaves = parseFloat(((user.usedLeaves || 0) + days).toFixed(1));
-                    user.markModified("leaveBalance");
-                    await user.save();
-                } else if (normalizedStatus === "rejected") {
-                    // Credit back the days to total, and subtract from used & pending!
-                    if (key && user.leaveBalance && user.leaveBalance[key]) {
-                        if (key !== "partial") {
-                            user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
-                            user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
-                            user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
-                        } else {
-                            user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
-                        }
-                    }
-                    user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
-                    user.markModified("leaveBalance");
-                    await user.save();
-                }
-            } else if (leave.status === "approved" && normalizedStatus === "rejected") {
-                // If previously approved leave is later rejected, refund / credit back the days
-                if (key && user.leaveBalance && user.leaveBalance[key] && key !== "partial") {
+        const days = leave.totalDays !== undefined && leave.totalDays !== null && !isNaN(leave.totalDays)
+            ? Number(leave.totalDays)
+            : 1;
+
+        // HELPER FUNCTIONS FOR BALANCE UPDATES
+        const refundLeaveBalance = (wasFullyApproved = false) => {
+            if (key && user.leaveBalance && user.leaveBalance[key]) {
+                if (key !== "partial") {
                     user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
                     user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
+                    if (!wasFullyApproved) {
+                        user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
+                    }
+                } else {
+                    if (!wasFullyApproved) {
+                        user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
+                    }
                 }
-                user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
-                user.markModified("leaveBalance");
-                await user.save();
-            } else if (leave.status === "rejected" && normalizedStatus === "approved") {
-                // If previously rejected leave is later approved, deduct the days
-                if (key && user.leaveBalance && user.leaveBalance[key] && key !== "partial") {
-                    user.leaveBalance[key].total = Math.max(0, parseFloat(((user.leaveBalance[key].total || 0) - days).toFixed(1)));
-                    user.leaveBalance[key].used = parseFloat(((user.leaveBalance[key].used || 0) + days).toFixed(1));
+            }
+            if (!wasFullyApproved) {
+                user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
+            }
+            user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
+            user.markModified("leaveBalance");
+        };
+
+        const finalizeApprovalBalance = () => {
+            if (key && user.leaveBalance && user.leaveBalance[key]) {
+                user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - (key === "partial" ? 1 : days)).toFixed(1)));
+                if (key === "partial") {
+                    user.leaveBalance.partial.used = (user.leaveBalance.partial.used || 0) + 1;
                 }
-                user.usedLeaves = parseFloat(((user.usedLeaves || 0) + days).toFixed(1));
-                user.markModified("leaveBalance");
+            }
+            user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
+            user.usedLeaves = parseFloat(((user.usedLeaves || 0) + days).toFixed(1));
+            user.markModified("leaveBalance");
+        };
+
+        // SCENARIO 1: CANCELLATION (Global Admin cancelling an approved or pending leave)
+        if (normalizedStatus === "cancelled") {
+            if (!isGlobalAdmin) {
+                return res.status(403).json({ success: false, message: "Unauthorized: Only Global Admins can cancel leaves." });
+            }
+
+            if (leave.status === "cancelled") {
+                return res.status(400).json({ success: false, message: "This leave request is already cancelled." });
+            }
+
+            const wasApproved = leave.status === "approved";
+            refundLeaveBalance(wasApproved);
+            await user.save();
+
+            leave.status = "cancelled";
+            leave.cancelledBy = callerId;
+            leave.cancelledAt = new Date();
+            leave.cancellationReason = remarks || "Cancelled by Global Admin";
+            await leave.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Leave successfully cancelled and days refunded to employee.",
+                leave
+            });
+        }
+
+        // SCENARIO 2: REJECTION (By Manager or Global Admin)
+        if (normalizedStatus === "rejected") {
+            if (isGlobalAdmin) {
+                leave.adminApproval = {
+                    status: "rejected",
+                    actionBy: callerId,
+                    actionAt: new Date(),
+                    remarks: remarks || ""
+                };
+            } else {
+                leave.managerApproval = {
+                    status: "rejected",
+                    actionBy: callerId,
+                    actionAt: new Date(),
+                    remarks: remarks || ""
+                };
+            }
+
+            // If leave was pending, manager_approved, or approved, credit/refund the days back
+            if (["pending", "manager_approved", "approved"].includes(leave.status)) {
+                refundLeaveBalance(leave.status === "approved");
                 await user.save();
             }
+
+            leave.status = "rejected";
+            leave.remarks = remarks || leave.remarks || "";
+            await leave.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Leave request rejected and days refunded to employee.",
+                leave
+            });
         }
 
-        if (leave.totalDays === undefined || leave.totalDays === null || isNaN(leave.totalDays)) {
-            const start = new Date(leave.startDate);
-            const end = new Date(leave.endDate);
-            const diffTime = Math.abs(end - start);
-            leave.totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        // SCENARIO 3: APPROVAL
+        if (normalizedStatus === "approved") {
+            if (isGlobalAdmin) {
+                // Global Admin approves: FINAL APPROVAL!
+                leave.adminApproval = {
+                    status: "approved",
+                    actionBy: callerId,
+                    actionAt: new Date(),
+                    remarks: remarks || ""
+                };
+                leave.approvedBy = callerId;
+                leave.remarks = remarks || leave.remarks || "";
+
+                if (leave.status !== "approved") {
+                    finalizeApprovalBalance();
+                    await user.save();
+                }
+
+                leave.status = "approved";
+                await leave.save();
+
+                return res.status(200).json({
+                    success: true,
+                    message: "Leave request fully approved by Global Admin.",
+                    leave
+                });
+            } else {
+                // Non-Global Admin (Manager) approves:
+                // Status moves to manager_approved, WAITING for Global Admin approval!
+                leave.managerApproval = {
+                    status: "approved",
+                    actionBy: callerId,
+                    actionAt: new Date(),
+                    remarks: remarks || ""
+                };
+                leave.status = "manager_approved";
+                leave.remarks = remarks || leave.remarks || "";
+                await leave.save();
+
+                return res.status(200).json({
+                    success: true,
+                    message: "Leave approved by Manager. Waiting for final Global Admin approval.",
+                    leave
+                });
+            }
         }
-
-        leave.status = normalizedStatus;
-        leave.approvedBy = managerId;
-        leave.remarks = remarks || "";
-        await leave.save();
-
-        return res.status(200).json({
-            success: true,
-            message: `Leave request ${normalizedStatus} successfully.`,
-            leave
-        });
     } catch (err) {
         console.error("Update Leave Status Error:", err);
         return res.status(500).json({ success: false, message: err.message });

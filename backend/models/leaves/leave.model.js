@@ -38,12 +38,65 @@ const leaveSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ["pending", "approved", "rejected"],
+        enum: ["pending", "manager_approved", "approved", "rejected", "cancelled"],
         default: "pending",
+    },
+    managerApproval: {
+        status: {
+            type: String,
+            enum: ["pending", "approved", "rejected"],
+            default: "pending"
+        },
+        actionBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null
+        },
+        actionAt: {
+            type: Date,
+            default: null
+        },
+        remarks: {
+            type: String,
+            default: ""
+        }
+    },
+    adminApproval: {
+        status: {
+            type: String,
+            enum: ["pending", "approved", "rejected"],
+            default: "pending"
+        },
+        actionBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null
+        },
+        actionAt: {
+            type: Date,
+            default: null
+        },
+        remarks: {
+            type: String,
+            default: ""
+        }
     },
     approvedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        default: null,
+    },
+    cancelledBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+    },
+    cancellationReason: {
+        type: String,
+        default: "",
+    },
+    cancelledAt: {
+        type: Date,
         default: null,
     },
     remarks: {

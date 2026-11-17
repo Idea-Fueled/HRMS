@@ -758,6 +758,10 @@ export const requestCompOffCredit = async (req, res) => {
 export const cancelLeave = async (req, res) => {
     try {
         const { id } = req.params;
+        const callerId = req.user?.id || req.user?.userId;
+        const callerRole = (req.user?.role || "").toLowerCase();
+        const isGlobalAdmin = callerRole === "global_admin" || callerRole === "admin";
+
         const leave = await Leave.findById(id);
 
         if (!leave) {
@@ -767,14 +771,27 @@ export const cancelLeave = async (req, res) => {
             });
         }
 
-        if (leave.status !== "pending") {
+        if (leave.status === "cancelled" || leave.status === "rejected") {
             return res.status(400).json({
                 success: false,
-                message: "Only pending leave requests can be cancelled."
+                message: `This leave request is already ${leave.status}.`
             });
         }
 
+        // Non-admins can only cancel pending or manager_approved leaves
+        if (!isGlobalAdmin && !["pending", "manager_approved"].includes(leave.status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Only pending leave requests can be cancelled by employees."
+            });
+        }
+
+        const wasApproved = leave.status === "approved";
+
         leave.status = "cancelled";
+        leave.cancelledBy = callerId || null;
+        leave.cancelledAt = new Date();
+        leave.cancellationReason = req.body?.remarks || (isGlobalAdmin ? "Cancelled by Global Admin" : "Cancelled by employee");
         await leave.save();
 
         // Refund / credit back deducted days to employee's leave balance
@@ -792,19 +809,26 @@ export const cancelLeave = async (req, res) => {
                 if (key !== "partial") {
                     user.leaveBalance[key].total = parseFloat(((user.leaveBalance[key].total || 0) + days).toFixed(1));
                     user.leaveBalance[key].used = Math.max(0, parseFloat(((user.leaveBalance[key].used || 0) - days).toFixed(1)));
-                    user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
+                    if (!wasApproved) {
+                        user.leaveBalance[key].pending = Math.max(0, parseFloat(((user.leaveBalance[key].pending || 0) - days).toFixed(1)));
+                    }
                 } else {
-                    user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
+                    if (!wasApproved) {
+                        user.leaveBalance.partial.pending = Math.max(0, (user.leaveBalance.partial.pending || 0) - 1);
+                    }
                 }
-                user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
-                user.markModified("leaveBalance");
-                await user.save();
             }
+            if (!wasApproved) {
+                user.pendingLeaves = Math.max(0, parseFloat(((user.pendingLeaves || 0) - days).toFixed(1)));
+            }
+            user.usedLeaves = Math.max(0, parseFloat(((user.usedLeaves || 0) - days).toFixed(1)));
+            user.markModified("leaveBalance");
+            await user.save();
         }
 
         return res.status(200).json({
             success: true,
-            message: "Leave request cancelled successfully.",
+            message: "Leave request cancelled successfully and days refunded.",
             leave
         });
     } catch (error) {
