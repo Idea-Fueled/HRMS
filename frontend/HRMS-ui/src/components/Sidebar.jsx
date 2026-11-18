@@ -299,12 +299,20 @@ const Sidebar = ({ onClose }) => {
         }
 
         const role = user.role?.toLowerCase();
+        const dept = (user.department || "").trim().toLowerCase();
+        const isHr = role === "hr" || dept === "hr" || dept.includes("human resource");
 
-        // Leaves / Approvals visibility: Global Admin / Admin always, Managers by default, or if explicitly permitted
-        if (item.permissionKey === "approvals" || item.to === "/approvals") {
-            if (role === "global_admin" || role === "admin") return true;
-            if (role === "manager") return user.permissions?.approvals !== false;
-            return user.permissions?.approvals === true;
+        // Global Admin, Admin, and Management see all sidebar items (except specifically restricted)
+        if (role === "global_admin" || role === "admin" || role === "management") {
+            return true;
+        }
+
+        // HR Department has full access to HR operation tools
+        if (isHr) {
+            const hrAccessible = ["dashboard", "me", "myTeam", "approvals", "employees", "probation", "documents", "hire", "timeAndAttend", "payroll", "organization", "recruitment", "myFinances"];
+            if (hrAccessible.includes(item.permissionKey)) {
+                return true;
+            }
         }
 
         // My Team visibility: Admins always, Managers/HR by default or if allowed, Employees/Interns if granted access

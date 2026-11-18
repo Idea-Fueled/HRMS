@@ -163,6 +163,7 @@ const MyFinances = () => {
                                 {isActive && (
                                     <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#2D79C7] rounded-full" />
                                 )}
+
                             </button>
                         );
                     })}
