@@ -37,6 +37,7 @@ const getHrVisibleFilter = async (currentUserId) => {
 
     // Manager / Management / Team Lead / Permitted Employee: find direct reports
     const directReports = await User.find({
+        status: { $nin: ["inactive", "terminated", "exited"] },
         $or: [
             { managerId: currentUser._id },
             { dottedManagerId: currentUser._id }
@@ -50,6 +51,7 @@ const getHrVisibleFilter = async (currentUserId) => {
     // If no direct reports, show peers under same manager
     if (currentUser.managerId) {
         const peers = await User.find({
+            status: { $nin: ["inactive", "terminated", "exited"] },
             $or: [
                 { managerId: currentUser.managerId },
                 { _id: currentUser._id }
@@ -60,6 +62,7 @@ const getHrVisibleFilter = async (currentUserId) => {
 
     if (currentUser.department) {
         const deptMembers = await User.find({
+            status: { $nin: ["inactive", "terminated", "exited"] },
             department: currentUser.department
         }).select("_id").lean();
         if (deptMembers.length > 0) return deptMembers.map(d => d._id.toString());
@@ -84,8 +87,14 @@ export const getTeamSummary = async (req, res) => {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const userFilter = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {};
-        const activeUserFilter = hrVisibleIds ? { status: "active", _id: { $in: hrVisibleIds } } : { status: "active" };
+        const userFilter = {
+            status: { $nin: ["inactive", "terminated", "exited"] },
+            ...(hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {})
+        };
+        const activeUserFilter = {
+            status: "active",
+            ...(hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {})
+        };
 
         const [
             totalEmployees,
@@ -130,9 +139,14 @@ export const getTeamSummary = async (req, res) => {
                 .lean()
         ]);
 
-        // Aggregate Department distribution
+        // Aggregate Department distribution (active team members only)
         const deptDistribution = await User.aggregate([
-            ...(hrVisibleIds ? [{ $match: { _id: { $in: hrVisibleIds.map(id => User.mongoose?.Types?.ObjectId?.createFromHexString ? User.mongoose.Types.ObjectId.createFromHexString(id) : id) } } }] : []),
+            {
+                $match: {
+                    status: { $nin: ["inactive", "terminated", "exited"] },
+                    ...(hrVisibleIds ? { _id: { $in: hrVisibleIds.map(id => User.mongoose?.Types?.ObjectId?.createFromHexString ? User.mongoose.Types.ObjectId.createFromHexString(id) : id) } } : {})
+                }
+            },
             { $group: { _id: "$department", count: { $sum: 1 } } }
         ]);
 
@@ -143,9 +157,14 @@ export const getTeamSummary = async (req, res) => {
             percentage: Math.round((d.count / totalForDept) * 100)
         })).sort((a, b) => b.count - a.count);
 
-        // Aggregate Statuses
+        // Aggregate Statuses (excluding inactive)
         const statusDistribution = await User.aggregate([
-            ...(hrVisibleIds ? [{ $match: { _id: { $in: hrVisibleIds.map(id => User.mongoose?.Types?.ObjectId?.createFromHexString ? User.mongoose.Types.ObjectId.createFromHexString(id) : id) } } }] : []),
+            {
+                $match: {
+                    status: { $nin: ["inactive", "terminated", "exited"] },
+                    ...(hrVisibleIds ? { _id: { $in: hrVisibleIds.map(id => User.mongoose?.Types?.ObjectId?.createFromHexString ? User.mongoose.Types.ObjectId.createFromHexString(id) : id) } } : {})
+                }
+            },
             { $group: { _id: "$status", count: { $sum: 1 } } }
         ]);
 
@@ -217,7 +236,10 @@ export const getTeamMembers = async (req, res) => {
         await seedMockDataIfNeeded(userId);
 
         const hrVisibleIds = await getHrVisibleFilter(userId);
-        const query = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {};
+        const query = {
+            status: { $nin: ["inactive", "terminated", "exited"] },
+            ...(hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {})
+        };
 
         const members = await User.find(query)
             .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
@@ -467,7 +489,10 @@ export const getTeamLeaves = async (req, res) => {
 
         const hrVisibleIds = await getHrVisibleFilter(userId);
         const leaveQuery = hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {};
-        const memberQuery = hrVisibleIds ? { _id: { $in: hrVisibleIds } } : { status: "active" };
+        const memberQuery = {
+            status: { $nin: ["inactive", "terminated", "exited"] },
+            ...(hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {})
+        };
 
         const [leaves, teamMembers] = await Promise.all([
             Leave.find(leaveQuery)
@@ -615,11 +640,17 @@ export const getTeamPerformance = async (req, res) => {
         const perfQuery = hrVisibleIds ? { employeeId: { $in: hrVisibleIds } } : {};
 
         const reviews = await Performance.find(perfQuery)
-            .populate("employeeId", "fullName department profilePicture")
+            .populate({
+                path: "employeeId",
+                select: "fullName department profilePicture status",
+                match: { status: { $nin: ["inactive", "terminated", "exited"] } }
+            })
             .populate("reviewerId", "fullName")
             .sort({ createdAt: -1 });
 
-        const formattedPerformance = reviews.map(r => ({
+        const formattedPerformance = reviews
+            .filter(r => r.employeeId)
+            .map(r => ({
             name: r.employeeId ? r.employeeId.fullName : "Unknown Employee",
             dept: r.employeeId ? r.employeeId.department : "General",
             profilePicture: r.employeeId ? r.employeeId.profilePicture : "",

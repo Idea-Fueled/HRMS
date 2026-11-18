@@ -441,7 +441,12 @@ const TeamMembersTab = () => {
             setError(null);
             const res = await getTeamMembers();
             if (res.data.success) {
-                setEmployees(res.data.members || []);
+                const activeOnly = (res.data.members || []).filter(
+                    e => (e.status || "").toLowerCase() !== "inactive" &&
+                         (e.status || "").toLowerCase() !== "terminated" &&
+                         (e.status || "").toLowerCase() !== "exited"
+                );
+                setEmployees(activeOnly);
                 if (res.data.reportingManager) {
                     setReportingManager(res.data.reportingManager);
                 }
@@ -546,6 +551,12 @@ const TeamMembersTab = () => {
 
     // Filter
     const filtered = employees.filter(e => {
+        // Exclude inactive employees
+        const s = (e.status || "").toLowerCase();
+        if (s === "inactive" || s === "terminated" || s === "exited") {
+            return false;
+        }
+
         // Exclude self from team members list
         if (e._id === currentUserId || e.id === user?.employeeId) {
             return false;
@@ -622,10 +633,10 @@ const TeamMembersTab = () => {
             )}
 
             {/* Stat Cards Row for Team Members */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fadeIn">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn">
                 <MiniStatCard
                     title="Total Members"
-                    value={employees.length}
+                    value={employees.filter(e => (e.status || "").toLowerCase() !== "inactive").length}
                     change="All"
                     isPositive={true}
                     onClick={() => { setSelectedStatus("All"); setCurrentPage(1); }}
@@ -647,14 +658,6 @@ const TeamMembersTab = () => {
                     onClick={() => { setSelectedStatus(selectedStatus === "On Notice" ? "All" : "On Notice"); setCurrentPage(1); }}
                     isSelected={selectedStatus === "On Notice"}
                 />
-                <MiniStatCard
-                    title="Inactive"
-                    value={employees.filter(e => (e.status || "").toLowerCase() === "inactive").length}
-                    change="Inactive"
-                    isPositive={false}
-                    onClick={() => { setSelectedStatus(selectedStatus === "Inactive" ? "All" : "Inactive"); setCurrentPage(1); }}
-                    isSelected={selectedStatus === "Inactive"}
-                />
             </div>
 
             {/* Filter and toggle control row */}
@@ -672,7 +675,6 @@ const TeamMembersTab = () => {
                             <option value="All">All Statuses</option>
                             <option value="Active">Active</option>
                             <option value="On Notice">On Notice</option>
-                            <option value="Inactive">Inactive</option>
                         </select>
                     </div>
                 </div>
@@ -2618,9 +2620,14 @@ const TeamLeavesTab = () => {
     // Filtered Balances
     const filteredBalances = useMemo(() => {
         if (!leavesData.teamBalances) return [];
-        if (!memberSearch.trim()) return leavesData.teamBalances;
+        const activeBalances = leavesData.teamBalances.filter(
+            m => (m.status || "").toLowerCase() !== "inactive" &&
+                 (m.status || "").toLowerCase() !== "terminated" &&
+                 (m.status || "").toLowerCase() !== "exited"
+        );
+        if (!memberSearch.trim()) return activeBalances;
         const q = memberSearch.toLowerCase();
-        return leavesData.teamBalances.filter(m =>
+        return activeBalances.filter(m =>
             m.name.toLowerCase().includes(q) ||
             (m.id && m.id.toLowerCase().includes(q)) ||
             (m.department && m.department.toLowerCase().includes(q)) ||
