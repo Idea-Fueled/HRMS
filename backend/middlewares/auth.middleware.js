@@ -1,6 +1,33 @@
 import jwt from "jsonwebtoken";
 
 export const isAuthenticated = async (req, res, next) => {
+    const isMeEndpoint = req.originalUrl?.includes("/users/me") || req.path === "/me";
+
+    const handleUnauthorized = (message = "Unauthorized. Please login.") => {
+        const isProduction = process.env.NODE_ENV === "production";
+        res.cookie("token", "", {
+            expires: new Date(0),
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
+        });
+
+        // For /me endpoint, returning 200 with { success: false } allows the frontend's
+        // refreshUser handler to gracefully wipe localStorage (user & token) and redirect
+        // straight to /login, rather than catching a 401 error and keeping stale user in state.
+        if (isMeEndpoint) {
+            return res.status(200).json({
+                success: false,
+                message: message
+            });
+        }
+
+        return res.status(401).json({
+            success: false,
+            message: message
+        });
+    };
+
     try {
         let token = req.cookies?.token;
 
@@ -15,9 +42,7 @@ export const isAuthenticated = async (req, res, next) => {
         }
 
         if (!token) {
-            return res.status(401).json({
-                message: "Unauthorized. Please login."
-            });
+            return handleUnauthorized("Unauthorized. Please login.");
         }
 
         const decoded = jwt.verify(
@@ -28,8 +53,6 @@ export const isAuthenticated = async (req, res, next) => {
         req.user = decoded;
         next();
     } catch (error) {
-        return res.status(401).json({
-            message: "Invalid or expired token."
-        });
+        return handleUnauthorized("Invalid or expired token.");
     }
 };

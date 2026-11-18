@@ -379,13 +379,19 @@ export const getUpcomingBirthdays = async (req, res) => {
 
 export const getCurrentUser = async (req, res, next) => {
     try {
-        const userId = req.user.userId || req.user.id;
+        const userId = req.user?.userId || req.user?.id;
+        if (!userId) {
+            return res.status(200).json({
+                success: false,
+                message: "Session invalid or expired."
+            });
+        }
         const user = await User.findById(userId)
             .select("-password")
             .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
             .populate("dottedManagerId", "fullName firstName lastName email designation department profilePicture employeeId");
         if (!user) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: "User not found."
             });
@@ -395,7 +401,7 @@ export const getCurrentUser = async (req, res, next) => {
             user: resolveUserPermissions(user)
         });
     } catch (error) {
-        return res.status(500).json({
+        return res.status(200).json({
             success: false,
             message: error.message
         });
