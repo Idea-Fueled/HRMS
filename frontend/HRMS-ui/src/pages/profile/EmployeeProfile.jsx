@@ -22,6 +22,7 @@ import { getAllAssets, getAssignedAssets, acknowledgeAsset, requestNewAsset } fr
 import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
 import { getEmployeeAttendanceHistory, getTodayAttendanceStatus, importEmployeeAttendance } from "../../services/attendance.service";
 import { TeamMemberAttendanceHistory } from "../my-team/MyTeam";
+import { ApplyLeaveModal } from "../me/Me";
 import * as XLSX from "xlsx";
 
 
@@ -187,6 +188,7 @@ export const EmployeeProfile = () => {
     const [leaveHistoryList, setLeaveHistoryList] = useState([]);
     const [loadingLeaves, setLoadingLeaves] = useState(false);
     const [showEditLeaveModal, setShowEditLeaveModal] = useState(false);
+    const [showApplyLeaveModal, setShowApplyLeaveModal] = useState(false);
     const [savingLeaveBalance, setSavingLeaveBalance] = useState(false);
     const [editLeaveForm, setEditLeaveForm] = useState({
         casual: 6,
@@ -2250,16 +2252,28 @@ export const EmployeeProfile = () => {
                             </div>
                         </div>
 
-                        {canEditLeaves && (
-                            <button
-                                type="button"
-                                onClick={() => setShowEditLeaveModal(true)}
-                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0"
-                            >
-                                <SlidersHorizontal className="w-3.5 h-3.5" />
-                                <span>Adjust Leave Quotas</span>
-                            </button>
-                        )}
+                        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                            {(userRole === "global_admin" || userRole === "admin") && !isOwnProfile && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowApplyLeaveModal(true)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Apply Leave</span>
+                                </button>
+                            )}
+                            {canEditLeaves && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditLeaveModal(true)}
+                                    className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0"
+                                >
+                                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                                    <span>Adjust Leave Quotas</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* 4 Leave Quotas Grid (Circular Pie Charts) */}
@@ -3729,6 +3743,21 @@ export const EmployeeProfile = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ─────────────────────────────────────────────
+               APPLY LEAVE ON BEHALF OF EMPLOYEE MODAL
+            ───────────────────────────────────────────── */}
+            {showApplyLeaveModal && (
+                <ApplyLeaveModal
+                    isOpen={showApplyLeaveModal}
+                    onClose={() => setShowApplyLeaveModal(false)}
+                    onSubmitSuccess={() => {
+                        fetchProfile();
+                        fetchEmployeeLeaves();
+                    }}
+                    targetEmployee={employee}
+                />
             )}
 
             {/* ─────────────────────────────────────────────

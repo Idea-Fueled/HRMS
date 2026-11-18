@@ -2496,11 +2496,48 @@ const LeaveTab = ({
 /* ─────────────────────────────────────────────
    APPLY LEAVE MODAL COMPONENT
 ───────────────────────────────────────────── */
-const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = "casual_leave", leaveSummary }) => {
+const ApplyLeaveModal = ({
+    isOpen,
+    onClose,
+    onSubmitSuccess,
+    initialLeaveType = "casual_leave",
+    leaveSummary,
+    targetEmployee = null,
+    teamMembers = []
+}) => {
     const [leaveType, setLeaveType] = useState("casual_leave");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [isHalfDay, setIsHalfDay] = useState(false);
+
+    const user = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "null");
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+    const [currentSummary, setCurrentSummary] = useState(leaveSummary || null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const initialId = targetEmployee?._id || targetEmployee?.id || (teamMembers.length > 0 ? (teamMembers[0]?._id || teamMembers[0]?.id) : (user?._id || user?.id || ""));
+        setSelectedEmployeeId(initialId);
+    }, [isOpen, targetEmployee, teamMembers]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const empId = selectedEmployeeId || targetEmployee?._id || targetEmployee?.id || user?._id;
+        if (!empId) return;
+
+        if (empId === (user?._id || user?.id) && leaveSummary) {
+            setCurrentSummary(leaveSummary);
+            return;
+        }
+
+        getLeaveSummary(empId).then(res => {
+            if (res.data?.success && res.data.summary) {
+                setCurrentSummary(res.data.summary);
+            }
+        }).catch(err => {
+            console.error("Failed to load employee leave summary:", err);
+        });
+    }, [selectedEmployeeId, isOpen, leaveSummary]);
 
     useEffect(() => {
         if (isOpen && initialLeaveType) {
@@ -2518,18 +2555,20 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
     const isPartial = leaveType === "partial_leave";
 
-    const user = JSON.parse(sessionStorage.getItem("user") || localStorage.getItem("user") || "null");
+    const activeTargetObj = targetEmployee || (Array.isArray(teamMembers) ? teamMembers.find(m => String(m._id || m.id) === String(selectedEmployeeId)) : null) || user;
+    const activeTargetName = activeTargetObj?.fullName || activeTargetObj?.name || "";
+
     const isProbationOrIntern = () => {
-        if (!user) return false;
-        const role = (user.role || "").toLowerCase();
-        const empType = (user.employementType || "").toLowerCase();
-        const designation = (user.designation || "").toLowerCase();
+        if (!activeTargetObj) return false;
+        const role = (activeTargetObj.role || "").toLowerCase();
+        const empType = (activeTargetObj.employementType || activeTargetObj.type || "").toLowerCase();
+        const designation = (activeTargetObj.designation || activeTargetObj.title || "").toLowerCase();
         if (role === "intern" || empType === "intern" || designation.includes("intern")) {
             return true;
         }
-        if (user.joiningDate) {
-            const join = new Date(user.joiningDate);
-            let probationDays = (user.probationPeriod !== undefined && user.probationPeriod !== null) ? Number(user.probationPeriod) : 180;
+        if (activeTargetObj.joiningDate) {
+            const join = new Date(activeTargetObj.joiningDate);
+            let probationDays = (activeTargetObj.probationPeriod !== undefined && activeTargetObj.probationPeriod !== null) ? Number(activeTargetObj.probationPeriod) : 180;
             if (probationDays <= 12) probationDays = probationDays * 30;
             const diffDays = (new Date() - join) / (1000 * 60 * 60 * 24);
             if (diffDays < probationDays) return true;
@@ -2625,16 +2664,16 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
         else if (leaveType === "comp_off") leaveKey = "compOff";
 
         if (leaveKey) {
-            const avail = leaveSummary?.leaveBalance?.[leaveKey]?.available ?? leaveSummary?.leaveBalance?.[leaveKey]?.total ?? 0;
+            const avail = currentSummary?.leaveBalance?.[leaveKey]?.available ?? currentSummary?.leaveBalance?.[leaveKey]?.total ?? currentSummary?.leaveBalance?.[leaveKey]?.remaining ?? 0;
             if (avail < duration) {
                 const label = leaveType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-                toast.error(`Insufficient ${label} balance. You only have ${avail} day(s) available.`);
+                toast.error(`Insufficient ${label} balance. Available: ${avail} day(s).`);
                 return;
             }
         }
 
-        if (isPartial && (leaveSummary?.leaveBalance?.partial?.used > 0)) {
-            toast.error("You have already consumed your monthly quota.");
+        if (isPartial && (currentSummary?.leaveBalance?.partial?.used > 0)) {
+            toast.error("Monthly partial leave quota already consumed.");
             return;
         }
 
@@ -2656,7 +2695,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
         setSubmitting(true);
         try {
-            const employeeId = user?._id || user?.id;
+            const targetEmpId = selectedEmployeeId || targetEmployee?._id || targetEmployee?.id || user?._id || user?.id;
 
             let partialTimingText = "";
             if (isPartial) {
@@ -2673,7 +2712,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
             }).filter(Boolean);
 
             const res = await applyLeave({
-                employeeId,
+                employeeId: targetEmpId,
                 leaveType: cleanType,
                 startDate,
                 endDate: activeEndDate,
@@ -2711,9 +2750,16 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
             <div className="bg-white border border-[#E5E7EB] rounded-[16px] shadow-xl w-full max-w-md overflow-hidden transform scale-100 transition-all duration-300">
                 {/* Modal Header */}
                 <div className="bg-white px-6 py-4.5 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="text-[#1E1E1E] text-[15px] font-extrabold">
-                        {isPartial ? "Apply for Partial Leave" : "Apply for Leave"}
-                    </h3>
+                    <div>
+                        <h3 className="text-[#1E1E1E] text-[15px] font-extrabold">
+                            {isPartial ? "Apply for Partial Leave" : "Apply for Leave"}
+                        </h3>
+                        {activeTargetObj && String(activeTargetObj._id || activeTargetObj.id) !== String(user?._id) && (
+                            <p className="text-[11px] font-bold text-[#2D79C7] mt-0.5">
+                                Applying for: {activeTargetName}
+                            </p>
+                        )}
+                    </div>
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-extrabold text-[16px] cursor-pointer">
                         ✕
                     </button>
@@ -2721,6 +2767,26 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
                 {/* Modal Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 text-left">
+                    {/* Team Member Selector (when opened from Team Leaves) */}
+                    {teamMembers.length > 0 && !targetEmployee && (
+                        <div className="space-y-1.5">
+                            <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Select Team Member</label>
+                            <div className="relative">
+                                <select
+                                    value={selectedEmployeeId}
+                                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                                    className="w-full appearance-none bg-[#F8FAFC] border border-gray-200 text-gray-700 text-[12.5px] font-bold py-2 pl-3 pr-8 rounded-[8px] focus:outline-none focus:border-[#2D79C7] cursor-pointer"
+                                >
+                                    {teamMembers.map((m) => (
+                                        <option key={m._id || m.id} value={m._id || m.id}>
+                                            {m.name || m.fullName} ({m.id || m.employeeId}) — {m.department || m.dept || "Team"}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-2.5 pointer-events-none" />
+                            </div>
+                        </div>
+                    )}
                     {/* Leave Type */}
                     <div className="space-y-1.5">
                         <label className="text-gray-500 text-[10px] font-bold uppercase tracking-wider block">Leave Type</label>
@@ -2750,7 +2816,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                                 <span className="text-[10px] font-medium text-purple-600">Balance credited by Global Admins</span>
                             </div>
                             <span className="text-[12px] font-mono font-extrabold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
-                                {leaveSummary?.leaveBalance?.compOff?.available ?? 0} Day(s)
+                                {currentSummary?.leaveBalance?.compOff?.available ?? currentSummary?.leaveBalance?.compOff?.total ?? 0} Day(s)
                             </span>
                         </div>
                     )}
