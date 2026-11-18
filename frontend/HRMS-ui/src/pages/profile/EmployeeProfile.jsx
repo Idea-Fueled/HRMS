@@ -2253,7 +2253,7 @@ export const EmployeeProfile = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                            {(userRole === "global_admin" || userRole === "admin") && !isOwnProfile && (
+                            {(userRole === "global_admin" || userRole === "admin" || isReportingManager) && !isOwnProfile && (
                                 <button
                                     type="button"
                                     onClick={() => setShowApplyLeaveModal(true)}
