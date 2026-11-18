@@ -34,11 +34,11 @@ import Settings from "./pages/settings/Settings";
 /* ─────────────────────────────────────────────
    ROLE CONSTANTS
 ───────────────────────────────────────────── */
-const ALL_ROLES        = ["global_admin", "admin", "hr", "manager", "management", "employee", "intern"];
-const ADMIN_HR         = ["global_admin", "admin", "hr", "management"];
-const GLOBAL_ADMIN_HR  = ["global_admin", "admin", "hr", "management"];
-const ADMIN_HR_MANAGER = ["global_admin", "admin", "hr", "manager", "management"];
-const GLOBAL_ADMIN_ONLY = ["global_admin", "admin", "management"];
+const ALL_ROLES        = ["global_admin", "admin", "hr", "manager", "employee", "intern"];
+const ADMIN_HR         = ["global_admin", "admin", "hr"];
+const GLOBAL_ADMIN_HR  = ["global_admin", "hr"];
+const ADMIN_HR_MANAGER = ["global_admin", "admin", "hr", "manager"];
+const GLOBAL_ADMIN_ONLY = ["global_admin"];
 
 const router = createBrowserRouter([
     {

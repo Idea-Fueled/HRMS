@@ -1081,25 +1081,13 @@ export const getEmployeeAttendanceHistory = async (req, res) => {
                         return res.status(403).json({ success: false, message: "Unauthorized: You can only view attendance for employees assigned to you" });
                     }
                 } else if (callerRole === "manager" || callerRole === "management") {
-                    // Manager can view their direct reports, next-level reports, or same department team members
-                    const targetUser = await User.findById(userObjId)
-                        .select("managerId dottedManagerId department")
-                        .populate("managerId", "managerId")
-                        .lean();
-
-                    const targetMgrId = targetUser?.managerId?._id ? targetUser.managerId._id.toString() : (targetUser?.managerId ? targetUser.managerId.toString() : "");
-                    const targetSkipMgrId = targetUser?.managerId?.managerId ? targetUser.managerId.managerId.toString() : "";
-                    const targetDottedId = targetUser?.dottedManagerId ? targetUser.dottedManagerId.toString() : "";
-                    const targetDept = (targetUser?.department || "").trim().toLowerCase();
-
-                    const caller = await User.findById(callerId).select("department").lean();
-                    const callerDept = (caller?.department || "").trim().toLowerCase();
-
-                    const isDirectReport = (targetMgrId && targetMgrId === callerId.toString()) || (targetDottedId && targetDottedId === callerId.toString());
-                    const isNextLevelReport = (targetSkipMgrId && targetSkipMgrId === callerId.toString());
-                    const isSameDept = Boolean(callerDept && targetDept && callerDept === targetDept);
-
-                    if (!isDirectReport && !isNextLevelReport && !isSameDept) {
+                    // Manager can only view their direct reports
+                    const targetUser = await User.findById(userObjId).select("managerId dottedManagerId").lean();
+                    const isReport = targetUser && (
+                        (targetUser.managerId && targetUser.managerId.toString() === callerId.toString()) ||
+                        (targetUser.dottedManagerId && targetUser.dottedManagerId.toString() === callerId.toString())
+                    );
+                    if (!isReport) {
                         return res.status(403).json({ success: false, message: "Unauthorized: You can only view attendance for your own team members" });
                     }
                 } else {

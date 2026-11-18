@@ -21,9 +21,7 @@ import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.se
 import { getAllAssets, getAssignedAssets, acknowledgeAsset, requestNewAsset } from "../../services/asset.service";
 import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
 import { getEmployeeAttendanceHistory, getTodayAttendanceStatus, importEmployeeAttendance } from "../../services/attendance.service";
-import { updateLeaveStatus } from "../../services/team.service";
 import { TeamMemberAttendanceHistory } from "../my-team/MyTeam";
-import { ApplyLeaveModal } from "../me/Me";
 import * as XLSX from "xlsx";
 
 
@@ -189,7 +187,6 @@ export const EmployeeProfile = () => {
     const [leaveHistoryList, setLeaveHistoryList] = useState([]);
     const [loadingLeaves, setLoadingLeaves] = useState(false);
     const [showEditLeaveModal, setShowEditLeaveModal] = useState(false);
-    const [showApplyLeaveModal, setShowApplyLeaveModal] = useState(false);
     const [savingLeaveBalance, setSavingLeaveBalance] = useState(false);
     const [editLeaveForm, setEditLeaveForm] = useState({
         casual: 6,
@@ -238,30 +235,7 @@ export const EmployeeProfile = () => {
         return false;
     }, [id, currentUser, employee]);
 
-    const userRole = (currentUser?.role || currentUser?.userRole || "employee").toLowerCase();
-    const isGlobalAdmin = userRole === "global_admin" || userRole === "admin" || userRole === "super_admin";
-    const [cancellingLeaveId, setCancellingLeaveId] = useState(null);
-
-    const handleCancelLeaveInProfile = async (leave) => {
-        if (!window.confirm(`Are you sure you want to cancel this approved leave (${leave.totalDays || 1} day)? This will refund the days back to the employee's balance.`)) {
-            return;
-        }
-        setCancellingLeaveId(leave._id);
-        try {
-            const res = await updateLeaveStatus(leave._id, "cancelled", "Cancelled by Admin from Employee Profile");
-            if (res.data?.success) {
-                toast.success("Leave cancelled successfully and days refunded!");
-                fetchEmployeeLeaves();
-            } else {
-                toast.error(res.data?.message || "Failed to cancel leave.");
-            }
-        } catch (err) {
-            console.error("Cancel leave error:", err);
-            toast.error(err.response?.data?.message || "Error cancelling leave.");
-        } finally {
-            setCancellingLeaveId(null);
-        }
-    };
+    const userRole = (currentUser?.role || "employee").toLowerCase();
 
     // Check employee visibility assignment
     const isReportingManager = useMemo(() => {
@@ -288,46 +262,12 @@ export const EmployeeProfile = () => {
                 : (employee.manager || "")
         ).toString().trim().toLowerCase();
 
-        // 1. Direct reporting manager check
-        const isDirect = (
+        return (
             (empMgrId && (empMgrId === currentUserId || empMgrId.toLowerCase() === currentEmpId)) ||
             (empDottedMgrId && (empDottedMgrId === currentUserId || empDottedMgrId.toLowerCase() === currentEmpId)) ||
             (empMgrName && currentUserName && (empMgrName === currentUserName || currentUserName.includes(empMgrName) || empMgrName.includes(currentUserName)))
         );
-
-        if (isDirect) return true;
-
-        // 2. Next-level / Skip-level manager check (e.g. employee's direct manager reports to currentUser)
-        const empSkipMgrId = (
-            employee.managerId && typeof employee.managerId === "object" && employee.managerId.managerId
-                ? (typeof employee.managerId.managerId === "object" ? employee.managerId.managerId._id : employee.managerId.managerId)
-                : ""
-        ).toString();
-
-        const empSkipMgrName = (
-            employee.managerId && typeof employee.managerId === "object" && employee.managerId.managerId
-                ? (employee.managerId.managerId.fullName || "")
-                : ""
-        ).toString().trim().toLowerCase();
-
-        const isSkipLevel = (
-            (empSkipMgrId && (empSkipMgrId === currentUserId || empSkipMgrId.toLowerCase() === currentEmpId)) ||
-            (empSkipMgrName && currentUserName && (empSkipMgrName === currentUserName || currentUserName.includes(empSkipMgrName)))
-        );
-
-        if (isSkipLevel) return true;
-
-        // 3. Same department manager check: A manager in the same department as the employee
-        if (userRole === "manager" || userRole === "management") {
-            const currentDept = (currentUser.department || "").trim().toLowerCase();
-            const empDept = (employee.department || "").trim().toLowerCase();
-            if (currentDept && empDept && currentDept === empDept) {
-                return true;
-            }
-        }
-
-        return false;
-    }, [currentUser, employee, userRole]);
+    }, [currentUser, employee]);
 
     const isAssigned = useMemo(() => {
         // 1. Global Admin always has full access
@@ -363,7 +303,7 @@ export const EmployeeProfile = () => {
     const canDelete = (userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned));
     const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
     const canViewAttendanceAndLeaves = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
-    const canEditLeaves = userRole === "global_admin" || userRole === "admin";
+    const canEditLeaves = userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
     const canViewProfileCompletion = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
 
 
@@ -2276,28 +2216,16 @@ export const EmployeeProfile = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                            {isGlobalAdmin && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowApplyLeaveModal(true)}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0"
-                                >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>Apply Leave</span>
-                                </button>
-                            )}
-                            {isGlobalAdmin && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowEditLeaveModal(true)}
-                                    className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0"
-                                >
-                                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                                    <span>Adjust Leave Quotas</span>
-                                </button>
-                            )}
-                        </div>
+                        {canEditLeaves && (
+                            <button
+                                type="button"
+                                onClick={() => setShowEditLeaveModal(true)}
+                                className="bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition-all shrink-0"
+                            >
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                                <span>Adjust Leave Quotas</span>
+                            </button>
+                        )}
                     </div>
 
                     {/* 4 Leave Quotas Grid (Circular Pie Charts) */}
@@ -2427,20 +2355,19 @@ export const EmployeeProfile = () => {
                                         <th className="py-3 px-4 font-extrabold">Reason / Note</th>
                                         <th className="py-3 px-4 font-extrabold">Requested On</th>
                                         <th className="py-3 px-4 font-extrabold text-center">Status</th>
-                                        {isGlobalAdmin && <th className="py-3 px-4 font-extrabold text-right">Action</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-xs font-semibold text-gray-700">
                                     {loadingLeaves ? (
                                         <tr>
-                                            <td colSpan={isGlobalAdmin ? 7 : 6} className="py-10 text-center text-gray-400 font-bold">
+                                            <td colSpan="6" className="py-10 text-center text-gray-400 font-bold">
                                                 <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#2D79C7]" />
                                                 <span>Loading leave history...</span>
                                             </td>
                                         </tr>
                                     ) : leaveHistoryList.length === 0 ? (
                                         <tr>
-                                            <td colSpan={isGlobalAdmin ? 7 : 6} className="py-10 text-center text-gray-400 font-bold select-none">
+                                            <td colSpan="6" className="py-10 text-center text-gray-400 font-bold select-none">
                                                 <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto mb-2">
                                                     <Umbrella className="w-5 h-5" />
                                                 </div>
@@ -2490,24 +2417,6 @@ export const EmployeeProfile = () => {
                                                             {req.status ? req.status.charAt(0).toUpperCase() + req.status.slice(1) : "Pending"}
                                                         </span>
                                                     </td>
-                                                    {isGlobalAdmin && (
-                                                        <td className="py-3.5 px-4 text-right">
-                                                            {req.status?.toLowerCase() === "approved" ? (
-                                                                <button
-                                                                    type="button"
-                                                                    disabled={cancellingLeaveId === req._id}
-                                                                    onClick={() => handleCancelLeaveInProfile(req)}
-                                                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
-                                                                    title="Cancel approved leave and refund days back to employee"
-                                                                >
-                                                                    <X className="w-3 h-3 text-rose-600" />
-                                                                    <span>{cancellingLeaveId === req._id ? "Cancelling..." : "Cancel"}</span>
-                                                                </button>
-                                                            ) : (
-                                                                <span className="text-gray-300 text-xs">—</span>
-                                                            )}
-                                                        </td>
-                                                    )}
                                                 </tr>
                                             );
                                         })
@@ -3786,21 +3695,6 @@ export const EmployeeProfile = () => {
                         </div>
                     </div>
                 </div>
-            )}
-
-            {/* ─────────────────────────────────────────────
-               APPLY LEAVE ON BEHALF OF EMPLOYEE MODAL
-            ───────────────────────────────────────────── */}
-            {showApplyLeaveModal && (
-                <ApplyLeaveModal
-                    isOpen={showApplyLeaveModal}
-                    onClose={() => setShowApplyLeaveModal(false)}
-                    onSubmitSuccess={() => {
-                        fetchProfile();
-                        fetchEmployeeLeaves();
-                    }}
-                    targetEmployee={employee}
-                />
             )}
 
             {/* ─────────────────────────────────────────────

@@ -181,37 +181,24 @@ export const AuthProvider = ({ children }) => {
     const canAccessRoute = useCallback((path) => {
         if (!user) return false;
 
-        const userRole = (user.role || "").toLowerCase();
-        const userDept = (user.department || "").trim().toLowerCase();
-        const isHr = userRole === "hr" || userDept === "hr" || userDept.includes("human resource");
+        const userRole = user.role?.toLowerCase();
 
         // normalize: strip leading slash and trailing slash
         const normalize = (p) => p.replace(/^\//, "").replace(/\/$/, "");
         const normPath = normalize(path);
 
-        // Assets & File Manager modules are strictly accessible to Global Admin / Admin / Management
+        // Assets & File Manager modules are strictly accessible to Global Admin role only
         if (normPath === "assets" || normPath === "file-manager") {
-            return userRole === "global_admin" || userRole === "admin" || userRole === "management";
+            return userRole === "global_admin";
         }
 
-        // Hire module is accessible to Global Admin, Admin, Management, and HR
-        if (normPath === "hire" || normPath.startsWith("hire/")) {
-            return userRole === "global_admin" || userRole === "admin" || userRole === "management" || isHr;
+        // Hire module is strictly accessible to Global Admin and HR roles only
+        if (normPath === "hire") {
+            return userRole === "global_admin" || userRole === "hr";
         }
 
-        // Global Admins, Admins, and Management have access to all routes
-        if (userRole === "global_admin" || userRole === "admin" || userRole === "management") return true;
-
-        // HR Department / HR role has full access to HR operations
-        if (isHr) {
-            if ([
-                "dashboard", "me", "my-team", "employees", "organization", "approvals",
-                "recruitment", "hire", "time-attendance", "probation", "payroll",
-                "documents", "my-finances", "settings"
-            ].includes(normPath)) {
-                return true;
-            }
-        }
+        // Global Admins and Admins have access to all other routes
+        if (userRole === "global_admin" || userRole === "admin") return true;
         
         if (!user.permissions) return true; // Default fallback
 
@@ -220,35 +207,34 @@ export const AuthProvider = ({ children }) => {
         if (normPath === "my-team") {
             const mt = user.permissions.myTeam;
             if (typeof mt === "boolean") {
-                if (userRole === "manager" || isHr || userRole === "management") return mt !== false;
+                if (userRole === "manager" || userRole === "hr" || userRole === "management") return mt !== false;
                 return mt === true;
             }
             if (typeof mt === "object" && mt !== null) {
                 return mt.access === true;
             }
-            return userRole === "manager" || isHr || userRole === "management";
+            return userRole === "manager" || userRole === "hr" || userRole === "management";
         }
         if (normPath === "my-finances") return user.permissions.myFinances !== false;
         if (normPath === "approvals" || normPath === "inbox") {
-            if (userRole === "global_admin" || userRole === "admin" || isHr || userRole === "management") return true;
+            if (userRole === "global_admin" || userRole === "admin") return true;
             if (userRole === "manager") return user.permissions?.approvals !== false;
             return user.permissions?.approvals === true;
         }
         if (normPath === "documents") {
-            if (isHr) return true;
             return !!(user.permissions.documents?.companyDocuments || user.permissions.documents?.employeeDocuments);
         }
-        if (normPath === "time-attendance") return isHr || user.permissions.timeAndAttend !== false;
+        if (normPath === "time-attendance") return user.permissions.timeAndAttend !== false;
         if (normPath === "employees") {
-            if (isHr) return true;
+            if (userRole === "hr") return user.permissions?.employees !== false;
             return user.permissions?.employees === true;
         }
-        if (normPath === "payroll") return isHr || user.permissions.payroll !== false;
-        if (normPath === "recruitment") return isHr || user.permissions.recruitment !== false;
-        if (normPath === "offboarding-onboarding") return isHr || user.permissions.offboardingAndOnboarding !== false;
-        if (normPath === "organization") return isHr || user.permissions.organization !== false;
+        if (normPath === "payroll") return user.permissions.payroll !== false;
+        if (normPath === "recruitment") return user.permissions.recruitment !== false;
+        if (normPath === "offboarding-onboarding") return user.permissions.offboardingAndOnboarding !== false;
+        if (normPath === "organization") return user.permissions.organization !== false;
         if (normPath === "probation") {
-            if (isHr) return true;
+            if (userRole === "hr") return user.permissions?.probation !== false;
             return user.permissions?.probation === true;
         }
         if (normPath === "settings") return true;

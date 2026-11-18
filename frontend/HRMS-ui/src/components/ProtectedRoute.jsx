@@ -35,33 +35,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    const userRole = (user.role || "").toLowerCase();
-    const userDept = (user.department || "").trim().toLowerCase();
-    const isSuperRole = ["global_admin", "admin", "management"].includes(userRole);
-    const isHr = userRole === "hr" || userDept === "hr" || userDept.includes("human resource");
-
-    // Super roles (Global Admin, Admin, Management) have universal access to all routes
-    if (isSuperRole) {
-        return children;
-    }
-
-    // Common routes (Dashboard, Me, My Finances, Settings) are accessible to all authenticated users
-    const norm = location.pathname.replace(/^\//, "").replace(/\/$/, "");
-    if (norm === "dashboard" || norm === "" || norm === "me" || norm === "my-finances" || norm === "settings") {
-        return children;
-    }
-
-    // HR users have access to all operational HR modules
-    if (isHr) {
-        const hrRoutes = [
-            "my-team", "employees", "organization", "approvals", "recruitment",
-            "hire", "time-attendance", "probation", "payroll", "documents"
-        ];
-        if (hrRoutes.includes(norm) || norm.startsWith("hire/") || norm.startsWith("profile/")) {
-            return children;
-        }
-    }
-
     // Permission check
     if (!canAccessRoute(location.pathname)) {
         return <Navigate to="/unauthorized" replace />;
@@ -69,8 +42,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
     // Role check
     if (allowedRoles && allowedRoles.length > 0) {
-        const allowed = allowedRoles.map(r => r.toLowerCase());
-        if (!allowed.includes(userRole) && !(isHr && allowed.includes("hr"))) {
+        const userRole = user.role?.toLowerCase();
+        if (!allowedRoles.map(r => r.toLowerCase()).includes(userRole)) {
             return <Navigate to="/unauthorized" replace />;
         }
     }

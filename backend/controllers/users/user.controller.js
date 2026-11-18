@@ -16,48 +16,26 @@ const resolveUserPermissions = (user) => {
     if (userObj.role === "admin") {
         userObj.role = "global_admin";
     }
-
-    const roleLower = (userObj.role || "").toLowerCase();
-    const deptLower = (userObj.department || "").toLowerCase();
-    const isSuperRole = ["global_admin", "admin", "management"].includes(roleLower);
-    const isHr = roleLower === "hr" || deptLower === "hr" || deptLower.includes("human resource");
-
-    if (isSuperRole) {
+    if (!userObj.permissions) {
+        const isHrOrAdmin = userObj.role === "global_admin" || userObj.role === "admin" || userObj.role === "hr";
         userObj.permissions = {
             dashboard: true,
             me: true,
             myTeam: true,
             myFinances: true,
-            documents: { companyDocuments: true, employeeDocuments: true },
-            timeAndAttend: true,
-            employees: true,
-            payroll: true,
-            recruitment: true,
-            hire: true,
-            offboardingAndOnboarding: true,
-            organization: true,
-            probation: true,
-            approvals: true,
-            assets: true,
-            reports: true,
-            logs: true,
-            fileManager: true
+            documents: {
+                companyDocuments: true,
+                employeeDocuments: isHrOrAdmin
+            },
+            timeAndAttend: isHrOrAdmin,
+            employees: isHrOrAdmin,
+            payroll: isHrOrAdmin,
+            recruitment: isHrOrAdmin,
+            hire: isHrOrAdmin,
+            offboardingAndOnboarding: isHrOrAdmin,
+            organization: isHrOrAdmin,
+            probation: isHrOrAdmin
         };
-    } else if (isHr) {
-        if (!userObj.permissions) userObj.permissions = {};
-        userObj.permissions.dashboard = true;
-        userObj.permissions.me = true;
-        userObj.permissions.myTeam = true;
-        userObj.permissions.myFinances = true;
-        userObj.permissions.employees = true;
-        userObj.permissions.organization = true;
-        userObj.permissions.recruitment = true;
-        userObj.permissions.hire = true;
-        userObj.permissions.probation = true;
-        userObj.permissions.approvals = true;
-        userObj.permissions.timeAndAttend = true;
-        userObj.permissions.payroll = true;
-        userObj.permissions.documents = { companyDocuments: true, employeeDocuments: true };
     }
     return userObj;
 };

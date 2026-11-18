@@ -24,8 +24,7 @@ import { Avatar } from "../../components/SharedComponents";
 
 export default function Approvals() {
     const { user } = useAuth();
-    const userRole = (user?.role || user?.userRole || "").toLowerCase();
-    const isGlobalAdmin = userRole === "global_admin" || userRole === "admin" || userRole === "super_admin";
+    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin";
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Leaves state
@@ -661,8 +660,8 @@ export default function Approvals() {
                                                 )}
                                             </div>
                                         ) : isApproved ? (
-                                            <div className="flex flex-wrap items-center gap-2.5">
-                                                <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5 mr-1">
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
                                                     <Check className="w-3.5 h-3.5 text-emerald-600" />
                                                     <span>Decision: Approved</span>
                                                 </span>
@@ -674,10 +673,9 @@ export default function Approvals() {
                                                             setCancelModalData(req);
                                                             setCancelRemarks("");
                                                         }}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 hover:text-rose-800 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50"
-                                                        title="Cancel this approved leave and refund days back to employee"
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
                                                     >
-                                                        <X className="w-3.5 h-3.5 text-rose-600" />
+                                                        <X className="w-3.5 h-3.5" />
                                                         <span>Cancel Leave (Refund)</span>
                                                     </button>
                                                 )}
@@ -811,7 +809,7 @@ export default function Approvals() {
                         </div>
 
                         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed font-medium">
-                            ⚠️ <span className="font-bold">Refund Notice:</span> Cancelling this leave will immediately refund <strong>{cancelModalData.totalDays || 1} day(s)</strong> back to {cancelModalData.name}&apos;s leave balance.
+                            ⚠️ <span className="font-bold">Refund Notice:</span> Cancelling this leave will immediately refund <strong>{cancelModalData.totalDays || 1} day(s)</strong> back to {cancelModalData.name}'s leave balance.
                         </div>
 
                         <div>

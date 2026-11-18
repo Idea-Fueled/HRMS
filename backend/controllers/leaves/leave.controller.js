@@ -100,21 +100,6 @@ export const applyLeave = async (req, res) => {
             });
         }
 
-        // Caller authorization check for applying on behalf of employee
-        const callerId = req.user?.id || req.user?.userId;
-        const callerRole = (req.user?.role || "").toLowerCase();
-
-        if (callerId && employeeId && callerId.toString() !== employeeId.toString()) {
-            const isGlobalOrAdmin = callerRole === "global_admin" || callerRole === "admin";
-
-            if (!isGlobalOrAdmin) {
-                return res.status(403).json({
-                    success: false,
-                    message: "Unauthorized: Only Admins can apply leaves on behalf of other employees."
-                });
-            }
-        }
-
         let key = "";
         if (leaveType === "sick_leave") key = "sick";
         else if (leaveType === "casual_leave") key = "casual";
@@ -192,11 +177,6 @@ export const applyLeave = async (req, res) => {
             }
         }
 
-        const caller = await User.findById(callerId).select("fullName firstName lastName").lean();
-        const callerName = caller ? (caller.fullName || `${caller.firstName || ""} ${caller.lastName || ""}`.trim()) : "";
-        const isAppliedOnBehalf = Boolean(callerId && employeeId && callerId.toString() !== employeeId.toString());
-        const appliedByRemark = isAppliedOnBehalf ? `Applied by ${callerName} (${callerRole === "manager" ? "Manager" : "Admin"}) on behalf of employee` : "";
-
         const leave = await Leave.create({
             employeeId,
             leaveType,
@@ -205,8 +185,7 @@ export const applyLeave = async (req, res) => {
             totalDays: days,
             partialMinutes: isPartial ? (Number(partialMinutes) || 120) : 0,
             partialTiming: isPartial ? (partialTiming || "Leaving Early") : "",
-            reason: reason ? (isAppliedOnBehalf ? `${reason} [${appliedByRemark}]` : reason) : appliedByRemark,
-            remarks: appliedByRemark
+            reason,
         });
 
         // Deduct specific days immediately from leaveBalance.total and track in pending
@@ -526,14 +505,6 @@ export const getLeaveHistory = async (req, res) => {
 
 export const updateLeaveBalance = async (req, res) => {
     try {
-        const callerRole = (req.user?.role || "").toLowerCase();
-        if (callerRole !== "global_admin" && callerRole !== "admin") {
-            return res.status(403).json({
-                success: false,
-                message: "Unauthorized: Only Admins can adjust employee leave quotas."
-            });
-        }
-
         const { employeeId } = req.params;
         const { casual, sick, earned, partial, compOff } = req.body;
 

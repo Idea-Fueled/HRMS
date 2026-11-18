@@ -441,12 +441,7 @@ const TeamMembersTab = () => {
             setError(null);
             const res = await getTeamMembers();
             if (res.data.success) {
-                const activeOnly = (res.data.members || []).filter(
-                    e => (e.status || "").toLowerCase() !== "inactive" &&
-                         (e.status || "").toLowerCase() !== "terminated" &&
-                         (e.status || "").toLowerCase() !== "exited"
-                );
-                setEmployees(activeOnly);
+                setEmployees(res.data.members || []);
                 if (res.data.reportingManager) {
                     setReportingManager(res.data.reportingManager);
                 }
@@ -551,20 +546,22 @@ const TeamMembersTab = () => {
 
     // Filter
     const filtered = employees.filter(e => {
-        // Exclude inactive employees
-        const s = (e.status || "").toLowerCase();
-        if (s === "inactive" || s === "terminated" || s === "exited") {
-            return false;
-        }
-
         // Exclude self from team members list
         if (e._id === currentUserId || e.id === user?.employeeId) {
             return false;
         }
 
         if (isManagerRole) {
-            // Manager role: Backend already scopes employees via getHrVisibleFilter (direct reports, next-level reports, same department).
-            // All returned team members are valid for this manager.
+            // Manager role: ONLY show employees reporting to this logged-in manager
+            const empManagerId = (e.managerId && typeof e.managerId === "object") ? e.managerId?._id : (e.managerId || e._id);
+            const empManagerName = (e.manager || "").trim().toLowerCase();
+            
+            const matchesId = empManagerId && currentUserId && String(empManagerId) === String(currentUserId);
+            const matchesName = currentUserName && empManagerName && (empManagerName === currentUserName || currentUserName.includes(empManagerName) || empManagerName.includes(currentUserName));
+            
+            if (!matchesId && !matchesName) {
+                return false;
+            }
         } else if (isEmployeeRole) {
             // Employee role: Show team members in SAME DEPARTMENT or sharing the SAME REPORTING MANAGER
             const empDept = (e.dept || e.department || "").trim().toLowerCase();
@@ -625,10 +622,10 @@ const TeamMembersTab = () => {
             )}
 
             {/* Stat Cards Row for Team Members */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fadeIn">
                 <MiniStatCard
                     title="Total Members"
-                    value={employees.filter(e => (e.status || "").toLowerCase() !== "inactive").length}
+                    value={employees.length}
                     change="All"
                     isPositive={true}
                     onClick={() => { setSelectedStatus("All"); setCurrentPage(1); }}
@@ -650,6 +647,14 @@ const TeamMembersTab = () => {
                     onClick={() => { setSelectedStatus(selectedStatus === "On Notice" ? "All" : "On Notice"); setCurrentPage(1); }}
                     isSelected={selectedStatus === "On Notice"}
                 />
+                <MiniStatCard
+                    title="Inactive"
+                    value={employees.filter(e => (e.status || "").toLowerCase() === "inactive").length}
+                    change="Inactive"
+                    isPositive={false}
+                    onClick={() => { setSelectedStatus(selectedStatus === "Inactive" ? "All" : "Inactive"); setCurrentPage(1); }}
+                    isSelected={selectedStatus === "Inactive"}
+                />
             </div>
 
             {/* Filter and toggle control row */}
@@ -667,6 +672,7 @@ const TeamMembersTab = () => {
                             <option value="All">All Statuses</option>
                             <option value="Active">Active</option>
                             <option value="On Notice">On Notice</option>
+                            <option value="Inactive">Inactive</option>
                         </select>
                     </div>
                 </div>
@@ -2612,14 +2618,9 @@ const TeamLeavesTab = () => {
     // Filtered Balances
     const filteredBalances = useMemo(() => {
         if (!leavesData.teamBalances) return [];
-        const activeBalances = leavesData.teamBalances.filter(
-            m => (m.status || "").toLowerCase() !== "inactive" &&
-                 (m.status || "").toLowerCase() !== "terminated" &&
-                 (m.status || "").toLowerCase() !== "exited"
-        );
-        if (!memberSearch.trim()) return activeBalances;
+        if (!memberSearch.trim()) return leavesData.teamBalances;
         const q = memberSearch.toLowerCase();
-        return activeBalances.filter(m =>
+        return leavesData.teamBalances.filter(m =>
             m.name.toLowerCase().includes(q) ||
             (m.id && m.id.toLowerCase().includes(q)) ||
             (m.department && m.department.toLowerCase().includes(q)) ||

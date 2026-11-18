@@ -110,18 +110,8 @@ export const getAllEmployees = async (req, res) => {
 export const getEmployeeById = async (req, res) => {
     try {
         const { id } = req.params;
-        const callerId = req.user?.id || req.user?.userId;
-        const callerRole = (req.user?.role || "").toLowerCase();
-
         const employee = await User.findById(id)
-            .populate({
-                path: "managerId",
-                select: "fullName employeeId designation department email managerId",
-                populate: {
-                    path: "managerId",
-                    select: "fullName employeeId designation department email managerId"
-                }
-            })
+            .populate("managerId", "fullName employeeId designation department email")
             .populate("dottedManagerId", "fullName employeeId designation department email")
             .populate("probationPolicy", "name days description")
             .select("-password")
@@ -129,34 +119,6 @@ export const getEmployeeById = async (req, res) => {
 
         if (!employee) {
             return res.status(404).json({ success: false, message: "Employee not found." });
-        }
-
-        // Next-level manager or department manager support
-        if (callerId && (callerRole === "manager" || callerRole === "management" || callerRole === "admin" || callerRole === "global_admin")) {
-            const caller = await User.findById(callerId).select("fullName firstName lastName department designation").lean();
-            const callerName = caller ? (caller.fullName || `${caller.firstName || ""} ${caller.lastName || ""}`.trim()) : "";
-
-            const directMgrReportsToCaller = employee.managerId && (
-                String(employee.managerId.managerId?._id || employee.managerId.managerId) === String(callerId)
-            );
-
-            const sameDept = Boolean(
-                caller?.department && employee.department &&
-                caller.department.trim().toLowerCase() === employee.department.trim().toLowerCase()
-            );
-
-            if (directMgrReportsToCaller || sameDept) {
-                if (!employee.dottedManagerId || String(employee.dottedManagerId._id || employee.dottedManagerId) !== String(callerId)) {
-                    employee.dottedManagerId = {
-                        _id: caller._id,
-                        fullName: callerName,
-                        designation: caller?.designation || "Next-Level Manager",
-                        department: caller?.department || employee.department
-                    };
-                }
-                employee.isNextLevelManager = true;
-                employee.canManage = true;
-            }
         }
 
         return res.status(200).json({ success: true, employee });
