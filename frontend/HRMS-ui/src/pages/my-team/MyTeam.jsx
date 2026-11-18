@@ -563,27 +563,8 @@ const TeamMembersTab = () => {
         }
 
         if (isManagerRole) {
-            // Manager role: show employees reporting to this manager (direct or next-level) OR in the same department
-            const empDept = (e.dept || e.department || "").trim().toLowerCase();
-            const empManagerId = (e.managerId && typeof e.managerId === "object") ? e.managerId?._id : (e.managerId || e._id);
-            const empManagerName = (e.manager || "").trim().toLowerCase();
-            
-            const matchesId = empManagerId && currentUserId && String(empManagerId) === String(currentUserId);
-            const matchesName = currentUserName && empManagerName && (empManagerName === currentUserName || currentUserName.includes(empManagerName) || empManagerName.includes(currentUserName));
-            const sameDept = currentUserDept && empDept && empDept === currentUserDept;
-            
-            // Check if employee reports to someone in this manager's team (next-level / indirect report)
-            const isNextLevelReport = employees.some(lead => {
-                const leadId = lead._id || lead.id;
-                const leadMgrId = (lead.managerId && typeof lead.managerId === "object") ? lead.managerId?._id : lead.managerId;
-                const isUnderCurrent = (leadMgrId && String(leadMgrId) === String(currentUserId)) ||
-                                       (lead.manager && currentUserName && lead.manager.toLowerCase().includes(currentUserName));
-                return isUnderCurrent && empManagerId && String(empManagerId) === String(leadId);
-            });
-
-            if (!matchesId && !matchesName && !sameDept && !isNextLevelReport) {
-                return false;
-            }
+            // Manager role: Backend already scopes employees via getHrVisibleFilter (direct reports, next-level reports, same department).
+            // All returned team members are valid for this manager.
         } else if (isEmployeeRole) {
             // Employee role: Show team members in SAME DEPARTMENT or sharing the SAME REPORTING MANAGER
             const empDept = (e.dept || e.department || "").trim().toLowerCase();

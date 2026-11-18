@@ -65,6 +65,9 @@ const getHrVisibleFilter = async (currentUserId) => {
         deptMembers.forEach(d => visibleIdsSet.add(d._id.toString()));
     }
 
+    // Exclude caller themselves from the team visibility list
+    visibleIdsSet.delete(currentUser._id.toString());
+
     if (visibleIdsSet.size > 0) {
         return Array.from(visibleIdsSet);
     }
@@ -251,17 +254,36 @@ export const getTeamMembers = async (req, res) => {
         const hrVisibleIds = await getHrVisibleFilter(userId);
         const query = {
             status: { $nin: ["inactive", "terminated", "exited"] },
-            ...(hrVisibleIds ? { _id: { $in: hrVisibleIds } } : {})
+            _id: { $ne: userId, ...(hrVisibleIds ? { $in: hrVisibleIds } : {}) }
         };
 
         const members = await User.find(query)
             .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
             .sort({ fullName: 1 });
 
+        // Resolve caller info
+        const caller = await User.findById(userId)
+            .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
+            .lean();
+        const callerName = caller ? (caller.fullName || `${caller.firstName || ""} ${caller.lastName || ""}`.trim()) : "";
+
         const formattedMembers = members.map(m => {
-            const mgrName = m.managerId 
+            const directMgrName = m.managerId 
                 ? (m.managerId.fullName || `${m.managerId.firstName || ""} ${m.managerId.lastName || ""}`.trim())
                 : "";
+
+            let displayMgrName = directMgrName;
+            if (caller && (caller.role === "manager" || caller.role === "admin" || caller.role === "global_admin")) {
+                const isDirect = m.managerId && String(m.managerId._id || m.managerId) === String(caller._id);
+                if (isDirect) {
+                    displayMgrName = callerName;
+                } else if (directMgrName && callerName && !directMgrName.toLowerCase().includes(callerName.toLowerCase())) {
+                    displayMgrName = `${directMgrName} / ${callerName}`;
+                } else if (!directMgrName && callerName) {
+                    displayMgrName = callerName;
+                }
+            }
+
             return {
                 _id: m._id,
                 id: m.employeeId || `EMP-${m._id.toString().substring(0, 4).toUpperCase()}`,
@@ -273,8 +295,8 @@ export const getTeamMembers = async (req, res) => {
                 title: m.designation || "Employee",
                 designation: m.designation || "Employee",
                 managerId: m.managerId ? (m.managerId._id || m.managerId) : null,
-                manager: mgrName || "None",
-                managerName: mgrName || "None",
+                manager: displayMgrName || "None",
+                managerName: displayMgrName || "None",
                 type: m.employementType === "full_time" ? "Full Time" : m.employementType === "intern" ? "Intern" : m.employementType === "contract" ? "Contract" : "Part Time",
                 status: m.status === "active" ? "Active" : m.status === "on_notice" ? "On Notice" : "Inactive"
             };
@@ -282,9 +304,6 @@ export const getTeamMembers = async (req, res) => {
 
         // Resolve reporting manager of the caller
         let reportingManager = null;
-        const caller = await User.findById(userId)
-            .populate("managerId", "fullName firstName lastName email designation department profilePicture employeeId")
-            .lean();
 
         if (caller?.managerId && typeof caller.managerId === "object") {
             const rmName = caller.managerId.fullName || `${caller.managerId.firstName || ""} ${caller.managerId.lastName || ""}`.trim();
