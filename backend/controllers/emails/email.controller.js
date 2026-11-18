@@ -56,15 +56,15 @@ const seedInitialEmailsIfEmpty = async (user) => {
         if (existingCount > 0) return;
 
         // Find Admin or HR user to serve as realistic senders
-        const puneet = await User.findOne({ email: "puneet@ideafueled.com" });
+        const adminLeader = await User.findOne({ email: { $in: ["rishabhloomba860@gmail.com", "puneet@ideafueled.com"] } });
         const diksha = await User.findOne({ email: "diksha.dhiman@ideafueled.com" });
 
         const welcomeEmails = [
             {
-                sender: puneet?._id || user._id,
-                senderEmail: puneet?.email || "puneet@ideafueled.com",
-                senderName: puneet?.fullName || "Puneet Chopra (Leadership)",
-                senderAvatar: puneet?.profilePicture || "",
+                sender: adminLeader?._id || user._id,
+                senderEmail: adminLeader?.email || "rishabhloomba860@gmail.com",
+                senderName: adminLeader?.fullName || "Leadership Team",
+                senderAvatar: adminLeader?.profilePicture || "",
                 senderRole: "global_admin",
                 to: [userEmail],
                 subject: `Welcome to the Idea-Fueled Team, ${user.firstName || user.fullName}!`,

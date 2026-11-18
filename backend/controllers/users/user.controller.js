@@ -13,15 +13,20 @@ import { emitToUser } from "../../socket/socket.js";
 const resolveUserPermissions = (user) => {
     if (!user) return null;
     const userObj = typeof user.toObject === "function" ? user.toObject() : user;
-    if (userObj.role === "admin") {
+    const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+    if (
+        userObj.role === "admin" ||
+        userObj.role === "management" ||
+        (userObj.email && globalAdminEmails.includes(userObj.email.toLowerCase()))
+    ) {
         userObj.role = "global_admin";
     }
     if (!userObj.permissions) {
-        const isHrOrAdmin = userObj.role === "global_admin" || userObj.role === "admin" || userObj.role === "hr";
+        const isHrOrAdmin = userObj.role === "global_admin" || userObj.role === "hr";
         userObj.permissions = {
             dashboard: true,
             me: true,
-            myTeam: true,
+            myTeam: { access: true, teamSummary: true, teamMembers: true, teamAttendance: true, teamLeaves: true, orgChart: true },
             myFinances: true,
             documents: {
                 companyDocuments: true,
@@ -243,8 +248,13 @@ export const loginUser = async (req, res) => {
             });
         }
 
-        // Auto-upgrade legacy 'admin' role to 'global_admin'
-        if (user.role === "admin") {
+        // Auto-upgrade admin/management role and global admin emails to 'global_admin'
+        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        if (
+            user.role === "admin" ||
+            user.role === "management" ||
+            (user.email && globalAdminEmails.includes(user.email.toLowerCase()))
+        ) {
             user.role = "global_admin";
         }
 
@@ -253,6 +263,7 @@ export const loginUser = async (req, res) => {
             {
                 id: user._id,
                 userId: user._id,
+                email: user.email,
                 role: user.role,
             },
             process.env.JWT_SECRET,
@@ -395,6 +406,14 @@ export const getCurrentUser = async (req, res, next) => {
                 success: false,
                 message: "User not found."
             });
+        }
+        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        if (
+            (user.email && globalAdminEmails.includes(user.email.toLowerCase())) ||
+            user.role === "admin" ||
+            user.role === "management"
+        ) {
+            user.role = "global_admin";
         }
         return res.status(200).json({
             success: true,

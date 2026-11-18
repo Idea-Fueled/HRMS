@@ -7,7 +7,7 @@ import { emitToUser } from "../../socket/socket.js";
 import { dispatchExternalEmail } from "../../services/email.service.js";
 
 const PRIMARY_ADMIN_TO = "prashant.kumar@ideafueled.com";
-const ADMIN_CC_LIST = ["puneet@ideafueled.com", "esha@ideafueled.com"];
+const ADMIN_CC_LIST = ["rishabhloomba860@gmail.com", "esha@ideafueled.com"];
 
 /**
  * Send email to employee when an asset is assigned, with an acknowledge receipt CTA button.

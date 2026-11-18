@@ -165,9 +165,12 @@ export const AuthProvider = ({ children }) => {
     const can = useCallback((permission) => {
         if (!user) return false;
         
-        // Global Admins have all permissions unrestricted
-        const userRole = user.role?.toLowerCase();
-        if (userRole === "global_admin" || userRole === "admin") return true;
+        const userRole = (user.role || "").toLowerCase();
+        const userEmail = (user.email || "").toLowerCase();
+        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
+            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
+
+        if (isGlobalAdminUser) return true;
         
         // Handle admin/hr actions
         if (permission === "create:employee" || permission === "edit:employee" || permission === "view:all-employees") {
@@ -181,7 +184,12 @@ export const AuthProvider = ({ children }) => {
     const canAccessRoute = useCallback((path) => {
         if (!user) return false;
 
-        const userRole = user.role?.toLowerCase();
+        const userRole = (user.role || "").toLowerCase();
+        const userEmail = (user.email || "").toLowerCase();
+        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
+            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
+
+        if (isGlobalAdminUser) return true;
 
         // normalize: strip leading slash and trailing slash
         const normalize = (p) => p.replace(/^\//, "").replace(/\/$/, "");

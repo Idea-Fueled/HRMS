@@ -35,6 +35,35 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    const userRole = (user.role || "").toLowerCase();
+    const userEmail = (user.email || "").toLowerCase();
+    const userDept = (user.department || "").trim().toLowerCase();
+    const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
+        ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
+    const isHrUser = userRole === "hr" || userDept === "hr" || userDept.includes("human resource");
+
+    // Super roles (Global Admin, Admin, Management) have universal access to all routes
+    if (isGlobalAdminUser) {
+        return children;
+    }
+
+    // Common routes (Dashboard, Me, My Finances, Settings) are accessible to all authenticated users
+    const norm = location.pathname.replace(/^\//, "").replace(/\/$/, "");
+    if (norm === "dashboard" || norm === "" || norm === "me" || norm === "my-finances" || norm === "settings") {
+        return children;
+    }
+
+    // HR users have access to all operational HR modules
+    if (isHrUser) {
+        const hrRoutes = [
+            "my-team", "employees", "organization", "approvals", "recruitment",
+            "hire", "time-attendance", "probation", "payroll", "documents"
+        ];
+        if (hrRoutes.includes(norm) || norm.startsWith("hire/") || norm.startsWith("profile/")) {
+            return children;
+        }
+    }
+
     // Permission check
     if (!canAccessRoute(location.pathname)) {
         return <Navigate to="/unauthorized" replace />;
@@ -42,8 +71,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
     // Role check
     if (allowedRoles && allowedRoles.length > 0) {
-        const userRole = user.role?.toLowerCase();
-        if (!allowedRoles.map(r => r.toLowerCase()).includes(userRole)) {
+        const allowed = allowedRoles.map(r => r.toLowerCase());
+        if (!allowed.includes(userRole) && !(isHrUser && allowed.includes("hr"))) {
             return <Navigate to="/unauthorized" replace />;
         }
     }

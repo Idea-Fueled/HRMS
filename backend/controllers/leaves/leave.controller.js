@@ -100,6 +100,21 @@ export const applyLeave = async (req, res) => {
             });
         }
 
+        const callerId = req.user?.id || req.user?.userId;
+        const callerRole = (req.user?.role || "").toLowerCase();
+        const callerEmail = (req.user?.email || "").toLowerCase();
+        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        const isGlobalOrAdmin = callerRole === "global_admin" || callerRole === "admin" || callerRole === "management" || globalAdminEmails.includes(callerEmail);
+
+        if (callerId && employeeId && callerId.toString() !== employeeId.toString()) {
+            if (!isGlobalOrAdmin) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Unauthorized: Only Admins can apply leaves on behalf of other employees."
+                });
+            }
+        }
+
         let key = "";
         if (leaveType === "sick_leave") key = "sick";
         else if (leaveType === "casual_leave") key = "casual";
@@ -505,6 +520,18 @@ export const getLeaveHistory = async (req, res) => {
 
 export const updateLeaveBalance = async (req, res) => {
     try {
+        const callerRole = (req.user?.role || "").toLowerCase();
+        const callerEmail = (req.user?.email || "").toLowerCase();
+        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        const isGlobalOrAdmin = callerRole === "global_admin" || callerRole === "admin" || callerRole === "management" || globalAdminEmails.includes(callerEmail);
+
+        if (!isGlobalOrAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized: Only Admins can adjust employee leave quotas."
+            });
+        }
+
         const { employeeId } = req.params;
         const { casual, sick, earned, partial, compOff } = req.body;
 
@@ -759,7 +786,9 @@ export const cancelLeave = async (req, res) => {
         const { id } = req.params;
         const callerId = req.user?.id || req.user?.userId;
         const callerRole = (req.user?.role || "").toLowerCase();
-        const isGlobalAdmin = callerRole === "global_admin" || callerRole === "admin";
+        const callerEmail = (req.user?.email || "").toLowerCase();
+        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        const isGlobalAdmin = callerRole === "global_admin" || callerRole === "admin" || callerRole === "management" || globalAdminEmails.includes(callerEmail);
 
         const leave = await Leave.findById(id);
 

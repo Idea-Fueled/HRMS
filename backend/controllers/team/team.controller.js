@@ -14,8 +14,12 @@ const getHrVisibleFilter = async (currentUserId) => {
     const currentUser = await User.findById(currentUserId).select("role visibleEmployees permissions managerId dottedManagerId department").lean();
     if (!currentUser) return [];
 
-    // Global Admin / Admin has full company-wide visibility
-    if (currentUser.role === "global_admin" || currentUser.role === "admin") {
+    // Global Admin / Admin / Management or trio emails have full company-wide visibility
+    const globalAdmins = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+    const isGlobal = currentUser.role === "global_admin" || currentUser.role === "admin" || currentUser.role === "management" ||
+        (currentUser.email && globalAdmins.includes(currentUser.email.toLowerCase()));
+
+    if (isGlobal) {
         return null;
     }
 
@@ -688,7 +692,9 @@ export const updateLeaveStatus = async (req, res) => {
         const { status, remarks } = req.body;
         const callerId = req.user?.id || req.user?.userId;
         const callerRole = (req.user?.role || "").toLowerCase();
-        const isGlobalAdmin = callerRole === "global_admin" || callerRole === "admin";
+        const callerEmail = (req.user?.email || "").toLowerCase();
+        const globalAdmins = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        const isGlobalAdmin = callerRole === "global_admin" || callerRole === "admin" || callerRole === "management" || globalAdmins.includes(callerEmail);
 
         const normalizedStatus = (status || "").toLowerCase();
 

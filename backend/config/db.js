@@ -9,6 +9,21 @@ const connectDB = async () => {
         await mongoose.connect(process.env.MONGO_URI)
         console.log("connected to database!")
 
+        // Ensure Global Admins have role: "global_admin" in MongoDB
+        try {
+            const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+            await User.updateMany(
+                { email: { $in: globalAdminEmails } },
+                { $set: { role: "global_admin" } }
+            );
+            await User.updateMany(
+                { role: "admin" },
+                { $set: { role: "global_admin" } }
+            );
+        } catch (adminSyncErr) {
+            console.warn("Failed to sync global admin roles in DB:", adminSyncErr.message);
+        }
+
         // Delete previously seeded mock data matching the company domain
         const mockUsers = await User.find({ email: { $regex: /@company\.com$/ } });
         if (mockUsers.length > 0) {

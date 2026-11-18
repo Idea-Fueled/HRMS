@@ -51,6 +51,12 @@ export const isAuthenticated = async (req, res, next) => {
         );
 
         req.user = decoded;
+        const globalAdmins = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        const role = (req.user.role || "").toLowerCase();
+        const email = (req.user.email || "").toLowerCase();
+        if (role === "admin" || role === "management" || globalAdmins.includes(email)) {
+            req.user.role = "global_admin";
+        }
         next();
     } catch (error) {
         return handleUnauthorized("Invalid or expired token.");

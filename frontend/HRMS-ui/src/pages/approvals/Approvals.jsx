@@ -24,7 +24,10 @@ import { Avatar } from "../../components/SharedComponents";
 
 export default function Approvals() {
     const { user } = useAuth();
-    const isGlobalAdmin = (user?.role || "").toLowerCase() === "global_admin" || (user?.role || "").toLowerCase() === "admin";
+    const userRole = (user?.role || "").toLowerCase();
+    const userEmail = (user?.email || "").toLowerCase();
+    const isGlobalAdmin = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
+        ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Leaves state

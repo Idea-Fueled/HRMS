@@ -441,7 +441,12 @@ const TeamMembersTab = () => {
             setError(null);
             const res = await getTeamMembers();
             if (res.data.success) {
-                setEmployees(res.data.members || []);
+                const activeOnly = (res.data.members || []).filter(
+                    e => (e.status || "").toLowerCase() !== "inactive" &&
+                         (e.status || "").toLowerCase() !== "terminated" &&
+                         (e.status || "").toLowerCase() !== "exited"
+                );
+                setEmployees(activeOnly);
                 if (res.data.reportingManager) {
                     setReportingManager(res.data.reportingManager);
                 }
@@ -2618,9 +2623,14 @@ const TeamLeavesTab = () => {
     // Filtered Balances
     const filteredBalances = useMemo(() => {
         if (!leavesData.teamBalances) return [];
-        if (!memberSearch.trim()) return leavesData.teamBalances;
+        const activeBalances = leavesData.teamBalances.filter(
+            m => (m.status || "").toLowerCase() !== "inactive" &&
+                 (m.status || "").toLowerCase() !== "terminated" &&
+                 (m.status || "").toLowerCase() !== "exited"
+        );
+        if (!memberSearch.trim()) return activeBalances;
         const q = memberSearch.toLowerCase();
-        return leavesData.teamBalances.filter(m =>
+        return activeBalances.filter(m =>
             m.name.toLowerCase().includes(q) ||
             (m.id && m.id.toLowerCase().includes(q)) ||
             (m.department && m.department.toLowerCase().includes(q)) ||
