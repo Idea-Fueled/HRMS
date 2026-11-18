@@ -111,7 +111,14 @@ export const getEmployeeById = async (req, res) => {
     try {
         const { id } = req.params;
         const employee = await User.findById(id)
-            .populate("managerId", "fullName employeeId designation department email")
+            .populate({
+                path: "managerId",
+                select: "fullName employeeId designation department email managerId",
+                populate: {
+                    path: "managerId",
+                    select: "fullName employeeId designation department email"
+                }
+            })
             .populate("dottedManagerId", "fullName employeeId designation department email")
             .populate("probationPolicy", "name days description")
             .select("-password")

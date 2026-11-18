@@ -262,12 +262,46 @@ export const EmployeeProfile = () => {
                 : (employee.manager || "")
         ).toString().trim().toLowerCase();
 
-        return (
+        // 1. Direct reporting manager check
+        const isDirect = (
             (empMgrId && (empMgrId === currentUserId || empMgrId.toLowerCase() === currentEmpId)) ||
             (empDottedMgrId && (empDottedMgrId === currentUserId || empDottedMgrId.toLowerCase() === currentEmpId)) ||
             (empMgrName && currentUserName && (empMgrName === currentUserName || currentUserName.includes(empMgrName) || empMgrName.includes(currentUserName)))
         );
-    }, [currentUser, employee]);
+
+        if (isDirect) return true;
+
+        // 2. Next-level / Skip-level manager check (e.g. employee's direct manager reports to currentUser)
+        const empSkipMgrId = (
+            employee.managerId && typeof employee.managerId === "object" && employee.managerId.managerId
+                ? (typeof employee.managerId.managerId === "object" ? employee.managerId.managerId._id : employee.managerId.managerId)
+                : ""
+        ).toString();
+
+        const empSkipMgrName = (
+            employee.managerId && typeof employee.managerId === "object" && employee.managerId.managerId
+                ? (employee.managerId.managerId.fullName || "")
+                : ""
+        ).toString().trim().toLowerCase();
+
+        const isSkipLevel = (
+            (empSkipMgrId && (empSkipMgrId === currentUserId || empSkipMgrId.toLowerCase() === currentEmpId)) ||
+            (empSkipMgrName && currentUserName && (empSkipMgrName === currentUserName || currentUserName.includes(empSkipMgrName)))
+        );
+
+        if (isSkipLevel) return true;
+
+        // 3. Same department manager check: A manager in the same department as the employee
+        if (userRole === "manager" || userRole === "management") {
+            const currentDept = (currentUser.department || "").trim().toLowerCase();
+            const empDept = (employee.department || "").trim().toLowerCase();
+            if (currentDept && empDept && currentDept === empDept) {
+                return true;
+            }
+        }
+
+        return false;
+    }, [currentUser, employee, userRole]);
 
     const isAssigned = useMemo(() => {
         // 1. Global Admin always has full access
