@@ -106,38 +106,11 @@ export const applyLeave = async (req, res) => {
 
         if (callerId && employeeId && callerId.toString() !== employeeId.toString()) {
             const isGlobalOrAdmin = callerRole === "global_admin" || callerRole === "admin";
-            let isAuthorizedManager = false;
 
-            if (!isGlobalOrAdmin && (callerRole === "manager" || callerRole === "management")) {
-                const caller = await User.findById(callerId).select("department").lean();
-                const isDirectReport = applicantUser.managerId && (
-                    String(applicantUser.managerId._id || applicantUser.managerId) === String(callerId) ||
-                    String(applicantUser.dottedManagerId?._id || applicantUser.dottedManagerId) === String(callerId)
-                );
-
-                let isSkipReport = false;
-                if (applicantUser.managerId) {
-                    const directMgrId = applicantUser.managerId._id || applicantUser.managerId;
-                    const directMgr = await User.findById(directMgrId).select("managerId").lean();
-                    if (directMgr && String(directMgr.managerId) === String(callerId)) {
-                        isSkipReport = true;
-                    }
-                }
-
-                const isSameDept = Boolean(
-                    caller?.department && applicantUser.department &&
-                    caller.department.trim().toLowerCase() === applicantUser.department.trim().toLowerCase()
-                );
-
-                if (isDirectReport || isSkipReport || isSameDept) {
-                    isAuthorizedManager = true;
-                }
-            }
-
-            if (!isGlobalOrAdmin && !isAuthorizedManager) {
+            if (!isGlobalOrAdmin) {
                 return res.status(403).json({
                     success: false,
-                    message: "Unauthorized: You can only apply leaves for yourself or your team members."
+                    message: "Unauthorized: Only Admins can apply leaves on behalf of other employees."
                 });
             }
         }
@@ -553,6 +526,14 @@ export const getLeaveHistory = async (req, res) => {
 
 export const updateLeaveBalance = async (req, res) => {
     try {
+        const callerRole = (req.user?.role || "").toLowerCase();
+        if (callerRole !== "global_admin" && callerRole !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized: Only Admins can adjust employee leave quotas."
+            });
+        }
+
         const { employeeId } = req.params;
         const { casual, sick, earned, partial, compOff } = req.body;
 

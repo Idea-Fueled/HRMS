@@ -339,7 +339,7 @@ export const EmployeeProfile = () => {
     const canDelete = (userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned));
     const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
     const canViewAttendanceAndLeaves = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
-    const canEditLeaves = userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
+    const canEditLeaves = userRole === "global_admin" || userRole === "admin";
     const canViewProfileCompletion = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
 
 
@@ -2253,7 +2253,7 @@ export const EmployeeProfile = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                            {(userRole === "global_admin" || userRole === "admin" || isReportingManager) && !isOwnProfile && (
+                            {(userRole === "global_admin" || userRole === "admin") && !isOwnProfile && (
                                 <button
                                     type="button"
                                     onClick={() => setShowApplyLeaveModal(true)}
