@@ -563,14 +563,25 @@ const TeamMembersTab = () => {
         }
 
         if (isManagerRole) {
-            // Manager role: ONLY show employees reporting to this logged-in manager
+            // Manager role: show employees reporting to this manager (direct or next-level) OR in the same department
+            const empDept = (e.dept || e.department || "").trim().toLowerCase();
             const empManagerId = (e.managerId && typeof e.managerId === "object") ? e.managerId?._id : (e.managerId || e._id);
             const empManagerName = (e.manager || "").trim().toLowerCase();
             
             const matchesId = empManagerId && currentUserId && String(empManagerId) === String(currentUserId);
             const matchesName = currentUserName && empManagerName && (empManagerName === currentUserName || currentUserName.includes(empManagerName) || empManagerName.includes(currentUserName));
+            const sameDept = currentUserDept && empDept && empDept === currentUserDept;
             
-            if (!matchesId && !matchesName) {
+            // Check if employee reports to someone in this manager's team (next-level / indirect report)
+            const isNextLevelReport = employees.some(lead => {
+                const leadId = lead._id || lead.id;
+                const leadMgrId = (lead.managerId && typeof lead.managerId === "object") ? lead.managerId?._id : lead.managerId;
+                const isUnderCurrent = (leadMgrId && String(leadMgrId) === String(currentUserId)) ||
+                                       (lead.manager && currentUserName && lead.manager.toLowerCase().includes(currentUserName));
+                return isUnderCurrent && empManagerId && String(empManagerId) === String(leadId);
+            });
+
+            if (!matchesId && !matchesName && !sameDept && !isNextLevelReport) {
                 return false;
             }
         } else if (isEmployeeRole) {

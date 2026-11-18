@@ -35,20 +35,41 @@ const getHrVisibleFilter = async (currentUserId) => {
         return [];
     }
 
-    // Manager / Management / Team Lead / Permitted Employee: find direct reports
-    const directReports = await User.find({
-        status: { $nin: ["inactive", "terminated", "exited"] },
-        $or: [
-            { managerId: currentUser._id },
-            { dottedManagerId: currentUser._id }
-        ]
-    }).select("_id").lean();
+    // Manager / Management / Team Lead / Permitted Employee:
+    // 1. Find all direct reports and next-level / indirect reports recursively
+    const visibleIdsSet = new Set();
 
-    if (directReports.length > 0) {
-        return directReports.map(d => d._id.toString());
+    let currentLevelIds = [currentUser._id];
+    while (currentLevelIds.length > 0) {
+        const nextLevel = await User.find({
+            status: { $nin: ["inactive", "terminated", "exited"] },
+            $or: [
+                { managerId: { $in: currentLevelIds } },
+                { dottedManagerId: { $in: currentLevelIds } }
+            ]
+        }).select("_id").lean();
+
+        if (nextLevel.length === 0) break;
+        const newIds = nextLevel.map(u => u._id.toString()).filter(id => !visibleIdsSet.has(id));
+        if (newIds.length === 0) break;
+        newIds.forEach(id => visibleIdsSet.add(id));
+        currentLevelIds = newIds;
     }
 
-    // If no direct reports, show peers under same manager
+    // 2. Also include same department employees (e.g. next-level or peer team members in Design)
+    if (currentUser.department) {
+        const deptMembers = await User.find({
+            status: { $nin: ["inactive", "terminated", "exited"] },
+            department: currentUser.department
+        }).select("_id").lean();
+        deptMembers.forEach(d => visibleIdsSet.add(d._id.toString()));
+    }
+
+    if (visibleIdsSet.size > 0) {
+        return Array.from(visibleIdsSet);
+    }
+
+    // If no direct/indirect reports and no dept members, show peers under same manager
     if (currentUser.managerId) {
         const peers = await User.find({
             status: { $nin: ["inactive", "terminated", "exited"] },
@@ -58,14 +79,6 @@ const getHrVisibleFilter = async (currentUserId) => {
             ]
         }).select("_id").lean();
         if (peers.length > 0) return peers.map(d => d._id.toString());
-    }
-
-    if (currentUser.department) {
-        const deptMembers = await User.find({
-            status: { $nin: ["inactive", "terminated", "exited"] },
-            department: currentUser.department
-        }).select("_id").lean();
-        if (deptMembers.length > 0) return deptMembers.map(d => d._id.toString());
     }
 
     return [currentUser._id.toString()];
