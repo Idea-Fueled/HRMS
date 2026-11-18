@@ -21,6 +21,7 @@ import { uploadProfilePicture, uploadDocumentFile } from "../../services/auth.se
 import { getAllAssets, getAssignedAssets, acknowledgeAsset, requestNewAsset } from "../../services/asset.service";
 import { getLeaveSummary, getLeaveHistory, updateEmployeeLeaveBalance } from "../../services/dashboard.service";
 import { getEmployeeAttendanceHistory, getTodayAttendanceStatus, importEmployeeAttendance } from "../../services/attendance.service";
+import { updateLeaveStatus } from "../../services/team.service";
 import { TeamMemberAttendanceHistory } from "../my-team/MyTeam";
 import { ApplyLeaveModal } from "../me/Me";
 import * as XLSX from "xlsx";
@@ -237,7 +238,30 @@ export const EmployeeProfile = () => {
         return false;
     }, [id, currentUser, employee]);
 
-    const userRole = (currentUser?.role || "employee").toLowerCase();
+    const userRole = (currentUser?.role || currentUser?.userRole || "employee").toLowerCase();
+    const isGlobalAdmin = userRole === "global_admin" || userRole === "admin" || userRole === "super_admin";
+    const [cancellingLeaveId, setCancellingLeaveId] = useState(null);
+
+    const handleCancelLeaveInProfile = async (leave) => {
+        if (!window.confirm(`Are you sure you want to cancel this approved leave (${leave.totalDays || 1} day)? This will refund the days back to the employee's balance.`)) {
+            return;
+        }
+        setCancellingLeaveId(leave._id);
+        try {
+            const res = await updateLeaveStatus(leave._id, "cancelled", "Cancelled by Admin from Employee Profile");
+            if (res.data?.success) {
+                toast.success("Leave cancelled successfully and days refunded!");
+                fetchEmployeeLeaves();
+            } else {
+                toast.error(res.data?.message || "Failed to cancel leave.");
+            }
+        } catch (err) {
+            console.error("Cancel leave error:", err);
+            toast.error(err.response?.data?.message || "Error cancelling leave.");
+        } finally {
+            setCancellingLeaveId(null);
+        }
+    };
 
     // Check employee visibility assignment
     const isReportingManager = useMemo(() => {
@@ -2253,7 +2277,7 @@ export const EmployeeProfile = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                            {(userRole === "global_admin" || userRole === "admin") && !isOwnProfile && (
+                            {isGlobalAdmin && (
                                 <button
                                     type="button"
                                     onClick={() => setShowApplyLeaveModal(true)}
@@ -2263,7 +2287,7 @@ export const EmployeeProfile = () => {
                                     <span>Apply Leave</span>
                                 </button>
                             )}
-                            {canEditLeaves && (
+                            {isGlobalAdmin && (
                                 <button
                                     type="button"
                                     onClick={() => setShowEditLeaveModal(true)}
@@ -2403,19 +2427,20 @@ export const EmployeeProfile = () => {
                                         <th className="py-3 px-4 font-extrabold">Reason / Note</th>
                                         <th className="py-3 px-4 font-extrabold">Requested On</th>
                                         <th className="py-3 px-4 font-extrabold text-center">Status</th>
+                                        {isGlobalAdmin && <th className="py-3 px-4 font-extrabold text-right">Action</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-xs font-semibold text-gray-700">
                                     {loadingLeaves ? (
                                         <tr>
-                                            <td colSpan="6" className="py-10 text-center text-gray-400 font-bold">
+                                            <td colSpan={isGlobalAdmin ? 7 : 6} className="py-10 text-center text-gray-400 font-bold">
                                                 <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#2D79C7]" />
                                                 <span>Loading leave history...</span>
                                             </td>
                                         </tr>
                                     ) : leaveHistoryList.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" className="py-10 text-center text-gray-400 font-bold select-none">
+                                            <td colSpan={isGlobalAdmin ? 7 : 6} className="py-10 text-center text-gray-400 font-bold select-none">
                                                 <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 text-[#2D79C7] flex items-center justify-center mx-auto mb-2">
                                                     <Umbrella className="w-5 h-5" />
                                                 </div>
@@ -2465,6 +2490,24 @@ export const EmployeeProfile = () => {
                                                             {req.status ? req.status.charAt(0).toUpperCase() + req.status.slice(1) : "Pending"}
                                                         </span>
                                                     </td>
+                                                    {isGlobalAdmin && (
+                                                        <td className="py-3.5 px-4 text-right">
+                                                            {req.status?.toLowerCase() === "approved" ? (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={cancellingLeaveId === req._id}
+                                                                    onClick={() => handleCancelLeaveInProfile(req)}
+                                                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                                                                    title="Cancel approved leave and refund days back to employee"
+                                                                >
+                                                                    <X className="w-3 h-3 text-rose-600" />
+                                                                    <span>{cancellingLeaveId === req._id ? "Cancelling..." : "Cancel"}</span>
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-gray-300 text-xs">—</span>
+                                                            )}
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             );
                                         })
