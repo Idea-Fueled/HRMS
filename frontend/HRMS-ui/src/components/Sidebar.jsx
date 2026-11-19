@@ -343,7 +343,8 @@ const Sidebar = ({ onClose }) => {
 
         if (item.permissionKey === "fileManager" || item.to === "/file-manager") {
             const allowedEmails = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
-            return allowedEmails.includes((email || "").toLowerCase());
+            const currentEmail = (user?.email || "").toLowerCase().trim();
+            return allowedEmails.includes(currentEmail);
         }
 
         // Employees module permission check

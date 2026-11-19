@@ -40,22 +40,56 @@ const GLOBAL_ADMIN_HR  = ["global_admin", "admin", "hr", "management"];
 const ADMIN_HR_MANAGER = ["global_admin", "admin", "hr", "manager", "management"];
 const GLOBAL_ADMIN_ONLY = ["global_admin", "admin", "management"];
 
+function RouteErrorBoundary() {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center font-bold text-2xl">
+                    !
+                </div>
+                <h2 className="text-xl font-black text-slate-800 mb-2">Something went wrong</h2>
+                <p className="text-xs text-slate-500 mb-6">
+                    An unexpected application error occurred. Please refresh or return to dashboard.
+                </p>
+                <div className="flex gap-3 justify-center">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-5 py-2.5 bg-[#2D79C7] hover:bg-[#1f63a8] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                    >
+                        Refresh Page
+                    </button>
+                    <button
+                        onClick={() => { window.location.href = "/dashboard"; }}
+                        className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                    >
+                        Go to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 const router = createBrowserRouter([
     {
         path: "/login",
         element: <Login />,
+        errorElement: <RouteErrorBoundary />,
     },
     {
         path: "/reset-password",
         element: <ResetPassword />,
+        errorElement: <RouteErrorBoundary />,
     },
     {
         path: "/set-password",
         element: <SetPasswordInvite />,
+        errorElement: <RouteErrorBoundary />,
     },
     {
         path: "/unauthorized",
         element: <Unauthorized />,
+        errorElement: <RouteErrorBoundary />,
     },
     {
         path: "/",
@@ -64,6 +98,7 @@ const router = createBrowserRouter([
     {
         path: "/",
         element: <Layout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
             {
                 path: "dashboard",
