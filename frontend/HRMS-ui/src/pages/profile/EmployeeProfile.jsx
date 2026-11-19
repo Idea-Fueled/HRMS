@@ -331,7 +331,7 @@ export const EmployeeProfile = () => {
     const canDelete = (userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned));
     const canViewConfidential = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
     const canViewAttendanceAndLeaves = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
-    const canEditLeaves = userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
+    const canEditLeaves = isGlobalAdmin;
     const canViewProfileCompletion = isOwnProfile || userRole === "global_admin" || userRole === "admin" || (userRole === "hr" && isAssigned) || isReportingManager;
 
 
@@ -3757,9 +3757,9 @@ export const EmployeeProfile = () => {
             )}
 
             {/* ─────────────────────────────────────────────
-               ADJUST LEAVE QUOTAS MODAL (ADMIN & ASSIGNED HR)
+               ADJUST LEAVE QUOTAS MODAL (GLOBAL ADMIN ONLY)
             ───────────────────────────────────────────── */}
-            {showEditLeaveModal && (
+            {showEditLeaveModal && isGlobalAdmin && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowEditLeaveModal(false)} />
                     <div className="bg-white rounded-[24px] border border-gray-100 shadow-2xl z-10 w-full max-w-md p-6 space-y-4 select-none animate-fadeIn">
