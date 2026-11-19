@@ -4165,6 +4165,8 @@ export const EmployeeProfile = () => {
                         fetchEmployeeLeaves();
                     }}
                     preselectedEmployee={employee}
+                    leaveSummary={leaveSummaryData}
+                    leaveHistory={leaveHistoryList}
                 />
             )}
 

@@ -2496,7 +2496,7 @@ const LeaveTab = ({
 /* ─────────────────────────────────────────────
    APPLY LEAVE MODAL COMPONENT
 ───────────────────────────────────────────── */
-const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = "casual_leave", leaveSummary }) => {
+const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = "casual_leave", leaveSummary, leaveHistory = [], preselectedEmployee }) => {
     const [leaveType, setLeaveType] = useState("casual_leave");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -2644,6 +2644,29 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
             return;
         }
 
+        // Check overlapping leave from leaveHistory
+        if (leaveHistory && leaveHistory.length > 0 && startDate) {
+            const startParts = String(startDate).split("T")[0].split("-").map(Number);
+            const reqStart = new Date(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0, 0);
+
+            const endParts = String(activeEndDate || startDate).split("T")[0].split("-").map(Number);
+            const reqEnd = new Date(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59, 999);
+
+            const existingOverlap = leaveHistory.find(l => {
+                const st = (l.status || "").toLowerCase();
+                if (st === "rejected" || st === "cancelled") return false;
+                const lStart = new Date(l.startDate);
+                const lEnd = new Date(l.endDate || l.startDate);
+                return lStart <= reqEnd && lEnd >= reqStart;
+            });
+
+            if (existingOverlap) {
+                const exType = (existingOverlap.leaveType || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                toast.error(`A ${exType} application already exists on this date. Multiple leaves on the same day are not allowed.`);
+                return;
+            }
+        }
+
         if (!reason.trim()) {
             toast.error("Reason for leave is required.");
             return;
@@ -2656,7 +2679,7 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
 
         setSubmitting(true);
         try {
-            const employeeId = user?._id || user?.id;
+            const employeeId = preselectedEmployee?._id || user?._id || user?.id;
 
             let partialTimingText = "";
             if (isPartial) {
@@ -5008,6 +5031,7 @@ const Me = () => {
                 onClose={() => setIsApplyModalOpen(false)}
                 onSubmitSuccess={fetchLeaveData}
                 leaveSummary={leaveSummary}
+                leaveHistory={leaveHistory}
             />
 
             {/* Request Credit for Compensatory Off Modal */}

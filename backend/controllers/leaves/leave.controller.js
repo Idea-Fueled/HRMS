@@ -134,6 +134,31 @@ export const applyLeave = async (req, res) => {
             }
         }
 
+        // Strict Check: No overlapping / duplicate leaves on the same day(s) for the employee
+        const startParts = String(startDate).split("T")[0].split("-").map(Number);
+        const reqStart = new Date(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0, 0);
+
+        const endParts = String(endDate || startDate).split("T")[0].split("-").map(Number);
+        const reqEnd = new Date(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59, 999);
+
+        const overlappingLeave = await Leave.findOne({
+            employeeId,
+            status: { $in: ["pending", "manager_approved", "approved"] },
+            startDate: { $lte: reqEnd },
+            endDate: { $gte: reqStart }
+        }).lean();
+
+        if (overlappingLeave) {
+            const overlapType = (overlappingLeave.leaveType || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            const overlapStart = new Date(overlappingLeave.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+            const overlapEnd = new Date(overlappingLeave.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+            const overlapRange = overlapStart === overlapEnd ? overlapStart : `${overlapStart} to ${overlapEnd}`;
+            return res.status(400).json({
+                success: false,
+                message: `Cannot apply: A ${overlapType} request (${overlappingLeave.status}) already exists on ${overlapRange}. Only one leave per day is allowed.`
+            });
+        }
+
         // Restrict Earned Leave for Interns & Employees in Probation (< 6 months)
         if (leaveType === "earned_leave") {
             const isIntern = applicantUser?.role === "intern" || applicantUser?.employementType === "intern";
