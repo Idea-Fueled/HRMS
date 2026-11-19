@@ -2735,7 +2735,9 @@ const ApplyLeaveModal = ({ isOpen, onClose, onSubmitSuccess, initialLeaveType = 
                 {/* Modal Header */}
                 <div className="bg-white px-6 py-4.5 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="text-[#1E1E1E] text-[15px] font-extrabold">
-                        {isPartial ? "Apply for Partial Leave" : "Apply for Leave"}
+                        {preselectedEmployee
+                            ? `Apply Leave for ${preselectedEmployee.fullName || preselectedEmployee.firstName || "Employee"}`
+                            : (isPartial ? "Apply for Partial Leave" : "Apply for Leave")}
                     </h3>
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 font-extrabold text-[16px] cursor-pointer">
                         ✕
