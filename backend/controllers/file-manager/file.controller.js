@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import FileItem from "../../models/file-manager/file.model.js";
 import Folder from "../../models/file-manager/folder.model.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinary.service.js";
@@ -179,9 +180,15 @@ export const createFolder = async (req, res) => {
             return res.status(400).json({ success: false, message: "A folder with this name already exists." });
         }
 
+        let creatorId = null;
+        const candidate = req.user?.id || req.user?._id || req.user?.userId;
+        if (candidate && mongoose.Types.ObjectId.isValid(candidate)) {
+            creatorId = candidate;
+        }
+
         const folder = await Folder.create({
             name: trimmedName,
-            createdBy: req.user?.id || req.user?._id || null
+            createdBy: creatorId
         });
 
         return res.status(201).json({
@@ -192,6 +199,44 @@ export const createFolder = async (req, res) => {
     } catch (error) {
         console.error("Create Folder Error:", error);
         return res.status(500).json({ success: false, message: error.message || "Failed to create folder." });
+    }
+};
+
+/**
+ * Delete a custom folder
+ */
+export const deleteFolder = async (req, res) => {
+    try {
+        const folderName = decodeURIComponent(req.params.name || "").trim();
+        if (!folderName) {
+            return res.status(400).json({ success: false, message: "Folder name is required." });
+        }
+
+        // Check if there are any files inside this folder
+        const fileCount = await FileItem.countDocuments({
+            folder: { $regex: new RegExp(`^${folderName}$`, "i") }
+        });
+
+        if (fileCount > 0) {
+            return res.status(400).json({
+                success: false,
+                containsMedia: true,
+                message: "This folder contains some media, first delete them."
+            });
+        }
+
+        // Remove from Folder collection
+        await Folder.deleteMany({
+            name: { $regex: new RegExp(`^${folderName}$`, "i") }
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: `Folder "${folderName}" deleted successfully.`
+        });
+    } catch (error) {
+        console.error("Delete Folder Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to delete folder." });
     }
 };
 

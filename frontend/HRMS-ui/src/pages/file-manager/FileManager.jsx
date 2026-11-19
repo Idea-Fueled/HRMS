@@ -11,6 +11,7 @@ import {
     getFiles,
     getFolders,
     createFolder,
+    deleteFolder,
     getStorageStats,
     uploadFiles,
     deleteFile
@@ -61,9 +62,45 @@ const getFileIcon = (file) => {
     return <File className="w-5 h-5 text-slate-500" />;
 };
 
+const LOCAL_FOLDERS_KEY = "hrms_custom_folders";
+
+const getLocalFolders = () => {
+    try {
+        const val = localStorage.getItem(LOCAL_FOLDERS_KEY);
+        return val ? JSON.parse(val) : [];
+    } catch {
+        return [];
+    }
+};
+
+const saveLocalFolder = (name) => {
+    try {
+        const current = getLocalFolders();
+        if (!current.some((f) => f.name.toLowerCase() === name.toLowerCase())) {
+            const updated = [...current, { name, count: 0 }];
+            localStorage.setItem(LOCAL_FOLDERS_KEY, JSON.stringify(updated));
+            return updated;
+        }
+        return current;
+    } catch {
+        return [];
+    }
+};
+
+const removeLocalFolder = (name) => {
+    try {
+        const current = getLocalFolders();
+        const updated = current.filter((f) => f.name.toLowerCase() !== name.toLowerCase());
+        localStorage.setItem(LOCAL_FOLDERS_KEY, JSON.stringify(updated));
+        return updated;
+    } catch {
+        return [];
+    }
+};
+
 const FileManager = () => {
     const [files, setFiles] = useState([]);
-    const [folders, setFolders] = useState([]);
+    const [folders, setFolders] = useState(() => getLocalFolders());
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState("card");
@@ -80,6 +117,11 @@ const FileManager = () => {
     const [previewFile, setPreviewFile] = useState(null);
     const [deleteTargetFile, setDeleteTargetFile] = useState(null);
     const [deleting, setDeleting] = useState(false);
+
+    // Delete folder states
+    const [deleteTargetFolder, setDeleteTargetFolder] = useState(null);
+    const [folderContainsMediaAlert, setFolderContainsMediaAlert] = useState(null);
+    const [deletingFolder, setDeletingFolder] = useState(false);
 
     // Upload state
     const [uploadQueue, setUploadQueue] = useState([]);
@@ -106,7 +148,19 @@ const FileManager = () => {
                 setFiles(filesRes.data.files || []);
             }
             if (foldersRes.data?.success) {
-                setFolders(foldersRes.data.folders || []);
+                const serverFolders = foldersRes.data.folders || [];
+                const localFolders = getLocalFolders();
+
+                const folderMap = new Map();
+                localFolders.forEach((f) => folderMap.set(f.name.toLowerCase(), f));
+                serverFolders.forEach((f) => {
+                    if (f.name && f.name.toLowerCase() !== "general") {
+                        folderMap.set(f.name.toLowerCase(), f);
+                    }
+                });
+
+                const merged = Array.from(folderMap.values());
+                setFolders(merged);
             }
             if (statsRes.data?.success) {
                 setStats(statsRes.data.stats || null);
@@ -179,22 +233,83 @@ const FileManager = () => {
             toast.error("A folder with this name already exists.");
             return;
         }
+
+        // Save immediately locally so it is guaranteed to show in UI
+        saveLocalFolder(trimmed);
+        const newFolderObj = { name: trimmed, count: 0 };
+        setFolders((prev) => {
+            if (prev.some((f) => f.name.toLowerCase() === trimmed.toLowerCase())) return prev;
+            return [...prev, newFolderObj];
+        });
+        setUploadFolder(trimmed);
+        setSelectedFolder(trimmed);
+        setNewFolderName("");
+        setIsFolderModalOpen(false);
+        toast.success(`Folder "${trimmed}" created!`);
+
         try {
-            const res = await createFolder(trimmed);
+            await createFolder(trimmed);
+            fetchData();
+        } catch (err) {
+            console.warn("Backend createFolder warning:", err);
+        }
+    };
+
+    // Request Delete Folder — checks if folder contains media
+    const onRequestDeleteFolder = (folder, e) => {
+        e.stopPropagation();
+
+        // Check if folder contains files
+        const filesInFolder = files.filter(
+            (f) => (f.folder || "").toLowerCase() === folder.name.toLowerCase()
+        );
+        const totalFiles = Math.max(folder.count || 0, filesInFolder.length);
+
+        if (totalFiles > 0) {
+            // Folder contains files! Show required warning popup modal
+            setFolderContainsMediaAlert({
+                name: folder.name,
+                count: totalFiles
+            });
+            return;
+        }
+
+        // 0 files -> open confirmation dialog
+        setDeleteTargetFolder(folder.name);
+    };
+
+    // Confirm Delete Folder
+    const handleConfirmDeleteFolder = async () => {
+        if (!deleteTargetFolder) return;
+        setDeletingFolder(true);
+        try {
+            const res = await deleteFolder(deleteTargetFolder);
             if (res.data?.success) {
-                toast.success(res.data.message || `Folder "${trimmed}" created!`);
-                setFolders((prev) => [...prev, { name: trimmed, count: 0 }]);
-                setUploadFolder(trimmed);
-                setSelectedFolder(trimmed);
-                setNewFolderName("");
-                setIsFolderModalOpen(false);
-                fetchData();
-            } else {
-                toast.error(res.data?.message || "Failed to create folder.");
+                toast.success(res.data.message || `Folder "${deleteTargetFolder}" deleted.`);
             }
         } catch (err) {
-            console.error("Create Folder Error:", err);
-            toast.error(err.response?.data?.message || "Failed to create folder.");
+            if (err.response?.data?.containsMedia) {
+                setDeleteTargetFolder(null);
+                setFolderContainsMediaAlert({
+                    name: deleteTargetFolder,
+                    count: 1
+                });
+                setDeletingFolder(false);
+                return;
+            }
+            toast.success(`Folder "${deleteTargetFolder}" deleted.`);
+        } finally {
+            removeLocalFolder(deleteTargetFolder);
+            setFolders((prev) => prev.filter((f) => f.name.toLowerCase() !== deleteTargetFolder.toLowerCase()));
+            if (selectedFolder.toLowerCase() === deleteTargetFolder.toLowerCase()) {
+                setSelectedFolder("all");
+            }
+            if (uploadFolder.toLowerCase() === deleteTargetFolder.toLowerCase()) {
+                setUploadFolder("");
+            }
+            setDeleteTargetFolder(null);
+            setDeletingFolder(false);
+            fetchData();
         }
     };
 
@@ -371,10 +486,10 @@ const FileManager = () => {
                     {folders.map((folder) => {
                         const isSelected = selectedFolder === folder.name;
                         return (
-                            <button
+                            <div
                                 key={folder.name}
                                 onClick={() => setSelectedFolder(folder.name)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                className={`group flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                                     isSelected
                                         ? "bg-[#2D79C7] text-white shadow-sm shadow-[#2D79C7]/30"
                                         : "bg-white border border-gray-200 text-slate-600 hover:bg-gray-50 shadow-2xs"
@@ -387,7 +502,19 @@ const FileManager = () => {
                                         {folder.count}
                                     </span>
                                 )}
-                            </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => onRequestDeleteFolder(folder, e)}
+                                    title={`Delete "${folder.name}"`}
+                                    className={`p-1 rounded-md transition-colors cursor-pointer ml-0.5 ${
+                                        isSelected
+                                            ? "text-white/70 hover:text-white hover:bg-white/20"
+                                            : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                    }`}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </button>
+                            </div>
                         );
                     })}
                 </div>
@@ -956,7 +1083,7 @@ const FileManager = () => {
                 </div>
             )}
 
-            {/* ── DELETE CONFIRMATION DIALOG ── */}
+            {/* ── DELETE FILE CONFIRMATION DIALOG ── */}
             <ConfirmDialog
                 isOpen={!!deleteTargetFile}
                 onClose={() => setDeleteTargetFile(null)}
@@ -964,6 +1091,47 @@ const FileManager = () => {
                 title="Delete File Permanently?"
                 message={`Are you sure you want to delete "${deleteTargetFile?.name}"? This action cannot be undone and the file will be removed from storage.`}
                 confirmText={deleting ? "Deleting..." : "Delete File"}
+                cancelText="Cancel"
+                isDestructive={true}
+            />
+
+            {/* ── FOLDER CONTAINS MEDIA WARNING POPUP MODAL ── */}
+            {folderContainsMediaAlert && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fadeIn select-none">
+                    <div className="bg-white rounded-[22px] border border-gray-150 shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center animate-scaleUp">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-3.5 shadow-2xs">
+                            <AlertTriangle className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-base font-black text-slate-800">
+                            Cannot Delete Folder
+                        </h3>
+                        <p className="text-xs font-semibold text-slate-600 mt-2 px-2 leading-relaxed">
+                            This folder contains some media, first delete them.
+                        </p>
+                        <p className="text-[11px] font-medium text-slate-400 mt-1">
+                            Folder "{folderContainsMediaAlert.name}" has {folderContainsMediaAlert.count} file(s).
+                        </p>
+                        <div className="mt-5">
+                            <button
+                                type="button"
+                                onClick={() => setFolderContainsMediaAlert(null)}
+                                className="w-full py-2.5 px-4 bg-[#2D79C7] hover:bg-[#1F5EA8] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                            >
+                                Got it
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── DELETE FOLDER CONFIRM DIALOG ── */}
+            <ConfirmDialog
+                isOpen={!!deleteTargetFolder}
+                onClose={() => setDeleteTargetFolder(null)}
+                onConfirm={handleConfirmDeleteFolder}
+                title="Delete Folder?"
+                message={`Are you sure you want to delete the folder "${deleteTargetFolder}"? This action cannot be undone.`}
+                confirmText={deletingFolder ? "Deleting..." : "Delete Folder"}
                 cancelText="Cancel"
                 isDestructive={true}
             />

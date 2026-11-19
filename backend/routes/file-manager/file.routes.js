@@ -6,6 +6,7 @@ import {
     getFiles,
     getFolders,
     createFolder,
+    deleteFolder,
     updateFile,
     deleteFile,
     getStorageStats
@@ -34,6 +35,7 @@ router.post("/upload", uploadFileManager.array("files", 20), uploadFiles);
 router.get("/", getFiles);
 router.get("/folders", getFolders);
 router.post("/folders", createFolder);
+router.delete("/folders/:name", deleteFolder);
 router.get("/stats", getStorageStats);
 router.put("/:id", updateFile);
 router.delete("/:id", deleteFile);

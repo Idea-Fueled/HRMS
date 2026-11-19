@@ -12,6 +12,10 @@ export const createFolder = async (name) => {
     return API.post("/files/folders", { name });
 };
 
+export const deleteFolder = async (folderName) => {
+    return API.delete(`/files/folders/${encodeURIComponent(folderName)}`);
+};
+
 export const getStorageStats = async () => {
     return API.get("/files/stats");
 };
