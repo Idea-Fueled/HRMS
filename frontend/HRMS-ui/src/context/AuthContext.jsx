@@ -167,6 +167,12 @@ export const AuthProvider = ({ children }) => {
         
         const userRole = (user.role || "").toLowerCase();
         const userEmail = (user.email || "").toLowerCase();
+        const fileManagerAllowedEmails = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
+
+        if (permission === "fileManager" || permission === "file-manager") {
+            return fileManagerAllowedEmails.includes(userEmail);
+        }
+
         const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
             ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
 
@@ -186,14 +192,20 @@ export const AuthProvider = ({ children }) => {
 
         const userRole = (user.role || "").toLowerCase();
         const userEmail = (user.email || "").toLowerCase();
-        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
-            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
-
-        if (isGlobalAdminUser) return true;
+        const fileManagerAllowedEmails = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
 
         // normalize: strip leading slash and trailing slash
         const normalize = (p) => p.replace(/^\//, "").replace(/\/$/, "");
         const normPath = normalize(path);
+
+        if (normPath === "file-manager") {
+            return fileManagerAllowedEmails.includes(userEmail);
+        }
+
+        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
+            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
+
+        if (isGlobalAdminUser) return true;
 
         // Assets & File Manager modules are strictly accessible to Global Admin role only
         if (normPath === "assets" || normPath === "file-manager") {

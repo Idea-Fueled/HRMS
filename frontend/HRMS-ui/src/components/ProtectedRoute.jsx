@@ -42,13 +42,23 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
     const isHrUser = userRole === "hr" || userDept === "hr" || userDept.includes("human resource");
 
+    const norm = location.pathname.replace(/^\//, "").replace(/\/$/, "");
+
+    // File Manager module is strictly restricted to Puneet and Esha only
+    if (norm === "file-manager") {
+        const fileManagerAllowedEmails = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
+        if (!fileManagerAllowedEmails.includes(userEmail)) {
+            return <Navigate to="/unauthorized" replace />;
+        }
+        return children;
+    }
+
     // Super roles (Global Admin, Admin, Management) have universal access to all routes
     if (isGlobalAdminUser) {
         return children;
     }
 
     // Common routes (Dashboard, Me, My Finances, Settings) are accessible to all authenticated users
-    const norm = location.pathname.replace(/^\//, "").replace(/\/$/, "");
     if (norm === "dashboard" || norm === "" || norm === "me" || norm === "my-finances" || norm === "settings") {
         return children;
     }

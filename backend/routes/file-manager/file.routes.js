@@ -12,19 +12,21 @@ import {
 
 const router = express.Router();
 
-// Middleware: Strictly restricted to Global Admin only
-const isGlobalAdmin = (req, res, next) => {
-    if (req.user && (req.user.role === "global_admin" || req.user.role === "admin")) {
+// Middleware: Strictly restricted to Puneet, Rishabh, and Esha only
+const isFileManagerAdmin = (req, res, next) => {
+    const callerEmail = (req.user?.email || "").toLowerCase();
+    const allowed = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
+    if (req.user && allowed.includes(callerEmail)) {
         next();
     } else {
         return res.status(403).json({
             success: false,
-            message: "Forbidden. Access denied. Only Global Admin can access File Manager."
+            message: "Forbidden. Access denied. Only Puneet and Esha can access File Manager."
         });
     }
 };
 
-router.use(isAuthenticated, isGlobalAdmin);
+router.use(isAuthenticated, isFileManagerAdmin);
 
 // Routes
 router.post("/upload", uploadFileManager.array("files", 20), uploadFiles);
