@@ -10,6 +10,7 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 import {
     getFiles,
     getFolders,
+    createFolder,
     getStorageStats,
     uploadFiles,
     deleteFile
@@ -82,7 +83,7 @@ const FileManager = () => {
 
     // Upload state
     const [uploadQueue, setUploadQueue] = useState([]);
-    const [uploadFolder, setUploadFolder] = useState("General");
+    const [uploadFolder, setUploadFolder] = useState("");
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef(null);
@@ -167,7 +168,7 @@ const FileManager = () => {
     };
 
     // Handle Create Folder
-    const handleCreateFolder = (e) => {
+    const handleCreateFolder = async (e) => {
         e.preventDefault();
         const trimmed = newFolderName.trim();
         if (!trimmed) {
@@ -178,12 +179,23 @@ const FileManager = () => {
             toast.error("A folder with this name already exists.");
             return;
         }
-        setFolders((prev) => [...prev, { name: trimmed, count: 0 }]);
-        setUploadFolder(trimmed);
-        setSelectedFolder(trimmed);
-        setNewFolderName("");
-        setIsFolderModalOpen(false);
-        toast.success(`Folder "${trimmed}" created!`);
+        try {
+            const res = await createFolder(trimmed);
+            if (res.data?.success) {
+                toast.success(res.data.message || `Folder "${trimmed}" created!`);
+                setFolders((prev) => [...prev, { name: trimmed, count: 0 }]);
+                setUploadFolder(trimmed);
+                setSelectedFolder(trimmed);
+                setNewFolderName("");
+                setIsFolderModalOpen(false);
+                fetchData();
+            } else {
+                toast.error(res.data?.message || "Failed to create folder.");
+            }
+        } catch (err) {
+            console.error("Create Folder Error:", err);
+            toast.error(err.response?.data?.message || "Failed to create folder.");
+        }
     };
 
     // Handle File Input Selection
@@ -338,46 +350,48 @@ const FileManager = () => {
                 </div>
             </div>
 
-            {/* ── FOLDERS PILLS / TABS ── */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-                <button
-                    onClick={() => setSelectedFolder("all")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                        selectedFolder === "all"
-                            ? "bg-[#2D79C7] text-white shadow-sm shadow-[#2D79C7]/30"
-                            : "bg-white border border-gray-200 text-slate-600 hover:bg-gray-50 shadow-2xs"
-                    }`}
-                >
-                    <Folder className="w-3.5 h-3.5" />
-                    <span>All Files</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${selectedFolder === "all" ? "bg-white/20 text-white" : "bg-gray-100 text-slate-500"}`}>
-                        {files.length}
-                    </span>
-                </button>
+            {/* ── FOLDERS PILLS / TABS (Only shown when custom folders exist) ── */}
+            {folders.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+                    <button
+                        onClick={() => setSelectedFolder("all")}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                            selectedFolder === "all"
+                                ? "bg-[#2D79C7] text-white shadow-sm shadow-[#2D79C7]/30"
+                                : "bg-white border border-gray-200 text-slate-600 hover:bg-gray-50 shadow-2xs"
+                        }`}
+                    >
+                        <Folder className="w-3.5 h-3.5" />
+                        <span>All Files</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${selectedFolder === "all" ? "bg-white/20 text-white" : "bg-gray-100 text-slate-500"}`}>
+                            {files.length}
+                        </span>
+                    </button>
 
-                {folders.map((folder) => {
-                    const isSelected = selectedFolder === folder.name;
-                    return (
-                        <button
-                            key={folder.name}
-                            onClick={() => setSelectedFolder(folder.name)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                                isSelected
-                                    ? "bg-[#2D79C7] text-white shadow-sm shadow-[#2D79C7]/30"
-                                    : "bg-white border border-gray-200 text-slate-600 hover:bg-gray-50 shadow-2xs"
-                            }`}
-                        >
-                            <Folder className={`w-3.5 h-3.5 ${isSelected ? "text-white" : "text-amber-500"}`} />
-                            <span>{folder.name}</span>
-                            {folder.count !== undefined && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-slate-500"}`}>
-                                    {folder.count}
-                                </span>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
+                    {folders.map((folder) => {
+                        const isSelected = selectedFolder === folder.name;
+                        return (
+                            <button
+                                key={folder.name}
+                                onClick={() => setSelectedFolder(folder.name)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                    isSelected
+                                        ? "bg-[#2D79C7] text-white shadow-sm shadow-[#2D79C7]/30"
+                                        : "bg-white border border-gray-200 text-slate-600 hover:bg-gray-50 shadow-2xs"
+                                }`}
+                            >
+                                <Folder className={`w-3.5 h-3.5 ${isSelected ? "text-white" : "text-amber-500"}`} />
+                                <span>{folder.name}</span>
+                                {folder.count !== undefined && (
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-slate-500"}`}>
+                                        {folder.count}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* ── CONTROLS & FILTER BAR ── */}
             <div className="bg-white p-4 rounded-[16px] border border-gray-150 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
@@ -670,20 +684,44 @@ const FileManager = () => {
                         <div className="p-6 space-y-4">
                             {/* Target Folder Selector */}
                             <div>
-                                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                                    Target Folder
-                                </label>
-                                <select
-                                    value={uploadFolder}
-                                    onChange={(e) => setUploadFolder(e.target.value)}
-                                    className="w-full bg-gray-50 border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2D79C7] focus:bg-white transition-all shadow-inner"
-                                >
-                                    {folders.map((f) => (
-                                        <option key={f.name} value={f.name}>
-                                            {f.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="text-xs font-bold text-slate-700">
+                                        Target Folder {folders.length === 0 && <span className="text-slate-400 font-normal">(Optional)</span>}
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsUploadModalOpen(false);
+                                            setIsFolderModalOpen(true);
+                                        }}
+                                        className="text-[11px] font-bold text-[#2D79C7] hover:underline cursor-pointer flex items-center gap-1"
+                                    >
+                                        <FolderPlus className="w-3.5 h-3.5" />
+                                        <span>+ New Folder</span>
+                                    </button>
+                                </div>
+                                {folders.length > 0 ? (
+                                    <select
+                                        value={uploadFolder}
+                                        onChange={(e) => setUploadFolder(e.target.value)}
+                                        className="w-full bg-gray-50 border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2D79C7] focus:bg-white transition-all shadow-inner cursor-pointer"
+                                    >
+                                        <option value="">Root / Unorganized</option>
+                                        {folders.map((f) => (
+                                            <option key={f.name} value={f.name}>
+                                                {f.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        value={uploadFolder}
+                                        onChange={(e) => setUploadFolder(e.target.value)}
+                                        placeholder="Folder name (optional, or leave blank for root)"
+                                        className="w-full bg-gray-50 border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2D79C7] focus:bg-white transition-all shadow-inner"
+                                    />
+                                )}
                             </div>
 
                             {/* Drag & Drop Zone */}

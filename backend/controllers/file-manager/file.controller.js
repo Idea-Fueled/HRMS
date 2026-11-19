@@ -1,4 +1,5 @@
 import FileItem from "../../models/file-manager/file.model.js";
+import Folder from "../../models/file-manager/folder.model.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinary.service.js";
 
 // Helper: Format bytes to human readable format
@@ -73,7 +74,7 @@ export const uploadFiles = async (req, res) => {
             return res.status(400).json({ success: false, message: "No files provided for upload." });
         }
 
-        const folder = (req.body.folder || "General").trim();
+        const folder = (req.body.folder || "").trim();
         const customName = req.body.name ? req.body.name.trim() : "";
         const uploadedBy = req.user?.id || req.user?._id;
 
@@ -89,7 +90,8 @@ export const uploadFiles = async (req, res) => {
             const { category, resourceType } = getCategoryAndResourceType(file.mimetype, extension);
 
             // Upload to Cloudinary under folder
-            const cloudinaryFolder = `hrms_file_manager/${folder.toLowerCase().replace(/[^a-z0-9_-]/g, "_")}`;
+            const folderSlug = folder ? folder.toLowerCase().replace(/[^a-z0-9_-]/g, "_") : "general";
+            const cloudinaryFolder = `hrms_file_manager/${folderSlug}`;
             const uploadRes = await uploadToCloudinary(file.buffer, cloudinaryFolder, resourceType);
 
             const fileDoc = await FileItem.create({
@@ -159,14 +161,55 @@ export const getFiles = async (req, res) => {
 };
 
 /**
+ * Create a new custom folder
+ */
+export const createFolder = async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ success: false, message: "Folder name is required." });
+        }
+
+        const trimmedName = name.trim();
+        const existing = await Folder.findOne({
+            name: { $regex: new RegExp(`^${trimmedName}$`, "i") }
+        });
+
+        if (existing) {
+            return res.status(400).json({ success: false, message: "A folder with this name already exists." });
+        }
+
+        const folder = await Folder.create({
+            name: trimmedName,
+            createdBy: req.user?.id || req.user?._id || null
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: `Folder "${trimmedName}" created successfully.`,
+            folder: { name: folder.name, count: 0 }
+        });
+    } catch (error) {
+        console.error("Create Folder Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to create folder." });
+    }
+};
+
+/**
  * Get all available folders
  */
 export const getFolders = async (req, res) => {
     try {
+        const explicitFolders = await Folder.find().sort({ createdAt: -1 });
         const distinctFolders = await FileItem.distinct("folder");
-        const defaultFolders = ["General", "Media", "Documents", "Contracts", "Assets"];
 
-        const allFolders = Array.from(new Set([...defaultFolders, ...distinctFolders])).filter(Boolean);
+        // Only include user-created folders or folders on files, NO hardcoded default folders
+        const allFolders = Array.from(
+            new Set([
+                ...explicitFolders.map(f => f.name),
+                ...distinctFolders
+            ])
+        ).filter(name => Boolean(name && name.trim() && name.toLowerCase() !== "general"));
 
         // Also calculate counts per folder
         const counts = await FileItem.aggregate([
@@ -175,7 +218,7 @@ export const getFolders = async (req, res) => {
 
         const countMap = {};
         counts.forEach(c => {
-            countMap[c._id] = c.count;
+            if (c._id) countMap[c._id] = c.count;
         });
 
         const folderList = allFolders.map(name => ({

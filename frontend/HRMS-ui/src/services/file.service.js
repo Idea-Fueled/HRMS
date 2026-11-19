@@ -8,6 +8,10 @@ export const getFolders = async () => {
     return API.get("/files/folders");
 };
 
+export const createFolder = async (name) => {
+    return API.post("/files/folders", { name });
+};
+
 export const getStorageStats = async () => {
     return API.get("/files/stats");
 };
