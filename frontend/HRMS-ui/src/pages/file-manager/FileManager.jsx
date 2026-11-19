@@ -67,7 +67,16 @@ const LOCAL_FOLDERS_KEY = "hrms_custom_folders";
 const getLocalFolders = () => {
     try {
         const val = localStorage.getItem(LOCAL_FOLDERS_KEY);
-        return val ? JSON.parse(val) : [];
+        if (!val) return [];
+        const parsed = JSON.parse(val);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .map((item) => {
+                if (typeof item === "string") return { name: item.trim(), count: 0 };
+                if (item && typeof item.name === "string") return { name: item.name.trim(), count: Number(item.count) || 0 };
+                return null;
+            })
+            .filter((item) => Boolean(item && item.name && item.name.toLowerCase() !== "general"));
     } catch {
         return [];
     }
@@ -75,9 +84,11 @@ const getLocalFolders = () => {
 
 const saveLocalFolder = (name) => {
     try {
+        if (!name || typeof name !== "string") return [];
+        const trimmed = name.trim();
         const current = getLocalFolders();
-        if (!current.some((f) => f.name.toLowerCase() === name.toLowerCase())) {
-            const updated = [...current, { name, count: 0 }];
+        if (!current.some((f) => (f.name || "").toLowerCase() === trimmed.toLowerCase())) {
+            const updated = [...current, { name: trimmed, count: 0 }];
             localStorage.setItem(LOCAL_FOLDERS_KEY, JSON.stringify(updated));
             return updated;
         }
@@ -89,8 +100,10 @@ const saveLocalFolder = (name) => {
 
 const removeLocalFolder = (name) => {
     try {
+        if (!name || typeof name !== "string") return [];
+        const trimmed = name.trim();
         const current = getLocalFolders();
-        const updated = current.filter((f) => f.name.toLowerCase() !== name.toLowerCase());
+        const updated = current.filter((f) => (f.name || "").toLowerCase() !== trimmed.toLowerCase());
         localStorage.setItem(LOCAL_FOLDERS_KEY, JSON.stringify(updated));
         return updated;
     } catch {
@@ -148,14 +161,25 @@ const FileManager = () => {
                 setFiles(filesRes.data.files || []);
             }
             if (foldersRes.data?.success) {
-                const serverFolders = foldersRes.data.folders || [];
+                const rawServerFolders = foldersRes.data.folders || [];
                 const localFolders = getLocalFolders();
 
                 const folderMap = new Map();
-                localFolders.forEach((f) => folderMap.set(f.name.toLowerCase(), f));
-                serverFolders.forEach((f) => {
-                    if (f.name && f.name.toLowerCase() !== "general") {
-                        folderMap.set(f.name.toLowerCase(), f);
+                localFolders.forEach((f) => {
+                    const n = (f?.name || "").trim();
+                    if (n && n.toLowerCase() !== "general") {
+                        folderMap.set(n.toLowerCase(), { name: n, count: f.count || 0 });
+                    }
+                });
+
+                rawServerFolders.forEach((f) => {
+                    const n = (typeof f === "string" ? f : f?.name || "").trim();
+                    if (n && n.toLowerCase() !== "general") {
+                        const existing = folderMap.get(n.toLowerCase());
+                        folderMap.set(n.toLowerCase(), {
+                            name: n,
+                            count: f?.count !== undefined ? f.count : (existing?.count || 0)
+                        });
                     }
                 });
 
@@ -258,24 +282,26 @@ const FileManager = () => {
     // Request Delete Folder — checks if folder contains media
     const onRequestDeleteFolder = (folder, e) => {
         e.stopPropagation();
+        const folderName = (typeof folder === "string" ? folder : folder?.name || "").trim();
+        if (!folderName) return;
 
         // Check if folder contains files
         const filesInFolder = files.filter(
-            (f) => (f.folder || "").toLowerCase() === folder.name.toLowerCase()
+            (f) => (f.folder || "").toLowerCase() === folderName.toLowerCase()
         );
-        const totalFiles = Math.max(folder.count || 0, filesInFolder.length);
+        const totalFiles = Math.max(folder?.count || 0, filesInFolder.length);
 
         if (totalFiles > 0) {
             // Folder contains files! Show required warning popup modal
             setFolderContainsMediaAlert({
-                name: folder.name,
+                name: folderName,
                 count: totalFiles
             });
             return;
         }
 
         // 0 files -> open confirmation dialog
-        setDeleteTargetFolder(folder.name);
+        setDeleteTargetFolder(folderName);
     };
 
     // Confirm Delete Folder
@@ -484,11 +510,14 @@ const FileManager = () => {
                     </button>
 
                     {folders.map((folder) => {
-                        const isSelected = selectedFolder === folder.name;
+                        const folderName = (typeof folder === "string" ? folder : folder?.name || "").trim();
+                        if (!folderName) return null;
+                        const isSelected = selectedFolder.toLowerCase() === folderName.toLowerCase();
+                        const folderCount = typeof folder === "object" && folder?.count !== undefined ? folder.count : 0;
                         return (
                             <div
-                                key={folder.name}
-                                onClick={() => setSelectedFolder(folder.name)}
+                                key={folderName}
+                                onClick={() => setSelectedFolder(folderName)}
                                 className={`group flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                                     isSelected
                                         ? "bg-[#2D79C7] text-white shadow-sm shadow-[#2D79C7]/30"
@@ -496,16 +525,14 @@ const FileManager = () => {
                                 }`}
                             >
                                 <Folder className={`w-3.5 h-3.5 ${isSelected ? "text-white" : "text-amber-500"}`} />
-                                <span>{folder.name}</span>
-                                {folder.count !== undefined && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-slate-500"}`}>
-                                        {folder.count}
-                                    </span>
-                                )}
+                                <span>{folderName}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${isSelected ? "bg-white/20 text-white" : "bg-gray-100 text-slate-500"}`}>
+                                    {folderCount}
+                                </span>
                                 <button
                                     type="button"
                                     onClick={(e) => onRequestDeleteFolder(folder, e)}
-                                    title={`Delete "${folder.name}"`}
+                                    title={`Delete "${folderName}"`}
                                     className={`p-1 rounded-md transition-colors cursor-pointer ml-0.5 ${
                                         isSelected
                                             ? "text-white/70 hover:text-white hover:bg-white/20"

@@ -257,6 +257,7 @@ const Sidebar = ({ onClose }) => {
     useEffect(() => {
         if (!user) return;
         const role = user.role?.toLowerCase();
+        const email = (user.email || "").toLowerCase();
         const canSeeApprovals = role === "global_admin" || role === "admin" || (role === "manager" && user.permissions?.approvals !== false) || user.permissions?.approvals === true;
         if (!canSeeApprovals) {
             setPendingLeavesCount(0);
@@ -299,6 +300,7 @@ const Sidebar = ({ onClose }) => {
         }
 
         const role = user.role?.toLowerCase();
+        const email = (user.email || "").toLowerCase();
 
         // Leaves / Approvals visibility: Global Admin / Admin always, Managers by default, or if explicitly permitted
         if (item.permissionKey === "approvals" || item.to === "/approvals") {
