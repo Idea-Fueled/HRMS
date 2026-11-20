@@ -35,6 +35,22 @@ export const uploadFiles = async (formData, onProgress) => {
     });
 };
 
+export const shareFile = async (id, userIds) => {
+    return API.post(`/files/${id}/share`, { userIds });
+};
+
+export const createDocument = async ({ name, type, folderId, content }) => {
+    return API.post("/files/create-document", { name, type, folderId, content });
+};
+
+export const updateDocumentContent = async (id, content) => {
+    return API.put(`/files/${id}/content`, { content });
+};
+
+export const getShareableEmployees = async () => {
+    return API.get("/files/employees");
+};
+
 export const updateFile = async (id, data) => {
     return API.put(`/files/${id}`, data);
 };
@@ -42,4 +58,3 @@ export const updateFile = async (id, data) => {
 export const deleteFile = async (id) => {
     return API.delete(`/files/${id}`);
 };
-

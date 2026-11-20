@@ -3,9 +3,10 @@ import {
     Folder, FolderPlus, UploadCloud, File, FileText, Image as ImageIcon, Video, Music,
     Archive, Download, Link2, Trash2, Eye, Search,
     X, HardDrive, RefreshCw, Loader2, ExternalLink, AlertTriangle, FileSpreadsheet,
-    ChevronRight, ArrowLeft, CornerDownRight, Home, MoreVertical
+    ChevronRight, ArrowLeft, Home, MoreVertical, Share2, Users, Plus, Edit3, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../../context/AuthContext";
 import { ViewToggle } from "../../components/SharedComponents";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import {
@@ -17,6 +18,11 @@ import {
     uploadFiles,
     deleteFile
 } from "../../services/file.service";
+
+import ShareFileModal from "./ShareFileModal";
+import SpreadsheetEditorModal from "./SpreadsheetEditorModal";
+import WordEditorModal from "./WordEditorModal";
+import CreateDocModal from "./CreateDocModal";
 
 /* ─────────────────────────────────────────────
    HELPERS & BADGES
@@ -42,6 +48,12 @@ const getFileIcon = (file) => {
     const ext = (file.extension || "").toLowerCase();
     const cat = file.category || "other";
 
+    if (["xls", "xlsx", "csv"].includes(ext)) {
+        return <FileSpreadsheet className="w-5 h-5 text-emerald-600" />;
+    }
+    if (["doc", "docx"].includes(ext) || file.mimeType?.includes("word")) {
+        return <FileText className="w-5 h-5 text-blue-600" />;
+    }
     if (cat === "image") {
         return <ImageIcon className="w-5 h-5 text-emerald-600" />;
     }
@@ -50,9 +62,6 @@ const getFileIcon = (file) => {
     }
     if (cat === "audio") {
         return <Music className="w-5 h-5 text-amber-600" />;
-    }
-    if (["xls", "xlsx", "csv"].includes(ext)) {
-        return <FileSpreadsheet className="w-5 h-5 text-teal-600" />;
     }
     if (cat === "document") {
         return <FileText className="w-5 h-5 text-blue-600" />;
@@ -64,6 +73,9 @@ const getFileIcon = (file) => {
 };
 
 const FileManager = () => {
+    const { user } = useAuth();
+    const currentUserId = user?._id || user?.id;
+
     // Current directory state (null = Home / Root)
     const [currentFolder, setCurrentFolder] = useState(null);
     const [breadcrumbs, setBreadcrumbs] = useState([{ _id: null, name: "Home" }]);
@@ -76,6 +88,7 @@ const FileManager = () => {
     const [view, setView] = useState("card");
 
     // Filtering & Search
+    const [fileFilter, setFileFilter] = useState("all"); // 'all' | 'my' | 'shared'
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -86,6 +99,14 @@ const FileManager = () => {
     const [previewFile, setPreviewFile] = useState(null);
     const [deleteTargetFile, setDeleteTargetFile] = useState(null);
     const [deleting, setDeleting] = useState(false);
+
+    // Document Creation / Editing Modals
+    const [createDocType, setCreateDocType] = useState(null); // 'excel' | 'word'
+    const [spreadsheetFile, setSpreadsheetFile] = useState(null);
+    const [wordDocFile, setWordDocFile] = useState(null);
+
+    // Sharing Modal
+    const [shareTargetFile, setShareTargetFile] = useState(null);
 
     // Delete folder states
     const [deleteTargetFolder, setDeleteTargetFolder] = useState(null);
@@ -107,10 +128,11 @@ const FileManager = () => {
             const [foldersRes, filesRes, statsRes] = await Promise.all([
                 getFolders(parentId),
                 getFiles({
-                    folderId: parentId || (searchQuery.trim() ? undefined : "root"),
+                    folderId: parentId || (searchQuery.trim() || fileFilter === "shared" ? undefined : "root"),
                     category: selectedCategory !== "all" ? selectedCategory : undefined,
+                    filter: fileFilter !== "all" ? fileFilter : undefined,
                     search: searchQuery.trim() || undefined,
-                    all: searchQuery.trim() ? "true" : undefined
+                    all: searchQuery.trim() || fileFilter === "shared" ? "true" : undefined
                 }),
                 getStorageStats()
             ]);
@@ -137,7 +159,7 @@ const FileManager = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentFolder, selectedCategory, searchQuery]);
+    }, [currentFolder, selectedCategory, searchQuery, fileFilter]);
 
     useEffect(() => {
         fetchData();
@@ -146,7 +168,7 @@ const FileManager = () => {
     // Open a folder (navigate into it)
     const handleOpenFolder = (folder) => {
         setCurrentFolder(folder);
-        setSearchQuery(""); // Reset search when opening a folder
+        setSearchQuery("");
     };
 
     // Navigate to a specific breadcrumb
@@ -173,6 +195,22 @@ const FileManager = () => {
             const parentCrumb = breadcrumbs[breadcrumbs.length - 2];
             handleBreadcrumbClick(parentCrumb);
         }
+    };
+
+    // Handle File Click (Smart Opener: Excel -> Spreadsheet, Word -> Word Editor, Else -> Preview)
+    const handleOpenFile = (file) => {
+        const ext = (file.extension || "").toLowerCase();
+        if (["xls", "xlsx"].includes(ext) || file.documentContent) {
+            if (ext === "xlsx" || ext === "xls" || ext === "csv") {
+                setSpreadsheetFile(file);
+                return;
+            }
+        }
+        if (["doc", "docx"].includes(ext) || file.mimeType?.includes("word") || (typeof file.documentContent === "string")) {
+            setWordDocFile(file);
+            return;
+        }
+        setPreviewFile(file);
     };
 
     // Handle Copy Link
@@ -255,7 +293,6 @@ const FileManager = () => {
 
         const totalItems = (folder.filesCount || 0) + (folder.count || 0);
 
-        // If folder has files, immediately show warning popup modal
         if (folder.filesCount > 0 || totalItems > 0) {
             setFolderContainsMediaAlert({
                 name: folder.name,
@@ -264,7 +301,6 @@ const FileManager = () => {
             return;
         }
 
-        // Open confirm delete dialog for empty folder
         setDeleteTargetFolder(folder);
     };
 
@@ -357,10 +393,20 @@ const FileManager = () => {
         }
     };
 
+    // Newly created in-app document opened directly
+    const handleDocCreated = (newFile) => {
+        fetchData();
+        if (newFile.extension === "xlsx") {
+            setSpreadsheetFile(newFile);
+        } else {
+            setWordDocFile(newFile);
+        }
+    };
+
     return (
         <div className="space-y-6 pb-12 select-none animate-fadeIn">
             {/* ── HEADER ── */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-[20px] border border-gray-150 shadow-xs">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-[20px] border border-gray-150 shadow-xs">
                 <div>
                     <div className="flex items-center gap-2.5">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2D79C7] flex items-center justify-center font-bold shadow-xs">
@@ -371,28 +417,45 @@ const FileManager = () => {
                                 File Manager
                             </h1>
                             <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                                Secure company media repository, contracts, documents & cloud assets (Global Admin only)
+                                Personal cloud workspace, spreadsheets, word documents & shared company repository
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
+                {/* Header Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
                     <button
                         onClick={() => setIsFolderModalOpen(true)}
-                        className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
                     >
                         <FolderPlus className="w-4 h-4 text-[#2D79C7]" />
                         <span>{currentFolder ? "New Subfolder" : "New Folder"}</span>
                     </button>
 
                     <button
+                        onClick={() => setCreateDocType("excel")}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                    >
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                        <span>New Sheet</span>
+                    </button>
+
+                    <button
+                        onClick={() => setCreateDocType("word")}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-[#2D79C7] text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                    >
+                        <FileText className="w-4 h-4 text-[#2D79C7]" />
+                        <span>New Word Doc</span>
+                    </button>
+
+                    <button
                         onClick={() => setIsUploadModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-sm shadow-[#2D79C7]/30 hover:opacity-95 active:scale-95 cursor-pointer"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm shadow-[#2D79C7]/30 hover:opacity-95 active:scale-95 cursor-pointer"
                         style={{ background: "linear-gradient(135deg, #2D79C7 0%, #1F5EA8 100%)" }}
                     >
                         <UploadCloud className="w-4 h-4" />
-                        <span>Upload Files</span>
+                        <span>Upload</span>
                     </button>
                 </div>
             </div>
@@ -442,7 +505,7 @@ const FileManager = () => {
 
                 <div className="bg-white p-4.5 rounded-[16px] border border-gray-150 shadow-2xs">
                     <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Documents</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Documents & Sheets</span>
                         <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
                             <FileText className="w-4 h-4" />
                         </div>
@@ -456,7 +519,7 @@ const FileManager = () => {
                 </div>
             </div>
 
-            {/* ── BREADCRUMB ADDRESS BAR & NAVIGATION (WINDOWS EXPLORER STYLE) ── */}
+            {/* ── BREADCRUMB ADDRESS BAR & CONTROLS ── */}
             <div className="bg-white p-3 sm:p-4 rounded-[16px] border border-gray-150 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
                 {/* Left: Back button + Breadcrumb Trail */}
                 <div className="flex items-center gap-2 w-full md:w-auto flex-1 overflow-x-auto scrollbar-none">
@@ -499,22 +562,54 @@ const FileManager = () => {
                     </div>
                 </div>
 
-                {/* Right: Search, Filter & View Controls */}
+                {/* Right: Quick Scope Filter, Search & View Controls */}
                 <div className="flex items-center gap-2.5 w-full md:w-auto justify-end shrink-0">
+                    {/* Filter: All / My Files / Shared */}
+                    <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200 text-xs font-bold">
+                        <button
+                            type="button"
+                            onClick={() => setFileFilter("all")}
+                            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                                fileFilter === "all" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-700"
+                            }`}
+                        >
+                            All
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFileFilter("my")}
+                            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                                fileFilter === "my" ? "bg-white text-slate-800 shadow-2xs" : "text-slate-500 hover:text-slate-700"
+                            }`}
+                        >
+                            My Files
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFileFilter("shared")}
+                            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                                fileFilter === "shared" ? "bg-white text-blue-600 shadow-2xs" : "text-slate-500 hover:text-slate-700"
+                            }`}
+                        >
+                            <Users className="w-3 h-3" />
+                            <span>Shared with me</span>
+                        </button>
+                    </div>
+
                     {/* Search Input */}
-                    <div className="relative w-full sm:w-60">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <div className="relative w-full sm:w-52">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search files..."
-                            className="w-full bg-gray-50 border border-gray-200 pl-10 pr-4 py-2 text-xs font-semibold text-slate-800 rounded-xl focus:outline-none focus:border-[#2D79C7] focus:bg-white transition-all shadow-inner"
+                            className="w-full bg-gray-50 border border-gray-200 pl-9 pr-3 py-1.5 text-xs font-semibold text-slate-800 rounded-xl focus:outline-none focus:border-[#2D79C7] focus:bg-white transition-all shadow-inner"
                         />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>
@@ -525,21 +620,20 @@ const FileManager = () => {
                     <select
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="bg-gray-50 border border-gray-200 px-3 py-2 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:border-[#2D79C7] cursor-pointer shadow-inner shrink-0"
+                        className="bg-gray-50 border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-slate-700 rounded-xl focus:outline-none focus:border-[#2D79C7] cursor-pointer shadow-inner shrink-0"
                     >
                         <option value="all">All Types</option>
+                        <option value="document">Docs & Sheets</option>
                         <option value="image">Images</option>
-                        <option value="document">Documents</option>
                         <option value="video">Videos</option>
                         <option value="audio">Audios</option>
                         <option value="archive">Archives</option>
-                        <option value="other">Other</option>
                     </select>
 
                     <button
                         onClick={fetchData}
                         title="Refresh"
-                        className="p-2 border border-gray-200 bg-gray-50 hover:bg-gray-100 text-slate-600 rounded-xl transition-all cursor-pointer shrink-0"
+                        className="p-1.5 border border-gray-200 bg-gray-50 hover:bg-gray-100 text-slate-600 rounded-xl transition-all cursor-pointer shrink-0"
                     >
                         <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-[#2D79C7]" : ""}`} />
                     </button>
@@ -548,8 +642,8 @@ const FileManager = () => {
                 </div>
             </div>
 
-            {/* ── FOLDERS SECTION (NESTED SUBFOLDERS GRID) ── */}
-            {folders.length > 0 && !searchQuery && (
+            {/* ── FOLDERS SECTION ── */}
+            {folders.length > 0 && !searchQuery && fileFilter !== "shared" && (
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -598,11 +692,13 @@ const FileManager = () => {
 
             {/* ── FILES SECTION ── */}
             <div className="space-y-3">
-                {(folders.length > 0 || currentFolder) && (
+                {(folders.length > 0 || currentFolder || fileFilter === "shared") && (
                     <div className="flex items-center justify-between">
                         <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                             <File className="w-4 h-4 text-[#2D79C7]" />
-                            <span>Files ({files.length})</span>
+                            <span>
+                                {fileFilter === "shared" ? "Shared With Me" : "Files"} ({files.length})
+                            </span>
                         </h3>
                     </div>
                 )}
@@ -620,35 +716,58 @@ const FileManager = () => {
                             <Folder className="w-8 h-8 fill-blue-100" />
                         </div>
                         <h3 className="text-base font-black text-slate-800">
-                            {currentFolder ? `"${currentFolder.name}" is empty` : "No files or folders yet"}
+                            {fileFilter === "shared"
+                                ? "No files shared with you yet"
+                                : currentFolder
+                                ? `"${currentFolder.name}" is empty`
+                                : "No files or folders yet"}
                         </h3>
                         <p className="text-xs font-semibold text-slate-400 mt-1 max-w-sm mx-auto">
-                            {currentFolder
-                                ? "This folder has no files or subfolders. Create a subfolder or upload files here."
-                                : "Your root directory is empty. Create a folder or upload your first file."}
+                            {fileFilter === "shared"
+                                ? "When colleagues share files with you, they will appear here."
+                                : currentFolder
+                                ? "Create a subfolder, excel sheet, word doc or upload files here."
+                                : "Start by creating a folder, sheet, word document or upload files."}
                         </p>
-                        <div className="flex items-center justify-center gap-3 mt-5">
-                            <button
-                                onClick={() => setIsFolderModalOpen(true)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-gray-200 hover:bg-gray-50 shadow-2xs transition-all cursor-pointer"
-                            >
-                                <FolderPlus className="w-4 h-4 text-[#2D79C7]" />
-                                <span>{currentFolder ? "+ New Subfolder" : "+ New Folder"}</span>
-                            </button>
-                            <button
-                                onClick={() => setIsUploadModalOpen(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-sm transition-all cursor-pointer"
-                            >
-                                <UploadCloud className="w-4 h-4" />
-                                <span>Upload Files</span>
-                            </button>
-                        </div>
+                        {fileFilter !== "shared" && (
+                            <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5">
+                                <button
+                                    onClick={() => setIsFolderModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-gray-200 hover:bg-gray-50 shadow-2xs transition-all cursor-pointer"
+                                >
+                                    <FolderPlus className="w-4 h-4 text-[#2D79C7]" />
+                                    <span>{currentFolder ? "+ New Subfolder" : "+ New Folder"}</span>
+                                </button>
+                                <button
+                                    onClick={() => setCreateDocType("excel")}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 shadow-2xs transition-all cursor-pointer"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                                    <span>+ New Sheet</span>
+                                </button>
+                                <button
+                                    onClick={() => setIsUploadModalOpen(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2D79C7] hover:bg-[#1F5EA8] shadow-sm transition-all cursor-pointer"
+                                >
+                                    <UploadCloud className="w-4 h-4" />
+                                    <span>Upload Files</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ) : view === "card" ? (
                     /* ── CARD GRID VIEW ── */
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         {files.map((file) => {
                             const isImage = file.category === "image";
+                            const isOwner = file.uploadedBy?._id?.toString() === currentUserId?.toString();
+                            const sharedCount = (file.sharedWith || []).length;
+                            const isSharedWithMe = !isOwner && sharedCount > 0;
+                            const isSharedByMe = isOwner && sharedCount > 0;
+
+                            const ext = (file.extension || "").toLowerCase();
+                            const isDocOrSheet = ["xlsx", "xls", "csv", "doc", "docx"].includes(ext) || file.documentContent;
+
                             return (
                                 <div
                                     key={file._id}
@@ -656,7 +775,7 @@ const FileManager = () => {
                                 >
                                     {/* Thumbnail / Preview Box */}
                                     <div
-                                        onClick={() => setPreviewFile(file)}
+                                        onClick={() => handleOpenFile(file)}
                                         className="h-32 bg-slate-50 relative flex items-center justify-center cursor-pointer overflow-hidden border-b border-gray-100"
                                     >
                                         {isImage && file.url ? (
@@ -677,10 +796,18 @@ const FileManager = () => {
                                             {file.extension || file.category}
                                         </span>
 
-                                        {/* Quick Preview Hover Pill */}
+                                        {/* Quick Open/Edit Hover Pill */}
                                         <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <span className="px-3 py-1 bg-white rounded-lg text-xs font-bold text-slate-800 shadow-md flex items-center gap-1.5">
-                                                <Eye className="w-3.5 h-3.5 text-[#2D79C7]" /> Preview
+                                                {isDocOrSheet ? (
+                                                    <>
+                                                        <Edit3 className="w-3.5 h-3.5 text-emerald-600" /> Open & Edit
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Eye className="w-3.5 h-3.5 text-[#2D79C7]" /> Preview
+                                                    </>
+                                                )}
                                             </span>
                                         </div>
                                     </div>
@@ -689,8 +816,9 @@ const FileManager = () => {
                                     <div className="p-3.5 flex flex-col gap-1.5 flex-1 justify-between">
                                         <div>
                                             <h4
+                                                onClick={() => handleOpenFile(file)}
                                                 title={file.name}
-                                                className="text-xs font-bold text-slate-800 truncate leading-snug group-hover:text-[#2D79C7] transition-colors"
+                                                className="text-xs font-bold text-slate-800 truncate leading-snug group-hover:text-[#2D79C7] transition-colors cursor-pointer"
                                             >
                                                 {file.name}
                                             </h4>
@@ -700,6 +828,25 @@ const FileManager = () => {
                                             </div>
                                         </div>
 
+                                        {/* Sharing Status Label */}
+                                        {isSharedWithMe && (
+                                            <div className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200/80 truncate flex items-center gap-1">
+                                                <Users className="w-2.5 h-2.5 shrink-0" />
+                                                <span className="truncate">
+                                                    Shared by {file.uploadedBy?.fullName || "Colleague"}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {isSharedByMe && (
+                                            <div className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80 truncate flex items-center gap-1">
+                                                <Share2 className="w-2.5 h-2.5 shrink-0" />
+                                                <span className="truncate">
+                                                    Shared with {sharedCount === 1 ? (file.sharedWith[0]?.user?.fullName || "1 person") : `${sharedCount} people`}
+                                                </span>
+                                            </div>
+                                        )}
+
                                         {/* Action Bar */}
                                         <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-1">
                                             <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${categoryBadge(file.category)}`}>
@@ -707,6 +854,15 @@ const FileManager = () => {
                                             </span>
 
                                             <div className="flex items-center gap-1">
+                                                {/* Share button */}
+                                                <button
+                                                    onClick={() => setShareTargetFile(file)}
+                                                    title="Share with Colleagues"
+                                                    className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
+                                                >
+                                                    <Share2 className="w-3.5 h-3.5" />
+                                                </button>
+
                                                 <button
                                                     onClick={() => handleCopyLink(file.url)}
                                                     title="Copy Shareable Link"
@@ -714,6 +870,7 @@ const FileManager = () => {
                                                 >
                                                     <Link2 className="w-3.5 h-3.5" />
                                                 </button>
+
                                                 <button
                                                     onClick={() => handleDownload(file)}
                                                     title="Download File"
@@ -721,13 +878,17 @@ const FileManager = () => {
                                                 >
                                                     <Download className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button
-                                                    onClick={() => setDeleteTargetFile(file)}
-                                                    title="Delete File"
-                                                    className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
+
+                                                {/* Delete only if owner or admin */}
+                                                {(isOwner || user?.role === "global_admin") && (
+                                                    <button
+                                                        onClick={() => setDeleteTargetFile(file)}
+                                                        title="Delete File"
+                                                        className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -744,79 +905,103 @@ const FileManager = () => {
                                     <tr>
                                         <th className="py-3 px-4">Name</th>
                                         <th className="py-3 px-4">Folder</th>
-                                        <th className="py-3 px-4">Category</th>
+                                        <th className="py-3 px-4">Sharing Status</th>
                                         <th className="py-3 px-4">Size</th>
-                                        <th className="py-3 px-4">Uploaded Date</th>
+                                        <th className="py-3 px-4">Uploaded By</th>
                                         <th className="py-3 px-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-xs font-semibold text-slate-700">
-                                    {files.map((file) => (
-                                        <tr key={file._id} className="hover:bg-slate-50/70 transition-colors">
-                                            <td className="py-3 px-4 flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0">
-                                                    {getFileIcon(file)}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p
-                                                        onClick={() => setPreviewFile(file)}
-                                                        className="font-bold text-slate-800 hover:text-[#2D79C7] cursor-pointer truncate max-w-xs"
-                                                    >
-                                                        {file.name}
-                                                    </p>
-                                                    <p className="text-[10px] text-slate-400 font-mono truncate max-w-xs">
-                                                        {file.originalName}
-                                                    </p>
-                                                </div>
-                                            </td>
-                                            <td className="py-3 px-4 text-slate-600 font-bold">{file.folder || "Home"}</td>
-                                            <td className="py-3 px-4">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${categoryBadge(file.category)}`}>
-                                                    {file.category}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-slate-500 font-mono">{file.formattedSize || "0 B"}</td>
-                                            <td className="py-3 px-4 text-slate-400">
-                                                {new Date(file.createdAt).toLocaleDateString("en-US", {
-                                                    day: "numeric",
-                                                    month: "short",
-                                                    year: "numeric"
-                                                })}
-                                            </td>
-                                            <td className="py-3 px-4 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <button
-                                                        onClick={() => setPreviewFile(file)}
-                                                        title="Preview"
-                                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleCopyLink(file.url)}
-                                                        title="Copy Link"
-                                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                                                    >
-                                                        <Link2 className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDownload(file)}
-                                                        title="Download"
-                                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                                                    >
-                                                        <Download className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeleteTargetFile(file)}
-                                                        title="Delete"
-                                                        className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {files.map((file) => {
+                                        const isOwner = file.uploadedBy?._id?.toString() === currentUserId?.toString();
+                                        const sharedCount = (file.sharedWith || []).length;
+                                        const isSharedWithMe = !isOwner && sharedCount > 0;
+                                        const isSharedByMe = isOwner && sharedCount > 0;
+                                        const ext = (file.extension || "").toLowerCase();
+                                        const isDocOrSheet = ["xlsx", "xls", "csv", "doc", "docx"].includes(ext) || file.documentContent;
+
+                                        return (
+                                            <tr key={file._id} className="hover:bg-slate-50/70 transition-colors">
+                                                <td className="py-3 px-4 flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0">
+                                                        {getFileIcon(file)}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p
+                                                            onClick={() => handleOpenFile(file)}
+                                                            className="font-bold text-slate-800 hover:text-[#2D79C7] cursor-pointer truncate max-w-xs"
+                                                        >
+                                                            {file.name}
+                                                        </p>
+                                                        <p className="text-[10px] text-slate-400 font-mono truncate max-w-xs">
+                                                            {file.originalName}
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-4 text-slate-600 font-bold">{file.folder || "Home"}</td>
+                                                <td className="py-3 px-4">
+                                                    {isSharedWithMe ? (
+                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                                                            <Users className="w-2.5 h-2.5" />
+                                                            Shared by {file.uploadedBy?.fullName || "Colleague"}
+                                                        </span>
+                                                    ) : isSharedByMe ? (
+                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                                                            <Share2 className="w-2.5 h-2.5" />
+                                                            Shared with {sharedCount === 1 ? (file.sharedWith[0]?.user?.fullName || "1 person") : `${sharedCount} people`}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-slate-400 font-medium">Private (Only You)</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4 text-slate-500 font-mono">{file.formattedSize || "0 B"}</td>
+                                                <td className="py-3 px-4 text-slate-500">
+                                                    {file.uploadedBy?.fullName || "Admin"}
+                                                </td>
+                                                <td className="py-3 px-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <button
+                                                            onClick={() => handleOpenFile(file)}
+                                                            title={isDocOrSheet ? "Open & Edit" : "Preview"}
+                                                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                                                        >
+                                                            {isDocOrSheet ? <Edit3 className="w-4 h-4 text-emerald-600" /> : <Eye className="w-4 h-4" />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setShareTargetFile(file)}
+                                                            title="Share"
+                                                            className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                                        >
+                                                            <Share2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleCopyLink(file.url)}
+                                                            title="Copy Link"
+                                                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                                                        >
+                                                            <Link2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDownload(file)}
+                                                            title="Download"
+                                                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                                                        >
+                                                            <Download className="w-4 h-4" />
+                                                        </button>
+                                                        {(isOwner || user?.role === "global_admin") && (
+                                                            <button
+                                                                onClick={() => setDeleteTargetFile(file)}
+                                                                title="Delete"
+                                                                className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -854,7 +1039,6 @@ const FileManager = () => {
 
                         {/* Body */}
                         <div className="p-6 space-y-4">
-                            {/* Drag & Drop Zone */}
                             <div
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={handleDrop}
@@ -879,7 +1063,6 @@ const FileManager = () => {
                                 </p>
                             </div>
 
-                            {/* Selected Files List */}
                             {uploadQueue.length > 0 && (
                                 <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -899,7 +1082,6 @@ const FileManager = () => {
                                 </div>
                             )}
 
-                            {/* Progress bar */}
                             {uploading && (
                                 <div className="space-y-1.5">
                                     <div className="flex justify-between text-xs font-bold text-[#2D79C7]">
@@ -982,7 +1164,7 @@ const FileManager = () => {
                                     type="text"
                                     value={newFolderName}
                                     onChange={(e) => setNewFolderName(e.target.value)}
-                                    placeholder={currentFolder ? `e.g. Subfolder in ${currentFolder.name}...` : "e.g. Marketing, Legal Contracts..."}
+                                    placeholder={currentFolder ? `e.g. Subfolder in ${currentFolder.name}...` : "e.g. Marketing, Projects 2026..."}
                                     className="w-full bg-gray-50 border border-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2D79C7] focus:bg-white transition-all shadow-inner"
                                     autoFocus
                                 />
@@ -1008,7 +1190,41 @@ const FileManager = () => {
                 </div>
             )}
 
-            {/* ── PREVIEW MODAL ── */}
+            {/* ── CREATE IN-APP DOCUMENT MODAL (EXCEL / WORD) ── */}
+            <CreateDocModal
+                isOpen={!!createDocType}
+                type={createDocType}
+                folderId={currentFolder?._id}
+                folderName={currentFolder?.name}
+                onClose={() => setCreateDocType(null)}
+                onCreated={handleDocCreated}
+            />
+
+            {/* ── SPREADSHEET EDITOR MODAL (EXCEL) ── */}
+            <SpreadsheetEditorModal
+                isOpen={!!spreadsheetFile}
+                file={spreadsheetFile}
+                onClose={() => setSpreadsheetFile(null)}
+                onSaveSuccess={() => fetchData()}
+            />
+
+            {/* ── WORD DOCUMENT EDITOR MODAL ── */}
+            <WordEditorModal
+                isOpen={!!wordDocFile}
+                file={wordDocFile}
+                onClose={() => setWordDocFile(null)}
+                onSaveSuccess={() => fetchData()}
+            />
+
+            {/* ── SHARE FILE MODAL ── */}
+            <ShareFileModal
+                isOpen={!!shareTargetFile}
+                file={shareTargetFile}
+                onClose={() => setShareTargetFile(null)}
+                onShareSuccess={() => fetchData()}
+            />
+
+            {/* ── PREVIEW MODAL (FOR IMAGES, PDFS, VIDEOS, AUDIO) ── */}
             {previewFile && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
                     <div className="bg-white rounded-[22px] border border-gray-150 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -1017,7 +1233,7 @@ const FileManager = () => {
                             <div className="min-w-0 pr-4">
                                 <h3 className="text-sm font-black text-slate-800 truncate">{previewFile.name}</h3>
                                 <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-                                    {previewFile.formattedSize} • {previewFile.folder || "Home"} • Uploaded by {previewFile.uploadedBy?.fullName || "Admin"}
+                                    {previewFile.formattedSize} • {previewFile.folder || "Home"} • Uploaded by {previewFile.uploadedBy?.fullName || "Colleague"}
                                 </p>
                             </div>
 

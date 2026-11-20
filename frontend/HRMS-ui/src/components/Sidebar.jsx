@@ -342,9 +342,8 @@ const Sidebar = ({ onClose }) => {
         }
 
         if (item.permissionKey === "fileManager" || item.to === "/file-manager") {
-            const allowedEmails = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
-            const currentEmail = (user?.email || "").toLowerCase().trim();
-            return allowedEmails.includes(currentEmail);
+            if (role === "global_admin" || role === "admin" || role === "management") return true;
+            return user.permissions?.fileManager !== false;
         }
 
         // Employees module permission check

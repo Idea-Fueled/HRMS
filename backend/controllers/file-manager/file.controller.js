@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
+import XLSX from "xlsx";
 import FileItem from "../../models/file-manager/file.model.js";
 import Folder from "../../models/file-manager/folder.model.js";
+import User from "../../models/users/user.model.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../services/cloudinary.service.js";
 
 // Helper: Format bytes to human readable format
@@ -139,6 +141,7 @@ export const uploadFiles = async (req, res) => {
             });
 
             await fileDoc.populate("uploadedBy", "fullName email profilePicture");
+            await fileDoc.populate("sharedWith.user", "fullName email profilePicture");
             results.push(fileDoc);
         }
 
@@ -154,30 +157,44 @@ export const uploadFiles = async (req, res) => {
 };
 
 /**
- * Get all files with filtering and search
+ * Get all files with filtering and search (scoped per user + shared files)
  */
 export const getFiles = async (req, res) => {
     try {
-        const { folder, folderId, category, search, all } = req.query;
+        const { folder, folderId, category, search, all, filter } = req.query;
+        const userId = req.user?._id || req.user?.id;
+
         const query = {};
 
-        // If searching or all=true, search across everything unless folderId specifically requested
+        // User can only see files they uploaded OR files shared with them
+        if (filter === "shared") {
+            query["sharedWith.user"] = userId;
+        } else if (filter === "my") {
+            query.uploadedBy = userId;
+        } else {
+            query.$or = [
+                { uploadedBy: userId },
+                { "sharedWith.user": userId }
+            ];
+        }
+
+        // If searching or all=true, search across all folders
         if (search && search.trim()) {
             const regex = new RegExp(search.trim(), "i");
-            query.$or = [{ name: regex }, { originalName: regex }];
-        } else if (all !== "true") {
+            const baseOr = query.$or || [{ uploadedBy: userId }, { "sharedWith.user": userId }];
+            delete query.$or;
+            query.$and = [
+                { $or: baseOr },
+                { $or: [{ name: regex }, { originalName: regex }] }
+            ];
+        } else if (all !== "true" && filter !== "shared") {
             if (folderId && folderId !== "all" && folderId !== "root" && folderId !== "null") {
                 if (mongoose.Types.ObjectId.isValid(folderId)) {
                     query.folderId = folderId;
                 }
             } else if (folderId === "root" || (!folderId && (!folder || folder === "all" || folder === "All Files"))) {
-                // At root level: files without folderId or folderId null
-                query.$or = [
-                    { folderId: null },
-                    { folderId: { $exists: false } },
-                    { folder: "" },
-                    { folder: "General" }
-                ];
+                // At root level
+                query.folderId = null;
             } else if (folder && folder !== "all" && folder !== "All Files") {
                 query.folder = folder;
             }
@@ -190,6 +207,7 @@ export const getFiles = async (req, res) => {
         const files = await FileItem.find(query)
             .sort({ createdAt: -1 })
             .populate("uploadedBy", "fullName email profilePicture")
+            .populate("sharedWith.user", "fullName email profilePicture")
             .populate("folderId", "name parentId")
             .lean();
 
@@ -213,6 +231,7 @@ export const createFolder = async (req, res) => {
             return res.status(400).json({ success: false, message: "Folder name is required." });
         }
 
+        const userId = req.user?._id || req.user?.id;
         const trimmedName = name.trim();
         let validParentId = null;
         let ancestors = [];
@@ -232,8 +251,9 @@ export const createFolder = async (req, res) => {
             ];
         }
 
-        // Check if sibling folder with the same name exists under this parent
+        // Check if sibling folder with the same name exists under this parent for this user
         const existing = await Folder.findOne({
+            createdBy: userId,
             parentId: validParentId,
             name: { $regex: new RegExp(`^${trimmedName}$`, "i") }
         });
@@ -245,17 +265,11 @@ export const createFolder = async (req, res) => {
             });
         }
 
-        let creatorId = null;
-        const candidate = req.user?.id || req.user?._id || req.user?.userId;
-        if (candidate && mongoose.Types.ObjectId.isValid(candidate)) {
-            creatorId = candidate;
-        }
-
         const folder = await Folder.create({
             name: trimmedName,
             parentId: validParentId,
             ancestors: ancestors,
-            createdBy: creatorId
+            createdBy: userId
         });
 
         return res.status(201).json({
@@ -283,34 +297,23 @@ export const createFolder = async (req, res) => {
 export const deleteFolder = async (req, res) => {
     try {
         const target = decodeURIComponent(req.params.nameOrId || req.params.name || "").trim();
+        const userId = req.user?._id || req.user?.id;
         if (!target) {
             return res.status(400).json({ success: false, message: "Folder ID or name is required." });
         }
 
-        // Find folder by ObjectId or by name
         let folder = null;
         if (mongoose.Types.ObjectId.isValid(target)) {
             folder = await Folder.findById(target);
         }
         if (!folder) {
             folder = await Folder.findOne({
+                createdBy: userId,
                 name: { $regex: new RegExp(`^${target}$`, "i") }
             });
         }
 
         if (!folder) {
-            // Check if there are orphaned files with this folder name string
-            const orphanCount = await FileItem.countDocuments({
-                folder: { $regex: new RegExp(`^${target}$`, "i") }
-            });
-            if (orphanCount > 0) {
-                return res.status(400).json({
-                    success: false,
-                    containsMedia: true,
-                    fileCount: orphanCount,
-                    message: "This folder contains some media, first delete them."
-                });
-            }
             return res.status(404).json({ success: false, message: "Folder not found." });
         }
 
@@ -319,10 +322,7 @@ export const deleteFolder = async (req, res) => {
 
         // Check if this folder OR any subfolder contains files
         const fileCount = await FileItem.countDocuments({
-            $or: [
-                { folderId: { $in: allDescendantIds } },
-                { folder: { $regex: new RegExp(`^${folder.name}$`, "i") } }
-            ]
+            folderId: { $in: allDescendantIds }
         });
 
         if (fileCount > 0) {
@@ -348,24 +348,28 @@ export const deleteFolder = async (req, res) => {
 };
 
 /**
- * Get all available folders
+ * Get available folders (scoped per user)
  */
 export const getFolders = async (req, res) => {
     try {
         const { parentId, all } = req.query;
+        const userId = req.user?._id || req.user?.id;
 
         let query = {};
         if (all === "true") {
-            query = {}; // return all folders for tree / selectors
+            query = { createdBy: userId };
         } else if (parentId && parentId !== "root" && parentId !== "null") {
             if (mongoose.Types.ObjectId.isValid(parentId)) {
-                query = { parentId: parentId };
+                query = { parentId: parentId, createdBy: userId };
             } else {
-                query = { parentId: null };
+                query = { parentId: null, createdBy: userId };
             }
         } else {
-            // Root level folders
-            query = { parentId: null };
+            // Root level folders for this user (or legacy folders)
+            query = {
+                parentId: null,
+                $or: [{ createdBy: userId }, { createdBy: null }]
+            };
         }
 
         const folders = await Folder.find(query).sort({ name: 1 }).lean();
@@ -375,12 +379,13 @@ export const getFolders = async (req, res) => {
             folders.map(async (f) => {
                 const [filesCount, subfoldersCount] = await Promise.all([
                     FileItem.countDocuments({
+                        folderId: f._id,
                         $or: [
-                            { folderId: f._id },
-                            { folder: f.name }
+                            { uploadedBy: userId },
+                            { "sharedWith.user": userId }
                         ]
                     }),
-                    Folder.countDocuments({ parentId: f._id })
+                    Folder.countDocuments({ parentId: f._id, createdBy: userId })
                 ]);
                 return {
                     _id: f._id,
@@ -425,6 +430,237 @@ export const getFolders = async (req, res) => {
 };
 
 /**
+ * Share a file with one or multiple users within HRMS
+ */
+export const shareFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userIds } = req.body;
+        const currentUserId = req.user?._id || req.user?.id;
+
+        const file = await FileItem.findById(id);
+        if (!file) {
+            return res.status(404).json({ success: false, message: "File not found." });
+        }
+
+        const isOwner = file.uploadedBy.toString() === currentUserId.toString();
+        const isGlobalAdmin = req.user?.role === "global_admin";
+        if (!isOwner && !isGlobalAdmin) {
+            return res.status(403).json({ success: false, message: "Only the file owner can modify sharing." });
+        }
+
+        if (!Array.isArray(userIds)) {
+            return res.status(400).json({ success: false, message: "userIds must be an array." });
+        }
+
+        // Filter out the owner themselves
+        const cleanIds = userIds.filter(uid => uid.toString() !== currentUserId.toString());
+
+        file.sharedWith = cleanIds.map(uid => ({
+            user: uid,
+            sharedAt: new Date(),
+            canEdit: true
+        }));
+
+        await file.save();
+        await file.populate("uploadedBy", "fullName email profilePicture");
+        await file.populate("sharedWith.user", "fullName email profilePicture");
+
+        return res.status(200).json({
+            success: true,
+            message: `File shared with ${file.sharedWith.length} colleague(s).`,
+            file
+        });
+    } catch (error) {
+        console.error("Share File Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to share file." });
+    }
+};
+
+/**
+ * Create an in-app Excel Spreadsheet or Word Document
+ */
+export const createDocument = async (req, res) => {
+    try {
+        const { name, type, folderId, content } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ success: false, message: "Document name is required." });
+        }
+
+        const userId = req.user?._id || req.user?.id;
+        const trimmedName = name.trim();
+        const docType = type === "excel" ? "excel" : "word";
+        const extension = docType === "excel" ? "xlsx" : "docx";
+        const category = "document";
+
+        const fullDisplayName = trimmedName.toLowerCase().endsWith(`.${extension}`) ? trimmedName : `${trimmedName}.${extension}`;
+
+        let fileBuffer;
+        let mimeType;
+
+        if (docType === "excel") {
+            mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            const wb = XLSX.utils.book_new();
+            const initialData = Array.isArray(content) && content.length > 0
+                ? content
+                : [
+                    ["Title", "Category", "Amount", "Notes"],
+                    ["Item 1", "General", 100, "Example entry"],
+                    ["Item 2", "Marketing", 250, "Sample note"]
+                ];
+            const ws = XLSX.utils.aoa_to_sheet(initialData);
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+            fileBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+        } else {
+            mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            const htmlContent = typeof content === "string" && content.trim()
+                ? content
+                : `<h2>${trimmedName}</h2><p>Start drafting your document here...</p>`;
+            fileBuffer = Buffer.from(htmlContent, "utf-8");
+        }
+
+        // Upload buffer to Cloudinary
+        const uploadRes = await uploadToCloudinary(fileBuffer, "hrms_file_manager/documents", "raw");
+
+        let validFolderId = null;
+        let folderName = "";
+        if (folderId && folderId !== "root" && mongoose.Types.ObjectId.isValid(folderId)) {
+            const fDoc = await Folder.findById(folderId);
+            if (fDoc) {
+                validFolderId = fDoc._id;
+                folderName = fDoc.name;
+            }
+        }
+
+        const defaultData = docType === "excel"
+            ? (Array.isArray(content) && content.length > 0 ? content : [
+                ["Title", "Category", "Amount", "Notes"],
+                ["Item 1", "General", 100, "Example entry"],
+                ["Item 2", "Marketing", 250, "Sample note"]
+            ])
+            : (typeof content === "string" && content.trim() ? content : `<h2>${trimmedName}</h2><p>Start drafting your document here...</p>`);
+
+        const fileDoc = await FileItem.create({
+            name: fullDisplayName,
+            originalName: fullDisplayName,
+            url: uploadRes.secure_url || uploadRes.url,
+            publicId: uploadRes.public_id || "",
+            resourceType: "raw",
+            mimeType: mimeType,
+            extension: extension,
+            sizeBytes: fileBuffer.length,
+            formattedSize: formatBytes(fileBuffer.length),
+            category: category,
+            folder: folderName,
+            folderId: validFolderId,
+            uploadedBy: userId,
+            documentContent: defaultData
+        });
+
+        await fileDoc.populate("uploadedBy", "fullName email profilePicture");
+        await fileDoc.populate("sharedWith.user", "fullName email profilePicture");
+
+        return res.status(201).json({
+            success: true,
+            message: `${docType === "excel" ? "Excel Spreadsheet" : "Word Document"} created successfully!`,
+            file: fileDoc
+        });
+    } catch (error) {
+        console.error("Create Document Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to create document." });
+    }
+};
+
+/**
+ * Update document content for an existing in-app doc/sheet
+ */
+export const updateDocumentContent = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { content } = req.body;
+        const userId = req.user?._id || req.user?.id;
+
+        const file = await FileItem.findById(id);
+        if (!file) {
+            return res.status(404).json({ success: false, message: "File not found." });
+        }
+
+        const isOwner = file.uploadedBy.toString() === userId.toString();
+        const isShared = (file.sharedWith || []).some(s => s.user.toString() === userId.toString());
+        const isGlobalAdmin = req.user?.role === "global_admin";
+
+        if (!isOwner && !isShared && !isGlobalAdmin) {
+            return res.status(403).json({ success: false, message: "You do not have permission to edit this document." });
+        }
+
+        file.documentContent = content;
+
+        // If Excel, re-render xlsx buffer and re-upload to Cloudinary
+        if (file.extension === "xlsx") {
+            const wb = XLSX.utils.book_new();
+            const sheetData = Array.isArray(content) ? content : [[""]];
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+            const fileBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+            const uploadRes = await uploadToCloudinary(fileBuffer, "hrms_file_manager/documents", "raw");
+            file.url = uploadRes.secure_url || uploadRes.url;
+            file.sizeBytes = fileBuffer.length;
+            file.formattedSize = formatBytes(fileBuffer.length);
+        } else if (file.extension === "docx" || file.mimeType?.includes("word")) {
+            const fileBuffer = Buffer.from(typeof content === "string" ? content : "", "utf-8");
+            const uploadRes = await uploadToCloudinary(fileBuffer, "hrms_file_manager/documents", "raw");
+            file.url = uploadRes.secure_url || uploadRes.url;
+            file.sizeBytes = fileBuffer.length;
+            file.formattedSize = formatBytes(fileBuffer.length);
+        }
+
+        await file.save();
+        await file.populate("uploadedBy", "fullName email profilePicture");
+        await file.populate("sharedWith.user", "fullName email profilePicture");
+
+        return res.status(200).json({
+            success: true,
+            message: "Document saved successfully.",
+            file
+        });
+    } catch (error) {
+        console.error("Update Document Content Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to save document." });
+    }
+};
+
+/**
+ * Get active company employees for sharing
+ */
+export const getShareableEmployees = async (req, res) => {
+    try {
+        const users = await User.find({ status: { $ne: "inactive" } })
+            .select("fullName firstName lastName email role department profilePicture employeeId")
+            .sort({ fullName: 1, firstName: 1 })
+            .lean();
+
+        const formatted = users.map(u => ({
+            _id: u._id,
+            name: u.fullName || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email,
+            email: u.email,
+            role: u.role,
+            department: u.department || "General",
+            profilePicture: u.profilePicture || "",
+            employeeId: u.employeeId || ""
+        }));
+
+        return res.status(200).json({
+            success: true,
+            employees: formatted
+        });
+    } catch (error) {
+        console.error("Get Shareable Employees Error:", error);
+        return res.status(500).json({ success: false, message: error.message || "Failed to fetch employees." });
+    }
+};
+
+/**
  * Rename / update file metadata
  */
 export const updateFile = async (req, res) => {
@@ -437,7 +673,8 @@ export const updateFile = async (req, res) => {
         if (folder && folder.trim()) updateData.folder = folder.trim();
 
         const updated = await FileItem.findByIdAndUpdate(id, { $set: updateData }, { new: true })
-            .populate("uploadedBy", "fullName email profilePicture");
+            .populate("uploadedBy", "fullName email profilePicture")
+            .populate("sharedWith.user", "fullName email profilePicture");
 
         if (!updated) {
             return res.status(404).json({ success: false, message: "File not found." });
@@ -460,15 +697,25 @@ export const updateFile = async (req, res) => {
 export const deleteFile = async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user?._id || req.user?.id;
         const file = await FileItem.findById(id);
 
         if (!file) {
             return res.status(404).json({ success: false, message: "File not found." });
         }
 
-        // Delete from Cloudinary
-        if (file.url) {
-            await deleteFromCloudinary(file.url, file.resourceType);
+        const isOwner = file.uploadedBy.toString() === userId.toString();
+        const isGlobalAdmin = req.user?.role === "global_admin";
+        if (!isOwner && !isGlobalAdmin) {
+            return res.status(403).json({ success: false, message: "Only the file owner can delete this file." });
+        }
+
+        if (file.publicId) {
+            try {
+                await deleteFromCloudinary(file.publicId, file.resourceType || "raw");
+            } catch (cloudErr) {
+                console.warn("Could not delete from Cloudinary:", cloudErr.message);
+            }
         }
 
         await FileItem.findByIdAndDelete(id);
@@ -484,11 +731,21 @@ export const deleteFile = async (req, res) => {
 };
 
 /**
- * Storage statistics & metrics
+ * Storage statistics & metrics (scoped to user)
  */
 export const getStorageStats = async (req, res) => {
     try {
+        const userId = req.user?._id || req.user?.id;
+
         const stats = await FileItem.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { uploadedBy: new mongoose.Types.ObjectId(userId) },
+                        { "sharedWith.user": new mongoose.Types.ObjectId(userId) }
+                    ]
+                }
+            },
             {
                 $group: {
                     _id: "$category",
@@ -534,4 +791,3 @@ export const getStorageStats = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message || "Failed to fetch storage stats." });
     }
 };
-

@@ -110,7 +110,8 @@ const DEFAULT_PERMISSIONS = {
     hire: false,
     offboardingAndOnboarding: false,
     organization: false,
-    probation: false
+    probation: false,
+    fileManager: true
 };
 
 const EMPTY_FORM = {
@@ -933,6 +934,7 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                         }
                         return ["global_admin", "admin", "manager"].includes((employee.role || "").toLowerCase());
                     })(),
+                    fileManager: employee.permissions?.fileManager !== false,
                     myTeam: (() => {
                         const mt = employee.permissions?.myTeam;
                         const isMgrOrAdmin = ["global_admin", "admin", "hr", "manager", "management"].includes((employee.role || "").toLowerCase());
@@ -2011,6 +2013,27 @@ const EmployeeDrawer = ({ mode, employee, departments, managersList, onClose, on
                                                 permissions: {
                                                     ...prev.permissions,
                                                     offboardingAndOnboarding: e.target.checked
+                                                }
+                                            }))}
+                                            className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 
+                                        />
+                                    </div>
+
+                                    {/* File Manager */}
+                                    <div className={`flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-[10px] select-none transition-colors ${isRoleGlobalAdmin ? 'opacity-60' : 'hover:border-gray-200'}`}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-800">File Manager</p>
+                                            <p className="text-[10px] text-gray-400 font-bold">Personal cloud drives, files repository, excel sheets & word documents</p>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isRoleGlobalAdmin || form.permissions?.fileManager !== false} 
+                                            disabled={isRoleGlobalAdmin}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                permissions: {
+                                                    ...prev.permissions,
+                                                    fileManager: e.target.checked
                                                 }
                                             }))}
                                             className="w-4 h-4 rounded text-[#2D79C7] focus:ring-[#2D79C7] accent-[#2D79C7] disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed" 

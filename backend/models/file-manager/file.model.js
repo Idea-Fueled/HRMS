@@ -60,6 +60,27 @@ const fileSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true
+        },
+        sharedWith: [
+            {
+                user: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User",
+                    required: true
+                },
+                sharedAt: {
+                    type: Date,
+                    default: Date.now
+                },
+                canEdit: {
+                    type: Boolean,
+                    default: true
+                }
+            }
+        ],
+        documentContent: {
+            type: mongoose.Schema.Types.Mixed,
+            default: null
         }
     },
     {
@@ -68,6 +89,8 @@ const fileSchema = new mongoose.Schema(
 );
 
 fileSchema.index({ folder: 1, category: 1, createdAt: -1 });
+fileSchema.index({ "sharedWith.user": 1 });
+fileSchema.index({ uploadedBy: 1 });
 
 const FileItem = mongoose.model("FileItem", fileSchema);
 export default FileItem;

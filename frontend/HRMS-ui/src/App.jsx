@@ -251,7 +251,7 @@ const router = createBrowserRouter([
             {
                 path: "file-manager",
                 element: (
-                    <ProtectedRoute allowedRoles={GLOBAL_ADMIN_ONLY}>
+                    <ProtectedRoute allowedRoles={ALL_ROLES}>
                         <FileManager />
                     </ProtectedRoute>
                 ),

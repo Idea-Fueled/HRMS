@@ -9,29 +9,41 @@ import {
     deleteFolder,
     updateFile,
     deleteFile,
-    getStorageStats
+    getStorageStats,
+    shareFile,
+    createDocument,
+    updateDocumentContent,
+    getShareableEmployees
 } from "../../controllers/file-manager/file.controller.js";
 
 const router = express.Router();
 
-// Middleware: Strictly restricted to Puneet, Rishabh, and Esha only
-const isFileManagerAdmin = (req, res, next) => {
-    const callerEmail = (req.user?.email || "").toLowerCase();
-    const allowed = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
-    if (req.user && allowed.includes(callerEmail)) {
-        next();
-    } else {
+// Middleware: Check if user has fileManager access
+const canAccessFileManager = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+    }
+    const role = (req.user.role || "").toLowerCase();
+    if (["global_admin", "admin", "management"].includes(role)) {
+        return next();
+    }
+    if (req.user.permissions?.fileManager === false) {
         return res.status(403).json({
             success: false,
-            message: "Forbidden. Access denied. Only Puneet and Esha can access File Manager."
+            message: "Access denied. You do not have permission to access File Manager."
         });
     }
+    next();
 };
 
-router.use(isAuthenticated, isFileManagerAdmin);
+router.use(isAuthenticated, canAccessFileManager);
 
 // Routes
 router.post("/upload", uploadFileManager.array("files", 20), uploadFiles);
+router.post("/create-document", createDocument);
+router.put("/:id/content", updateDocumentContent);
+router.post("/:id/share", shareFile);
+router.get("/employees", getShareableEmployees);
 router.get("/", getFiles);
 router.get("/folders", getFolders);
 router.post("/folders", createFolder);
@@ -41,4 +53,3 @@ router.put("/:id", updateFile);
 router.delete("/:id", deleteFile);
 
 export default router;
-

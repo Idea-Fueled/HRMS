@@ -36,8 +36,9 @@ const folderSchema = new mongoose.Schema(
     }
 );
 
-// Compound index so sibling folders under the same parent cannot have duplicate names
-folderSchema.index({ name: 1, parentId: 1 });
+// Compound index so sibling folders under the same parent for the same user cannot have duplicate names
+folderSchema.index({ name: 1, parentId: 1, createdBy: 1 });
+folderSchema.index({ createdBy: 1, parentId: 1 });
 
 const Folder = mongoose.model("Folder", folderSchema);
 export default Folder;
