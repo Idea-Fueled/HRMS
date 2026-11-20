@@ -423,8 +423,6 @@ export const getFolders = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message || "Failed to fetch folders." });
     }
 };
-    }
-};
 
 /**
  * Rename / update file metadata
