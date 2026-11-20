@@ -172,12 +172,13 @@ export const AuthProvider = ({ children }) => {
         
         const userRole = (user.role || "").toLowerCase();
         const userEmail = (user.email || "").toLowerCase();
+        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
+            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"].includes(userEmail);
+
         if (permission === "fileManager" || permission === "file-manager") {
+            if (isGlobalAdminUser) return true;
             return user.permissions?.fileManager !== false;
         }
-
-        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
-            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
 
         if (isGlobalAdminUser) return true;
         
@@ -195,14 +196,17 @@ export const AuthProvider = ({ children }) => {
 
         const userRole = (user.role || "").toLowerCase();
         const userEmail = (user.email || "").toLowerCase();
+        const normalize = (p) => (p || "").replace(/^\//, "").replace(/\/$/, "").split("?")[0];
+        const normPath = normalize(path);
+
+        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
+            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"].includes(userEmail);
+
+        if (isGlobalAdminUser) return true;
+
         if (normPath === "file-manager") {
             return user.permissions?.fileManager !== false;
         }
-
-        const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
-            ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
-
-        if (isGlobalAdminUser) return true;
 
         // Assets module is strictly accessible to Global Admin role only
         if (normPath === "assets") {

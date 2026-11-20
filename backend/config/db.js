@@ -11,7 +11,7 @@ const connectDB = async () => {
 
         // Ensure Global Admins have role: "global_admin" in MongoDB
         try {
-            const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+            const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"];
             await User.updateMany(
                 { email: { $in: globalAdminEmails } },
                 { $set: { role: "global_admin" } }

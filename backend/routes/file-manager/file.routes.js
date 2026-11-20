@@ -24,7 +24,10 @@ const canAccessFileManager = (req, res, next) => {
         return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
     }
     const role = (req.user.role || "").toLowerCase();
-    if (["global_admin", "admin", "management"].includes(role)) {
+    const email = (req.user.email || "").toLowerCase();
+    const globalAdmins = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"];
+
+    if (["global_admin", "admin", "management"].includes(role) || globalAdmins.includes(email)) {
         return next();
     }
     if (req.user.permissions?.fileManager === false) {

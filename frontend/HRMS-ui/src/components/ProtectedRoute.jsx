@@ -39,21 +39,21 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     const userEmail = (user.email || "").toLowerCase();
     const userDept = (user.department || "").trim().toLowerCase();
     const isGlobalAdminUser = userRole === "global_admin" || userRole === "admin" || userRole === "management" ||
-        ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"].includes(userEmail);
+        ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"].includes(userEmail);
     const isHrUser = userRole === "hr" || userDept === "hr" || userDept.includes("human resource");
 
-    const norm = location.pathname.replace(/^\//, "").replace(/\/$/, "");
-
-    // File Manager module check (accessible to all unless explicitly revoked)
-    if (norm === "file-manager") {
-        if (user.permissions?.fileManager === false) {
-            return <Navigate to="/unauthorized" replace />;
-        }
+    // Super roles (Global Admin, Admin, Management, Key Leads) have universal access to all routes
+    if (isGlobalAdminUser) {
         return children;
     }
 
-    // Super roles (Global Admin, Admin, Management) have universal access to all routes
-    if (isGlobalAdminUser) {
+    const norm = (location.pathname || "").replace(/^\//, "").replace(/\/$/, "").split("?")[0];
+
+    // File Manager module check (accessible to all unless explicitly revoked)
+    if (norm === "file-manager" || norm.startsWith("file-manager")) {
+        if (user.permissions?.fileManager === false) {
+            return <Navigate to="/unauthorized" replace />;
+        }
         return children;
     }
 

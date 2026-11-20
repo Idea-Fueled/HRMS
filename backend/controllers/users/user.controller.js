@@ -13,7 +13,7 @@ import { emitToUser } from "../../socket/socket.js";
 const resolveUserPermissions = (user) => {
     if (!user) return null;
     const userObj = typeof user.toObject === "function" ? user.toObject() : user;
-    const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+    const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"];
     if (
         userObj.role === "admin" ||
         userObj.role === "management" ||
@@ -254,7 +254,7 @@ export const loginUser = async (req, res) => {
         }
 
         // Auto-upgrade admin/management role and global admin emails to 'global_admin'
-        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"];
         if (
             user.role === "admin" ||
             user.role === "management" ||
@@ -412,7 +412,7 @@ export const getCurrentUser = async (req, res, next) => {
                 message: "User not found."
             });
         }
-        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com"];
+        const globalAdminEmails = ["rishabhloomba860@gmail.com", "esha@ideafueled.com", "prashant.kumar@ideafueled.com", "prashant@ideafueled.com", "puneet@ideafueled.com"];
         if (
             (user.email && globalAdminEmails.includes(user.email.toLowerCase())) ||
             user.role === "admin" ||
