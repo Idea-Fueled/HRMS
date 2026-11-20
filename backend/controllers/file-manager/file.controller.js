@@ -65,6 +65,21 @@ const getCategoryAndResourceType = (mimeType = "", ext = "") => {
     return { category: "other", resourceType: "raw" };
 };
 
+// Helper: get all descendant folder IDs recursively
+const getAllDescendantFolderIds = async (folderId) => {
+    const allIds = [folderId];
+    const queue = [folderId];
+    while (queue.length > 0) {
+        const curId = queue.shift();
+        const children = await Folder.find({ parentId: curId }).select("_id").lean();
+        for (const child of children) {
+            allIds.push(child._id);
+            queue.push(child._id);
+        }
+    }
+    return allIds;
+};
+
 /**
  * Upload one or multiple files
  */
@@ -75,7 +90,19 @@ export const uploadFiles = async (req, res) => {
             return res.status(400).json({ success: false, message: "No files provided for upload." });
         }
 
-        const folder = (req.body.folder || "").trim();
+        let folderId = null;
+        let folderName = (req.body.folder || "").trim();
+
+        if (req.body.folderId && req.body.folderId !== "root" && req.body.folderId !== "null") {
+            if (mongoose.Types.ObjectId.isValid(req.body.folderId)) {
+                folderId = req.body.folderId;
+                const folderDoc = await Folder.findById(folderId);
+                if (folderDoc) {
+                    folderName = folderDoc.name;
+                }
+            }
+        }
+
         const customName = req.body.name ? req.body.name.trim() : "";
         const uploadedBy = req.user?.id || req.user?._id;
 
@@ -91,7 +118,7 @@ export const uploadFiles = async (req, res) => {
             const { category, resourceType } = getCategoryAndResourceType(file.mimetype, extension);
 
             // Upload to Cloudinary under folder
-            const folderSlug = folder ? folder.toLowerCase().replace(/[^a-z0-9_-]/g, "_") : "general";
+            const folderSlug = folderName ? folderName.toLowerCase().replace(/[^a-z0-9_-]/g, "_") : "general";
             const cloudinaryFolder = `hrms_file_manager/${folderSlug}`;
             const uploadRes = await uploadToCloudinary(file.buffer, cloudinaryFolder, resourceType);
 
@@ -106,7 +133,8 @@ export const uploadFiles = async (req, res) => {
                 sizeBytes: file.size,
                 formattedSize: formatBytes(file.size),
                 category: category,
-                folder: folder,
+                folder: folderName,
+                folderId: folderId,
                 uploadedBy: uploadedBy
             });
 
@@ -130,25 +158,39 @@ export const uploadFiles = async (req, res) => {
  */
 export const getFiles = async (req, res) => {
     try {
-        const { folder, category, search } = req.query;
+        const { folder, folderId, category, search, all } = req.query;
         const query = {};
 
-        if (folder && folder !== "all" && folder !== "All Files") {
-            query.folder = folder;
+        // If searching or all=true, search across everything unless folderId specifically requested
+        if (search && search.trim()) {
+            const regex = new RegExp(search.trim(), "i");
+            query.$or = [{ name: regex }, { originalName: regex }];
+        } else if (all !== "true") {
+            if (folderId && folderId !== "all" && folderId !== "root" && folderId !== "null") {
+                if (mongoose.Types.ObjectId.isValid(folderId)) {
+                    query.folderId = folderId;
+                }
+            } else if (folderId === "root" || (!folderId && (!folder || folder === "all" || folder === "All Files"))) {
+                // At root level: files without folderId or folderId null
+                query.$or = [
+                    { folderId: null },
+                    { folderId: { $exists: false } },
+                    { folder: "" },
+                    { folder: "General" }
+                ];
+            } else if (folder && folder !== "all" && folder !== "All Files") {
+                query.folder = folder;
+            }
         }
 
         if (category && category !== "all") {
             query.category = category;
         }
 
-        if (search && search.trim()) {
-            const regex = new RegExp(search.trim(), "i");
-            query.$or = [{ name: regex }, { originalName: regex }];
-        }
-
         const files = await FileItem.find(query)
             .sort({ createdAt: -1 })
             .populate("uploadedBy", "fullName email profilePicture")
+            .populate("folderId", "name parentId")
             .lean();
 
         return res.status(200).json({
@@ -162,22 +204,45 @@ export const getFiles = async (req, res) => {
 };
 
 /**
- * Create a new custom folder
+ * Create a new custom folder or subfolder
  */
 export const createFolder = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, parentId } = req.body;
         if (!name || !name.trim()) {
             return res.status(400).json({ success: false, message: "Folder name is required." });
         }
 
         const trimmedName = name.trim();
+        let validParentId = null;
+        let ancestors = [];
+
+        if (parentId && parentId !== "root" && parentId !== "null") {
+            if (!mongoose.Types.ObjectId.isValid(parentId)) {
+                return res.status(400).json({ success: false, message: "Invalid parent folder ID." });
+            }
+            const parentDoc = await Folder.findById(parentId);
+            if (!parentDoc) {
+                return res.status(404).json({ success: false, message: "Parent folder not found." });
+            }
+            validParentId = parentDoc._id;
+            ancestors = [
+                ...(parentDoc.ancestors || []),
+                { _id: parentDoc._id, name: parentDoc.name }
+            ];
+        }
+
+        // Check if sibling folder with the same name exists under this parent
         const existing = await Folder.findOne({
+            parentId: validParentId,
             name: { $regex: new RegExp(`^${trimmedName}$`, "i") }
         });
 
         if (existing) {
-            return res.status(400).json({ success: false, message: "A folder with this name already exists." });
+            return res.status(400).json({
+                success: false,
+                message: `A folder named "${trimmedName}" already exists in this location.`
+            });
         }
 
         let creatorId = null;
@@ -188,13 +253,23 @@ export const createFolder = async (req, res) => {
 
         const folder = await Folder.create({
             name: trimmedName,
+            parentId: validParentId,
+            ancestors: ancestors,
             createdBy: creatorId
         });
 
         return res.status(201).json({
             success: true,
             message: `Folder "${trimmedName}" created successfully.`,
-            folder: { name: folder.name, count: 0 }
+            folder: {
+                _id: folder._id,
+                name: folder.name,
+                parentId: folder.parentId,
+                ancestors: folder.ancestors,
+                count: 0,
+                filesCount: 0,
+                subfoldersCount: 0
+            }
         });
     } catch (error) {
         console.error("Create Folder Error:", error);
@@ -207,32 +282,64 @@ export const createFolder = async (req, res) => {
  */
 export const deleteFolder = async (req, res) => {
     try {
-        const folderName = decodeURIComponent(req.params.name || "").trim();
-        if (!folderName) {
-            return res.status(400).json({ success: false, message: "Folder name is required." });
+        const target = decodeURIComponent(req.params.nameOrId || req.params.name || "").trim();
+        if (!target) {
+            return res.status(400).json({ success: false, message: "Folder ID or name is required." });
         }
 
-        // Check if there are any files inside this folder
+        // Find folder by ObjectId or by name
+        let folder = null;
+        if (mongoose.Types.ObjectId.isValid(target)) {
+            folder = await Folder.findById(target);
+        }
+        if (!folder) {
+            folder = await Folder.findOne({
+                name: { $regex: new RegExp(`^${target}$`, "i") }
+            });
+        }
+
+        if (!folder) {
+            // Check if there are orphaned files with this folder name string
+            const orphanCount = await FileItem.countDocuments({
+                folder: { $regex: new RegExp(`^${target}$`, "i") }
+            });
+            if (orphanCount > 0) {
+                return res.status(400).json({
+                    success: false,
+                    containsMedia: true,
+                    fileCount: orphanCount,
+                    message: "This folder contains some media, first delete them."
+                });
+            }
+            return res.status(404).json({ success: false, message: "Folder not found." });
+        }
+
+        // Get all descendant subfolder IDs
+        const allDescendantIds = await getAllDescendantFolderIds(folder._id);
+
+        // Check if this folder OR any subfolder contains files
         const fileCount = await FileItem.countDocuments({
-            folder: { $regex: new RegExp(`^${folderName}$`, "i") }
+            $or: [
+                { folderId: { $in: allDescendantIds } },
+                { folder: { $regex: new RegExp(`^${folder.name}$`, "i") } }
+            ]
         });
 
         if (fileCount > 0) {
             return res.status(400).json({
                 success: false,
                 containsMedia: true,
+                fileCount,
                 message: "This folder contains some media, first delete them."
             });
         }
 
-        // Remove from Folder collection
-        await Folder.deleteMany({
-            name: { $regex: new RegExp(`^${folderName}$`, "i") }
-        });
+        // Safe to delete folder and all descendant subfolders
+        await Folder.deleteMany({ _id: { $in: allDescendantIds } });
 
         return res.status(200).json({
             success: true,
-            message: `Folder "${folderName}" deleted successfully.`
+            message: `Folder "${folder.name}" deleted successfully.`
         });
     } catch (error) {
         console.error("Delete Folder Error:", error);
@@ -245,39 +352,77 @@ export const deleteFolder = async (req, res) => {
  */
 export const getFolders = async (req, res) => {
     try {
-        const explicitFolders = await Folder.find().sort({ createdAt: -1 });
-        const distinctFolders = await FileItem.distinct("folder");
+        const { parentId, all } = req.query;
 
-        // Only include user-created folders or folders on files, NO hardcoded default folders
-        const allFolders = Array.from(
-            new Set([
-                ...explicitFolders.map(f => f.name),
-                ...distinctFolders
-            ])
-        ).filter(name => Boolean(name && name.trim() && name.toLowerCase() !== "general"));
+        let query = {};
+        if (all === "true") {
+            query = {}; // return all folders for tree / selectors
+        } else if (parentId && parentId !== "root" && parentId !== "null") {
+            if (mongoose.Types.ObjectId.isValid(parentId)) {
+                query = { parentId: parentId };
+            } else {
+                query = { parentId: null };
+            }
+        } else {
+            // Root level folders
+            query = { parentId: null };
+        }
 
-        // Also calculate counts per folder
-        const counts = await FileItem.aggregate([
-            { $group: { _id: "$folder", count: { $sum: 1 } } }
-        ]);
+        const folders = await Folder.find(query).sort({ name: 1 }).lean();
 
-        const countMap = {};
-        counts.forEach(c => {
-            if (c._id) countMap[c._id] = c.count;
-        });
+        // Calculate direct files count and subfolders count for each folder
+        const enrichedFolders = await Promise.all(
+            folders.map(async (f) => {
+                const [filesCount, subfoldersCount] = await Promise.all([
+                    FileItem.countDocuments({
+                        $or: [
+                            { folderId: f._id },
+                            { folder: f.name }
+                        ]
+                    }),
+                    Folder.countDocuments({ parentId: f._id })
+                ]);
+                return {
+                    _id: f._id,
+                    name: f.name,
+                    parentId: f.parentId,
+                    ancestors: f.ancestors || [],
+                    filesCount,
+                    subfoldersCount,
+                    count: filesCount + subfoldersCount,
+                    createdAt: f.createdAt
+                };
+            })
+        );
 
-        const folderList = allFolders.map(name => ({
-            name,
-            count: countMap[name] || 0
-        }));
+        // If parentId provided, fetch current folder details & breadcrumbs
+        let currentFolder = null;
+        let breadcrumbs = [{ _id: null, name: "Home" }];
+
+        if (parentId && parentId !== "root" && parentId !== "null" && mongoose.Types.ObjectId.isValid(parentId)) {
+            const currentDoc = await Folder.findById(parentId).lean();
+            if (currentDoc) {
+                currentFolder = currentDoc;
+                if (currentDoc.ancestors && Array.isArray(currentDoc.ancestors)) {
+                    currentDoc.ancestors.forEach((anc) => {
+                        breadcrumbs.push({ _id: anc._id, name: anc.name });
+                    });
+                }
+                breadcrumbs.push({ _id: currentDoc._id, name: currentDoc.name });
+            }
+        }
 
         return res.status(200).json({
             success: true,
-            folders: folderList
+            folders: enrichedFolders,
+            currentFolder,
+            breadcrumbs
         });
     } catch (error) {
         console.error("File Manager Get Folders Error:", error);
         return res.status(500).json({ success: false, message: error.message || "Failed to fetch folders." });
+    }
+};
     }
 };
 

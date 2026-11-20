@@ -4,16 +4,17 @@ export const getFiles = async (params = {}) => {
     return API.get("/files", { params });
 };
 
-export const getFolders = async () => {
-    return API.get("/files/folders");
+export const getFolders = async (parentId = null) => {
+    const params = parentId ? { parentId } : {};
+    return API.get("/files/folders", { params });
 };
 
-export const createFolder = async (name) => {
-    return API.post("/files/folders", { name });
+export const createFolder = async (name, parentId = null) => {
+    return API.post("/files/folders", { name, parentId });
 };
 
-export const deleteFolder = async (folderName) => {
-    return API.delete(`/files/folders/${encodeURIComponent(folderName)}`);
+export const deleteFolder = async (idOrName) => {
+    return API.delete(`/files/folders/${encodeURIComponent(idOrName)}`);
 };
 
 export const getStorageStats = async () => {

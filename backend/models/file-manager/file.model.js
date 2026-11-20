@@ -48,7 +48,13 @@ const fileSchema = new mongoose.Schema(
         folder: {
             type: String,
             trim: true,
-            default: "General"
+            default: ""
+        },
+        folderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Folder",
+            default: null,
+            index: true
         },
         uploadedBy: {
             type: mongoose.Schema.Types.ObjectId,
