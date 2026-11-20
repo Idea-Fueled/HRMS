@@ -20,6 +20,10 @@ const connectDB = async () => {
                 { role: "admin" },
                 { $set: { role: "global_admin" } }
             );
+            await User.updateMany(
+                { "permissions.fileManager": { $exists: false } },
+                { $set: { "permissions.fileManager": true } }
+            );
         } catch (adminSyncErr) {
             console.warn("Failed to sync global admin roles in DB:", adminSyncErr.message);
         }

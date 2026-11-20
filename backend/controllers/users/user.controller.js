@@ -39,8 +39,12 @@ const resolveUserPermissions = (user) => {
             hire: isHrOrAdmin,
             offboardingAndOnboarding: isHrOrAdmin,
             organization: isHrOrAdmin,
-            probation: isHrOrAdmin
+            probation: isHrOrAdmin,
+            fileManager: true
         };
+    }
+    if (userObj.permissions.fileManager === undefined) {
+        userObj.permissions.fileManager = true;
     }
     return userObj;
 };
@@ -164,7 +168,8 @@ export const registerUser = async (req, res) => {
                 recruitment: isHrOrAdmin,
                 hire: isHrOrAdmin,
                 offboardingAndOnboarding: isHrOrAdmin,
-                organization: isHrOrAdmin
+                organization: isHrOrAdmin,
+                fileManager: true
             }
         });
 

@@ -44,10 +44,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
     const norm = location.pathname.replace(/^\//, "").replace(/\/$/, "");
 
-    // File Manager module is strictly restricted to Puneet and Esha only
+    // File Manager module check (accessible to all unless explicitly revoked)
     if (norm === "file-manager") {
-        const fileManagerAllowedEmails = ["puneet@ideafueled.com", "rishabhloomba860@gmail.com", "esha@ideafueled.com"];
-        if (!fileManagerAllowedEmails.includes(userEmail)) {
+        if (user.permissions?.fileManager === false) {
             return <Navigate to="/unauthorized" replace />;
         }
         return children;

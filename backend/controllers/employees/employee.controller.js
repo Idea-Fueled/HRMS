@@ -230,7 +230,8 @@ export const createEmployee = async (req, res) => {
             hire: isHrOrAdmin,
             offboardingAndOnboarding: isHrOrAdmin,
             organization: isHrOrAdmin,
-            probation: isHrOrAdmin
+            probation: isHrOrAdmin,
+            fileManager: true
         };
 
         const resolvedPermissions = permissions 
