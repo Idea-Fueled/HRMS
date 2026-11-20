@@ -106,8 +106,10 @@ const Login = () => {
                 const loggedInUser = response.data.user;
                 if (loggedInUser) {
                     try {
+                        const now = Date.now().toString();
                         sessionStorage.setItem("user", JSON.stringify(loggedInUser));
-                        sessionStorage.setItem("loginTime", Date.now().toString());
+                        sessionStorage.setItem("loginTime", now);
+                        localStorage.setItem("loginTime", now);
                         localStorage.removeItem("user");
                     } catch (e) {
                         console.warn("Could not save user:", e);
@@ -120,8 +122,10 @@ const Login = () => {
                     const profileRes = await getCurrentUser();
                     if (profileRes.data && profileRes.data.success) {
                         const fetchedUser = profileRes.data.user;
+                        const now = Date.now().toString();
                         sessionStorage.setItem("user", JSON.stringify(fetchedUser));
-                        sessionStorage.setItem("loginTime", Date.now().toString());
+                        sessionStorage.setItem("loginTime", now);
+                        localStorage.setItem("loginTime", now);
                         localStorage.removeItem("user");
                         setUser(fetchedUser);
                         toast.success("Login successful. Redirecting...");

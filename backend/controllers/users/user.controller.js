@@ -258,7 +258,7 @@ export const loginUser = async (req, res) => {
             user.role = "global_admin";
         }
 
-        // Generate JWT (Strict 30 minutes expiration)
+        // Generate JWT (Strict 1 hour expiration)
         const token = jwt.sign(
             {
                 id: user._id,
@@ -268,7 +268,7 @@ export const loginUser = async (req, res) => {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn: "30m",
+                expiresIn: "1h",
             }
         );
 

@@ -3,26 +3,18 @@ import { useAuth } from "../context/AuthContext";
 import { logoutUser } from "../services/auth.service";
 
 /* ─────────────────────────────────────────────
-   STRICT SESSION & INACTIVITY CONTROLLER
-   1. 30 Minutes Inactivity -> Instant Auto Logout
-   2. Laptop Closed (Sleep / Suspend) -> Instant Auto Logout
-   3. Tab / Browser Closed -> Session Terminated
-   4. No warning popup / modal rendered
+   1-HOUR STRICT AUTO LOGOUT CONTROLLER
+   - Exactly 60 Minutes (1 Hour) from Login Time
+   - Logs out automatically after 1 hour, whether active or inactive
+   - Safe in background tabs (no sleep detection, tab switching will NOT log out)
 ───────────────────────────────────────────── */
-const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes inactivity
-const SLEEP_THRESHOLD_MS    = 10 * 1000;      // 10 sec heartbeat gap means laptop lid closed / system slept
-
-const ACTIVITY_EVENTS = [
-    "mousemove", "mousedown", "keydown",
-    "touchstart", "scroll", "click", "wheel"
-];
+const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 hour (60 minutes)
 
 const SessionTimeoutManager = () => {
     const { user, logout } = useAuth();
-    const lastHeartbeatRef = useRef(Date.now());
     const isLoggingOutRef = useRef(false);
 
-    const doLogout = useCallback(async (reason = "inactivity") => {
+    const doLogout = useCallback(async (reason = "1_hour_timeout") => {
         if (isLoggingOutRef.current) return;
         isLoggingOutRef.current = true;
 
@@ -30,6 +22,7 @@ const SessionTimeoutManager = () => {
             sessionStorage.clear();
             localStorage.removeItem("user");
             localStorage.removeItem("token");
+            localStorage.removeItem("loginTime");
         } catch (e) {}
 
         try {
@@ -49,66 +42,43 @@ const SessionTimeoutManager = () => {
             return;
         }
 
-        // Initialize timestamps
-        const now = Date.now();
-        lastHeartbeatRef.current = now;
-        if (!sessionStorage.getItem("lastActivity")) {
-            sessionStorage.setItem("lastActivity", now.toString());
+        // Ensure loginTime is set and synchronized
+        let loginTimeStr = sessionStorage.getItem("loginTime") || localStorage.getItem("loginTime");
+        if (!loginTimeStr) {
+            loginTimeStr = Date.now().toString();
+            sessionStorage.setItem("loginTime", loginTimeStr);
+            localStorage.setItem("loginTime", loginTimeStr);
         }
 
-        // Throttled activity listener
-        let lastRecorded = now;
-        const recordActivity = () => {
-            const cur = Date.now();
-            if (cur - lastRecorded > 1000) {
-                lastRecorded = cur;
-                sessionStorage.setItem("lastActivity", cur.toString());
+        const checkTimeout = () => {
+            const currentLoginTime = parseInt(
+                sessionStorage.getItem("loginTime") || localStorage.getItem("loginTime") || "0",
+                10
+            );
+            if (!currentLoginTime) return;
+
+            const elapsed = Date.now() - currentLoginTime;
+            if (elapsed >= SESSION_DURATION_MS) {
+                doLogout("session_expired_1hr");
             }
         };
 
-        ACTIVITY_EVENTS.forEach((ev) => window.addEventListener(ev, recordActivity, { passive: true }));
+        // Immediate check on mount
+        checkTimeout();
 
-        // Heartbeat interval:
-        // 1. Checks 30-min inactivity timeout
-        // 2. Detects laptop lid closed / computer sleep
-        const intervalId = setInterval(() => {
-            const currentTime = Date.now();
-            const timeSinceLastHeartbeat = currentTime - lastHeartbeatRef.current;
-            lastHeartbeatRef.current = currentTime;
+        // Check periodically every 15 seconds
+        const intervalId = setInterval(checkTimeout, 15000);
 
-            // LAPTOP CLOSED / SLEEP DETECTED:
-            // If the heartbeat gap is greater than 10 seconds (for a 2-second interval),
-            // the device was put to sleep / lid closed.
-            if (timeSinceLastHeartbeat > SLEEP_THRESHOLD_MS) {
-                doLogout("sleep");
-                return;
-            }
-
-            // 30 MIN INACTIVITY DETECTED:
-            const lastActivity = parseInt(sessionStorage.getItem("lastActivity") || currentTime.toString(), 10);
-            if (currentTime - lastActivity >= INACTIVITY_TIMEOUT_MS) {
-                doLogout("inactivity");
-                return;
-            }
-        }, 2000);
-
-        // Visibilitychange check: when laptop lid is reopened or tab becomes visible
+        // When user switches back to this tab, check if 1 hour has elapsed
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible") {
-                const currentTime = Date.now();
-                const lastActivity = parseInt(sessionStorage.getItem("lastActivity") || currentTime.toString(), 10);
-                const timeSinceLastHeartbeat = currentTime - lastHeartbeatRef.current;
-
-                if (timeSinceLastHeartbeat > SLEEP_THRESHOLD_MS || currentTime - lastActivity >= INACTIVITY_TIMEOUT_MS) {
-                    doLogout("resume_from_sleep");
-                }
+                checkTimeout();
             }
         };
         document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
             clearInterval(intervalId);
-            ACTIVITY_EVENTS.forEach((ev) => window.removeEventListener(ev, recordActivity));
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
     }, [user, doLogout]);

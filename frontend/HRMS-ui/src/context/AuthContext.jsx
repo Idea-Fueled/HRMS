@@ -88,50 +88,52 @@ export const ROLE_ALLOWED_ROUTES = {
 ───────────────────────────────────────────── */
 const AuthContext = createContext(null);
 
-const SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes strict
+const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 hour (60 minutes) strict auto logout
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         try {
-            const loginTimeStr = sessionStorage.getItem("loginTime");
+            const loginTimeStr = sessionStorage.getItem("loginTime") || localStorage.getItem("loginTime");
             if (loginTimeStr) {
                 const loginTime = parseInt(loginTimeStr, 10);
                 if (Date.now() - loginTime >= SESSION_DURATION_MS) {
                     sessionStorage.clear();
                     localStorage.removeItem("user");
                     localStorage.removeItem("token");
+                    localStorage.removeItem("loginTime");
                     return null;
                 }
             }
-            // Use sessionStorage so closing browser or tab immediately terminates session
-            const stored = sessionStorage.getItem("user");
+            // Use sessionStorage so closing browser or tab terminates session
+            const stored = sessionStorage.getItem("user") || localStorage.getItem("user");
             return stored ? JSON.parse(stored) : null;
         } catch {
             return null;
         }
     });
-    // If we already have a cached user in sessionStorage, we don't need to block rendering
+    // If we already have a cached user in storage, we don't need to block rendering
     const [loading, setLoading] = useState(true);
 
     const refreshUser = useCallback(async () => {
         try {
-            // Check 30 minute strict timeout
-            const loginTimeStr = sessionStorage.getItem("loginTime");
+            // Check 1 hour strict timeout
+            const loginTimeStr = sessionStorage.getItem("loginTime") || localStorage.getItem("loginTime");
             if (loginTimeStr) {
                 const loginTime = parseInt(loginTimeStr, 10);
                 if (Date.now() - loginTime >= SESSION_DURATION_MS) {
                     sessionStorage.clear();
                     localStorage.removeItem("user");
                     localStorage.removeItem("token");
+                    localStorage.removeItem("loginTime");
                     setUser(null);
                     setLoading(false);
                     return;
                 }
-            } else if (!sessionStorage.getItem("user")) {
-                // If tab or browser was closed, session is terminated
+            } else if (!sessionStorage.getItem("user") && !localStorage.getItem("user")) {
                 sessionStorage.clear();
                 localStorage.removeItem("user");
                 localStorage.removeItem("token");
+                localStorage.removeItem("loginTime");
                 setUser(null);
                 setLoading(false);
                 return;
@@ -140,8 +142,10 @@ export const AuthProvider = ({ children }) => {
             const res = await getCurrentUser();
             if (res.data?.success) {
                 sessionStorage.setItem("user", JSON.stringify(res.data.user));
-                if (!sessionStorage.getItem("loginTime")) {
-                    sessionStorage.setItem("loginTime", Date.now().toString());
+                if (!sessionStorage.getItem("loginTime") && !localStorage.getItem("loginTime")) {
+                    const now = Date.now().toString();
+                    sessionStorage.setItem("loginTime", now);
+                    localStorage.setItem("loginTime", now);
                 }
                 localStorage.removeItem("user");
                 setUser(res.data.user);
@@ -149,10 +153,11 @@ export const AuthProvider = ({ children }) => {
                 sessionStorage.clear();
                 localStorage.removeItem("user");
                 localStorage.removeItem("token");
+                localStorage.removeItem("loginTime");
                 setUser(null);
             }
         } catch {
-            const cached = sessionStorage.getItem("user");
+            const cached = sessionStorage.getItem("user") || localStorage.getItem("user");
             if (!cached) setUser(null);
         } finally {
             setLoading(false);
@@ -267,6 +272,7 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.clear();
             localStorage.removeItem("user");
             localStorage.removeItem("token");
+            localStorage.removeItem("loginTime");
         } catch (e) {}
         setUser(null);
     }, []);
